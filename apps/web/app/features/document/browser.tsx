@@ -4,10 +4,6 @@ import {
   type LibraryWorkspaceView,
 } from '@locus/document-library/contracts/library-api';
 import { libraryReferenceScheme } from '@locus/document-library/contracts/library-reference';
-import {
-  type DocumentGraphParticipation,
-  documentGraphParticipation,
-} from '@locus/document-library/contracts/library-state';
 import type { DocumentContent } from '@locus/document-library/contracts/library-types';
 import FluentIconErrorCircle from '@oneo/fluentui-icons-like-react/FluentIconErrorCircle';
 import FluentIconImageCopy from '@oneo/fluentui-icons-like-react/FluentIconImageCopy';
@@ -33,7 +29,6 @@ import {
   documentImageFilename,
   downloadDocumentAsImage,
 } from './document-export';
-import { DocumentGraphParticipationControl } from './graph-participation-control';
 import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
 import {
@@ -67,10 +62,6 @@ export function DocumentBrowser({
             key={data.selected.path}
             document={data.selected}
             documents={data.documents}
-            graphParticipation={documentGraphParticipation(
-              data.libraryState,
-              data.selected.path,
-            )}
           />
         ) : data.selectedPath ? null : data.search?.total === 0 ? (
           <MessageState title="没有匹配的文档">
@@ -99,11 +90,9 @@ export function DocumentBrowser({
 function DocumentArticle({
   document,
   documents,
-  graphParticipation,
 }: {
   document: NonNullable<LibrarySelectionView['selected']>;
   documents: LibraryWorkspaceView['documents'];
-  graphParticipation: DocumentGraphParticipation;
 }) {
   const { updateDocumentIconImage, updateDocumentMetadata } = useDocumentApi();
   const { revalidate } = useRevalidator();
@@ -176,9 +165,6 @@ function DocumentArticle({
           <DocumentYamlMetadata
             actions={
               <DocumentActions
-                documentPath={document.path}
-                graphParticipation={graphParticipation}
-                onGraphParticipationSaved={revalidate}
                 path={document.directory}
                 title={document.title}
               />
@@ -228,15 +214,9 @@ export function formatDocumentReference(path: string): string {
 }
 
 export function DocumentActions({
-  documentPath,
-  graphParticipation,
-  onGraphParticipationSaved,
   path,
   title,
 }: {
-  documentPath: string;
-  graphParticipation: DocumentGraphParticipation;
-  onGraphParticipationSaved?: () => void | Promise<void>;
   path: string;
   title: string;
 }) {
@@ -343,13 +323,6 @@ export function DocumentActions({
           title={null}
         />
       </Button>
-      <DocumentGraphParticipationControl
-        documentPath={documentPath}
-        inherited={graphParticipation.inheritedFrom !== null}
-        initialValue={graphParticipation.configured}
-        key={documentPath}
-        onSaved={onGraphParticipationSaved}
-      />
       <p aria-live="polite" className="sr-only" role="status">
         {imageStatus}
       </p>

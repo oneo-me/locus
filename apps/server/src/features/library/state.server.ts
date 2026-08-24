@@ -73,23 +73,3 @@ export function updateLibraryDocumentOrder(
     home,
   );
 }
-
-export function updateDocumentGraphParticipation(
-  path: string,
-  participates: boolean,
-  environment: RuntimeEnvironment = currentEnvironment(),
-  home?: string,
-): LibraryState {
-  const current = readLibraryState(environment, home);
-  return writeLibraryState(
-    {
-      ...current,
-      graphParticipation: {
-        ...current.graphParticipation,
-        [path]: participates,
-      },
-    },
-    environment,
-    home,
-  );
-}

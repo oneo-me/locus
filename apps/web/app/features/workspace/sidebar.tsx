@@ -100,14 +100,12 @@ function getWorkspaceServerDesktopViewport() {
 }
 
 export function WorkspaceSidebar({
-  activeView,
   currentPath,
   data,
   eventStatus,
   hiddenOnMobile,
   query,
 }: {
-  activeView: 'documents' | 'graph';
   currentPath?: string;
   data: LibraryWorkspaceView;
   eventStatus: WorkspaceEventStatus;
@@ -165,7 +163,6 @@ export function WorkspaceSidebar({
       ref={sidebar}
     >
       <WorkspaceHeader
-        activeView={activeView}
         eventStatus={eventStatus}
         query={query}
         refreshing={data.status.refreshing}

@@ -16,21 +16,18 @@ export function normalizeWorkspaceSidebarWidth(value: unknown): number {
 
 export interface GlobalSettings {
   theme: GlobalTheme;
-  showGraphAttachments: boolean;
   mcpEnabled: boolean;
   workspaceSidebarWidth: number;
 }
 
 export interface UpdateGlobalSettingsInput {
   theme?: GlobalTheme;
-  showGraphAttachments?: boolean;
   mcpEnabled?: boolean;
   workspaceSidebarWidth?: number;
 }
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   theme: 'system',
-  showGraphAttachments: true,
   mcpEnabled: false,
   workspaceSidebarWidth: DEFAULT_WORKSPACE_SIDEBAR_WIDTH,
 };
@@ -49,10 +46,6 @@ export function normalizeGlobalSettings(value: unknown): GlobalSettings {
     theme: isGlobalTheme(record.theme)
       ? record.theme
       : DEFAULT_GLOBAL_SETTINGS.theme,
-    showGraphAttachments:
-      typeof record.showGraphAttachments === 'boolean'
-        ? record.showGraphAttachments
-        : DEFAULT_GLOBAL_SETTINGS.showGraphAttachments,
     mcpEnabled:
       typeof record.mcpEnabled === 'boolean'
         ? record.mcpEnabled

@@ -1,12 +1,8 @@
-import FluentIconConnected from '@oneo/fluentui-icons-like-react/FluentIconConnected';
 import FluentIconSettings from '@oneo/fluentui-icons-like-react/FluentIconSettings';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { createSearchParams, Link } from 'react-router';
-import { Button, buttonVariants } from '@locus/ui/components/button';
-import {
-  workspaceMobilePrimaryState,
-  workspaceMobileSecondaryState,
-} from './mobile-navigation';
+import { Button } from '@locus/ui/components/button';
+import { workspaceMobilePrimaryState } from './mobile-navigation';
 
 const SettingsDialog = lazy(() =>
   import('../settings/browser').then((module) => ({
@@ -107,12 +103,10 @@ function SettingsControl() {
 }
 
 export function WorkspaceHeader({
-  activeView,
   eventStatus,
   query,
   refreshing,
 }: {
-  activeView: 'documents' | 'graph';
   eventStatus: WorkspaceEventStatus;
   query?: string;
   refreshing: boolean;
@@ -159,26 +153,6 @@ export function WorkspaceHeader({
           </div>
         </Link>
         <div className="flex shrink-0 items-center gap-1">
-          <Link
-            aria-current={activeView === 'graph' ? 'page' : undefined}
-            aria-label="知识图谱"
-            className={buttonVariants({
-              variant: activeView === 'graph' ? 'selected' : 'ghost',
-              size: 'icon',
-              className: 'cursor-default no-underline',
-            })}
-            state={workspaceMobileSecondaryState}
-            to={{
-              pathname: '/graph',
-              search: query ? `?${createSearchParams({ q: query })}` : '',
-            }}
-          >
-            <FluentIconConnected
-              aria-hidden="true"
-              data-icon="inline-start"
-              title={null}
-            />
-          </Link>
           <SettingsControl />
         </div>
       </div>

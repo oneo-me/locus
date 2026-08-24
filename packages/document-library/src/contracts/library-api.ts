@@ -1,4 +1,3 @@
-import type { DocumentGraph } from './document-graph.js';
 import type { LibraryRepositoryChange } from './repository.js';
 import type {
   DocumentContent,
@@ -64,11 +63,6 @@ export interface LibraryWorkspaceView {
   status: LibraryStatus;
 }
 
-export interface LibraryGraph {
-  graph: DocumentGraph;
-  status: LibraryStatus;
-}
-
 export interface UpdateDocumentMetadataInput {
   path: string;
   icon?: string | null;
@@ -81,9 +75,4 @@ export interface UpdateDocumentIconImageInput {
 
 export interface ReorderDocumentsInput {
   items: Array<{ path: string; order: number }>;
-}
-
-export interface SetDocumentGraphParticipationInput {
-  path: string;
-  participates: boolean;
 }

@@ -6,7 +6,7 @@ import { parseLibrarySearch } from '~/features/library/search';
 import { GlobalSettingsProvider } from '~/features/settings/global-settings-provider';
 import { workspaceShowsMobileContent } from '~/features/workspace/mobile-navigation';
 import { WorkspaceErrorState } from '~/features/workspace/route-state';
-import { WorkspaceShell, type WorkspaceView } from '~/features/workspace/shell';
+import { WorkspaceShell } from '~/features/workspace/shell';
 import { apiGet } from '~/lib/api-client';
 import { documentApi } from '~/lib/document-api';
 import { DocumentApiProvider } from '~/lib/document-api-context';
@@ -68,12 +68,8 @@ export default function WorkspaceRoot({ loaderData }: Route.ComponentProps) {
     });
   }, []);
 
-  const activeView: WorkspaceView =
-    pathname === '/graph' ? 'graph' : 'documents';
   const currentPath =
-    activeView === 'documents' && pathname !== '/'
-      ? pathnameToUrlPath(pathname)
-      : undefined;
+    pathname !== '/' ? pathnameToUrlPath(pathname) : undefined;
 
   return (
     <DocumentApiProvider client={documentApi}>
@@ -83,12 +79,10 @@ export default function WorkspaceRoot({ loaderData }: Route.ComponentProps) {
       >
         <GlobalSettingsProvider initialSettings={settings}>
           <WorkspaceShell
-            activeView={activeView}
             currentPath={currentPath}
             data={library}
             mobileContentVisible={
-              workspaceShowsMobileContent(activeView, location.state) &&
-              pathname !== '/'
+              workspaceShowsMobileContent(location.state) && pathname !== '/'
             }
             query={query}
           >

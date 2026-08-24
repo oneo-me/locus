@@ -9,7 +9,6 @@ export default [
   route('design-system', 'routes/design-system.tsx'),
   layout('routes/workspace.tsx', [
     index('routes/workspace-index.tsx'),
-    route('graph', 'routes/workspace-graph.tsx'),
     route('*', 'routes/workspace-document.tsx'),
   ]),
 ] satisfies RouteConfig;

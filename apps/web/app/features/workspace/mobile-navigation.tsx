@@ -1,6 +1,5 @@
 import { type PointerEvent as ReactPointerEvent, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import type { WorkspaceView } from './shell';
 
 interface WorkspaceMobileNavigationState {
   mobilePane?: 'primary' | 'secondary';
@@ -20,13 +19,10 @@ function mobileNavigationState(value: unknown): WorkspaceMobileNavigationState {
     : {};
 }
 
-export function workspaceShowsMobileContent(
-  activeView: WorkspaceView,
-  locationState: unknown,
-): boolean {
+export function workspaceShowsMobileContent(locationState: unknown): boolean {
   const pane = mobileNavigationState(locationState).mobilePane;
   if (pane) return pane === 'secondary';
-  return activeView === 'documents';
+  return true;
 }
 
 export function workspaceRequestsMobileNavigation(

@@ -31,14 +31,11 @@ export function updateGlobalSettings(
     }
     next.theme = input.theme;
   }
-  for (const key of ['showGraphAttachments', 'mcpEnabled'] as const) {
-    const value = input[key];
-    if (value !== undefined) {
-      if (typeof value !== 'boolean') {
-        throw new Error(`${key} 必须是布尔值。`);
-      }
-      next[key] = value;
+  if (input.mcpEnabled !== undefined) {
+    if (typeof input.mcpEnabled !== 'boolean') {
+      throw new Error('mcpEnabled 必须是布尔值。');
     }
+    next.mcpEnabled = input.mcpEnabled;
   }
   if (input.workspaceSidebarWidth !== undefined) {
     if (

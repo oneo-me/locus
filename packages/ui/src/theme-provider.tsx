@@ -39,8 +39,7 @@ const DEFAULT_THEME_STATE: ThemeProviderState = {
   setTheme: () => {},
 };
 
-// 布局效应在绘制前应用主题类，并保证先于子组件的被动效应执行，
-// 使知识图谱等读取计算样式的消费者始终拿到新主题。
+// 布局效应在绘制前应用主题类，并保证先于子组件的被动效应执行。
 const useIsomorphicLayoutEffect =
   typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
 

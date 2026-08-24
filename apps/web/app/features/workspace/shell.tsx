@@ -10,26 +10,24 @@ import {
 } from 'react';
 import { cn } from '@locus/ui/utils';
 import {
-  GRAPH_EVENTS_PATH,
-  parseGraphEventSnapshot,
-  type GraphEventSnapshot,
-} from '../graph/events';
+  parseWorkspaceEventSnapshot,
+  type WorkspaceEventSnapshot,
+  WORKSPACE_EVENTS_PATH,
+} from './events';
 import { useGlobalSettings } from '../settings/global-settings-provider';
 import type { WorkspaceEventStatus } from './header';
 import { WorkspaceMobileEdgeSwipe } from './mobile-navigation';
 import { WorkspaceSidebar } from './sidebar';
 import { WorkspaceSidebarResizeHandle } from './sidebar-resize-handle';
 
-export type WorkspaceView = 'documents' | 'graph';
-
 export interface WorkspaceSnapshotState {
   query: string | null;
-  snapshot: GraphEventSnapshot;
+  snapshot: WorkspaceEventSnapshot;
 }
 
 function liveSnapshotMatchesLoaderData(
   data: LibraryWorkspaceView,
-  snapshot: GraphEventSnapshot,
+  snapshot: WorkspaceEventSnapshot,
 ): boolean {
   return (
     JSON.stringify(data.status) === JSON.stringify(snapshot.status) &&
@@ -45,10 +43,6 @@ function liveSnapshotMatchesLoaderData(
     data.repositoryRevision === snapshot.repositoryRevision
   );
 }
-
-const WorkspaceGraphSnapshotContext = createContext<GraphEventSnapshot | null>(
-  null,
-);
 
 const WorkspaceLibraryDataContext = createContext<LibraryWorkspaceView | null>(
   null,
@@ -68,14 +62,12 @@ function createInitialEventStatus(): WorkspaceEventStatus {
   };
 }
 
-export function createWorkspaceEventPath(
-  activeView: WorkspaceView,
-  query: string | null,
-): string {
+export function createWorkspaceEventPath(query: string | null): string {
   const search = new URLSearchParams();
   if (query) search.set('q', query);
-  if (activeView === 'graph') search.set('graph', '1');
-  return search.size > 0 ? `${GRAPH_EVENTS_PATH}?${search}` : GRAPH_EVENTS_PATH;
+  return search.size > 0
+    ? `${WORKSPACE_EVENTS_PATH}?${search}`
+    : WORKSPACE_EVENTS_PATH;
 }
 
 export function mergeWorkspaceLibraryData(
@@ -105,14 +97,12 @@ export function mergeWorkspaceLibraryData(
 }
 
 export function WorkspaceShell({
-  activeView,
   children,
   currentPath,
   data,
   mobileContentVisible,
   query,
 }: {
-  activeView: WorkspaceView;
   children: ReactNode;
   currentPath?: string;
   data: LibraryWorkspaceView;
@@ -136,9 +126,7 @@ export function WorkspaceShell({
 
   useEffect(() => {
     let active = true;
-    const events = new EventSource(
-      createWorkspaceEventPath(activeView, normalizedQuery),
-    );
+    const events = new EventSource(createWorkspaceEventPath(normalizedQuery));
     events.onopen = () => {
       if (!active) return;
       setEventStatus((current) => ({
@@ -148,7 +136,7 @@ export function WorkspaceShell({
     };
     events.onmessage = (event) => {
       if (!active) return;
-      const nextSnapshot = parseGraphEventSnapshot(event.data);
+      const nextSnapshot = parseWorkspaceEventSnapshot(event.data);
       if (nextSnapshot) {
         setSnapshotState({ query: normalizedQuery, snapshot: nextSnapshot });
         setEventStatus({
@@ -168,60 +156,51 @@ export function WorkspaceShell({
       active = false;
       events.close();
     };
-  }, [activeView, normalizedQuery]);
+  }, [normalizedQuery]);
 
   const liveLibraryData = useMemo(
     () => mergeWorkspaceLibraryData(data, snapshotState, normalizedQuery),
     [data, normalizedQuery, snapshotState],
   );
-  const snapshot = snapshotState?.snapshot ?? null;
-
   return (
     <WorkspaceLibraryDataContext.Provider value={liveLibraryData}>
-      <WorkspaceGraphSnapshotContext.Provider value={snapshot}>
+      <div
+        className="grid h-dvh min-w-0 grid-cols-1 bg-background text-sm md:grid-cols-[var(--workspace-sidebar-width)_0_minmax(0,1fr)]"
+        style={
+          {
+            '--workspace-sidebar-width': `${sidebarWidth}px`,
+          } as CSSProperties
+        }
+      >
+        <WorkspaceSidebar
+          currentPath={currentPath}
+          data={liveLibraryData}
+          eventStatus={eventStatus}
+          hiddenOnMobile={mobileContentVisible}
+          query={query}
+        />
+        <WorkspaceSidebarResizeHandle
+          onWidthChange={setSidebarWidth}
+          onWidthCommit={(width) => {
+            void updateSettings({ workspaceSidebarWidth: width }).catch(() =>
+              setSidebarWidth(settings.workspaceSidebarWidth),
+            );
+          }}
+          width={sidebarWidth}
+        />
         <div
-          className="grid h-dvh min-w-0 grid-cols-1 bg-background text-sm md:grid-cols-[var(--workspace-sidebar-width)_0_minmax(0,1fr)]"
-          style={
-            {
-              '--workspace-sidebar-width': `${sidebarWidth}px`,
-            } as CSSProperties
-          }
+          className={cn(
+            'h-full min-h-0 min-w-0',
+            mobileContentVisible ? 'block' : 'hidden md:block',
+          )}
+          data-workspace-mobile-pane="secondary"
         >
-          <WorkspaceSidebar
-            activeView={activeView}
-            currentPath={currentPath}
-            data={liveLibraryData}
-            eventStatus={eventStatus}
-            hiddenOnMobile={mobileContentVisible}
-            query={query}
-          />
-          <WorkspaceSidebarResizeHandle
-            onWidthChange={setSidebarWidth}
-            onWidthCommit={(width) => {
-              void updateSettings({ workspaceSidebarWidth: width }).catch(() =>
-                setSidebarWidth(settings.workspaceSidebarWidth),
-              );
-            }}
-            width={sidebarWidth}
-          />
-          <div
-            className={cn(
-              'h-full min-h-0 min-w-0',
-              mobileContentVisible ? 'block' : 'hidden md:block',
-            )}
-            data-workspace-mobile-pane="secondary"
-          >
-            {children}
-          </div>
-          {mobileContentVisible ? <WorkspaceMobileEdgeSwipe /> : null}
+          {children}
         </div>
-      </WorkspaceGraphSnapshotContext.Provider>
+        {mobileContentVisible ? <WorkspaceMobileEdgeSwipe /> : null}
+      </div>
     </WorkspaceLibraryDataContext.Provider>
   );
-}
-
-export function useWorkspaceGraphSnapshot(): GraphEventSnapshot | null {
-  return useContext(WorkspaceGraphSnapshotContext);
 }
 
 export function useWorkspaceLibraryData(): LibraryWorkspaceView {

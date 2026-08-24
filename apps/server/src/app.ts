@@ -2,19 +2,16 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type {
   ReorderDocumentsInput,
-  SetDocumentGraphParticipationInput,
   UpdateDocumentIconImageInput,
   UpdateDocumentMetadataInput,
 } from '@locus/document-library/contracts/library-api';
 import type { UpdateGlobalSettingsInput } from '@locus/document-library/contracts/global-settings';
 import { createRouteAssetResponse } from '~/features/asset/route.server';
-import { createGraphEventsResponse } from '~/features/graph/graph-events';
+import { createWorkspaceEventsResponse } from '~/features/workspace/workspace-events';
 import {
-  getLibraryGraph,
   getLibrarySelection,
   getLibraryWorkspaceView,
   reorderDocuments,
-  setDocumentGraphParticipation,
   updateDocumentIconImage,
   updateDocumentMetadata,
 } from '~/features/library/service';
@@ -49,7 +46,6 @@ export function createApp() {
       getLibrarySelection({ doc: context.req.query('doc') ?? '' }),
     ),
   );
-  app.get('/api/library/graph', () => jsonRoute(getLibraryGraph));
   app.post('/api/library/document/metadata', async (context) =>
     jsonRoute(async () =>
       updateDocumentMetadata(await body<UpdateDocumentMetadataInput>(context)),
@@ -59,13 +55,6 @@ export function createApp() {
     jsonRoute(async () =>
       updateDocumentIconImage(
         await body<UpdateDocumentIconImageInput>(context),
-      ),
-    ),
-  );
-  app.post('/api/library/graph-participation', async (context) =>
-    jsonRoute(async () =>
-      setDocumentGraphParticipation(
-        await body<SetDocumentGraphParticipationInput>(context),
       ),
     ),
   );
@@ -80,8 +69,8 @@ export function createApp() {
       updateGlobalSettings(await body<UpdateGlobalSettingsInput>(context)),
     ),
   );
-  app.get('/api/graph-events', (context) =>
-    createGraphEventsResponse(context.req.raw),
+  app.get('/api/workspace-events', (context) =>
+    createWorkspaceEventsResponse(context.req.raw),
   );
   app.get('/api/assets', async (context) => {
     const path = context.req.query('path');

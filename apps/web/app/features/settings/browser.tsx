@@ -1,6 +1,5 @@
 import FluentIconEye from '@oneo/fluentui-icons-like-react/FluentIconEye';
 import FluentIconInfo from '@oneo/fluentui-icons-like-react/FluentIconInfo';
-import FluentIconOrganization from '@oneo/fluentui-icons-like-react/FluentIconOrganization';
 import FluentIconPaintBrush from '@oneo/fluentui-icons-like-react/FluentIconPaintBrush';
 import FluentIconPlugConnected from '@oneo/fluentui-icons-like-react/FluentIconPlugConnected';
 import FluentIconSearch from '@oneo/fluentui-icons-like-react/FluentIconSearch';
@@ -42,12 +41,11 @@ import {
   SelectValue,
 } from '@locus/ui/components/select';
 import { Separator } from '@locus/ui/components/separator';
-import { GraphAttachmentsSwitch } from '../graph/attachments-control';
 import { McpEnabledSwitch } from '../settings/mcp-control';
 import { McpInstallationGuide } from '../settings/mcp-installation-guide';
 import { cn } from '@locus/ui/utils';
 
-type SettingsSectionId = 'appearance' | 'graph' | 'mcp' | 'about';
+type SettingsSectionId = 'appearance' | 'mcp' | 'about';
 
 interface SettingsNavItem {
   id: SettingsSectionId;
@@ -71,14 +69,6 @@ const SETTINGS_NAV: SettingsNavItem[] = [
     group: '偏好',
     keywords: ['主题', '亮色', '暗色', '跟随系统'],
     icon: FluentIconPaintBrush,
-  },
-  {
-    id: 'graph',
-    label: '知识图谱',
-    description: '影响图谱节点展示，不改变文档内容。',
-    group: '偏好',
-    keywords: ['附件', '图谱', '节点'],
-    icon: FluentIconOrganization,
   },
   {
     id: 'mcp',
@@ -132,7 +122,7 @@ export function SettingsDialog({
         showCloseButton={false}
       >
         <DialogDescription className="sr-only">
-          调整 Asterweft 的外观、知识图谱与其他偏好。
+          调整 Asterweft 的外观与其他偏好。
         </DialogDescription>
         <SettingsBrowser onNavigate={() => setOpen(false)} />
       </DialogContent>
@@ -383,8 +373,6 @@ function SettingsPanel({ id }: { id: SettingsSectionId }) {
   switch (id) {
     case 'appearance':
       return <AppearancePanel />;
-    case 'graph':
-      return <GraphPanel />;
     case 'mcp':
       return <McpPanel />;
     case 'about':
@@ -481,21 +469,6 @@ function AppearancePanel() {
         </Select>
       </SettingsRow>
     </SettingsBlock>
-  );
-}
-
-function GraphPanel() {
-  return (
-    <div className="flex flex-col gap-6">
-      <SettingsBlock title="显示">
-        <SettingsRow
-          description="在知识图谱中显示文档同目录附件节点。"
-          label="显示附件"
-        >
-          <GraphAttachmentsSwitch />
-        </SettingsRow>
-      </SettingsBlock>
-    </div>
   );
 }
 

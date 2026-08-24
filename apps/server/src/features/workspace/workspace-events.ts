@@ -6,35 +6,26 @@ import {
   readLibraryRepositoryView,
   repositoryViewChanged,
 } from '~/features/library/repository-view.server';
-import {
-  excludedDocumentGraphPaths,
-  type LibraryState,
-} from '@locus/document-library/contracts/library-state';
-import { readLibraryState } from '~/features/library/state.server';
 
 const encoder = new TextEncoder();
 const HEARTBEAT_INTERVAL_MS = 5_000;
 const SNAPSHOT_DEBOUNCE_MS = 150;
 
-interface GraphEventsResponseOptions {
+interface WorkspaceEventsResponseOptions {
   heartbeatIntervalMs?: number;
   library?: DocumentLibrary;
-  readState?: () => LibraryState;
   snapshotDebounceMs?: number;
 }
 
-export async function createGraphEventsResponse(
+export async function createWorkspaceEventsResponse(
   request: Request,
-  options: GraphEventsResponseOptions = {},
+  options: WorkspaceEventsResponseOptions = {},
 ): Promise<Response> {
   const library = options.library ?? (await getLibrary());
   const heartbeatIntervalMs =
     options.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_MS;
-  const readState = options.readState ?? readLibraryState;
   const snapshotDebounceMs = options.snapshotDebounceMs ?? SNAPSHOT_DEBOUNCE_MS;
-  const params = new URL(request.url).searchParams;
-  const query = params.get('q')?.trim();
-  const includeGraph = params.get('graph') === '1';
+  const query = new URL(request.url).searchParams.get('q')?.trim();
   let cleanup = () => {};
   let flushPendingSnapshot = () => {};
 
@@ -77,27 +68,16 @@ export async function createGraphEventsResponse(
       const sendSnapshot = (repositoryView?: LibraryRepositoryView) => {
         const nextRepositoryView =
           repositoryView ?? readLibraryRepositoryView(library);
-        const state = readState();
-        const navigation = readLibraryNavigation(library, query);
         repositoryRevision = nextRepositoryView.revision;
-        const snapshot = {
-          status: library.status(),
-          ...(includeGraph
-            ? {
-                graph: library.getDocumentGraph(
-                  excludedDocumentGraphPaths(
-                    state,
-                    library.listAllDocuments().map((document) => document.path),
-                  ),
-                ),
-              }
-            : {}),
-          repositoryChanges: nextRepositoryView.changes,
-          repositoryError: nextRepositoryView.error,
-          repositoryRevision: nextRepositoryView.revision,
-          navigation,
-        };
-        enqueue(`data: ${JSON.stringify(snapshot)}\n\n`);
+        enqueue(
+          `data: ${JSON.stringify({
+            status: library.status(),
+            repositoryChanges: nextRepositoryView.changes,
+            repositoryError: nextRepositoryView.error,
+            repositoryRevision: nextRepositoryView.revision,
+            navigation: readLibraryNavigation(library, query),
+          })}\n\n`,
+        );
       };
 
       const flushSnapshot = () => {
