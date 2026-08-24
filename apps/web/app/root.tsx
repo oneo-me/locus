@@ -22,12 +22,6 @@ export const links: Route.LinksFunction = () => [
     sizes: '16x16',
     href: '/icons/asterweft-mark-16.png',
   },
-  {
-    rel: 'apple-touch-icon',
-    sizes: '180x180',
-    href: '/icons/asterweft-180.png',
-  },
-  { rel: 'manifest', href: '/manifest' },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -51,10 +45,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           content="#121920"
           media="(prefers-color-scheme: dark)"
         />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-title" content="Asterweft" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta
           name="description"
           content="Knowledge, woven together. 浏览与搜索本地 Markdown 文档库。"

@@ -27,6 +27,5 @@ export default [
   route('api/settings', 'routes/api.settings.ts'),
   route('api/graph-events', 'routes/api.graph-events.ts'),
   route('api/assets', 'routes/api.assets.ts'),
-  route('manifest', 'routes/manifest.ts'),
   route('mcp', 'routes/mcp.ts'),
 ] satisfies RouteConfig;

@@ -79,11 +79,8 @@ function withLocalPaths(
   };
 }
 
-export function createAsterweftMcpServer(
-  library: DocumentLibrary,
-  options: { rootPath?: string } = {},
-): McpServer {
-  const rootPath = options.rootPath?.trim() || library.getRootPath();
+export function createAsterweftMcpServer(library: DocumentLibrary): McpServer {
+  const rootPath = library.getRootPath();
   const server = new McpServer(
     {
       name: 'asterweft',

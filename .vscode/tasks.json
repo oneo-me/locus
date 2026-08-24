@@ -8,17 +8,8 @@
     },
     {
       "label": "build",
-      "type": "shell",
-      "command": "docker",
-      "args": [
-        "compose",
-        "up",
-        "-d",
-        "--build",
-        "--force-recreate",
-        "--pull",
-        "always"
-      ]
+      "type": "npm",
+      "script": "build"
     }
   ]
 }

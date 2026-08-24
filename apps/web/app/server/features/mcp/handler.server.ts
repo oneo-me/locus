@@ -13,12 +13,8 @@ export function createAsterweftMcpRequestHandler(
 ) {
   const resolveLibrary = dependencies.getLibrary ?? getLibrary;
   const resolveSettings = dependencies.readGlobalSettings ?? readGlobalSettings;
-  const libraryHostPath = process.env.ASTERWEFT_LIBRARY_HOST_PATH?.trim();
   const handler = createMcpHandler(
-    async () =>
-      createAsterweftMcpServer(await resolveLibrary(), {
-        rootPath: libraryHostPath || undefined,
-      }),
+    async () => createAsterweftMcpServer(await resolveLibrary()),
     {
       legacy: 'stateless',
       responseMode: 'auto',

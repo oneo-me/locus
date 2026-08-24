@@ -1,1 +1,0 @@
-This attachment remains visible to directory-based graph scanning only.

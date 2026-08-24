@@ -42,9 +42,6 @@ data/
 # Design prototypes
 .design/
 
-# Browser tests
-playwright-report/
-test-results/
 .turbo/
 
 # typescript

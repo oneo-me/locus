@@ -77,7 +77,6 @@ Markdown 文件是内容的唯一事实来源；索引、图谱和 Git 状态均
 ```bash
 pnpm dev
 pnpm build
-pnpm test
 pnpm typecheck
 pnpm check
 pnpm format
