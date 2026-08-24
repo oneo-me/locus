@@ -63,11 +63,6 @@ export interface LibraryWorkspaceView {
   status: LibraryStatus;
 }
 
-export interface UpdateDocumentMetadataInput {
-  path: string;
-  icon?: string | null;
-}
-
 export interface UpdateDocumentIconImageInput {
   path: string;
   dataBase64: string | null;

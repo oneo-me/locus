@@ -1,7 +1,6 @@
 import type {
   ReorderDocumentsInput,
   UpdateDocumentIconImageInput,
-  UpdateDocumentMetadataInput,
 } from '@locus/document-library/contracts/library-api';
 import type {
   GlobalSettings,
@@ -13,9 +12,6 @@ export interface DocumentApiClient {
   reorderDocuments: (data: ReorderDocumentsInput) => Promise<{ ok: true }>;
   updateDocumentIconImage: (
     data: UpdateDocumentIconImageInput,
-  ) => Promise<unknown>;
-  updateDocumentMetadata: (
-    data: UpdateDocumentMetadataInput,
   ) => Promise<unknown>;
   updateGlobalSettings: (
     data: UpdateGlobalSettingsInput,

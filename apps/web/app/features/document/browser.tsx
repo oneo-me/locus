@@ -22,10 +22,7 @@ import { deriveYamlPanelHue } from './atmosphere';
 import { MarkdownContent } from './markdown';
 import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
-import {
-  DocumentIconPicker,
-  type DocumentMetadataPatch,
-} from './metadata-editor';
+import { DocumentIconUpload } from './icon-upload';
 
 export function DocumentBrowser({
   data,
@@ -85,36 +82,14 @@ function DocumentArticle({
   document: NonNullable<LibrarySelectionView['selected']>;
   documents: LibraryWorkspaceView['documents'];
 }) {
-  const { updateDocumentIconImage, updateDocumentMetadata } = useDocumentApi();
+  const { updateDocumentIconImage } = useDocumentApi();
   const { revalidate } = useRevalidator();
-  const [metadataPending, setMetadataPending] = useState(false);
-  const [metadataError, setMetadataError] = useState<string | null>(null);
-
-  const saveMetadata = async (patch: DocumentMetadataPatch) => {
-    setMetadataPending(true);
-    setMetadataError(null);
-    try {
-      if (document.iconImageModifiedAt) {
-        await updateDocumentIconImage({
-          path: document.path,
-          dataBase64: null,
-        });
-      }
-      await updateDocumentMetadata({
-        path: document.path,
-        ...patch,
-      });
-      await revalidate();
-    } catch (error) {
-      setMetadataError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setMetadataPending(false);
-    }
-  };
+  const [iconPending, setIconPending] = useState(false);
+  const [iconError, setIconError] = useState<string | null>(null);
 
   const saveIconImage = async (file: File) => {
-    setMetadataPending(true);
-    setMetadataError(null);
+    setIconPending(true);
+    setIconError(null);
     try {
       const dataBase64 = await processDocumentIconFile(file);
       await updateDocumentIconImage({
@@ -123,25 +98,9 @@ function DocumentArticle({
       });
       await revalidate();
     } catch (error) {
-      setMetadataError(error instanceof Error ? error.message : String(error));
+      setIconError(error instanceof Error ? error.message : String(error));
     } finally {
-      setMetadataPending(false);
-    }
-  };
-
-  const removeIconImage = async () => {
-    setMetadataPending(true);
-    setMetadataError(null);
-    try {
-      await updateDocumentIconImage({
-        path: document.path,
-        dataBase64: null,
-      });
-      await revalidate();
-    } catch (error) {
-      setMetadataError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setMetadataPending(false);
+      setIconPending(false);
     }
   };
 
@@ -153,11 +112,9 @@ function DocumentArticle({
           <DocumentYamlMetadata
             actions={<DocumentActions path={document.directory} />}
             document={document}
-            error={metadataError}
-            onImageRemove={removeIconImage}
+            error={iconError}
             onImageUpload={saveIconImage}
-            onSave={saveMetadata}
-            pending={metadataPending}
+            pending={iconPending}
           />
           {document.issue ? (
             <Alert variant="destructive">
@@ -234,17 +191,13 @@ export function DocumentYamlMetadata({
   actions,
   document,
   error,
-  onImageRemove,
   onImageUpload,
-  onSave,
   pending,
 }: {
   actions?: ReactNode;
   document: Omit<DocumentContent, 'content'>;
   error: string | null;
-  onImageRemove: () => void;
   onImageUpload: (file: File) => void;
-  onSave: (patch: DocumentMetadataPatch) => void;
   pending: boolean;
 }) {
   const summary = document.summary?.trim() || null;
@@ -252,8 +205,8 @@ export function DocumentYamlMetadata({
   return (
     <section className="flex flex-col gap-6" aria-label="文档元数据">
       <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5">
-        <DocumentIconPicker
-          className="size-8 shrink-0 border-0 shadow-none leading-none"
+        <DocumentIconUpload
+          className="size-8"
           disabled={pending}
           icon={document.icon}
           iconClassName="size-6 text-xl"
@@ -261,8 +214,6 @@ export function DocumentYamlMetadata({
             document.path,
             document.iconImageModifiedAt,
           )}
-          onChange={(icon) => onSave({ icon })}
-          onImageRemove={onImageRemove}
           onImageUpload={onImageUpload}
         />
         <h1 className="col-start-2 min-w-0 truncate text-xl leading-7 font-medium">

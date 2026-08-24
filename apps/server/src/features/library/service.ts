@@ -91,29 +91,6 @@ export async function getLibrarySelection(input: LibrarySelectionViewInput) {
   return readSelectionView(library, documentPath);
 }
 
-export interface UpdateDocumentMetadataInput {
-  path: string;
-  icon?: string | null;
-}
-
-export async function updateDocumentMetadata(
-  input: UpdateDocumentMetadataInput,
-) {
-  if (!input || typeof input.path !== 'string') {
-    throw new Error('path 必须是字符串。');
-  }
-  if (
-    input.icon !== undefined &&
-    input.icon !== null &&
-    typeof input.icon !== 'string'
-  ) {
-    throw new Error('icon 必须是字符串。');
-  }
-  if (input.icon === undefined) throw new Error('必须提供 icon。');
-  const library = await getLibrary();
-  return library.updateDocument({ path: input.path, icon: input.icon });
-}
-
 export interface UpdateDocumentIconImageInput {
   path: string;
   dataBase64: string | null;

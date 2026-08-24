@@ -3,7 +3,6 @@ import type { Context } from 'hono';
 import type {
   ReorderDocumentsInput,
   UpdateDocumentIconImageInput,
-  UpdateDocumentMetadataInput,
 } from '@locus/document-library/contracts/library-api';
 import type { UpdateGlobalSettingsInput } from '@locus/document-library/contracts/global-settings';
 import { createRouteAssetResponse } from '~/features/asset/route.server';
@@ -13,7 +12,6 @@ import {
   getLibraryWorkspaceView,
   reorderDocuments,
   updateDocumentIconImage,
-  updateDocumentMetadata,
 } from '~/features/library/service';
 import { handleMcpRequest } from '~/features/mcp/handler.server';
 import {
@@ -44,11 +42,6 @@ export function createApp() {
   app.get('/api/library/document', (context) =>
     jsonRoute(() =>
       getLibrarySelection({ doc: context.req.query('doc') ?? '' }),
-    ),
-  );
-  app.post('/api/library/document/metadata', async (context) =>
-    jsonRoute(async () =>
-      updateDocumentMetadata(await body<UpdateDocumentMetadataInput>(context)),
     ),
   );
   app.post('/api/library/document/icon', async (context) =>
