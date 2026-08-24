@@ -15,18 +15,21 @@ export function normalizeWorkspaceSidebarWidth(value: unknown): number {
 }
 
 export interface GlobalSettings {
+  libraryPath: string | null;
   theme: GlobalTheme;
   mcpEnabled: boolean;
   workspaceSidebarWidth: number;
 }
 
 export interface UpdateGlobalSettingsInput {
+  libraryPath?: string;
   theme?: GlobalTheme;
   mcpEnabled?: boolean;
   workspaceSidebarWidth?: number;
 }
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
+  libraryPath: null,
   theme: 'system',
   mcpEnabled: false,
   workspaceSidebarWidth: DEFAULT_WORKSPACE_SIDEBAR_WIDTH,
@@ -43,6 +46,10 @@ export function normalizeGlobalSettings(value: unknown): GlobalSettings {
 
   const record = value as Record<string, unknown>;
   return {
+    libraryPath:
+      typeof record.libraryPath === 'string' && record.libraryPath.trim()
+        ? record.libraryPath.trim()
+        : DEFAULT_GLOBAL_SETTINGS.libraryPath,
     theme: isGlobalTheme(record.theme)
       ? record.theme
       : DEFAULT_GLOBAL_SETTINGS.theme,

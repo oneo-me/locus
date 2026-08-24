@@ -40,14 +40,10 @@ Locus 不自行实现 Agent loop、模型调用或工具系统。Agent 的提示
 
 ```bash
 pnpm install
-LIBRARY_PATH=/absolute/path/to/markdown-library pnpm dev
+pnpm dev
 ```
 
-也可以在仓库根目录 `.env` 中配置文档库路径：
-
-```dotenv
-LIBRARY_PATH=/absolute/path/to/markdown-library
-```
+首次打开 Locus 时，在设置界面填写文档库的绝对路径。路径保存到本机设置后，文档工作区才会启动。
 
 前端开发服务器默认运行在 <http://localhost:3000>，并把 `/api` 与 `/mcp` 请求转发到 <http://localhost:3001> 的 Hono 后端。
 

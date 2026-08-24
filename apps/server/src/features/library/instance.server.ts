@@ -1,5 +1,5 @@
 import { DocumentLibrary } from '@locus/document-library/server/document-library';
-import { resolveLibraryPath } from './path.server';
+import { readGlobalSettings } from '~/features/settings/global-settings.server';
 
 let libraryPromise: Promise<DocumentLibrary> | undefined;
 let shutdownRegistered = false;
@@ -21,7 +21,10 @@ function registerShutdown(): void {
 export function getLibrary(): Promise<DocumentLibrary> {
   if (!libraryPromise) {
     registerShutdown();
-    const rootPath = resolveLibraryPath();
+    const rootPath = readGlobalSettings().libraryPath;
+    if (!rootPath) {
+      throw new Error('请先在设置中填写文档库路径。');
+    }
     libraryPromise = DocumentLibrary.open(rootPath, {
       watch: true,
     });

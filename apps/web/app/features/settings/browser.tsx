@@ -4,10 +4,11 @@ import FluentIconPaintBrush from '@oneo/fluentui-icons-like-react/FluentIconPain
 import FluentIconPlugConnected from '@oneo/fluentui-icons-like-react/FluentIconPlugConnected';
 import FluentIconSearch from '@oneo/fluentui-icons-like-react/FluentIconSearch';
 import FluentIconSettings from '@oneo/fluentui-icons-like-react/FluentIconSettings';
-import { ArrowLeftIcon, XIcon } from 'lucide-react';
+import { ArrowLeftIcon, FolderOpenIcon, XIcon } from 'lucide-react';
 import {
   Children,
   type ComponentType,
+  type FormEvent,
   Fragment,
   isValidElement,
   type ReactNode,
@@ -28,6 +29,14 @@ import {
   DialogTrigger,
 } from '@locus/ui/components/dialog';
 import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@locus/ui/components/field';
+import { Input } from '@locus/ui/components/input';
+import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -41,11 +50,13 @@ import {
   SelectValue,
 } from '@locus/ui/components/select';
 import { Separator } from '@locus/ui/components/separator';
+import { Spinner } from '@locus/ui/components/spinner';
 import { McpEnabledSwitch } from '../settings/mcp-control';
 import { McpInstallationGuide } from '../settings/mcp-installation-guide';
+import { useGlobalSettings } from '../settings/global-settings-provider';
 import { cn } from '@locus/ui/utils';
 
-type SettingsSectionId = 'appearance' | 'mcp' | 'about';
+type SettingsSectionId = 'library' | 'appearance' | 'mcp' | 'about';
 
 interface SettingsNavItem {
   id: SettingsSectionId;
@@ -62,6 +73,14 @@ interface SettingsNavItem {
 }
 
 const SETTINGS_NAV: SettingsNavItem[] = [
+  {
+    id: 'library',
+    label: '文档库',
+    description: '选择 Locus 使用的本地 Markdown 文档库。',
+    group: '工作区',
+    keywords: ['文档库', '路径', '文件夹', 'Markdown'],
+    icon: FolderOpenIcon,
+  },
   {
     id: 'appearance',
     label: '外观',
@@ -89,34 +108,44 @@ const SETTINGS_NAV: SettingsNavItem[] = [
 ];
 
 export function SettingsDialog({
+  initialSection = 'appearance',
   initiallyOpen = false,
+  libraryError,
+  requiredLibraryPath = false,
 }: {
+  initialSection?: SettingsSectionId;
   initiallyOpen?: boolean;
+  libraryError?: string;
+  requiredLibraryPath?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
 
   useEffect(() => {
-    if (!initiallyOpen) return;
-
-    const timeout = window.setTimeout(() => setOpen(true), 0);
-    return () => window.clearTimeout(timeout);
+    if (initiallyOpen) setOpen(true);
   }, [initiallyOpen]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        aria-label="设置"
-        className={cn(
-          buttonVariants({ size: 'icon', variant: 'ghost' }),
-          'cursor-default aria-expanded:bg-accent aria-expanded:text-foreground',
-        )}
-      >
-        <FluentIconSettings
-          aria-hidden="true"
-          data-icon="inline-start"
-          title={null}
-        />
-      </DialogTrigger>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!requiredLibraryPath || nextOpen) setOpen(nextOpen);
+      }}
+    >
+      {!requiredLibraryPath ? (
+        <DialogTrigger
+          aria-label="设置"
+          className={cn(
+            buttonVariants({ size: 'icon', variant: 'ghost' }),
+            'cursor-default aria-expanded:bg-accent aria-expanded:text-foreground',
+          )}
+        >
+          <FluentIconSettings
+            aria-hidden="true"
+            data-icon="inline-start"
+            title={null}
+          />
+        </DialogTrigger>
+      ) : null}
       <DialogContent
         className="flex h-dvh max-h-dvh w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 ring-0 sm:max-w-none md:h-[min(48rem,calc(100dvh-2rem))] md:max-h-[min(48rem,calc(100dvh-2rem))] md:w-[min(60rem,calc(100vw-2rem))] md:max-w-none md:rounded-2xl md:ring-1"
         showCloseButton={false}
@@ -124,15 +153,30 @@ export function SettingsDialog({
         <DialogDescription className="sr-only">
           调整 Locus 的外观与其他偏好。
         </DialogDescription>
-        <SettingsBrowser onNavigate={() => setOpen(false)} />
+        <SettingsBrowser
+          canClose={!requiredLibraryPath}
+          initialSection={initialSection}
+          libraryError={libraryError}
+          onNavigate={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );
 }
 
-function SettingsBrowser({ onNavigate }: { onNavigate: () => void }) {
-  const [activeId, setActiveId] = useState<SettingsSectionId>('appearance');
-  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+function SettingsBrowser({
+  canClose,
+  initialSection,
+  libraryError,
+  onNavigate,
+}: {
+  canClose: boolean;
+  initialSection: SettingsSectionId;
+  libraryError?: string;
+  onNavigate: () => void;
+}) {
+  const [activeId, setActiveId] = useState<SettingsSectionId>(initialSection);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(!canClose);
   const [query, setQuery] = useState('');
   const root = useRef<HTMLDivElement>(null);
   const previousMobilePanelOpen = useRef(false);
@@ -190,11 +234,12 @@ function SettingsBrowser({ onNavigate }: { onNavigate: () => void }) {
     >
       <SettingsSidebar
         activeId={activeItem?.id ?? null}
+        canClose={canClose}
         groups={navGroups}
         hiddenOnMobile={mobilePanelOpen}
         onNavigate={() => {
           setMobilePanelOpen(false);
-          onNavigate();
+          if (canClose) onNavigate();
         }}
         onSelect={(id) => {
           setActiveId(id);
@@ -224,23 +269,27 @@ function SettingsBrowser({ onNavigate }: { onNavigate: () => void }) {
           <DialogTitle className="truncate">
             {activeItem?.label ?? '设置'}
           </DialogTitle>
-          <DialogClose
-            render={
-              <Button
-                className="rounded-full"
-                size="icon-sm"
-                variant="destructive-ghost"
-              />
-            }
-          >
-            <XIcon aria-hidden="true" data-icon="inline-start" />
-            <span className="sr-only">关闭</span>
-          </DialogClose>
+          {canClose ? (
+            <DialogClose
+              render={
+                <Button
+                  className="rounded-full"
+                  size="icon-sm"
+                  variant="destructive-ghost"
+                />
+              }
+            >
+              <XIcon aria-hidden="true" data-icon="inline-start" />
+              <span className="sr-only">关闭</span>
+            </DialogClose>
+          ) : (
+            <span />
+          )}
         </header>
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
           {activeItem ? (
             <div className="px-6 pt-3 pb-8">
-              <SettingsPanel id={activeItem.id} />
+              <SettingsPanel id={activeItem.id} libraryError={libraryError} />
             </div>
           ) : (
             <div className="flex h-full items-center justify-center px-6">
@@ -257,6 +306,7 @@ function SettingsBrowser({ onNavigate }: { onNavigate: () => void }) {
 
 function SettingsSidebar({
   activeId,
+  canClose,
   groups,
   hiddenOnMobile,
   onNavigate,
@@ -265,6 +315,7 @@ function SettingsSidebar({
   query,
 }: {
   activeId: SettingsSectionId | null;
+  canClose: boolean;
   groups: Array<{ label: string; items: SettingsNavItem[] }>;
   hiddenOnMobile: boolean;
   onNavigate: () => void;
@@ -283,13 +334,15 @@ function SettingsSidebar({
     >
       <header className="flex h-12 shrink-0 items-center justify-between px-3">
         <h2 className="text-sm font-medium">设置</h2>
-        <DialogClose
-          className="md:hidden"
-          render={<Button size="icon-sm" variant="destructive-ghost" />}
-        >
-          <XIcon aria-hidden="true" data-icon="inline-start" />
-          <span className="sr-only">关闭</span>
-        </DialogClose>
+        {canClose ? (
+          <DialogClose
+            className="md:hidden"
+            render={<Button size="icon-sm" variant="destructive-ghost" />}
+          >
+            <XIcon aria-hidden="true" data-icon="inline-start" />
+            <span className="sr-only">关闭</span>
+          </DialogClose>
+        ) : null}
       </header>
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 px-3 pb-3">
         <InputGroup className="h-8 bg-card [&_svg:not([class*='size-'])]:size-4">
@@ -369,8 +422,16 @@ function SettingsSidebar({
   );
 }
 
-function SettingsPanel({ id }: { id: SettingsSectionId }) {
+function SettingsPanel({
+  id,
+  libraryError,
+}: {
+  id: SettingsSectionId;
+  libraryError?: string;
+}) {
   switch (id) {
+    case 'library':
+      return <LibraryPanel initialError={libraryError} />;
     case 'appearance':
       return <AppearancePanel />;
     case 'mcp':
@@ -378,6 +439,68 @@ function SettingsPanel({ id }: { id: SettingsSectionId }) {
     case 'about':
       return <AboutPanel />;
   }
+}
+
+function LibraryPanel({ initialError }: { initialError?: string }) {
+  const { settings, updateSettings } = useGlobalSettings();
+  const [path, setPath] = useState(settings.libraryPath ?? '');
+  const [error, setError] = useState<string | null>(initialError ?? null);
+  const [saving, setSaving] = useState(false);
+
+  async function saveLibraryPath(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const libraryPath = path.trim();
+    if (!libraryPath) {
+      setError('请输入文档库的绝对路径。');
+      return;
+    }
+
+    setError(null);
+    setSaving(true);
+    try {
+      await updateSettings({ libraryPath });
+      window.location.reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={saveLibraryPath}>
+      <SettingsBlock title="本地文档库">
+        <FieldGroup>
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="library-path">文档库路径</FieldLabel>
+            <Input
+              aria-invalid={Boolean(error)}
+              autoComplete="off"
+              id="library-path"
+              onChange={(event) => setPath(event.target.value)}
+              placeholder="/absolute/path/to/markdown-library"
+              spellCheck={false}
+              value={path}
+            />
+            <FieldDescription>
+              填写包含 Markdown 文章目录的绝对路径。保存后会重新载入工作区。
+            </FieldDescription>
+            <FieldError>{error}</FieldError>
+          </Field>
+          <div className="flex justify-end">
+            <Button
+              disabled={
+                saving || !path.trim() || path.trim() === settings.libraryPath
+              }
+              type="submit"
+            >
+              {saving ? <Spinner data-icon="inline-start" /> : null}
+              保存并载入
+            </Button>
+          </div>
+        </FieldGroup>
+      </SettingsBlock>
+    </form>
+  );
 }
 
 function SettingsBlock({

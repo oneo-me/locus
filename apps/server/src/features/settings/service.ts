@@ -8,19 +8,38 @@ import {
   MIN_WORKSPACE_SIDEBAR_WIDTH,
   type UpdateGlobalSettingsInput,
 } from '@locus/document-library/contracts/global-settings';
+import { closeLibrary } from '~/features/library/instance.server';
+import { accessSync, constants, statSync } from 'node:fs';
+import { isAbsolute, normalize } from 'node:path';
 
 export function getGlobalSettings(): GlobalSettings {
   return readGlobalSettings();
 }
 
-export function updateGlobalSettings(
+export async function updateGlobalSettings(
   input: UpdateGlobalSettingsInput,
-): GlobalSettings {
+): Promise<GlobalSettings> {
   if (!input || typeof input !== 'object') {
     throw new Error('设置内容无效。');
   }
 
   const next: UpdateGlobalSettingsInput = {};
+  if (input.libraryPath !== undefined) {
+    if (typeof input.libraryPath !== 'string' || !input.libraryPath.trim()) {
+      throw new Error('文档库路径不能为空。');
+    }
+    const libraryPath = normalize(input.libraryPath.trim());
+    if (!isAbsolute(libraryPath)) {
+      throw new Error('文档库路径必须是绝对路径。');
+    }
+    try {
+      if (!statSync(libraryPath).isDirectory()) throw new Error();
+      accessSync(libraryPath, constants.R_OK | constants.W_OK);
+    } catch {
+      throw new Error('文档库路径必须指向可读写的现有目录。');
+    }
+    next.libraryPath = libraryPath;
+  }
   if (input.theme !== undefined) {
     if (
       input.theme !== 'light' &&
@@ -53,5 +72,6 @@ export function updateGlobalSettings(
   if (Object.keys(next).length === 0) {
     throw new Error('至少需要提供一个要更新的字段。');
   }
+  if (next.libraryPath !== undefined) await closeLibrary();
   return writeGlobalSettings(next);
 }

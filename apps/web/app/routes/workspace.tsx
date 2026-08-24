@@ -4,6 +4,7 @@ import { pathnameToUrlPath } from '@locus/document-library/contracts/library-rou
 import { ThemeProvider } from '@locus/ui/theme-provider';
 import { parseLibrarySearch } from '~/features/library/search';
 import { GlobalSettingsProvider } from '~/features/settings/global-settings-provider';
+import { LibrarySetup } from '~/features/settings/library-setup';
 import { workspaceShowsMobileContent } from '~/features/workspace/mobile-navigation';
 import { WorkspaceErrorState } from '~/features/workspace/route-state';
 import { WorkspaceShell } from '~/features/workspace/shell';
@@ -29,11 +30,23 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const search = parseLibrarySearch({
     q: url.searchParams.get('q') ?? undefined,
   });
-  const [library, settings] = await Promise.all([
-    apiGet<LibraryWorkspaceView>('/api/library', { q: search.q }),
-    apiGet<GlobalSettings>('/api/settings'),
-  ]);
-  return { library, settings };
+  const settings = await apiGet<GlobalSettings>('/api/settings');
+  if (!settings.libraryPath) {
+    return { library: null, libraryError: null, settings };
+  }
+
+  try {
+    const library = await apiGet<LibraryWorkspaceView>('/api/library', {
+      q: search.q,
+    });
+    return { library, libraryError: null, settings };
+  } catch (cause) {
+    return {
+      library: null,
+      libraryError: cause instanceof Error ? cause.message : String(cause),
+      settings,
+    };
+  }
 }
 
 export function shouldRevalidate({
@@ -53,7 +66,7 @@ export function shouldRevalidate({
 }
 
 export default function WorkspaceRoot({ loaderData }: Route.ComponentProps) {
-  const { library, settings } = loaderData;
+  const { library, libraryError, settings } = loaderData;
   const location = useLocation();
   const { pathname } = location;
   const [searchParams] = useSearchParams();
@@ -78,16 +91,20 @@ export default function WorkspaceRoot({ loaderData }: Route.ComponentProps) {
         onThemeChange={(theme) => documentApi.updateGlobalSettings({ theme })}
       >
         <GlobalSettingsProvider initialSettings={settings}>
-          <WorkspaceShell
-            currentPath={currentPath}
-            data={library}
-            mobileContentVisible={
-              workspaceShowsMobileContent(location.state) && pathname !== '/'
-            }
-            query={query}
-          >
-            <Outlet />
-          </WorkspaceShell>
+          {library ? (
+            <WorkspaceShell
+              currentPath={currentPath}
+              data={library}
+              mobileContentVisible={
+                workspaceShowsMobileContent(location.state) && pathname !== '/'
+              }
+              query={query}
+            >
+              <Outlet />
+            </WorkspaceShell>
+          ) : (
+            <LibrarySetup error={libraryError ?? undefined} />
+          )}
         </GlobalSettingsProvider>
       </ThemeProvider>
     </DocumentApiProvider>

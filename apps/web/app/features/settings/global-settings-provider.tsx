@@ -1,13 +1,14 @@
 import {
   DEFAULT_GLOBAL_SETTINGS,
   type GlobalSettings,
+  type UpdateGlobalSettingsInput,
 } from '@locus/document-library/contracts/global-settings';
 import * as React from 'react';
 import { useDocumentApi } from '~/lib/document-api-context';
 
 type GlobalSettingsContextValue = {
   settings: GlobalSettings;
-  updateSettings: (patch: Partial<GlobalSettings>) => Promise<GlobalSettings>;
+  updateSettings: (patch: UpdateGlobalSettingsInput) => Promise<GlobalSettings>;
 };
 
 const GlobalSettingsContext =
@@ -27,7 +28,7 @@ export function GlobalSettingsProvider({
   const mutationRef = React.useRef(0);
 
   const updateSettings = React.useCallback(
-    async (patch: Partial<GlobalSettings>) => {
+    async (patch: UpdateGlobalSettingsInput) => {
       const previous = settingsRef.current;
       const optimistic = { ...previous, ...patch };
       const mutation = mutationRef.current + 1;
