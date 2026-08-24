@@ -7,18 +7,26 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
-import { Button } from '~/components/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '~/components/ui/dialog';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@locus/ui/components/alert';
+import { Button } from '@locus/ui/components/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@locus/ui/components/dialog';
 import {
   getAssetUrl,
   getAssetThumbnailUrl,
   getMarkdownAssetName,
   isBrowserViewableAsset,
   isPreviewableImageAsset,
-} from '~/contracts/asset';
-import { cn } from '~/lib/utils';
-import type { ImageSize } from '~/contracts/library-types';
+} from '@locus/document-library/contracts/asset';
+import { cn } from '@locus/ui/utils';
+import type { ImageSize } from '@locus/document-library/contracts/library-types';
 
 const invalidGalleryMessage =
   '请在 ::gallery 中只放置当前文章的本地图片附件，并为每张图片填写替代文本。';

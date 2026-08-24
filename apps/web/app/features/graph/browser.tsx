@@ -1,29 +1,30 @@
-import type { DocumentGraph } from '~/contracts/document-graph';
+import type { DocumentGraph } from '@locus/document-library/contracts/document-graph';
+import type { LibraryGraph } from '@locus/document-library/contracts/library-api';
 import {
   documentPathToUrlPath,
   urlPathToHref,
-} from '~/contracts/library-route';
+} from '@locus/document-library/contracts/library-route';
 import FluentIconMoreHorizontal from '@oneo/fluentui-icons-like-react/FluentIconMoreHorizontal';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { useTheme } from '~/components/theme-provider';
-import { buttonVariants } from '~/components/ui/button';
+import { useTheme } from '@locus/ui/theme-provider';
+import { buttonVariants } from '@locus/ui/components/button';
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-} from '~/components/ui/empty';
+} from '@locus/ui/components/empty';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover';
-import { useGlobalSettings } from '~/features/settings/global-settings-provider';
-import { cn } from '~/lib/utils';
-import type { getLibraryGraph } from '../library/functions';
+} from '@locus/ui/components/popover';
+import { cn } from '@locus/ui/utils';
+import { useGlobalSettings } from '../settings/global-settings-provider';
 import { workspaceMobileSecondaryState } from '../workspace/mobile-navigation';
 import { useWorkspaceGraphSnapshot } from '../workspace/shell';
+import { GraphAttachmentsControl } from './attachments-control';
 import {
   type GraphCanvasEdge,
   type GraphCanvasNode,
@@ -51,15 +52,7 @@ import type {
   GraphLayoutWorkerResponse,
 } from './layout-worker';
 
-const GraphAttachmentsControl = lazy(() =>
-  import('~/features/settings/graph-attachments-control').then((module) => ({
-    default: module.GraphAttachmentsControl,
-  })),
-);
-
-type GraphData = Awaited<ReturnType<typeof getLibraryGraph>>;
-
-export function GraphBrowser({ data }: { data: GraphData }) {
+export function GraphBrowser({ data }: { data: LibraryGraph }) {
   const snapshot = useWorkspaceGraphSnapshot();
   const location = useLocation();
   const navigate = useNavigate();
@@ -130,15 +123,7 @@ function GraphSettingsPopover() {
           />
         </PopoverTrigger>
         <PopoverContent align="end" className="w-72" side="bottom">
-          <Suspense
-            fallback={
-              <p className="text-xs text-muted-foreground">正在加载设置…</p>
-            }
-          >
-            <div className="flex flex-col gap-4">
-              <GraphAttachmentsControl />
-            </div>
-          </Suspense>
+          <GraphAttachmentsControl />
         </PopoverContent>
       </Popover>
     </div>

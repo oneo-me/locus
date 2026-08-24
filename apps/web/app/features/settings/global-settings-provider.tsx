@@ -1,9 +1,9 @@
 import {
   DEFAULT_GLOBAL_SETTINGS,
   type GlobalSettings,
-} from '~/contracts/global-settings';
+} from '@locus/document-library/contracts/global-settings';
 import * as React from 'react';
-import { updateGlobalSettings } from '~/features/settings/functions';
+import { useDocumentApi } from '~/lib/document-api-context';
 
 type GlobalSettingsContextValue = {
   settings: GlobalSettings;
@@ -20,6 +20,7 @@ export function GlobalSettingsProvider({
   children: React.ReactNode;
   initialSettings?: GlobalSettings;
 }) {
+  const { updateGlobalSettings } = useDocumentApi();
   const [settings, setSettings] =
     React.useState<GlobalSettings>(initialSettings);
   const settingsRef = React.useRef(settings);
@@ -48,7 +49,7 @@ export function GlobalSettingsProvider({
         throw error;
       }
     },
-    [],
+    [updateGlobalSettings],
   );
 
   const value = React.useMemo(

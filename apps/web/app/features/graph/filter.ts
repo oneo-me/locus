@@ -1,4 +1,4 @@
-import type { DocumentGraph } from '~/contracts/document-graph';
+import type { DocumentGraph } from '@locus/document-library/contracts/document-graph';
 
 export function filterDocumentGraph(
   graph: DocumentGraph,

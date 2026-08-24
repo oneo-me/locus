@@ -1,13 +1,13 @@
 import FluentIconArrowUpload from '@oneo/fluentui-icons-like-react/FluentIconArrowUpload';
 import FluentIconDelete from '@oneo/fluentui-icons-like-react/FluentIconDelete';
 import { useRef, useState } from 'react';
-import { Button } from '~/components/ui/button';
+import { Button } from '@locus/ui/components/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover';
-import { cn } from '~/lib/utils';
+} from '@locus/ui/components/popover';
+import { cn } from '@locus/ui/utils';
 import { DocumentIcon, documentEmojiGroups } from './icons';
 
 export interface DocumentMetadataPatch {

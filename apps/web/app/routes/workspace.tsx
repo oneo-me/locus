@@ -1,13 +1,15 @@
-import { pathnameToUrlPath } from '~/contracts/library-route';
-import { ThemeProvider } from '~/components/theme-provider';
+import type { LibraryWorkspaceView } from '@locus/document-library/contracts/library-api';
+import type { GlobalSettings } from '@locus/document-library/contracts/global-settings';
+import { pathnameToUrlPath } from '@locus/document-library/contracts/library-route';
+import { ThemeProvider } from '@locus/ui/theme-provider';
 import { parseLibrarySearch } from '~/features/library/search';
 import { GlobalSettingsProvider } from '~/features/settings/global-settings-provider';
 import { workspaceShowsMobileContent } from '~/features/workspace/mobile-navigation';
 import { WorkspaceErrorState } from '~/features/workspace/route-state';
 import { WorkspaceShell, type WorkspaceView } from '~/features/workspace/shell';
-import { getLibraryWorkspaceView } from '~/server/features/library/service';
-import { getGlobalSettings } from '~/server/features/settings/service';
-import { dynamicContentCacheControl } from '~/server/http/cache';
+import { apiGet } from '~/lib/api-client';
+import { documentApi } from '~/lib/document-api';
+import { DocumentApiProvider } from '~/lib/document-api-context';
 import { useEffect } from 'react';
 import {
   isRouteErrorResponse,
@@ -20,22 +22,18 @@ import {
 } from 'react-router';
 import type { Route } from './+types/workspace';
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   if (url.pathname === '/document') throw redirect('/');
 
   const search = parseLibrarySearch({
     q: url.searchParams.get('q') ?? undefined,
   });
-  const library = await getLibraryWorkspaceView({
-    query: search.q,
-  });
-  const settings = getGlobalSettings();
+  const [library, settings] = await Promise.all([
+    apiGet<LibraryWorkspaceView>('/api/library', { q: search.q }),
+    apiGet<GlobalSettings>('/api/settings'),
+  ]);
   return { library, settings };
-}
-
-export function headers() {
-  return { 'Cache-Control': dynamicContentCacheControl };
 }
 
 export function shouldRevalidate({
@@ -78,22 +76,27 @@ export default function WorkspaceRoot({ loaderData }: Route.ComponentProps) {
       : undefined;
 
   return (
-    <ThemeProvider>
-      <GlobalSettingsProvider initialSettings={settings}>
-        <WorkspaceShell
-          activeView={activeView}
-          currentPath={currentPath}
-          data={library}
-          mobileContentVisible={
-            workspaceShowsMobileContent(activeView, location.state) &&
-            pathname !== '/'
-          }
-          query={query}
-        >
-          <Outlet />
-        </WorkspaceShell>
-      </GlobalSettingsProvider>
-    </ThemeProvider>
+    <DocumentApiProvider client={documentApi}>
+      <ThemeProvider
+        defaultTheme={settings.theme}
+        onThemeChange={(theme) => documentApi.updateGlobalSettings({ theme })}
+      >
+        <GlobalSettingsProvider initialSettings={settings}>
+          <WorkspaceShell
+            activeView={activeView}
+            currentPath={currentPath}
+            data={library}
+            mobileContentVisible={
+              workspaceShowsMobileContent(activeView, location.state) &&
+              pathname !== '/'
+            }
+            query={query}
+          >
+            <Outlet />
+          </WorkspaceShell>
+        </GlobalSettingsProvider>
+      </ThemeProvider>
+    </DocumentApiProvider>
   );
 }
 

@@ -1,8 +1,8 @@
-import { parseWikiLinkArticlePath } from '~/contracts/wiki-link-path';
+import { parseWikiLinkArticlePath } from '@locus/document-library/contracts/wiki-link-path';
 import {
   urlPathToDocumentPath,
   urlPathToHref,
-} from '~/contracts/library-route';
+} from '@locus/document-library/contracts/library-route';
 import type { ComarkPlugin, MarkdownItPlugin } from 'comark';
 
 export interface WikiLinkDocument {

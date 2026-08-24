@@ -1,16 +1,16 @@
 import FluentIconMoreHorizontal from '@oneo/fluentui-icons-like-react/FluentIconMoreHorizontal';
 import { lazy, Suspense, useState } from 'react';
-import { buttonVariants } from '~/components/ui/button';
+import { buttonVariants } from '@locus/ui/components/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover';
-import { setDocumentGraphParticipation } from '~/features/library/functions';
-import { cn } from '~/lib/utils';
+} from '@locus/ui/components/popover';
+import { cn } from '@locus/ui/utils';
+import { useDocumentApi } from '~/lib/document-api-context';
 
 const Switch = lazy(() =>
-  import('~/components/ui/switch').then((module) => ({
+  import('@locus/ui/components/switch').then((module) => ({
     default: module.Switch,
   })),
 );
@@ -26,6 +26,7 @@ export function DocumentGraphParticipationControl({
   initialValue: boolean;
   onSaved?: () => void | Promise<void>;
 }) {
+  const { setDocumentGraphParticipation } = useDocumentApi();
   const [participates, setParticipates] = useState(initialValue);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);

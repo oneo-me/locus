@@ -2,7 +2,7 @@ import {
   MAX_WORKSPACE_SIDEBAR_WIDTH,
   MIN_WORKSPACE_SIDEBAR_WIDTH,
   normalizeWorkspaceSidebarWidth,
-} from '~/contracts/global-settings';
+} from '@locus/document-library/contracts/global-settings';
 import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,

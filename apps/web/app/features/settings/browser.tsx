@@ -17,9 +17,9 @@ import {
   useRef,
   useState,
 } from 'react';
-import { type Theme, useTheme } from '~/components/theme-provider';
-import { Badge } from '~/components/ui/badge';
-import { Button, buttonVariants } from '~/components/ui/button';
+import { type Theme, useTheme } from '@locus/ui/theme-provider';
+import { Badge } from '@locus/ui/components/badge';
+import { Button, buttonVariants } from '@locus/ui/components/button';
 import {
   Dialog,
   DialogClose,
@@ -27,12 +27,12 @@ import {
   DialogDescription,
   DialogTitle,
   DialogTrigger,
-} from '~/components/ui/dialog';
+} from '@locus/ui/components/dialog';
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from '~/components/ui/input-group';
+} from '@locus/ui/components/input-group';
 import {
   Select,
   SelectContent,
@@ -40,12 +40,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '~/components/ui/select';
-import { Separator } from '~/components/ui/separator';
-import { GraphAttachmentsSwitch } from '~/features/settings/graph-attachments-control';
-import { McpEnabledSwitch } from '~/features/settings/mcp-control';
-import { McpInstallationGuide } from '~/features/settings/mcp-installation-guide';
-import { cn } from '~/lib/utils';
+} from '@locus/ui/components/select';
+import { Separator } from '@locus/ui/components/separator';
+import { GraphAttachmentsSwitch } from '../graph/attachments-control';
+import { McpEnabledSwitch } from '../settings/mcp-control';
+import { McpInstallationGuide } from '../settings/mcp-installation-guide';
+import { cn } from '@locus/ui/utils';
 
 type SettingsSectionId = 'appearance' | 'graph' | 'mcp' | 'about';
 

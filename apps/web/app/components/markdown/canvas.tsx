@@ -1,8 +1,15 @@
 import type { ComarkElement, ComarkNode, ComarkPlugin } from 'comark';
 import { CircleAlertIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
-import { getAssetUrl, getMarkdownAssetName } from '~/contracts/asset';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@locus/ui/components/alert';
+import {
+  getAssetUrl,
+  getMarkdownAssetName,
+} from '@locus/document-library/contracts/asset';
 
 const invalidCanvasContentMessage =
   '请在 ::canvas 区域中仅放置一个 html fenced code block。';

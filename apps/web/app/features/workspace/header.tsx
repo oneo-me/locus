@@ -2,14 +2,14 @@ import FluentIconConnected from '@oneo/fluentui-icons-like-react/FluentIconConne
 import FluentIconSettings from '@oneo/fluentui-icons-like-react/FluentIconSettings';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { createSearchParams, Link } from 'react-router';
-import { Button, buttonVariants } from '~/components/ui/button';
+import { Button, buttonVariants } from '@locus/ui/components/button';
 import {
   workspaceMobilePrimaryState,
   workspaceMobileSecondaryState,
 } from './mobile-navigation';
 
 const SettingsDialog = lazy(() =>
-  import('~/features/settings/browser').then((module) => ({
+  import('../settings/browser').then((module) => ({
     default: module.SettingsDialog,
   })),
 );

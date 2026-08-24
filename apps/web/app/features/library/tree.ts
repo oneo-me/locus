@@ -1,4 +1,4 @@
-import type { LibraryNavigationDocument } from '~/contracts/library-api';
+import type { LibraryNavigationDocument } from '@locus/document-library/contracts/library-api';
 
 export interface DocumentTreeNode {
   name: string;

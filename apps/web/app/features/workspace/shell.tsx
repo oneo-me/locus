@@ -1,4 +1,4 @@
-import type { LibraryWorkspaceView } from '~/contracts/library-api';
+import type { LibraryWorkspaceView } from '@locus/document-library/contracts/library-api';
 import type { CSSProperties } from 'react';
 import {
   createContext,
@@ -8,9 +8,12 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { cn } from '~/lib/utils';
-import type { GraphEventSnapshot } from '../graph/events';
-import { GRAPH_EVENTS_PATH, parseGraphEventSnapshot } from '../graph/events';
+import { cn } from '@locus/ui/utils';
+import {
+  GRAPH_EVENTS_PATH,
+  parseGraphEventSnapshot,
+  type GraphEventSnapshot,
+} from '../graph/events';
 import { useGlobalSettings } from '../settings/global-settings-provider';
 import type { WorkspaceEventStatus } from './header';
 import { WorkspaceMobileEdgeSwipe } from './mobile-navigation';

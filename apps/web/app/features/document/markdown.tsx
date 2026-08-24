@@ -3,16 +3,16 @@ import {
   getMarkdownAssetName,
   isPreviewableImageAsset,
   resolveMarkdownAssetUrl,
-} from '~/contracts/asset';
+} from '@locus/document-library/contracts/asset';
 import { LinkIcon } from 'lucide-react';
 import { type ComponentProps, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import {
   type MarkdownComponents,
   MarkdownRenderer,
-} from '~/components/markdown/renderer';
-import { CanvasBlock } from '~/components/markdown/canvas';
-import { cn } from '~/lib/utils';
+} from '../../components/markdown/renderer';
+import { CanvasBlock } from '../../components/markdown/canvas';
+import { cn } from '@locus/ui/utils';
 import {
   AttachmentGallery,
   AttachmentList,
@@ -25,7 +25,7 @@ import {
   type WikiLinkDocument,
 } from './wiki-link';
 import type { ComarkTree } from 'comark';
-import type { SerializedMarkdownTree } from '~/contracts/library-api';
+import type { SerializedMarkdownTree } from '@locus/document-library/contracts/library-api';
 
 function DocumentCodeBlock({
   children,

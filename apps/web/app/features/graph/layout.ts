@@ -1,4 +1,4 @@
-import type { DocumentGraphNode } from '~/contracts/document-graph';
+import type { DocumentGraphNode } from '@locus/document-library/contracts/document-graph';
 
 /** Obsidian-aligned global forces — keeps the familiar overall spacing and air. */
 export const GRAPH_FORCE_DEFAULTS = {

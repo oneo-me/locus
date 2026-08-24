@@ -2,7 +2,7 @@ import { ComarkRenderer } from '@comark/react';
 import type { ComarkTree } from 'comark';
 import type { ComponentProps } from 'react';
 import { memo } from 'react';
-import { cn } from '~/lib/utils';
+import { cn } from '@locus/ui/utils';
 
 export type MarkdownComponents = NonNullable<
   ComponentProps<typeof ComarkRenderer>['components']

@@ -1,10 +1,11 @@
+import type { LibraryGraph } from '@locus/document-library/contracts/library-api';
 import { GraphBrowser } from '~/features/graph/browser';
-import { getLibraryGraph } from '~/server/features/library/service';
+import { apiGet } from '~/lib/api-client';
 import type { ShouldRevalidateFunctionArgs } from 'react-router';
 import type { Route } from './+types/workspace-graph';
 
-export async function loader(_args: Route.LoaderArgs) {
-  return getLibraryGraph();
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
+  return apiGet<LibraryGraph>('/api/library/graph');
 }
 
 export function shouldRevalidate({

@@ -1,7 +1,11 @@
 import { type ComarkNode, type ComarkPlugin, parse } from 'comark';
-import type { SerializedMarkdownTree } from '~/contracts/library-api';
-import type { ImageSize } from '~/contracts/library-types';
-import { createCanvasPlugin } from '~/components/markdown/canvas';
+import type {
+  LibrarySelectionSourceView,
+  LibrarySelectionView,
+  SerializedMarkdownTree,
+} from '@locus/document-library/contracts/library-api';
+import type { ImageSize } from '@locus/document-library/contracts/library-types';
+import { createCanvasPlugin } from '../../components/markdown/canvas';
 import { createAttachmentViewsPlugin } from './attachment-views';
 import { createWikiLinkPlugin } from './wiki-link';
 
@@ -86,4 +90,23 @@ export async function parseDocumentMarkdown({
       safeElementsPlugin,
     ],
   });
+}
+
+export async function prepareLibrarySelectionView(
+  source: LibrarySelectionSourceView,
+): Promise<LibrarySelectionView> {
+  const { assetImageSizes, selected, ...selection } = source;
+  if (!selected) return { ...selection, selected: null };
+  return {
+    ...selection,
+    selected: {
+      ...selected,
+      content: await parseDocumentMarkdown({
+        assetImageSizes,
+        assets: selected.assets,
+        content: selected.content,
+        documentPath: selected.path,
+      }),
+    },
+  };
 }

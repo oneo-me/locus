@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@locus/ui/components/tabs';
 
 const MCP_PATH = '/mcp';
 

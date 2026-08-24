@@ -8,7 +8,7 @@ Locus 不自行实现 Agent loop、模型调用或工具系统。Agent 的提示
 
 仓库当前提供可运行的文档工作区基线，包括层级 Markdown 浏览与搜索、文章与附件阅读、知识图谱、Git 变更视图、本机设置、文件事件更新和 MCP 文档发现。
 
-Agent 会话、Agent runtime 适配和目标中的前后端包拆分尚未实现。现阶段以已有文档能力为工作基础，逐步扩展为完整的 Locus，不用未完成的架构替换可运行产品。
+项目已经拆分为 React Router SPA、Hono 后端、共享 UI 和文档库 Core 四个包。文档、图谱、设置与工作区属于产品自身功能，直接由 SPA 维护。Agent 会话与 Agent runtime 适配尚未实现。
 
 ## 产品方向
 
@@ -20,13 +20,13 @@ Agent 会话、Agent runtime 适配和目标中的前后端包拆分尚未实现
 
 ## 技术方向
 
-- 前端：React + React Router Framework Mode，目标采用 SPA 模式。
+- 前端：React + React Router Framework Mode SPA。
 - 界面：Tailwind CSS v4 与 shadcn/ui；共享组件、主题 Tokens 和样式由独立 UI 包维护。
 - 后端：Hono，负责领域 API、本地文件系统、Agent runtime 和持久化能力。
 - 工程组织：pnpm workspace monorepo；应用位于 `apps/*`，领域与界面包位于 `packages/*`。
 - 代码质量：Oxlint、Oxfmt 和 TypeScript。
 
-目标包边界为 `@locus/web`、`@locus/server`、`@locus/ui`、`@locus/agent-core`、`@locus/agent-ui`、`@locus/document-ui` 和 `@locus/document-library`。当前只有 `@locus/web`，其余包会在对应能力进入实现时建立。
+当前包包括 `@locus/web`、`@locus/server`、`@locus/ui` 和 `@locus/document-library`。`@locus/agent-core` 与 `@locus/agent-ui` 会在 Agent 能力进入实现时建立。
 
 ## 本地运行
 
@@ -40,16 +40,16 @@ Agent 会话、Agent runtime 适配和目标中的前后端包拆分尚未实现
 
 ```bash
 pnpm install
-ASTERWEFT_LIBRARY_PATH=/absolute/path/to/markdown-library pnpm dev
+LIBRARY_PATH=/absolute/path/to/markdown-library pnpm dev
 ```
 
-也可以在 `apps/web/.env` 中配置文档库路径：
+也可以在仓库根目录 `.env` 中配置文档库路径：
 
 ```dotenv
-ASTERWEFT_LIBRARY_PATH=/absolute/path/to/markdown-library
+LIBRARY_PATH=/absolute/path/to/markdown-library
 ```
 
-开发服务器默认运行在 <http://localhost:3000>。
+前端开发服务器默认运行在 <http://localhost:3000>，并把 `/api` 与 `/mcp` 请求转发到 <http://localhost:3001> 的 Hono 后端。
 
 ### 文档库结构
 

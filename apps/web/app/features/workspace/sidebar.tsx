@@ -1,10 +1,10 @@
-import { getDocumentIconUrl } from '~/contracts/asset';
-import type { LibraryNavigationDocument } from '~/contracts/library-api';
+import { getDocumentIconUrl } from '@locus/document-library/contracts/asset';
+import type { LibraryNavigationDocument } from '@locus/document-library/contracts/library-api';
 import {
   documentPathToUrlPath,
   urlPathToDocumentPath,
   urlPathToHref,
-} from '~/contracts/library-route';
+} from '@locus/document-library/contracts/library-route';
 import {
   closestCenter,
   DndContext,
@@ -48,18 +48,21 @@ import {
   useNavigate,
   useRevalidator,
 } from 'react-router';
-import { buttonVariants } from '~/components/ui/button';
-import { Badge } from '~/components/ui/badge';
-import { Collapsible, CollapsibleContent } from '~/components/ui/collapsible';
+import { buttonVariants } from '@locus/ui/components/button';
+import { Badge } from '@locus/ui/components/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+} from '@locus/ui/components/collapsible';
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from '~/components/ui/input-group';
-import { DocumentIcon } from '~/features/document/icons';
-import { cn } from '~/lib/utils';
-import type { LibraryWorkspaceView } from '~/contracts/library-api';
-import { reorderDocuments } from '../library/functions';
+} from '@locus/ui/components/input-group';
+import { DocumentIcon } from '../document/icons';
+import { cn } from '@locus/ui/utils';
+import type { LibraryWorkspaceView } from '@locus/document-library/contracts/library-api';
+import { useDocumentApi } from '~/lib/document-api-context';
 import {
   buildDocumentTree,
   type DocumentTreeNode,
@@ -452,6 +455,7 @@ function DocumentTreeItems({
   query?: string;
   sortable: boolean;
 }) {
+  const { reorderDocuments } = useDocumentApi();
   const { revalidate } = useRevalidator();
   const [items, setItems] = useState(nodes);
   const [activeKey, setActiveKey] = useState<string | null>(null);

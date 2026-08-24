@@ -1,6 +1,6 @@
-import type { LibraryWorkspaceView } from '~/contracts/library-api';
+import type { LibraryWorkspaceView } from '@locus/document-library/contracts/library-api';
 import FluentIconDocument from '@oneo/fluentui-icons-like-react/FluentIconDocument';
-import { Button } from '~/components/ui/button';
+import { Button } from '@locus/ui/components/button';
 import {
   Empty,
   EmptyContent,
@@ -8,7 +8,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '~/components/ui/empty';
+} from '@locus/ui/components/empty';
 
 export function WorkspaceDocumentLandingState({
   data,

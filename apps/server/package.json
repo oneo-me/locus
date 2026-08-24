@@ -1,0 +1,28 @@
+{
+  "name": "@locus/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_ENV=development tsx watch src/index.ts",
+    "start": "NODE_ENV=production tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.17",
+    "@locus/document-library": "workspace:*",
+    "@modelcontextprotocol/server": "^2.0.0-beta.5",
+    "hono": "^4.13.0",
+    "sharp": "^0.35.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.23.9",
+    "typescript": "~7.0.2"
+  },
+  "engines": {
+    "node": ">=22.22.0",
+    "pnpm": ">=11.20.0"
+  }
+}

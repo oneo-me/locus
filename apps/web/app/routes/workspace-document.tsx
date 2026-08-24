@@ -1,10 +1,12 @@
 import {
   pathnameToUrlPath,
   urlPathToDocumentPath,
-} from '~/contracts/library-route';
+} from '@locus/document-library/contracts/library-route';
+import type { LibrarySelectionSourceView } from '@locus/document-library/contracts/library-api';
 import { DocumentBrowser } from '~/features/document/browser';
+import { prepareLibrarySelectionView } from '~/features/document/markdown-parser';
 import { useWorkspaceLibraryData } from '~/features/workspace/shell';
-import { getLibrarySelection } from '~/server/features/library/service';
+import { apiGet } from '~/lib/api-client';
 import { useEffect } from 'react';
 import {
   type ShouldRevalidateFunctionArgs,
@@ -14,17 +16,13 @@ import {
 } from 'react-router';
 import type { Route } from './+types/workspace-document';
 
-export function resolveDocumentLoaderPathname(pathname: string): string {
-  return pathname.endsWith('/_.data')
-    ? pathname.replace(/_\.data$/, '')
-    : pathname.replace(/\.data$/, '');
-}
-
-export async function loader({ request }: Route.LoaderArgs) {
-  const pathname = resolveDocumentLoaderPathname(new URL(request.url).pathname);
-  return getLibrarySelection({
-    doc: urlPathToDocumentPath(pathnameToUrlPath(pathname)),
-  });
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
+  const pathname = new URL(request.url).pathname;
+  const source = await apiGet<LibrarySelectionSourceView>(
+    '/api/library/document',
+    { doc: urlPathToDocumentPath(pathnameToUrlPath(pathname)) },
+  );
+  return prepareLibrarySelectionView(source);
 }
 
 export function shouldRevalidate({

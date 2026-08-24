@@ -1,6 +1,6 @@
-import type { LibraryNavigationDocument } from '~/contracts/library-api';
-import type { LibraryRepositoryChange } from '~/contracts/repository';
-import type { DocumentTreeNode } from '~/features/library/tree';
+import type { LibraryNavigationDocument } from '@locus/document-library/contracts/library-api';
+import type { LibraryRepositoryChange } from '@locus/document-library/contracts/repository';
+import type { DocumentTreeNode } from '../library/tree';
 
 export type DocumentChangeStatus = 'added' | 'modified';
 

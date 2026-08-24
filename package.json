@@ -2,14 +2,16 @@
   "name": "locus-workspace",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @locus/web dev",
+    "dev": "pnpm --parallel --filter @locus/server --filter @locus/web dev",
+    "dev:server": "pnpm --filter @locus/server dev",
+    "dev:web": "pnpm --filter @locus/web dev",
     "build": "pnpm --filter @locus/web build",
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
-    "typecheck": "pnpm --filter @locus/web typecheck"
+    "typecheck": "pnpm --recursive typecheck"
   },
   "devDependencies": {
     "oxfmt": "^0.63.0",

@@ -1,5 +1,5 @@
-import { Switch } from '~/components/ui/switch';
-import { useGlobalSettings } from '~/features/settings/global-settings-provider';
+import { Switch } from '@locus/ui/components/switch';
+import { useGlobalSettings } from '../settings/global-settings-provider';
 
 export function McpEnabledSwitch() {
   const { settings, updateSettings } = useGlobalSettings();

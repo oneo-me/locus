@@ -1,7 +1,7 @@
 import {
   documentIconSize,
   maxDocumentIconBytes,
-} from '~/contracts/document-icon';
+} from '@locus/document-library/contracts/document-icon';
 
 const maxSourceImageBytes = 16 * 1024 * 1024;
 

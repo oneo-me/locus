@@ -1,4 +1,4 @@
-import type { GraphEventSnapshot } from '~/contracts/graph-events';
+import type { GraphEventSnapshot } from '@locus/document-library/contracts/graph-events';
 
 export type { GraphEventSnapshot };
 

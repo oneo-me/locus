@@ -1,33 +1,30 @@
-import { getDocumentIconUrl } from '~/contracts/asset';
+import { getDocumentIconUrl } from '@locus/document-library/contracts/asset';
 import {
   type LibrarySelectionView,
   type LibraryWorkspaceView,
-} from '~/contracts/library-api';
-import { libraryReferenceScheme } from '~/contracts/library-reference';
+} from '@locus/document-library/contracts/library-api';
+import { libraryReferenceScheme } from '@locus/document-library/contracts/library-reference';
 import {
   type DocumentGraphParticipation,
   documentGraphParticipation,
-} from '~/contracts/library-state';
-import type { DocumentContent } from '~/contracts/library-types';
+} from '@locus/document-library/contracts/library-state';
+import type { DocumentContent } from '@locus/document-library/contracts/library-types';
 import FluentIconErrorCircle from '@oneo/fluentui-icons-like-react/FluentIconErrorCircle';
 import FluentIconImageCopy from '@oneo/fluentui-icons-like-react/FluentIconImageCopy';
 import FluentIconTextQuote from '@oneo/fluentui-icons-like-react/FluentIconTextQuote';
 import { DownloadIcon } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 import { Link, useRevalidator } from 'react-router';
-import { Alert, AlertDescription } from '~/components/ui/alert';
-import { Button } from '~/components/ui/button';
+import { Alert, AlertDescription } from '@locus/ui/components/alert';
+import { Button } from '@locus/ui/components/button';
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-} from '~/components/ui/empty';
-import { Spinner } from '~/components/ui/spinner';
-import {
-  updateDocumentIconImage,
-  updateDocumentMetadata,
-} from '../library/functions';
+} from '@locus/ui/components/empty';
+import { Spinner } from '@locus/ui/components/spinner';
+import { useDocumentApi } from '~/lib/document-api-context';
 import { deriveYamlPanelHue } from './atmosphere';
 import { MarkdownContent } from './markdown';
 import {
@@ -108,6 +105,7 @@ function DocumentArticle({
   documents: LibraryWorkspaceView['documents'];
   graphParticipation: DocumentGraphParticipation;
 }) {
+  const { updateDocumentIconImage, updateDocumentMetadata } = useDocumentApi();
   const { revalidate } = useRevalidator();
   const [metadataPending, setMetadataPending] = useState(false);
   const [metadataError, setMetadataError] = useState<string | null>(null);
