@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": [".agents/**", "apps/web/tests/fixtures/**"],
+  "ignorePatterns": [".agents/**"],
   "printWidth": 80,
   "singleQuote": true
 }

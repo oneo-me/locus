@@ -11,20 +11,10 @@ const encoder = new TextEncoder();
 const HEARTBEAT_INTERVAL_MS = 5_000;
 const SNAPSHOT_DEBOUNCE_MS = 150;
 
-interface WorkspaceEventsResponseOptions {
-  heartbeatIntervalMs?: number;
-  library?: DocumentLibrary;
-  snapshotDebounceMs?: number;
-}
-
 export async function createWorkspaceEventsResponse(
   request: Request,
-  options: WorkspaceEventsResponseOptions = {},
 ): Promise<Response> {
-  const library = options.library ?? (await getLibrary());
-  const heartbeatIntervalMs =
-    options.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_MS;
-  const snapshotDebounceMs = options.snapshotDebounceMs ?? SNAPSHOT_DEBOUNCE_MS;
+  const library: DocumentLibrary = await getLibrary();
   const query = new URL(request.url).searchParams.get('q')?.trim();
   let cleanup = () => {};
   let flushPendingSnapshot = () => {};
@@ -112,7 +102,7 @@ export async function createWorkspaceEventsResponse(
           flushSnapshot();
           return;
         }
-        snapshotTimer = setTimeout(flushSnapshot, snapshotDebounceMs);
+        snapshotTimer = setTimeout(flushSnapshot, SNAPSHOT_DEBOUNCE_MS);
       };
 
       const heartbeat = setInterval(() => {
@@ -130,7 +120,7 @@ export async function createWorkspaceEventsResponse(
         } else {
           enqueue(': keep-alive\n\n');
         }
-      }, heartbeatIntervalMs);
+      }, HEARTBEAT_INTERVAL_MS);
 
       unsubscribe = library.subscribe(() => scheduleSnapshot());
       request.signal.addEventListener('abort', close, { once: true });

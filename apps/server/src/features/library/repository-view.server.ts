@@ -10,18 +10,10 @@ export interface LibraryRepositoryView {
   error: string | null;
 }
 
-function gitRepositoryDisabled(): boolean {
-  const value = process.env.LOCUS_GIT_DISABLED;
-  return value === '1' || value === 'true';
-}
-
 const loggedRepositoryErrors = new WeakMap<DocumentLibrary, string>();
 export function readLibraryRepositoryView(
   library: DocumentLibrary,
 ): LibraryRepositoryView {
-  if (gitRepositoryDisabled()) {
-    return { revision: null, changes: [], error: null };
-  }
   try {
     const view = {
       ...library.repositoryChanges(),

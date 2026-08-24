@@ -1,27 +1,11 @@
 # Agent instructions (machine-specific)
 AGENTS.md
 
-# Logs
-logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 .pnpm-debug.log*
-lerna-debug.log*
 
 node_modules
-dist
-dist-ssr
-.output
 build/
-.build/
-.build-stage-*/
-.build-previous-*/
-*.bun-build
-cache.sqlite
-cache.sqlite-shm
-cache.sqlite-wal
 data/
 *.local
 
@@ -39,11 +23,7 @@ data/
 *.sln
 *.sw?
 
-# Design prototypes
 .design/
 
-.turbo/
-
-# typescript
 *.tsbuildinfo
 .react-router/

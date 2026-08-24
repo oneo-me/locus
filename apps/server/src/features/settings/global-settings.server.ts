@@ -15,12 +15,12 @@ export type {
 } from '@locus/document-library/contracts/global-settings';
 export { DEFAULT_GLOBAL_SETTINGS } from '@locus/document-library/contracts/global-settings';
 
-function resolveSettingsPath(home?: string): string {
-  return join(resolveDataDirectory(home), 'settings.json');
+function resolveSettingsPath(): string {
+  return join(resolveDataDirectory(), 'settings.json');
 }
 
-export function readGlobalSettings(home?: string): GlobalSettings {
-  const settingsPath = resolveSettingsPath(home);
+export function readGlobalSettings(): GlobalSettings {
+  const settingsPath = resolveSettingsPath();
   if (!existsSync(settingsPath)) {
     return normalizeGlobalSettings(null);
   }
@@ -35,13 +35,12 @@ export function readGlobalSettings(home?: string): GlobalSettings {
 
 export function writeGlobalSettings(
   patch: Partial<GlobalSettings>,
-  home?: string,
 ): GlobalSettings {
-  const settingsPath = resolveSettingsPath(home);
-  ensureDataDirectory(home);
+  const settingsPath = resolveSettingsPath();
+  ensureDataDirectory();
 
   const next = normalizeGlobalSettings({
-    ...readGlobalSettings(home),
+    ...readGlobalSettings(),
     ...patch,
   });
   writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8');

@@ -101,21 +101,13 @@ const ignoredDirectories = new Set([
   'node_modules',
 ]);
 const maxRefreshRetries = 3;
-const defaultWatchMaxWaitMs = 1_000;
-
-export interface DocumentLibraryOptions {
-  watch?: boolean;
-  watchDebounceMs?: number;
-  watchMaxWaitMs?: number;
-}
+const watchDebounceMs = 120;
+const watchMaxWaitMs = 1_000;
 
 export type LibraryChangeListener = (status: LibraryStatus) => void;
 
 export class DocumentLibrary {
   readonly #requestedRootPath: string;
-  readonly #shouldWatch: boolean;
-  readonly #watchDebounceMs: number;
-  readonly #watchMaxWaitMs: number;
   readonly #listeners = new Set<LibraryChangeListener>();
   readonly #pendingDocumentPaths = new Set<string>();
   #rootPath = '';
@@ -129,23 +121,14 @@ export class DocumentLibrary {
   #watchBatchStartedAt: number | null = null;
   #documentSummaries: DocumentSummary[] | null = null;
 
-  constructor(rootPath: string, options: DocumentLibraryOptions = {}) {
+  constructor(rootPath: string) {
     const normalizedRoot = rootPath.trim();
     if (!normalizedRoot) throw new Error('文档库路径不能为空。');
     this.#requestedRootPath = resolve(normalizedRoot);
-    this.#shouldWatch = options.watch ?? true;
-    this.#watchDebounceMs = options.watchDebounceMs ?? 120;
-    this.#watchMaxWaitMs = Math.max(
-      this.#watchDebounceMs,
-      options.watchMaxWaitMs ?? defaultWatchMaxWaitMs,
-    );
   }
 
-  static async open(
-    rootPath: string,
-    options: DocumentLibraryOptions = {},
-  ): Promise<DocumentLibrary> {
-    const library = new DocumentLibrary(rootPath, options);
+  static async open(rootPath: string): Promise<DocumentLibrary> {
+    const library = new DocumentLibrary(rootPath);
     await library.start();
     return library;
   }
@@ -156,7 +139,7 @@ export class DocumentLibrary {
     this.#rootPath = realpathSync(this.#requestedRootPath);
     this.#cache = new DocumentCache();
     await this.refresh();
-    if (this.#shouldWatch) await this.#startWatcher();
+    await this.#startWatcher();
   }
 
   getRootPath(): string {
@@ -1051,10 +1034,10 @@ export class DocumentLibrary {
     if (this.#refreshTimer) clearTimeout(this.#refreshTimer);
     const batchStartedAt = this.#watchBatchStartedAt ?? Date.now();
     const delay = retry
-      ? this.#watchDebounceMs
+      ? watchDebounceMs
       : Math.min(
-          this.#watchDebounceMs,
-          Math.max(0, this.#watchMaxWaitMs - (Date.now() - batchStartedAt)),
+          watchDebounceMs,
+          Math.max(0, watchMaxWaitMs - (Date.now() - batchStartedAt)),
         );
     this.#refreshTimer = setTimeout(() => {
       this.#refreshTimer = null;

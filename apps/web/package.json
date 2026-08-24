@@ -18,7 +18,6 @@
     "@locus/document-library": "workspace:*",
     "@locus/ui": "workspace:*",
     "@oneo/fluentui-icons-like-react": "^2.1.0",
-    "@react-router/node": "^8",
     "@tailwindcss/browser": "4.3.3",
     "comark": "0.5.1",
     "isbot": "^5",
@@ -30,7 +29,6 @@
   "devDependencies": {
     "@react-router/dev": "^8",
     "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "^24.10.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "typescript": "~7.0.2",

@@ -26,8 +26,8 @@ interface ThumbnailData {
 
 const pendingThumbnails = new Map<string, Promise<ThumbnailData>>();
 
-export function ensureAssetThumbnailCacheDir(home?: string): string {
-  const directory = join(resolveDataDirectory(home), 'thumbnails');
+export function ensureAssetThumbnailCacheDir(): string {
+  const directory = join(resolveDataDirectory(), 'thumbnails');
   mkdirSync(directory, { recursive: true });
   return directory;
 }

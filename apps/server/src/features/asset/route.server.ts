@@ -17,10 +17,8 @@ import { urlPathToDocumentPath } from '@locus/document-library/contracts/library
 export async function createRouteAssetResponse(
   request: Request,
   urlPath: string,
-  providedLibrary?: DocumentLibrary,
-  thumbnailCacheDir?: string,
 ): Promise<Response | null> {
-  const library = providedLibrary ?? (await getLibrary());
+  const library: DocumentLibrary = await getLibrary();
 
   try {
     library.getDocument(urlPathToDocumentPath(urlPath));
@@ -46,10 +44,7 @@ export async function createRouteAssetResponse(
     return new Response('该附件无法生成图片缩略图。', { status: 415 });
   }
   const responseAsset = thumbnail
-    ? await readAssetThumbnail(
-        asset,
-        thumbnailCacheDir ?? ensureAssetThumbnailCacheDir(),
-      )
+    ? await readAssetThumbnail(asset, ensureAssetThumbnailCacheDir())
     : asset;
   return createAssetResponse(
     request,

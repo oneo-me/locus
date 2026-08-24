@@ -611,11 +611,6 @@ export const documentEmojiGroups: DocumentEmojiGroup[] = [
   },
 ];
 
-/** Flat list kept for tests and any callers that only need the emoji set. */
-export const documentEmojiOptions: string[] = Array.from(
-  new Set(documentEmojiGroups.flatMap((group) => group.emojis)),
-);
-
 const DEFAULT_DOCUMENT_ICON = '📄';
 
 export function DocumentIcon({

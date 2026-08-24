@@ -6,17 +6,5 @@
   "plugins": ["eslint", "typescript", "unicorn", "oxc", "react"],
   "options": {
     "typeAware": true
-  },
-  "overrides": [
-    {
-      "files": [
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "apps/web/app/features/graph/canvas-renderer.ts"
-      ],
-      "rules": {
-        "typescript/unbound-method": "off"
-      }
-    }
-  ]
+  }
 }

@@ -17,12 +17,12 @@ import {
 
 export { normalizeLibraryState } from '@locus/document-library/contracts/library-state';
 
-function resolveLibraryStatePath(home?: string): string {
-  return join(resolveDataDirectory(home), 'state.json');
+function resolveLibraryStatePath(): string {
+  return join(resolveDataDirectory(), 'state.json');
 }
 
-export function readLibraryState(home?: string): LibraryState {
-  const path = resolveLibraryStatePath(home);
+export function readLibraryState(): LibraryState {
+  const path = resolveLibraryStatePath();
   if (!existsSync(path)) return normalizeLibraryState(null);
   try {
     return normalizeLibraryState(JSON.parse(readFileSync(path, 'utf8')));
@@ -31,9 +31,9 @@ export function readLibraryState(home?: string): LibraryState {
   }
 }
 
-function writeLibraryState(state: LibraryState, home?: string): LibraryState {
+function writeLibraryState(state: LibraryState): LibraryState {
   const normalized = normalizeLibraryState(state);
-  const path = join(ensureDataDirectory(home), 'state.json');
+  const path = join(ensureDataDirectory(), 'state.json');
   const temporaryPath = join(
     dirname(path),
     `.${basename(path)}.${crypto.randomUUID()}.tmp`,
@@ -52,17 +52,13 @@ function writeLibraryState(state: LibraryState, home?: string): LibraryState {
 
 export function updateLibraryDocumentOrder(
   items: Array<{ path: string; order: number }>,
-  home?: string,
 ): LibraryState {
-  const current = readLibraryState(home);
-  return writeLibraryState(
-    {
-      ...current,
-      order: {
-        ...current.order,
-        ...Object.fromEntries(items.map((item) => [item.path, item.order])),
-      },
+  const current = readLibraryState();
+  return writeLibraryState({
+    ...current,
+    order: {
+      ...current.order,
+      ...Object.fromEntries(items.map((item) => [item.path, item.order])),
     },
-    home,
-  );
+  });
 }
