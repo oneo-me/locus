@@ -1,4 +1,9 @@
-import { type ComarkNode, type ComarkPlugin, parse } from 'comark';
+import { type ComarkPlugin, type Node, parseMarkdown } from 'comark';
+import alert from 'comark/plugins/alert';
+import attributes from 'comark/plugins/attributes';
+import components from 'comark/plugins/components';
+import frontmatter from 'comark/plugins/frontmatter';
+import taskList from 'comark/plugins/task-list';
 import type {
   LibrarySelectionSourceView,
   LibrarySelectionView,
@@ -46,14 +51,14 @@ const allowedElementNames = new Set([
   'ul',
 ]);
 
-function sanitizeNode(node: ComarkNode) {
+function sanitizeNode(node: Node) {
   if (!Array.isArray(node) || typeof node[0] !== 'string') return;
   if (node[1].id === '') delete node[1].id;
   if (!allowedElementNames.has(node[0])) {
     node[1]['data-unsupported-markdown-component'] = node[0];
     node[0] = 'div';
   }
-  for (const child of node.slice(2) as ComarkNode[]) sanitizeNode(child);
+  for (const child of node.slice(2) as Node[]) sanitizeNode(child);
 }
 
 const safeElementsPlugin: ComarkPlugin = {
@@ -75,11 +80,16 @@ export async function parseDocumentMarkdown({
   content: string;
   documentPath: string;
 }): Promise<SerializedMarkdownTree> {
-  return parse(content, {
+  return parseMarkdown(content, {
     autoUnwrap: false,
-    html: false,
     linkify: false,
+    registerDefaultPlugins: false,
     plugins: [
+      frontmatter(),
+      alert(),
+      taskList(),
+      components(),
+      attributes(),
       createWikiLinkPlugin(),
       createCanvasPlugin(),
       createAttachmentViewsPlugin({

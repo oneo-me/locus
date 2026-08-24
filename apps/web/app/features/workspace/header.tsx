@@ -1,5 +1,5 @@
 import FluentIconSettings from '@oneo/fluentui-icons-like-react/FluentIconSettings';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useState, useSyncExternalStore } from 'react';
 import { createSearchParams, Link } from 'react-router';
 import { Button } from '@locus/ui/components/button';
 import { workspaceMobilePrimaryState } from './mobile-navigation';
@@ -9,6 +9,10 @@ const SettingsDialog = lazy(() =>
     default: module.SettingsDialog,
   })),
 );
+
+function subscribeToHydration() {
+  return () => {};
+}
 
 export type WorkspaceEventConnection =
   | 'connecting'
@@ -50,12 +54,12 @@ export function WorkspaceBrandMark() {
 }
 
 function SettingsControl() {
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   const [requested, setRequested] = useState(false);
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
 
   if (!requested) {
     return (

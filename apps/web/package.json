@@ -10,29 +10,29 @@
     "typecheck": "react-router typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@comark/react": "^0.5.1",
+    "@comark/react": "^0.6.2",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@locus/document-library": "workspace:*",
     "@locus/ui": "workspace:*",
-    "@oneo/fluentui-icons-like-react": "^2.1.0",
+    "@oneo/fluentui-icons-like-react": "^2.1.1",
     "@tailwindcss/browser": "4.3.3",
-    "comark": "0.5.1",
-    "isbot": "^5",
-    "lucide-react": "^1.26.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-router": "^8"
+    "comark": "0.6.2",
+    "isbot": "^5.2.1",
+    "lucide-react": "^1.33.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router": "^8.3.0"
   },
   "devDependencies": {
-    "@react-router/dev": "^8",
+    "@react-router/dev": "^8.3.0",
     "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "typescript": "~7.0.2",
-    "vite": "^8.0.3"
+    "vite": "^8.2.2"
   },
   "engines": {
     "node": ">=22.22.0",

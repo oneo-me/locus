@@ -110,19 +110,16 @@ export function WorkspaceShell({
   query?: string;
 }) {
   const { settings, updateSettings } = useGlobalSettings();
-  const [sidebarWidth, setSidebarWidth] = useState(
-    settings.workspaceSidebarWidth,
+  const [sidebarWidthDraft, setSidebarWidthDraft] = useState<number | null>(
+    null,
   );
+  const sidebarWidth = sidebarWidthDraft ?? settings.workspaceSidebarWidth;
   const normalizedQuery = query?.trim() || null;
   const [snapshotState, setSnapshotState] =
     useState<WorkspaceSnapshotState | null>(null);
   const [eventStatus, setEventStatus] = useState<WorkspaceEventStatus>(
     createInitialEventStatus,
   );
-
-  useEffect(() => {
-    setSidebarWidth(settings.workspaceSidebarWidth);
-  }, [settings.workspaceSidebarWidth]);
 
   useEffect(() => {
     let active = true;
@@ -180,11 +177,15 @@ export function WorkspaceShell({
           query={query}
         />
         <WorkspaceSidebarResizeHandle
-          onWidthChange={setSidebarWidth}
+          onWidthChange={setSidebarWidthDraft}
           onWidthCommit={(width) => {
-            void updateSettings({ workspaceSidebarWidth: width }).catch(() =>
-              setSidebarWidth(settings.workspaceSidebarWidth),
-            );
+            void updateSettings({ workspaceSidebarWidth: width })
+              .catch(() => {})
+              .finally(() =>
+                setSidebarWidthDraft((current) =>
+                  current === width ? null : current,
+                ),
+              );
           }}
           width={sidebarWidth}
         />

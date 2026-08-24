@@ -1,4 +1,4 @@
-import type { ComarkElement, ComarkNode, ComarkPlugin } from 'comark';
+import type { ComarkPlugin, ElementNode, Node } from 'comark';
 import { CircleAlertIcon, ImageOffIcon } from 'lucide-react';
 import {
   type ComponentProps,
@@ -44,32 +44,30 @@ interface AttachmentItem {
   name: string;
 }
 
-function isElement(node: ComarkNode | undefined): node is ComarkElement {
+function isElement(node: Node | undefined): node is ElementNode {
   return Array.isArray(node) && typeof node[0] === 'string';
 }
 
-function textContent(node: ComarkNode): string {
+function textContent(node: Node): string {
   if (typeof node === 'string') return node;
   if (!isElement(node)) return '';
-  return (node.slice(2) as ComarkNode[])
-    .map((child) => textContent(child))
-    .join('');
+  return (node.slice(2) as Node[]).map((child) => textContent(child)).join('');
 }
 
 function containerElements(
-  node: ComarkElement,
+  node: ElementNode,
   expectedTag: 'a' | 'img',
-): ComarkElement[] | undefined {
-  const elements: ComarkElement[] = [];
+): ElementNode[] | undefined {
+  const elements: ElementNode[] = [];
 
-  for (const child of node.slice(2) as ComarkNode[]) {
+  for (const child of node.slice(2) as Node[]) {
     if (typeof child === 'string') {
       if (child.trim()) return;
       continue;
     }
     if (!isElement(child) || child[0] !== 'p') return;
 
-    for (const content of child.slice(2) as ComarkNode[]) {
+    for (const content of child.slice(2) as Node[]) {
       if (typeof content === 'string') {
         if (content.trim()) return;
         continue;
@@ -83,7 +81,7 @@ function containerElements(
 }
 
 function prepareGallery(
-  node: ComarkElement,
+  node: ElementNode,
   documentPath: string,
   assets: string[],
   assetImageSizes: Record<string, ImageSize>,
@@ -110,7 +108,7 @@ function prepareGallery(
 }
 
 function prepareAttachments(
-  node: ComarkElement,
+  node: ElementNode,
   documentPath: string,
   assets: string[],
 ) {
@@ -137,7 +135,7 @@ function prepareAttachments(
 }
 
 function prepareAttachmentViews(
-  node: ComarkNode,
+  node: Node,
   documentPath: string,
   assets: string[],
   assetImageSizes: Record<string, ImageSize>,
@@ -151,7 +149,7 @@ function prepareAttachmentViews(
     prepareAttachments(node, documentPath, assets);
     return;
   }
-  for (const child of node.slice(2) as ComarkNode[]) {
+  for (const child of node.slice(2) as Node[]) {
     prepareAttachmentViews(child, documentPath, assets, assetImageSizes);
   }
 }

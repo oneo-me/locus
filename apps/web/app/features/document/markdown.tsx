@@ -24,7 +24,7 @@ import {
   resolveWikiLink,
   type WikiLinkDocument,
 } from './wiki-link';
-import type { ComarkTree } from 'comark';
+import type { MarkdownDocument } from 'comark';
 import type { SerializedMarkdownTree } from '@locus/document-library/contracts/library-api';
 
 function DocumentCodeBlock({
@@ -235,7 +235,7 @@ function DocumentMarkdown({
     <MarkdownRenderer
       className="space-y-5"
       components={components}
-      tree={content as ComarkTree}
+      value={content as MarkdownDocument}
     />
   );
 }

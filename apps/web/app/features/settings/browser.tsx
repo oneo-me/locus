@@ -120,10 +120,6 @@ export function SettingsDialog({
 }) {
   const [open, setOpen] = useState(initiallyOpen);
 
-  useEffect(() => {
-    if (initiallyOpen) setOpen(true);
-  }, [initiallyOpen]);
-
   return (
     <Dialog
       open={open}
@@ -217,12 +213,6 @@ function SettingsBrowser({
     }
     return groups;
   }, [filteredNav]);
-
-  useEffect(() => {
-    if (filteredNav.some((item) => item.id === activeId)) return;
-    const first = filteredNav[0];
-    if (first) setActiveId(first.id);
-  }, [activeId, filteredNav]);
 
   const activeItem =
     filteredNav.find((item) => item.id === activeId) ?? filteredNav[0] ?? null;

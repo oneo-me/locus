@@ -16,11 +16,11 @@
     "typecheck": "tsc -p tsconfig.scripts.json && pnpm --recursive typecheck"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
-    "oxfmt": "^0.63.0",
-    "oxlint": "^1.78.0",
+    "@types/node": "^26.2.0",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
     "oxlint-tsgolint": "^7.0.2001",
-    "tsx": "^4.23.9",
+    "tsx": "^4.23.12",
     "typescript": "~7.0.2"
   },
   "engines": {

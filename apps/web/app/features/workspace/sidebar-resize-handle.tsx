@@ -21,13 +21,11 @@ export function WorkspaceSidebarResizeHandle({
   width: number;
 }) {
   const drag = useRef<{ originWidth: number; originX: number } | null>(null);
-  const widthRef = useRef(width);
-  widthRef.current = width;
 
   const finishDrag = () => {
     if (!drag.current) return;
     drag.current = null;
-    onWidthCommit(widthRef.current);
+    onWidthCommit(width);
   };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLHRElement>) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import {
   Tabs,
   TabsContent,
@@ -7,6 +7,10 @@ import {
 } from '@locus/ui/components/tabs';
 
 const MCP_PATH = '/mcp';
+
+function subscribeToOrigin() {
+  return () => {};
+}
 
 export function resolveMcpEndpoint(origin: string) {
   return new URL(MCP_PATH, origin).toString();
@@ -67,11 +71,11 @@ Authentication: none`,
 }
 
 export function McpInstallationGuide() {
-  const [mcpEndpoint, setMcpEndpoint] = useState(MCP_PATH);
-
-  useEffect(() => {
-    setMcpEndpoint(resolveMcpEndpoint(window.location.origin));
-  }, []);
+  const mcpEndpoint = useSyncExternalStore(
+    subscribeToOrigin,
+    () => resolveMcpEndpoint(window.location.origin),
+    () => MCP_PATH,
+  );
 
   const clientGuides = createClientGuides(mcpEndpoint);
 

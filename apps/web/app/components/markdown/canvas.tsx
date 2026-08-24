@@ -1,4 +1,4 @@
-import type { ComarkElement, ComarkNode, ComarkPlugin } from 'comark';
+import type { ComarkPlugin, ElementNode, Node } from 'comark';
 import { CircleAlertIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -27,23 +27,21 @@ interface CanvasDescriptor {
   source: string;
 }
 
-function isElement(node: ComarkNode | undefined): node is ComarkElement {
+function isElement(node: Node | undefined): node is ElementNode {
   return Array.isArray(node) && typeof node[0] === 'string';
 }
 
-function textContent(node: ComarkNode): string {
+function textContent(node: Node): string {
   if (typeof node === 'string') return node;
   if (!isElement(node)) return '';
-  return (node.slice(2) as ComarkNode[])
-    .map((child) => textContent(child))
-    .join('');
+  return (node.slice(2) as Node[]).map((child) => textContent(child)).join('');
 }
 
-function prepareCanvas(node: ComarkNode) {
+function prepareCanvas(node: Node) {
   if (!isElement(node)) return;
 
   if (node[0] === 'canvas') {
-    const children = node.slice(2) as ComarkNode[];
+    const children = node.slice(2) as Node[];
     const pre = children.length === 1 ? children[0] : undefined;
     const code = isElement(pre) && pre[0] === 'pre' ? pre[2] : undefined;
     const language =
@@ -62,7 +60,7 @@ function prepareCanvas(node: ComarkNode) {
     return;
   }
 
-  for (const child of node.slice(2) as ComarkNode[]) {
+  for (const child of node.slice(2) as Node[]) {
     prepareCanvas(child);
   }
 }

@@ -242,10 +242,26 @@ function LibraryNavigation({
         initial.add(path);
       }
     }
-    for (const path of searchOpenPaths) initial.add(path);
     return initial;
   });
-  const previousCurrentPathRef = useRef(currentPath);
+  const [openNodesCurrentPath, setOpenNodesCurrentPath] = useState(currentPath);
+
+  if (openNodesCurrentPath !== currentPath) {
+    setOpenNodesCurrentPath(currentPath);
+    setOpenNodes(
+      new Set(
+        currentPath === undefined
+          ? []
+          : getOpenNodePaths(urlPathToDocumentPath(currentPath), directories),
+      ),
+    );
+  }
+
+  const visibleOpenNodes = useMemo(() => {
+    const next = new Set(openNodes);
+    for (const path of searchOpenPaths) next.add(path);
+    return next;
+  }, [openNodes, searchOpenPaths]);
 
   const toggleOpenNode = (path: string) => {
     setOpenNodes((current) => {
@@ -270,46 +286,6 @@ function LibraryNavigation({
     restoredTreeScrollRef.current = true;
     centerTreeScrollTarget(nav, target);
   }, [currentPath, documents]);
-
-  useEffect(() => {
-    setOpenNodes((current) => {
-      let changed = false;
-      const next = new Set(current);
-      for (const path of searchOpenPaths) {
-        if (!next.has(path)) {
-          next.add(path);
-          changed = true;
-        }
-      }
-      return changed ? next : current;
-    });
-  }, [searchOpenPaths]);
-
-  useEffect(() => {
-    if (
-      currentPath === undefined ||
-      previousCurrentPathRef.current === currentPath
-    ) {
-      previousCurrentPathRef.current = currentPath;
-      return;
-    }
-    previousCurrentPathRef.current = currentPath;
-    const selectedDocumentPath = urlPathToDocumentPath(currentPath);
-    const selectedParentPaths = getOpenNodePaths(
-      selectedDocumentPath,
-      directories,
-    );
-    setOpenNodes((current) => {
-      const next = focusSelectedNode(selectedParentPaths, searchOpenPaths);
-      if (
-        next.size === current.size &&
-        [...next].every((path) => current.has(path))
-      ) {
-        return current;
-      }
-      return next;
-    });
-  }, [currentPath, directories, searchOpenPaths]);
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -368,7 +344,7 @@ function LibraryNavigation({
             mobile={mobile}
             nodes={tree}
             onToggleOpen={toggleOpenNode}
-            openNodes={openNodes}
+            openNodes={visibleOpenNodes}
             query={query}
             sortable={sortable && desktopViewport}
           />
@@ -481,12 +457,9 @@ function DocumentTreeItems({
 
   useEffect(() => {
     nodesRef.current = nodes;
-    if (activeKey || pending) {
-      setItems((current) => reconcileTreeItems(current, nodes));
-      return;
+    if (!activeKey && !pending) {
+      originItemsRef.current = nodes;
     }
-    setItems(nodes);
-    originItemsRef.current = nodes;
   }, [activeKey, nodes, pending]);
 
   const persistOrder = async (nextItems: DocumentTreeNode[]) => {
@@ -515,6 +488,8 @@ function DocumentTreeItems({
     }
   };
   const handleDragStart = ({ active }: DragStartEvent) => {
+    itemsRef.current = nodes;
+    setItems(nodes);
     setActiveKey(String(active.id));
   };
 
