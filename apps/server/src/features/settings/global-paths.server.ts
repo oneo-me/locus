@@ -9,11 +9,11 @@ export function currentEnvironment(): RuntimeEnvironment {
 }
 
 function defaultHome(): string {
-  return process.env.ASTERWEFT_HOME?.trim() || homedir();
+  return process.env.LOCUS_HOME?.trim() || homedir();
 }
 
 function configDirectoryName(environment: RuntimeEnvironment): string {
-  return environment === 'development' ? 'asterweft_dev' : 'asterweft';
+  return environment === 'development' ? 'locus_dev' : 'locus';
 }
 
 export function resolveGlobalConfigDir(

@@ -23,14 +23,14 @@ function registerProductionShutdown(): void {
 }
 
 function watchUsesPolling(): boolean | undefined {
-  const value = process.env.ASTERWEFT_WATCH_USE_POLLING;
+  const value = process.env.LOCUS_WATCH_USE_POLLING;
   if (value === 'true') return true;
   if (value === 'false') return false;
   return undefined;
 }
 
 function watchIntervalMs(): number | undefined {
-  const value = process.env.ASTERWEFT_WATCH_INTERVAL_MS;
+  const value = process.env.LOCUS_WATCH_INTERVAL_MS;
   if (!value) return undefined;
   const interval = Number.parseInt(value, 10);
   return Number.isInteger(interval) && interval >= 100 ? interval : undefined;

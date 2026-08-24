@@ -14,13 +14,13 @@ export const links: Route.LinksFunction = () => [
     rel: 'icon',
     type: 'image/png',
     sizes: '32x32',
-    href: '/icons/asterweft-mark-32.png',
+    href: '/icons/locus-mark-32.png',
   },
   {
     rel: 'icon',
     type: 'image/png',
     sizes: '16x16',
-    href: '/icons/asterweft-mark-16.png',
+    href: '/icons/locus-mark-16.png',
   },
 ];
 
@@ -53,7 +53,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(()=>{try{const theme=localStorage.getItem('asterweft-theme');const preference=theme==='light'||theme==='dark'?theme:'system';const dark=preference==='dark'||(preference==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.querySelector('meta[name="color-scheme"]').content=preference==='system'?'light dark':preference;document.documentElement.classList.add(dark?'dark':'light')}catch{}})()`,
+            __html: `(()=>{try{const theme=localStorage.getItem('locus-theme');const preference=theme==='light'||theme==='dark'?theme:'system';const dark=preference==='dark'||(preference==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.querySelector('meta[name="color-scheme"]').content=preference==='system'?'light dark':preference;document.documentElement.classList.add(dark?'dark':'light')}catch{}})()`,
           }}
         />
       </head>
@@ -102,5 +102,5 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 export function meta() {
-  return [{ title: 'Asterweft — Knowledge, woven together' }];
+  return [{ title: 'Locus — Knowledge, woven together' }];
 }

@@ -83,7 +83,7 @@ const SETTINGS_NAV: SettingsNavItem[] = [
     label: '关于',
     description: '当前软件版本与运行环境。',
     group: '关于',
-    keywords: ['版本', 'Asterweft'],
+    keywords: ['版本', 'Locus'],
     icon: FluentIconInfo,
   },
 ];
@@ -122,7 +122,7 @@ export function SettingsDialog({
         showCloseButton={false}
       >
         <DialogDescription className="sr-only">
-          调整 Asterweft 的外观与其他偏好。
+          调整 Locus 的外观与其他偏好。
         </DialogDescription>
         <SettingsBrowser onNavigate={() => setOpen(false)} />
       </DialogContent>
@@ -494,7 +494,7 @@ function AboutPanel() {
   return (
     <div className="flex flex-col gap-6">
       <SettingsBlock title="应用">
-        <SettingsRow description="Knowledge, woven together" label="Asterweft">
+        <SettingsRow description="Knowledge, woven together" label="Locus">
           <Badge variant="secondary">v0.1.0</Badge>
         </SettingsRow>
       </SettingsBlock>

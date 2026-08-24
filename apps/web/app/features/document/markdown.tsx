@@ -183,7 +183,7 @@ function DocumentMarkdown({
       a: (props: ComponentProps<'a'> & { href?: string }) => (
         <MarkdownLink {...props} assets={assets} documentPath={documentPath} />
       ),
-      'asterweft-wiki-link': (props: { path?: string }) => (
+      'locus-wiki-link': (props: { path?: string }) => (
         <WikiLink {...props} documentsByPath={documentsByPath} />
       ),
       attachments: (props: { error?: unknown; items?: unknown }) => (

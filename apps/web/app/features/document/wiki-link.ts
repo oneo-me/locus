@@ -99,11 +99,7 @@ function wikiLinkInlineRule(
       const rawPath = state.src.slice(start + 2, pos);
       if (parseWikiLinkArticlePath(rawPath) === null) return false;
       if (!silent) {
-        const token = state.push(
-          'mdc_inline_component',
-          'asterweft-wiki-link',
-          0,
-        );
+        const token = state.push('mdc_inline_component', 'locus-wiki-link', 0);
         token.attrs = [['path', rawPath.trim()]];
         token.content = rawPath.trim();
       }
@@ -118,14 +114,14 @@ function wikiLinkInlineRule(
 const markdownItWikiLink: MarkdownItPlugin = (markdown) => {
   markdown.inline.ruler.before(
     'comark_inline_span',
-    'asterweft_wiki_link',
+    'locus_wiki_link',
     wikiLinkInlineRule,
   );
 };
 
 export function createWikiLinkPlugin(): ComarkPlugin {
   return {
-    name: 'asterweft-wiki-link',
+    name: 'locus-wiki-link',
     markdownItPlugins: [markdownItWikiLink],
   };
 }

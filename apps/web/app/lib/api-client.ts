@@ -29,7 +29,7 @@ export function apiUrl(
   path: string,
   query?: Record<string, string | undefined>,
 ) {
-  const url = new URL(path, 'http://asterweft.local');
+  const url = new URL(path, 'http://locus.local');
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined) url.searchParams.set(key, value);

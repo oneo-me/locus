@@ -33,7 +33,7 @@ const resolveArticlePathSchema = z
   );
 
 const mcpInstructions = [
-  'Asterweft exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library.',
+  'Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library.',
   'If the user provides a library-relative article path, call resolve_article directly; do not list or search first.',
   'Use search_articles for titles or keywords; use list_articles to browse children.',
   'Each result includes an article path for hierarchy navigation plus absolute file and directory paths.',
@@ -79,11 +79,11 @@ function withLocalPaths(
   };
 }
 
-export function createAsterweftMcpServer(library: DocumentLibrary): McpServer {
+export function createLocusMcpServer(library: DocumentLibrary): McpServer {
   const rootPath = library.getRootPath();
   const server = new McpServer(
     {
-      name: 'asterweft',
+      name: 'locus',
       version: '0.1.0',
     },
     {

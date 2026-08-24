@@ -26,7 +26,7 @@ const pendingThumbnails = new Map<string, Promise<ThumbnailData>>();
 
 export function assetThumbnailCacheKey(asset: DocumentAsset): string {
   return createHash('sha256')
-    .update(`asterweft-thumbnail-v${assetThumbnailVersion}\0`)
+    .update(`locus-thumbnail-v${assetThumbnailVersion}\0`)
     .update(new Uint8Array(asset.data))
     .digest('hex');
 }

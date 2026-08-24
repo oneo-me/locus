@@ -11,7 +11,7 @@ import { createWikiLinkPlugin } from './wiki-link';
 
 const allowedElementNames = new Set([
   'a',
-  'asterweft-wiki-link',
+  'locus-wiki-link',
   'attachments',
   'blockquote',
   'br',
@@ -57,7 +57,7 @@ function sanitizeNode(node: ComarkNode) {
 }
 
 const safeElementsPlugin: ComarkPlugin = {
-  name: 'asterweft-safe-elements',
+  name: 'locus-safe-elements',
   post(state) {
     if (!state.tree) return;
     for (const node of state.tree.nodes) sanitizeNode(node);

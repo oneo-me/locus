@@ -2,10 +2,10 @@ import { reactRouter } from '@react-router/dev/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
-const isE2E = process.env.ASTERWEFT_E2E === '1';
-const webHost = process.env.ASTERWEFT_WEB_HOST?.trim() || '127.0.0.1';
+const isE2E = process.env.LOCUS_E2E === '1';
+const webHost = process.env.LOCUS_WEB_HOST?.trim() || '127.0.0.1';
 const webPort = Number.parseInt(
-  process.env.ASTERWEFT_WEB_PORT?.trim() || process.env.PORT?.trim() || '3000',
+  process.env.LOCUS_WEB_PORT?.trim() || process.env.PORT?.trim() || '3000',
   10,
 );
 const serverPort = Number.parseInt(

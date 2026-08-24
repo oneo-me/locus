@@ -938,7 +938,7 @@ export function documentImageFilename(title: string): string {
     .replace(/[<>:"/\\|?*]/g, '-')
     .replace(/\.+$/g, '')
     .trim();
-  return `${safeTitle || 'asterweft-note'}.png`;
+  return `${safeTitle || 'locus-note'}.png`;
 }
 
 export async function downloadDocumentAsImage(

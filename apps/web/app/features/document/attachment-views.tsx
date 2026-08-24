@@ -166,7 +166,7 @@ export function createAttachmentViewsPlugin({
   documentPath: string;
 }): ComarkPlugin {
   return {
-    name: 'asterweft-attachment-views',
+    name: 'locus-attachment-views',
     post(state) {
       if (!state.tree) return;
       for (const node of state.tree.nodes) {

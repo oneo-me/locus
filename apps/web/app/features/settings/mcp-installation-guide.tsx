@@ -19,7 +19,7 @@ export function createClientGuides(mcpEndpoint: string) {
       label: 'Codex',
       description: '在终端运行命令。Codex CLI 与 IDE 扩展会共享这项配置。',
       codeLabel: '终端',
-      code: `codex mcp add asterweft --url ${mcpEndpoint}`,
+      code: `codex mcp add locus --url ${mcpEndpoint}`,
       verification: '进入 Codex 后运行 /mcp 检查连接。',
     },
     {
@@ -27,7 +27,7 @@ export function createClientGuides(mcpEndpoint: string) {
       label: 'Claude Code',
       description: '在终端添加一个 HTTP 类型的 MCP 服务。',
       codeLabel: '终端',
-      code: `claude mcp add --transport http asterweft ${mcpEndpoint}`,
+      code: `claude mcp add --transport http locus ${mcpEndpoint}`,
       verification: '进入 Claude Code 后运行 /mcp 检查连接。',
     },
     {
@@ -37,7 +37,7 @@ export function createClientGuides(mcpEndpoint: string) {
       codeLabel: '~/.cursor/mcp.json',
       code: `{
   "mcpServers": {
-    "asterweft": {
+    "locus": {
       "url": "${mcpEndpoint}"
     }
   }
@@ -49,7 +49,7 @@ export function createClientGuides(mcpEndpoint: string) {
       label: 'OpenCode',
       description: '在终端添加一个远程 MCP 服务。',
       codeLabel: '终端',
-      code: `opencode mcp add asterweft --url ${mcpEndpoint}`,
+      code: `opencode mcp add locus --url ${mcpEndpoint}`,
       verification: '运行 opencode mcp list 检查连接状态。',
     },
     {
@@ -57,7 +57,7 @@ export function createClientGuides(mcpEndpoint: string) {
       label: '其他客户端',
       description: '在支持 MCP 的客户端中手动添加远程服务。',
       codeLabel: '连接参数',
-      code: `Name: asterweft
+      code: `Name: locus
 Transport: Streamable HTTP
 URL: ${mcpEndpoint}
 Authentication: none`,

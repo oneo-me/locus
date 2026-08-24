@@ -42,7 +42,7 @@ export function WorkspaceBrandMark() {
         className="size-full object-cover"
         draggable={false}
         height={64}
-        src="/icons/asterweft-mark-64.png"
+        src="/icons/locus-mark-64.png"
         width={64}
       />
     </span>
@@ -120,7 +120,7 @@ export function WorkspaceHeader({
     >
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <Link
-          aria-label="Asterweft 首页"
+          aria-label="Locus 首页"
           className="flex min-w-0 cursor-default items-center gap-2.5 rounded-lg pr-1 no-underline outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
           state={workspaceMobilePrimaryState}
           to={{
@@ -139,7 +139,7 @@ export function WorkspaceHeader({
           </div>
           <div className="min-w-0 flex-1">
             <span className="block truncate text-sm leading-5 font-medium text-foreground">
-              Asterweft
+              Locus
             </span>
             <div
               className="truncate text-xs leading-4 font-normal text-muted-foreground"

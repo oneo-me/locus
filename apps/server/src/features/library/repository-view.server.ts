@@ -11,7 +11,7 @@ export interface LibraryRepositoryView {
 }
 
 function gitRepositoryDisabled(): boolean {
-  const value = process.env.ASTERWEFT_GIT_DISABLED;
+  const value = process.env.LOCUS_GIT_DISABLED;
   return value === '1' || value === 'true';
 }
 

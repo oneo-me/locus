@@ -1,20 +1,20 @@
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { getLibrary } from '~/features/library/instance.server';
 import { readGlobalSettings } from '~/features/settings/global-settings.server';
-import { createAsterweftMcpServer } from './server';
+import { createLocusMcpServer } from './server';
 
 interface McpRequestHandlerDependencies {
   getLibrary?: typeof getLibrary;
   readGlobalSettings?: typeof readGlobalSettings;
 }
 
-export function createAsterweftMcpRequestHandler(
+export function createLocusMcpRequestHandler(
   dependencies: McpRequestHandlerDependencies = {},
 ) {
   const resolveLibrary = dependencies.getLibrary ?? getLibrary;
   const resolveSettings = dependencies.readGlobalSettings ?? readGlobalSettings;
   const handler = createMcpHandler(
-    async () => createAsterweftMcpServer(await resolveLibrary()),
+    async () => createLocusMcpServer(await resolveLibrary()),
     {
       legacy: 'stateless',
       responseMode: 'auto',
@@ -32,4 +32,4 @@ export function createAsterweftMcpRequestHandler(
   };
 }
 
-export const handleMcpRequest = createAsterweftMcpRequestHandler();
+export const handleMcpRequest = createLocusMcpRequestHandler();

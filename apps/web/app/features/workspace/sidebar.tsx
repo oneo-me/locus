@@ -137,7 +137,7 @@ export function WorkspaceSidebar({
 
     const target = sidebar.current?.querySelector<HTMLElement>(
       currentPath === undefined
-        ? 'a[aria-label="Asterweft 首页"]'
+        ? 'a[aria-label="Locus 首页"]'
         : '[aria-current="page"]',
     );
     if (!target) return;

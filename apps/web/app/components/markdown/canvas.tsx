@@ -13,10 +13,10 @@ import {
 
 const invalidCanvasContentMessage =
   '请在 ::canvas 区域中仅放置一个 html fenced code block。';
-const canvasThemeMessageType = 'asterweft:canvas-theme';
-const canvasRenderMessageType = 'asterweft:canvas-render';
-const canvasResizeMessageType = 'asterweft:canvas-resize';
-const canvasSnapshotMessageType = 'asterweft:canvas-snapshot';
+const canvasThemeMessageType = 'locus:canvas-theme';
+const canvasRenderMessageType = 'locus:canvas-render';
+const canvasResizeMessageType = 'locus:canvas-resize';
+const canvasSnapshotMessageType = 'locus:canvas-snapshot';
 const defaultCanvasHeight = 160;
 const tailwindBrowserScriptUrl = new URL(
   '../../../node_modules/@tailwindcss/browser/dist/index.global.js',
@@ -69,7 +69,7 @@ function prepareCanvas(node: ComarkNode) {
 
 export function createCanvasPlugin(): ComarkPlugin {
   return {
-    name: 'asterweft-canvas',
+    name: 'locus-canvas',
     post(state) {
       if (!state.tree) return;
       for (const node of state.tree.nodes) prepareCanvas(node);

@@ -10,5 +10,5 @@ export default function DesignSystemRoute() {
 }
 
 export function meta() {
-  return [{ title: '设计系统 — Asterweft' }];
+  return [{ title: '设计系统 — Locus' }];
 }

@@ -10,9 +10,9 @@ export function colorSchemeForTheme(theme: Theme): string {
 /**
  * 与 `index.html` 中首屏内联脚本共用的存储键，
  * 两侧必须保持一致。localStorage 仅作首屏防闪缓存；
- * 权威来源是 `~/.oneo/asterweft/settings.json`。
+ * 权威来源是 `~/.oneo/locus/settings.json`。
  */
-export const THEME_STORAGE_KEY = 'asterweft-theme';
+export const THEME_STORAGE_KEY = 'locus-theme';
 
 type ThemeProviderProps = {
   children: React.ReactNode;
