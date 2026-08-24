@@ -4,13 +4,15 @@ import {
   parseAssetPath,
 } from '@locus/document-library/contracts/asset';
 import { createAssetResponse } from '~/features/asset/response';
-import { readAssetThumbnail } from '~/features/asset/thumbnail.server';
+import {
+  ensureAssetThumbnailCacheDir,
+  readAssetThumbnail,
+} from '~/features/asset/thumbnail.server';
 import { isDocumentIconName } from '@locus/document-library/contracts/document-icon';
 import type { DocumentLibrary } from '@locus/document-library/server/document-library';
 import type { DocumentAsset } from '@locus/document-library/contracts/library-types';
 import { getLibrary } from '~/features/library/instance.server';
 import { urlPathToDocumentPath } from '@locus/document-library/contracts/library-route';
-import { ensureAssetThumbnailCacheDir } from '~/features/settings/global-paths.server';
 
 export async function createRouteAssetResponse(
   request: Request,

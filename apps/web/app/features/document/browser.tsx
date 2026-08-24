@@ -6,9 +6,7 @@ import {
 import { libraryReferenceScheme } from '@locus/document-library/contracts/library-reference';
 import type { DocumentContent } from '@locus/document-library/contracts/library-types';
 import FluentIconErrorCircle from '@oneo/fluentui-icons-like-react/FluentIconErrorCircle';
-import FluentIconImageCopy from '@oneo/fluentui-icons-like-react/FluentIconImageCopy';
 import FluentIconTextQuote from '@oneo/fluentui-icons-like-react/FluentIconTextQuote';
-import { DownloadIcon } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 import { Link, useRevalidator } from 'react-router';
 import { Alert, AlertDescription } from '@locus/ui/components/alert';
@@ -19,16 +17,9 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@locus/ui/components/empty';
-import { Spinner } from '@locus/ui/components/spinner';
 import { useDocumentApi } from '~/lib/document-api-context';
 import { deriveYamlPanelHue } from './atmosphere';
 import { MarkdownContent } from './markdown';
-import {
-  copyDocumentAsImage,
-  documentExportRootSelector,
-  documentImageFilename,
-  downloadDocumentAsImage,
-} from './document-export';
 import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
 import {
@@ -155,20 +146,12 @@ function DocumentArticle({
   };
 
   return (
-    <div className="relative min-h-full" data-document-export-root>
+    <div className="relative min-h-full">
       <DocumentHeaderAtmosphere title={document.title} />
-      <article
-        className="relative mx-auto flex w-[calc(100%-2rem)] max-w-[52rem] flex-col gap-6 py-4 md:w-[calc(100%-4rem)] md:pt-6 md:pb-14"
-        data-document-export-content
-      >
+      <article className="relative mx-auto flex w-[calc(100%-2rem)] max-w-[52rem] flex-col gap-6 py-4 md:w-[calc(100%-4rem)] md:pt-6 md:pb-14">
         <header className="flex flex-col gap-3">
           <DocumentYamlMetadata
-            actions={
-              <DocumentActions
-                path={document.directory}
-                title={document.title}
-              />
-            }
+            actions={<DocumentActions path={document.directory} />}
             document={document}
             error={metadataError}
             onImageRemove={removeIconImage}
@@ -213,16 +196,8 @@ export function formatDocumentReference(path: string): string {
   return `${libraryReferenceScheme}${path}`;
 }
 
-export function DocumentActions({
-  path,
-  title,
-}: {
-  path: string;
-  title: string;
-}) {
-  const [imageStatus, setImageStatus] = useState<string | null>(null);
+export function DocumentActions({ path }: { path: string }) {
   const [referenceStatus, setReferenceStatus] = useState<string | null>(null);
-  const [imagePending, setImagePending] = useState(false);
 
   const copyValue = async (value: string) => {
     setReferenceStatus(null);
@@ -230,83 +205,8 @@ export function DocumentActions({
     setReferenceStatus(copied ? '已复制文章引用' : '文章引用复制失败');
   };
 
-  const exportRoot = () =>
-    globalThis.document?.querySelector<HTMLElement>(
-      documentExportRootSelector,
-    ) ?? null;
-
-  const copyAsImage = async () => {
-    setImageStatus('正在生成图片');
-    setImagePending(true);
-    try {
-      const root = exportRoot();
-      const copied = root ? await copyDocumentAsImage(root) : false;
-      setImageStatus(copied ? '已复制为图片' : '复制为图片失败');
-    } finally {
-      setImagePending(false);
-    }
-  };
-
-  const downloadAsImage = async () => {
-    setImageStatus('正在生成图片');
-    setImagePending(true);
-    try {
-      const root = exportRoot();
-      const downloaded = root
-        ? await downloadDocumentAsImage(root, documentImageFilename(title))
-        : false;
-      setImageStatus(downloaded ? '已下载图片' : '下载图片失败');
-    } finally {
-      setImagePending(false);
-    }
-  };
-
   return (
-    <div
-      className="flex flex-nowrap items-center justify-end gap-1.5"
-      data-document-actions
-      data-document-export-exclude
-    >
-      <Button
-        aria-busy={imagePending || undefined}
-        aria-label={imagePending ? '正在生成图片' : '复制为图片'}
-        className="phone-hidden"
-        disabled={imagePending}
-        onClick={() => {
-          void copyAsImage();
-        }}
-        size="icon-sm"
-        title={imageStatus ?? '复制为图片'}
-        variant="secondary"
-      >
-        {imagePending ? (
-          <Spinner aria-label="正在生成图片" data-icon="inline-start" />
-        ) : (
-          <FluentIconImageCopy
-            aria-hidden="true"
-            data-icon="inline-start"
-            title={null}
-          />
-        )}
-      </Button>
-      <Button
-        aria-busy={imagePending || undefined}
-        aria-label={imagePending ? '正在生成图片' : '下载图片'}
-        className="phone-only"
-        disabled={imagePending}
-        onClick={() => {
-          void downloadAsImage();
-        }}
-        size="icon-sm"
-        title={imageStatus ?? '下载图片'}
-        variant="secondary"
-      >
-        {imagePending ? (
-          <Spinner aria-label="正在生成图片" data-icon="inline-start" />
-        ) : (
-          <DownloadIcon aria-hidden="true" data-icon="inline-start" />
-        )}
-      </Button>
+    <div className="flex flex-nowrap items-center justify-end gap-1.5">
       <Button
         aria-label="复制文章引用"
         className="phone-hidden"
@@ -323,9 +223,6 @@ export function DocumentActions({
           title={null}
         />
       </Button>
-      <p aria-live="polite" className="sr-only" role="status">
-        {imageStatus}
-      </p>
       <p aria-live="polite" className="sr-only" role="status">
         {referenceStatus}
       </p>
@@ -368,10 +265,7 @@ export function DocumentYamlMetadata({
           onImageRemove={onImageRemove}
           onImageUpload={onImageUpload}
         />
-        <h1
-          className="col-start-2 min-w-0 truncate text-xl leading-7 font-medium"
-          data-document-export-title
-        >
+        <h1 className="col-start-2 min-w-0 truncate text-xl leading-7 font-medium">
           {document.title}
         </h1>
         {actions ? (

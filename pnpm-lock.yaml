@@ -84,9 +84,6 @@ importers:
       comark:
         specifier: 0.5.1
         version: 0.5.1(katex@0.17.0)(shiki@4.4.2)
-      html-to-image:
-        specifier: ^1.11.13
-        version: 1.11.13
       isbot:
         specifier: ^5
         version: 5.2.1
@@ -2066,9 +2063,6 @@ packages:
   hono@4.13.0:
     resolution: {integrity: sha512-jhunvfHWxd7J5EFfSgH4xsYJzSe/lfqbUCxiyyeaQasUsXeEHXtzVid+7EOGByc5JnFa23SSFL3Y2RV/z1T+eQ==}
     engines: {node: '>=16.9.0'}
-
-  html-to-image@1.11.13:
-    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
 
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
@@ -4795,8 +4789,6 @@ snapshots:
     optional: true
 
   hono@4.13.0: {}
-
-  html-to-image@1.11.13: {}
 
   html-void-elements@3.0.0:
     optional: true

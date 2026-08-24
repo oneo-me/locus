@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "NODE_ENV=development react-router dev",
+    "dev": "react-router dev",
     "build": "react-router build",
     "preview": "pnpm run build && vite preview",
     "typecheck": "react-router typegen && tsc --noEmit"
@@ -21,7 +21,6 @@
     "@react-router/node": "^8",
     "@tailwindcss/browser": "4.3.3",
     "comark": "0.5.1",
-    "html-to-image": "^1.11.13",
     "isbot": "^5",
     "lucide-react": "^1.26.0",
     "react": "^19.2.7",

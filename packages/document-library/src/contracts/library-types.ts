@@ -59,7 +59,6 @@ export interface SearchDocumentsResult {
 
 export interface LibraryStatus {
   rootPath: string;
-  cachePath: string;
   documentCount: number;
   watching: boolean;
   refreshing: boolean;

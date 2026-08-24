@@ -5,7 +5,10 @@ import type {
   LibraryWorkspaceViewInput,
 } from '@locus/document-library/contracts/library-api';
 import { isPreviewableImageAsset } from '@locus/document-library/contracts/asset';
-import { readAssetThumbnail } from '../asset/thumbnail.server';
+import {
+  ensureAssetThumbnailCacheDir,
+  readAssetThumbnail,
+} from '../asset/thumbnail.server';
 import { maxDocumentIconBytes } from '@locus/document-library/contracts/document-icon';
 import type {
   DocumentContent,
@@ -15,7 +18,6 @@ import { getLibrary } from './instance.server';
 import { readLibraryNavigation } from './navigation';
 import { readLibraryRepositoryView } from './repository-view.server';
 import { resolveLibrarySelection } from './selection.server';
-import { ensureAssetThumbnailCacheDir } from '../settings/global-paths.server';
 import { readLibraryState, updateLibraryDocumentOrder } from './state.server';
 
 async function readAssetImageSizes(

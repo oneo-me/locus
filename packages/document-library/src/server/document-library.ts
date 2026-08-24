@@ -104,28 +104,21 @@ const maxRefreshRetries = 3;
 const defaultWatchMaxWaitMs = 1_000;
 
 export interface DocumentLibraryOptions {
-  cachePath?: string;
   watch?: boolean;
   watchDebounceMs?: number;
-  watchIntervalMs?: number;
   watchMaxWaitMs?: number;
-  watchUsePolling?: boolean;
 }
 
 export type LibraryChangeListener = (status: LibraryStatus) => void;
 
 export class DocumentLibrary {
   readonly #requestedRootPath: string;
-  readonly #requestedCachePath?: string;
   readonly #shouldWatch: boolean;
   readonly #watchDebounceMs: number;
-  readonly #watchIntervalMs: number;
   readonly #watchMaxWaitMs: number;
-  readonly #watchUsePolling: boolean;
   readonly #listeners = new Set<LibraryChangeListener>();
   readonly #pendingDocumentPaths = new Set<string>();
   #rootPath = '';
-  #cachePath = '';
   #cache: DocumentCache | null = null;
   #watcher: FSWatcher | null = null;
   #refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -140,17 +133,12 @@ export class DocumentLibrary {
     const normalizedRoot = rootPath.trim();
     if (!normalizedRoot) throw new Error('文档库路径不能为空。');
     this.#requestedRootPath = resolve(normalizedRoot);
-    this.#requestedCachePath = options.cachePath;
     this.#shouldWatch = options.watch ?? true;
     this.#watchDebounceMs = options.watchDebounceMs ?? 120;
     this.#watchMaxWaitMs = Math.max(
       this.#watchDebounceMs,
       options.watchMaxWaitMs ?? defaultWatchMaxWaitMs,
     );
-    this.#watchUsePolling =
-      options.watchUsePolling ?? process.platform === 'darwin';
-    this.#watchIntervalMs =
-      options.watchIntervalMs ?? (this.#watchUsePolling ? 200 : 1_000);
   }
 
   static async open(
@@ -166,11 +154,7 @@ export class DocumentLibrary {
     if (this.#cache) return;
     mkdirSync(this.#requestedRootPath, { recursive: true });
     this.#rootPath = realpathSync(this.#requestedRootPath);
-    this.#cachePath = resolve(
-      this.#requestedCachePath ?? resolve(this.#rootPath, 'cache.sqlite'),
-    );
-    mkdirSync(dirname(this.#cachePath), { recursive: true });
-    this.#cache = new DocumentCache(this.#cachePath);
+    this.#cache = new DocumentCache();
     await this.refresh();
     if (this.#shouldWatch) await this.#startWatcher();
   }
@@ -184,7 +168,6 @@ export class DocumentLibrary {
     const cache = this.#requireCache();
     return {
       rootPath: this.#rootPath,
-      cachePath: this.#cachePath,
       documentCount: cache.count(),
       watching: this.#watcher !== null,
       refreshing: this.#refreshing || this.#watchBatchStartedAt !== null,
@@ -420,13 +403,6 @@ export class DocumentLibrary {
   ): ArticleAttachment {
     const document = this.#getArticle(input.path);
     const target = resolveNewAsset(this.#rootPath, document.path, input.name);
-    if (
-      target === this.#cachePath ||
-      target.startsWith(`${this.#cachePath}-`)
-    ) {
-      throw new Error('不能把文档库缓存文件作为附件写入。');
-    }
-
     if (existsSync(target)) {
       if (!document.assets.includes(input.name)) {
         throw new Error(`同名路径不是可覆盖的附件：${input.name}`);
@@ -928,7 +904,6 @@ export class DocumentLibrary {
     this.#fullRefreshPending = false;
     this.#watchBatchStartedAt = null;
     this.#invalidateDerivedViews();
-    this.#cache?.close();
     this.#cache = null;
   }
 
@@ -999,17 +974,9 @@ export class DocumentLibrary {
     const watcher = watch(this.#rootPath, {
       ignoreInitial: true,
       persistent: true,
-      usePolling: this.#watchUsePolling,
-      interval: this.#watchIntervalMs,
-      binaryInterval: Math.max(this.#watchIntervalMs, 1_000),
+      usePolling: false,
       ignored: (path, stats) => {
         const name = basename(path);
-        if (
-          path === this.#cachePath ||
-          path.startsWith(`${this.#cachePath}-`)
-        ) {
-          return true;
-        }
         return Boolean(
           stats?.isDirectory() &&
           (name.startsWith('.') || ignoredDirectories.has(name)),
@@ -1207,11 +1174,7 @@ export class DocumentLibrary {
         ) {
           return false;
         }
-        const absolutePath = resolve(directory, entry.name);
-        return (
-          absolutePath !== this.#cachePath &&
-          !absolutePath.startsWith(`${this.#cachePath}-`)
-        );
+        return true;
       })
       .map((entry) => entry.name)
       .sort((left, right) => left.localeCompare(right));

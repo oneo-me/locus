@@ -1,10 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
-  currentEnvironment,
-  ensureGlobalConfigDir,
-  resolveGlobalSettingsPath,
-  type RuntimeEnvironment,
-} from './global-paths.server';
+  ensureDataDirectory,
+  resolveDataDirectory,
+} from '~/data-directory.server';
 import {
   type GlobalSettings,
   normalizeGlobalSettings,
@@ -16,11 +15,12 @@ export type {
 } from '@locus/document-library/contracts/global-settings';
 export { DEFAULT_GLOBAL_SETTINGS } from '@locus/document-library/contracts/global-settings';
 
-export function readGlobalSettings(
-  environment: RuntimeEnvironment = currentEnvironment(),
-  home?: string,
-): GlobalSettings {
-  const settingsPath = resolveGlobalSettingsPath(environment, home);
+function resolveSettingsPath(home?: string): string {
+  return join(resolveDataDirectory(home), 'settings.json');
+}
+
+export function readGlobalSettings(home?: string): GlobalSettings {
+  const settingsPath = resolveSettingsPath(home);
   if (!existsSync(settingsPath)) {
     return normalizeGlobalSettings(null);
   }
@@ -35,14 +35,13 @@ export function readGlobalSettings(
 
 export function writeGlobalSettings(
   patch: Partial<GlobalSettings>,
-  environment: RuntimeEnvironment = currentEnvironment(),
   home?: string,
 ): GlobalSettings {
-  const settingsPath = resolveGlobalSettingsPath(environment, home);
-  ensureGlobalConfigDir(environment, home);
+  const settingsPath = resolveSettingsPath(home);
+  ensureDataDirectory(home);
 
   const next = normalizeGlobalSettings({
-    ...readGlobalSettings(environment, home),
+    ...readGlobalSettings(home),
     ...patch,
   });
   writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8');

@@ -1,12 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   existsSync,
+  mkdirSync,
   readFileSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import { resolveDataDirectory } from '~/data-directory.server';
 import sharp from 'sharp';
 import type {
   DocumentAsset,
@@ -23,6 +25,12 @@ interface ThumbnailData {
 }
 
 const pendingThumbnails = new Map<string, Promise<ThumbnailData>>();
+
+export function ensureAssetThumbnailCacheDir(home?: string): string {
+  const directory = join(resolveDataDirectory(home), 'thumbnails');
+  mkdirSync(directory, { recursive: true });
+  return directory;
+}
 
 export function assetThumbnailCacheKey(asset: DocumentAsset): string {
   return createHash('sha256')

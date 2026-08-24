@@ -258,10 +258,6 @@ function GalleryThumbnail({
         <img
           alt=""
           className="size-full object-cover"
-          data-document-export-image-source={getAssetUrl(
-            documentPath,
-            item.name,
-          )}
           decoding="async"
           height={item.height}
           loading="lazy"
@@ -391,7 +387,6 @@ export function InlineAttachmentImage({
             {...props}
             alt=""
             className={cn('h-auto max-w-full', className)}
-            data-document-export-image-source={getAssetUrl(documentPath, name)}
             decoding={props.decoding ?? 'async'}
             loading={props.loading ?? 'lazy'}
             onError={(event) => {

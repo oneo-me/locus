@@ -7,11 +7,9 @@ import {
 } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import {
-  currentEnvironment,
-  ensureLibraryStatePath,
-  resolveLibraryStatePath,
-  type RuntimeEnvironment,
-} from '~/features/settings/global-paths.server';
+  ensureDataDirectory,
+  resolveDataDirectory,
+} from '~/data-directory.server';
 import {
   type LibraryState,
   normalizeLibraryState,
@@ -19,11 +17,12 @@ import {
 
 export { normalizeLibraryState } from '@locus/document-library/contracts/library-state';
 
-export function readLibraryState(
-  environment: RuntimeEnvironment = currentEnvironment(),
-  home?: string,
-): LibraryState {
-  const path = resolveLibraryStatePath(environment, home);
+function resolveLibraryStatePath(home?: string): string {
+  return join(resolveDataDirectory(home), 'state.json');
+}
+
+export function readLibraryState(home?: string): LibraryState {
+  const path = resolveLibraryStatePath(home);
   if (!existsSync(path)) return normalizeLibraryState(null);
   try {
     return normalizeLibraryState(JSON.parse(readFileSync(path, 'utf8')));
@@ -32,13 +31,9 @@ export function readLibraryState(
   }
 }
 
-function writeLibraryState(
-  state: LibraryState,
-  environment: RuntimeEnvironment = currentEnvironment(),
-  home?: string,
-): LibraryState {
+function writeLibraryState(state: LibraryState, home?: string): LibraryState {
   const normalized = normalizeLibraryState(state);
-  const path = ensureLibraryStatePath(environment, home);
+  const path = join(ensureDataDirectory(home), 'state.json');
   const temporaryPath = join(
     dirname(path),
     `.${basename(path)}.${crypto.randomUUID()}.tmp`,
@@ -57,10 +52,9 @@ function writeLibraryState(
 
 export function updateLibraryDocumentOrder(
   items: Array<{ path: string; order: number }>,
-  environment: RuntimeEnvironment = currentEnvironment(),
   home?: string,
 ): LibraryState {
-  const current = readLibraryState(environment, home);
+  const current = readLibraryState(home);
   return writeLibraryState(
     {
       ...current,
@@ -69,7 +63,6 @@ export function updateLibraryDocumentOrder(
         ...Object.fromEntries(items.map((item) => [item.path, item.order])),
       },
     },
-    environment,
     home,
   );
 }
