@@ -4,6 +4,7 @@
 @import '@fontsource-variable/geist';
 @import './typeset.css';
 
+@source '.';
 @source '../../../apps/web/app';
 
 @custom-variant dark (&:is(.dark *));
