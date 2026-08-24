@@ -6,6 +6,8 @@ AGENTS.md
 
 node_modules
 build/
+dist/
+.build*/
 data/
 *.local
 

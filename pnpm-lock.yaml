@@ -3,11 +3,15 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
+  injectWorkspacePackages: true
 
 importers:
 
   .:
     devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
       oxfmt:
         specifier: ^0.63.0
         version: 0.63.0
@@ -17,15 +21,18 @@ importers:
       oxlint-tsgolint:
         specifier: ^7.0.2001
         version: 7.0.2001
+      tsx:
+        specifier: ^4.23.9
+        version: 4.23.9
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
 
   apps/server:
     dependencies:
       '@hono/node-server':
         specifier: ^1.19.17
         version: 1.19.17(hono@4.13.0)
-      '@locus/document-library':
-        specifier: workspace:*
-        version: link:../../packages/document-library
       '@modelcontextprotocol/server':
         specifier: ^2.0.0-beta.5
         version: 2.0.0
@@ -39,6 +46,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@locus/document-library':
+        specifier: workspace:*
+        version: link:../../packages/document-library
       '@types/node':
         specifier: ^24.10.1
         version: 24.13.3
@@ -48,6 +58,9 @@ importers:
       typescript:
         specifier: ~7.0.2
         version: 7.0.2
+      vite:
+        specifier: ^8.2.0
+        version: 8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.9)(yaml@2.9.0)
 
   apps/web:
     dependencies:

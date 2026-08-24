@@ -2,24 +2,29 @@
   "name": "@locus/server",
   "version": "0.1.0",
   "private": true,
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "scripts": {
+    "build": "vite build",
     "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
+    "start": "node dist/server.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.17",
-    "@locus/document-library": "workspace:*",
     "@modelcontextprotocol/server": "^2.0.0-beta.5",
     "hono": "^4.13.0",
     "sharp": "^0.35.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@locus/document-library": "workspace:*",
     "@types/node": "^24.10.1",
     "tsx": "^4.23.9",
-    "typescript": "~7.0.2"
+    "typescript": "~7.0.2",
+    "vite": "^8.2.0"
   },
   "engines": {
     "node": ">=22.22.0",

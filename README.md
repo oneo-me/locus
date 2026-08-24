@@ -73,9 +73,20 @@ Markdown 文件是内容的唯一事实来源；索引和 Git 状态均为可重
 ```bash
 pnpm dev
 pnpm build
+pnpm run deploy
 pnpm typecheck
 pnpm check
 pnpm format
 ```
+
+`pnpm build` 会在项目根目录生成可独立运行的 `.build`：其中包含编译后的 Hono 服务与 SPA、生产依赖、独立 `package.json` 和 `pnpm-lock.yaml`。候选服务通过启动与路由检查后才会替换原产物，构建失败时原产物保持不变。构建过程记录在 `.build/build.log`。
+
+`pnpm run deploy` 会完成构建并在后台启动正式服务。正式服务默认使用端口 `3001`，也可以传入一个端口参数：
+
+```bash
+pnpm run deploy 4000
+```
+
+Hono 在指定端口同源提供前端、API 与 MCP，运行输出记录在 `.build/runtime.log`，进程信息记录在 `.build/server.json`。重复部署时会自动结束上一个由部署命令启动的进程；如果目标端口被其他进程占用，命令会展示 PID 与启动命令，并且只在输入 `y` 后结束该进程并继续部署。
 
 项目的产品、设计、架构和包边界以 `asterweft://projects/locus` 下的 Locus 笔记为准。

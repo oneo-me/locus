@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import { serveStatic } from '@hono/node-server/serve-static';
 import type {
   ReorderDocumentsInput,
   UpdateDocumentIconImageInput,
@@ -32,7 +33,16 @@ async function body<T>(context: Context): Promise<T> {
   return (await context.req.json()) as T;
 }
 
-export function createApp() {
+function isServerPath(path: string): boolean {
+  return (
+    path === '/api' ||
+    path.startsWith('/api/') ||
+    path === '/mcp' ||
+    path.startsWith('/mcp/')
+  );
+}
+
+export function createApp(staticRoot?: string) {
   const app = new Hono();
 
   app.get('/api/health', (context) => context.json({ status: 'ok' as const }));
@@ -74,6 +84,46 @@ export function createApp() {
     );
   });
   app.all('/mcp', (context) => handleMcpRequest(context.req.raw));
+
+  if (staticRoot) {
+    const serveClient = serveStatic({ root: staticRoot });
+    const serveClientFallback = serveStatic({
+      root: staticRoot,
+      path: 'index.html',
+    });
+
+    app.use('/assets/*', async (context, next) => {
+      const response = await serveClient(context, next);
+      if (response?.ok) {
+        response.headers.set(
+          'Cache-Control',
+          'public, max-age=31536000, immutable',
+        );
+      }
+      return response;
+    });
+    app.use('*', async (context, next) => {
+      if (
+        isServerPath(context.req.path) ||
+        context.req.path.startsWith('/assets/') ||
+        (context.req.method !== 'GET' && context.req.method !== 'HEAD')
+      ) {
+        return next();
+      }
+      context.header('Cache-Control', 'no-cache');
+      return serveClient(context, next);
+    });
+    app.get('*', async (context, next) => {
+      if (
+        isServerPath(context.req.path) ||
+        context.req.path.startsWith('/assets/')
+      ) {
+        return next();
+      }
+      context.header('Cache-Control', 'no-cache');
+      return serveClientFallback(context, next);
+    });
+  }
 
   app.notFound((context) => context.json({ error: 'Not Found' }, 404));
   app.onError((error) => jsonError(error, 500));
