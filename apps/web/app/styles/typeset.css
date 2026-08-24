@@ -1,0 +1,625 @@
+/*
+ * shadcn/typeset
+ * https://ui.shadcn.com/docs/typeset.
+ * Desktop app keeps the base size fixed for a single window layout.
+ */
+
+@layer components {
+  .typeset {
+    --typeset-font-body: inherit;
+    --typeset-font-heading: var(--font-heading);
+    --typeset-font-mono: var(--font-mono);
+    --typeset-size: 1em;
+    --typeset-leading: 1.6;
+    --typeset-flow: 1em;
+  }
+
+  .typeset-document {
+    --typeset-font-body: inherit;
+    --typeset-font-heading: inherit;
+    --typeset-font-mono: var(--font-mono);
+    --typeset-foreground: var(--foreground);
+    --typeset-muted: var(--muted-foreground);
+    --typeset-rule: var(--border);
+    --typeset-surface: var(--muted);
+  }
+
+  .typeset .document-wide-block {
+    inline-size: calc(100cqw - 2rem);
+    margin-inline: calc((100% - (100cqw - 2rem)) / 2);
+  }
+
+  .typeset :is(.document-adaptive-block, table) {
+    inline-size: max-content;
+    min-inline-size: 100%;
+    max-inline-size: calc(100cqw - 2rem);
+    position: relative;
+    inset-inline-start: 50%;
+    translate: -50% 0;
+  }
+
+  .typeset figure.canvas-block {
+    margin-block-start: var(--typeset-flow);
+    margin-block-end: 0;
+  }
+}
+
+@layer components {
+  .typeset {
+    font-family: var(--typeset-font-body);
+    font-size: var(--typeset-size);
+    line-height: var(--typeset-leading);
+    color: var(--typeset-foreground, var(--color-foreground, currentColor));
+    overflow-wrap: break-word;
+    margin-trim: block-start;
+
+    --typeset-muted: var(
+      --color-muted-foreground,
+      color-mix(in oklab, currentColor 60%, transparent)
+    );
+    --typeset-rule: var(
+      --color-border,
+      color-mix(in oklab, currentColor 20%, transparent)
+    );
+    --typeset-surface: var(
+      --color-muted,
+      color-mix(in oklab, currentColor 8%, transparent)
+    );
+    --typeset-mark: color-mix(
+      in oklab,
+      var(--color-warning, oklch(0.86 0.17 95)) 40%,
+      transparent
+    );
+  }
+
+  .typeset
+    *:not(
+      :where(
+        .not-typeset,
+        [data-not-typeset],
+        .not-typeset *,
+        [data-not-typeset] *
+      )
+    ) {
+    /* Paragraphs. */
+    &:where(p) {
+      margin-block-start: var(--typeset-flow);
+      margin-block-end: 0;
+    }
+
+    /* Headings. */
+    &:where(h1, h2, h3, h4, h5, h6) {
+      color: var(--typeset-foreground, var(--color-foreground, currentColor));
+      font-family: var(--typeset-font-heading);
+      font-weight: 500;
+      margin-block-end: 0;
+    }
+    &:where(h1) {
+      font-size: 1.25rem;
+      line-height: 1.75rem;
+      margin-block-start: var(--typeset-flow);
+    }
+    &:where(h2) {
+      font-size: 1.125rem;
+      line-height: 1.75rem;
+      margin-block-start: calc(var(--typeset-flow) * 1.25);
+    }
+    &:where(h3) {
+      font-size: 1rem;
+      line-height: 1.5rem;
+      margin-block-start: var(--typeset-flow);
+    }
+    &:where(h4) {
+      font-size: 0.875rem;
+      line-height: 1.375rem;
+      margin-block-start: var(--typeset-flow);
+    }
+    &:where(h5) {
+      font-size: 0.875rem;
+      line-height: 1.375rem;
+      color: var(--typeset-muted);
+      margin-block-start: var(--typeset-flow);
+    }
+    &:where(h6) {
+      font-size: 0.875rem;
+      line-height: 1.375rem;
+      color: var(--typeset-muted);
+      margin-block-start: var(--typeset-flow);
+    }
+    /* Anchors. */
+    &:where([id]) {
+      scroll-margin-block-start: var(--typeset-flow);
+    }
+
+    /* Headings own the space below them. */
+    &:where(h1 + *, h2 + *, h3 + *, h4 + *, h5 + *, h6 + *) {
+      margin-block-start: 0.75em;
+    }
+    &:where(:is(h1, h2, h3, h4) :is(code)) {
+      font-size: 0.9em;
+    }
+
+    /* Links. Badges and document inline links provide their own treatment. */
+    &:where(a:not([data-slot='badge'])) {
+      color: inherit;
+      font-weight: 500;
+      text-decoration-line: underline;
+      text-decoration-color: color-mix(in oklab, currentColor 30%, transparent);
+    }
+    &:where(a:not([data-slot='badge']):hover) {
+      text-decoration-color: currentColor;
+    }
+    &:where(a:not([data-slot='badge']):focus-visible) {
+      outline: 2px solid var(--color-ring, currentColor);
+      outline-offset: 2px;
+      border-radius: 0.125em;
+    }
+    &:where(:is(h1, h2, h3, h4, h5, h6) :is(a:not([data-slot='badge']))) {
+      font-weight: inherit;
+    }
+    &:where(.document-inline-link) {
+      align-items: center;
+      background-color: color-mix(in oklab, var(--primary) 12%, transparent);
+      background-image: linear-gradient(
+        to bottom,
+        color-mix(in oklab, white 10%, transparent) 0%,
+        transparent 32%
+      );
+      border: 1px solid color-mix(in oklab, var(--primary) 28%, transparent);
+      border-radius: 9999px;
+      box-shadow: 0 0 0 0 transparent;
+      color: inherit;
+      display: inline-flex;
+      font-size: 0.95em;
+      font-weight: inherit;
+      gap: 0.3em;
+      line-height: 1.25;
+      margin-block: calc(-0.18em - 1px);
+      padding: 0.18em 0.5em;
+      text-decoration: none;
+      transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        box-shadow 150ms ease;
+      vertical-align: middle;
+    }
+    &:where(a.document-inline-link:hover) {
+      background-color: color-mix(in oklab, var(--primary) 18%, transparent);
+      border-color: color-mix(in oklab, var(--primary) 50%, transparent);
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 8%, transparent);
+      text-decoration: none;
+    }
+    &:where(.document-inline-link[data-invalid]) {
+      background-color: color-mix(
+        in oklab,
+        var(--destructive) 12%,
+        transparent
+      );
+      border-color: color-mix(in oklab, var(--destructive) 32%, transparent);
+      color: var(--destructive);
+    }
+    &:where(.document-inline-link[data-invalid]:hover) {
+      background-color: color-mix(
+        in oklab,
+        var(--destructive) 18%,
+        transparent
+      );
+      border-color: color-mix(in oklab, var(--destructive) 54%, transparent);
+      box-shadow: 0 0 0 2px
+        color-mix(in oklab, var(--destructive) 8%, transparent);
+    }
+    &:where(.document-inline-link > [data-icon]) {
+      align-items: center;
+      align-self: center;
+      block-size: 0.8em;
+      display: inline-flex;
+      flex: none;
+      inline-size: 0.8em;
+      justify-content: center;
+      line-height: 1;
+    }
+    &:where(.document-inline-link > [data-icon] > *) {
+      display: block;
+    }
+
+    /* Inline semantics. */
+    &:where(strong, b) {
+      font-weight: 600;
+    }
+    &:where(:is(h1, h2, h3, h4) :is(strong, b)) {
+      font-weight: 600;
+    }
+    &:where(mark) {
+      background-color: var(--typeset-mark);
+      color: inherit;
+      padding: 0.05em 0.15em;
+      border-radius: 0.2em;
+    }
+    &:where(abbr[title]) {
+      text-decoration-line: underline;
+      text-decoration-style: dotted;
+      text-underline-offset: 0.2em;
+      cursor: help;
+    }
+    &:where(del, s) {
+      color: var(--typeset-muted);
+      text-decoration-line: line-through;
+    }
+    &:where(sup, sub) {
+      font-size: 0.75em;
+      line-height: 0;
+      position: relative;
+      vertical-align: baseline;
+    }
+    &:where(sup) {
+      top: -0.5em;
+    }
+    &:where(sub) {
+      bottom: -0.25em;
+    }
+    &:where(sup a) {
+      text-decoration-line: none;
+      font-weight: 500;
+    }
+
+    /* Lists. */
+    &:where(ul) {
+      list-style-type: disc;
+    }
+    &:where(ol) {
+      list-style-type: decimal;
+    }
+    &:where(ul ul) {
+      list-style-type: circle;
+    }
+    &:where(ul ul ul) {
+      list-style-type: square;
+    }
+    &:where(ol[type='a' i]) {
+      list-style-type: lower-alpha;
+    }
+    &:where(ol[type='i' i]) {
+      list-style-type: lower-roman;
+    }
+    &:where(ol[type='A' s]) {
+      list-style-type: upper-alpha;
+    }
+    &:where(ol[type='I' s]) {
+      list-style-type: upper-roman;
+    }
+    &:where(ul, ol) {
+      margin-block-start: var(--typeset-flow);
+      margin-block-end: 0;
+      padding-inline-start: 1.5em;
+    }
+    &:where(li) {
+      margin-block-start: 0.5em;
+      padding-inline-start: 0.4em;
+    }
+    &:where(li > p, li > ul, li > ol) {
+      margin-block-start: 0.5em;
+    }
+    &:where(ul > li)::marker {
+      color: var(--typeset-muted);
+    }
+    &:where(ol > li)::marker {
+      color: var(--typeset-muted);
+    }
+
+    /* GFM task lists. */
+    &:where(ul.contains-task-list) {
+      list-style-type: none;
+      padding-inline-start: 0.25em;
+    }
+    &:where(li.task-list-item > input[type='checkbox']) {
+      margin-inline-end: 0.5em;
+      vertical-align: -0.1em;
+      accent-color: var(--color-primary, currentColor);
+    }
+
+    /* Disclosures. */
+    &:where(details) {
+      margin-block-start: var(--typeset-flow);
+      margin-block-end: 0;
+    }
+    &:where(summary) {
+      cursor: pointer;
+      font-weight: 500;
+    }
+    &:where(summary)::marker {
+      color: var(--typeset-muted);
+    }
+
+    /* Keyboard keys. */
+    &:where(kbd) {
+      font-family: inherit;
+      font-size: 0.85em;
+      font-weight: 500;
+      border: 1px solid var(--typeset-rule);
+      border-block-end-width: 2px;
+      border-radius: min(calc(var(--radius, 0.5em) * 0.6), 0.35em);
+      padding: 0.0625em 0.35em;
+    }
+
+    /* Definition lists. */
+    &:where(dl) {
+      margin-block-start: var(--typeset-flow);
+      margin-block-end: 0;
+    }
+    &:where(dt) {
+      font-weight: 500;
+      margin-block-start: 1em;
+    }
+    &:where(dt + dt) {
+      margin-block-start: 0.25em;
+    }
+    &:where(dd) {
+      margin-block-start: 0.25em;
+      margin-inline-start: 0;
+      padding-inline-start: 1em;
+      color: var(--typeset-muted);
+    }
+
+    /* Inline code. */
+    &:where(:not(pre) > code) {
+      background-color: var(--typeset-surface);
+      border: 1px solid
+        color-mix(in oklab, var(--typeset-rule) 58%, transparent);
+      border-radius: 9999px;
+      color: inherit;
+      display: inline-block;
+      font-family: var(--typeset-font-mono);
+      font-size: 0.95em;
+      line-height: 1.25;
+      margin-block: -0.15em;
+      padding: 0.18em 0.5em;
+      vertical-align: baseline;
+    }
+
+    /* Rendered code and diagrams share one framed surface. */
+    &:where(figure.rendered-block) {
+      --rendered-block-surface: color-mix(
+        in oklab,
+        var(--typeset-surface) 72%,
+        transparent
+      );
+      background-color: var(--rendered-block-surface);
+      border: 1px solid
+        color-mix(in oklab, var(--typeset-rule) 45%, transparent);
+      border-radius: min(calc(var(--radius, 0.5em) * 0.8), 0.65em);
+      margin-block-start: var(--typeset-flow);
+      margin-block-end: 0;
+      margin-inline: 0;
+      min-width: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    :is(.dark *)&:where(figure.rendered-block) {
+      --rendered-block-surface: color-mix(
+        in oklab,
+        var(--typeset-surface) 92%,
+        transparent
+      );
+      border-color: color-mix(in oklab, var(--typeset-rule) 70%, transparent);
+    }
+
+    &:where(figure.rendered-block > figcaption.rendered-block__label) {
+      color: var(--typeset-muted);
+      background-color: var(--rendered-block-surface);
+      border-radius: 0.25rem;
+      font-family: var(--typeset-font-mono);
+      font-size: 0.75rem;
+      line-height: 1;
+      margin: 0;
+      max-width: calc(100% - 2em);
+      overflow: hidden;
+      padding: 0.25rem 0.375rem;
+      position: absolute;
+      inset-block-start: 0.5rem;
+      inset-inline-end: 0.5rem;
+      text-align: end;
+      text-overflow: ellipsis;
+      user-select: none;
+      white-space: nowrap;
+      z-index: 1;
+    }
+
+    /* Code blocks. */
+    &:where(figure.code-block > pre) {
+      background: transparent;
+      border: 0;
+      font-family: var(--typeset-font-mono);
+      font-size: 0.875em;
+      line-height: 1.5;
+      tab-size: 2;
+      direction: ltr;
+      border-radius: 0;
+      padding: 0.875em 1em;
+      overflow-x: auto;
+      margin: 0;
+    }
+    &:where(pre code) {
+      background-color: transparent;
+      font-family: inherit;
+      font-size: inherit;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    /* Blockquote. */
+    &:where(blockquote) {
+      border-inline-start: 2px solid var(--typeset-rule);
+      padding-inline-start: 1em;
+      margin-block-start: var(--typeset-flow);
+      margin-block-end: 0;
+      margin-inline: 0;
+    }
+
+    /* Dividers. */
+    &:where(hr) {
+      border: 0;
+      border-block-start: 1px solid var(--typeset-rule);
+      margin-block-start: calc(var(--typeset-flow) * 2.4);
+      margin-block-end: 0;
+    }
+    &:where(hr + h1, hr + h2, hr + h3, hr + h4) {
+      margin-block-start: var(--typeset-flow);
+    }
+
+    /* GFM footnotes. */
+    &:where(.footnotes, [data-footnotes]) {
+      margin-block-start: calc(var(--typeset-flow) * 2);
+      border-block-start: 1px solid var(--typeset-rule);
+      padding-block-start: var(--typeset-flow);
+      font-size: 0.875em;
+      color: var(--typeset-muted);
+    }
+
+    /* Media. */
+    &:where(img, video) {
+      border-radius: var(--radius, 0.5em);
+      max-width: 100%;
+      height: auto;
+      margin-block-start: var(--typeset-flow);
+      margin-block-end: 0;
+    }
+    &:where(p img) {
+      margin-block-start: 0;
+    }
+    &:where(figure) {
+      margin-block-start: var(--typeset-flow);
+      margin-block-end: 0;
+      margin-inline: 0;
+    }
+    &:where(figcaption, caption) {
+      color: var(--typeset-muted);
+      font-size: 0.875em;
+      text-align: center;
+      margin-block-start: calc(0.75em / 0.875);
+    }
+    &:where(caption) {
+      caption-side: bottom;
+    }
+
+    /* Tables. Separators sit on cells, not tr:last-child: append-safe.
+       Columns size from content and wrap after the adaptive width cap. */
+    &:where(table) {
+      --typeset-table-rule: color-mix(
+        in oklab,
+        var(--typeset-rule) 70%,
+        transparent
+      );
+      --typeset-table-heading: color-mix(
+        in oklab,
+        var(--typeset-surface) 72%,
+        transparent
+      );
+
+      table-layout: auto;
+      font-size: 1em;
+      line-height: 1.4;
+      font-variant-numeric: tabular-nums;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid var(--typeset-table-rule);
+      border-radius: min(calc(var(--radius, 0.5em) * 0.6), 0.5em);
+      overflow: hidden;
+      margin-block-start: var(--typeset-flow);
+      margin-block-end: 0;
+    }
+
+    &:where(thead) {
+      background-color: var(--typeset-table-heading);
+    }
+    &:where(thead th) {
+      font-weight: 500;
+      text-align: start;
+      padding: 0.4em 0.75em;
+      overflow-wrap: anywhere;
+    }
+    &:where(:is(tbody, tfoot) :is(td, th)) {
+      padding: 0.45em 0.75em;
+      text-align: start;
+      vertical-align: top;
+      border-block-start: 1px solid var(--typeset-table-rule);
+      overflow-wrap: anywhere;
+    }
+    &:where(tbody th, tfoot th) {
+      font-weight: 500;
+    }
+    &:where(th[align='center'], td[align='center']) {
+      text-align: center;
+    }
+    &:where(th[align='right'], td[align='right']) {
+      text-align: end;
+    }
+
+    /* Blocks inside list items keep the list's tighter rhythm. */
+    &:where(li > blockquote, li > table, li > figure) {
+      margin-block-start: 0.5em;
+    }
+    &:where(li > pre) {
+      margin-block-start: calc(0.5em / 0.875);
+    }
+
+    @media print {
+      &:where(pre, table, blockquote, figure) {
+        break-inside: avoid;
+      }
+      &:where(pre) {
+        max-height: none;
+        overflow: visible;
+      }
+      &:where(h1, h2, h3, h4) {
+        break-after: avoid;
+      }
+    }
+
+    /* Forced colors strips the code background, so give it a border. */
+    @media (forced-colors: active) {
+      &:where(:not(pre) > code) {
+        border: 1px solid;
+      }
+    }
+  }
+
+  /* First child adds no space above. Last so it wins ties. */
+  .typeset
+    > :where(:first-child):not(
+      :where(
+        .not-typeset,
+        [data-not-typeset],
+        .not-typeset *,
+        [data-not-typeset] *
+      )
+    ),
+  .typeset
+    > :where(:first-child)
+    > :where(:first-child):not(
+      :where(
+        .not-typeset,
+        [data-not-typeset],
+        .not-typeset *,
+        [data-not-typeset] *
+      )
+    ),
+  .typeset
+    :where(
+      li > :first-child,
+      blockquote > :first-child,
+      td > :first-child,
+      th > :first-child,
+      dd > :first-child,
+      figure > :first-child,
+      figure > picture > img
+    ):not(
+      :where(
+        .not-typeset,
+        [data-not-typeset],
+        .not-typeset *,
+        [data-not-typeset] *
+      )
+    ) {
+    margin-block-start: 0;
+  }
+}

@@ -1,0 +1,52 @@
+# Agent instructions (machine-specific)
+AGENTS.md
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.output
+build/
+.build/
+.build-stage-*/
+.build-previous-*/
+*.bun-build
+cache.sqlite
+cache.sqlite-shm
+cache.sqlite-wal
+data/
+*.local
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+!**/.env.example
+
+# Editor directories and files
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Design prototypes
+.design/
+
+# Browser tests
+playwright-report/
+test-results/
+.turbo/
+
+# typescript
+*.tsbuildinfo
+.react-router/

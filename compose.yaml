@@ -1,0 +1,14 @@
+services:
+  asterweft:
+    container_name: asterweft
+    build: .
+    restart: unless-stopped
+    ports:
+      - '2301:3000'
+    environment:
+      ASTERWEFT_LIBRARY_PATH: /library
+      ASTERWEFT_LIBRARY_HOST_PATH: ${ASTERWEFT_LIBRARY_PATH:-/Users/oneo/Documents/Notes}
+      ASTERWEFT_WATCH_USE_POLLING: 'true'
+    volumes:
+      - ${ASTERWEFT_LIBRARY_PATH:-/Users/oneo/Documents/Notes}:/library
+      - ~/.oneo/asterweft:/root/.oneo/asterweft

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "~/*": ["./app/*"]
+    }
+  },
+  "include": [
+    "scripts/**/*.ts",
+    "playwright.config.ts",
+    "tests/**/*.ts",
+    "vitest.scripts.config.ts"
+  ]
+}

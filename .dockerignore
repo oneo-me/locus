@@ -1,0 +1,9 @@
+.git
+.agents
+node_modules
+build
+.react-router
+test-results
+playwright-report
+.env*
+README.md

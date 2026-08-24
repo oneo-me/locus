@@ -1,0 +1,26 @@
+{
+  "name": "locus-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @locus/web dev",
+    "build": "pnpm --filter @locus/web build",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "test": "pnpm --filter @locus/web test",
+    "test:e2e": "pnpm --filter @locus/web test:e2e",
+    "typecheck": "pnpm --filter @locus/web typecheck"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.63.0",
+    "oxlint": "^1.78.0",
+    "oxlint-tsgolint": "^7.0.2001"
+  },
+  "engines": {
+    "node": ">=22.22.0",
+    "pnpm": ">=11.20.0"
+  },
+  "packageManager": "pnpm@11.22.0+sha512.1ff870c4c6133dfd88fb2afc46dd13d47f09c9794b438c6fdb47ca98caf3bc16381ee0be93a091b8e3824cf01f889f46d7d9e20910fb0be1ab0fb5baa80dd621"
+}
