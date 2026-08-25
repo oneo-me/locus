@@ -1,5 +1,5 @@
 import type { LibraryWorkspaceView } from '@locus/document-library/contracts/library-api';
-import FluentIconDocument from '@oneo/fluentui-icons-like-react/FluentIconDocument';
+import { FileTextIcon } from 'lucide-react';
 import { Button } from '@locus/ui/components/button';
 import {
   Empty,
@@ -28,7 +28,7 @@ export function WorkspaceDocumentLandingState({
         <Empty className="mx-auto mt-[18vh] w-[calc(100%-3rem)] max-w-xl">
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <FluentIconDocument aria-hidden="true" title={null} />
+              <FileTextIcon aria-hidden="true" />
             </EmptyMedia>
             <EmptyTitle>{title}</EmptyTitle>
             <EmptyDescription>{description}</EmptyDescription>

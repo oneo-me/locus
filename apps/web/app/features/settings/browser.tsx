@@ -1,10 +1,12 @@
-import FluentIconInfo from '@oneo/fluentui-icons-like-react/FluentIconInfo';
-import FluentIconPlugConnected from '@oneo/fluentui-icons-like-react/FluentIconPlugConnected';
-import FluentIconSettings from '@oneo/fluentui-icons-like-react/FluentIconSettings';
+import {
+  InfoIcon,
+  type LucideIcon,
+  PlugZapIcon,
+  SettingsIcon,
+} from 'lucide-react';
 import { useNavigate } from 'react-router';
 import {
   Children,
-  type ComponentType,
   type FormEvent,
   Fragment,
   isValidElement,
@@ -47,29 +49,24 @@ type SettingsSectionId = 'general' | 'mcp' | 'about';
 interface SettingsNavItem {
   id: SettingsSectionId;
   label: string;
-  icon: ComponentType<{
-    'aria-hidden'?: boolean | 'true' | 'false';
-    'data-icon'?: string;
-    size?: number;
-    title?: null;
-  }>;
+  icon: LucideIcon;
 }
 
 const SETTINGS_NAV: SettingsNavItem[] = [
   {
     id: 'general',
     label: '常规',
-    icon: FluentIconSettings,
+    icon: SettingsIcon,
   },
   {
     id: 'mcp',
     label: 'MCP',
-    icon: FluentIconPlugConnected,
+    icon: PlugZapIcon,
   },
   {
     id: 'about',
     label: '关于',
-    icon: FluentIconInfo,
+    icon: InfoIcon,
   },
 ];
 
@@ -125,11 +122,7 @@ function SettingsSidebar({
                   type="button"
                   variant={active ? 'selected' : 'ghost'}
                 >
-                  <Icon
-                    aria-hidden="true"
-                    data-icon="inline-start"
-                    title={null}
-                  />
+                  <Icon aria-hidden="true" data-icon="inline-start" />
                   {item.label}
                 </Button>
               </li>

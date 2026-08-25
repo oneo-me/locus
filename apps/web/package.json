@@ -17,7 +17,6 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@locus/document-library": "workspace:*",
     "@locus/ui": "workspace:*",
-    "@oneo/fluentui-icons-like-react": "^2.1.1",
     "@tailwindcss/browser": "4.3.3",
     "comark": "0.6.2",
     "isbot": "^5.2.1",

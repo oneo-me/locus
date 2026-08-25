@@ -1,4 +1,4 @@
-import FluentIconBot from '@oneo/fluentui-icons-like-react/FluentIconBot';
+import { BotIcon } from 'lucide-react';
 import {
   Empty,
   EmptyDescription,
@@ -16,7 +16,7 @@ export default function AgentsRoute() {
       <Empty className="max-w-lg">
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <FluentIconBot aria-hidden="true" title={null} />
+            <BotIcon aria-hidden="true" />
           </EmptyMedia>
           <EmptyTitle>Agent</EmptyTitle>
           <EmptyDescription>Agent 工作区将在这里显示。</EmptyDescription>

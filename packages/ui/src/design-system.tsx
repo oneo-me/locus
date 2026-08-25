@@ -1,8 +1,10 @@
-import FluentIconChevronRight from '@oneo/fluentui-icons-like-react/FluentIconChevronRight';
-import FluentIconDocument from '@oneo/fluentui-icons-like-react/FluentIconDocument';
-import FluentIconErrorCircle from '@oneo/fluentui-icons-like-react/FluentIconErrorCircle';
-import FluentIconInfo from '@oneo/fluentui-icons-like-react/FluentIconInfo';
-import FluentIconSearch from '@oneo/fluentui-icons-like-react/FluentIconSearch';
+import {
+  ChevronRightIcon,
+  CircleAlertIcon,
+  FileTextIcon,
+  InfoIcon,
+  SearchIcon,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Alert, AlertDescription, AlertTitle } from './components/alert';
 import { Badge } from './components/badge';
@@ -148,16 +150,16 @@ function ButtonPreview() {
       </DemoGroup>
       <DemoGroup label="图标尺寸">
         <Button aria-label="极小图标" size="icon-xs" variant="outline">
-          <FluentIconSearch aria-hidden="true" title={null} />
+          <SearchIcon aria-hidden="true" />
         </Button>
         <Button aria-label="较小图标" size="icon-sm" variant="outline">
-          <FluentIconSearch aria-hidden="true" title={null} />
+          <SearchIcon aria-hidden="true" />
         </Button>
         <Button aria-label="默认图标" size="icon" variant="outline">
-          <FluentIconSearch aria-hidden="true" title={null} />
+          <SearchIcon aria-hidden="true" />
         </Button>
         <Button aria-label="较大图标" size="icon-lg" variant="outline">
-          <FluentIconSearch aria-hidden="true" title={null} />
+          <SearchIcon aria-hidden="true" />
         </Button>
       </DemoGroup>
       <DemoGroup label="禁用">
@@ -241,7 +243,7 @@ function InputGroupPreview() {
       <DemoGroup label="带图标">
         <InputGroup>
           <InputGroupAddon>
-            <FluentIconSearch aria-hidden="true" title={null} />
+            <SearchIcon aria-hidden="true" />
           </InputGroupAddon>
           <InputGroupInput
             aria-label="搜索示例"
@@ -313,14 +315,14 @@ function AlertPreview() {
   return (
     <PreviewCard description="页面内的状态与错误提示。" title="Alert 提示">
       <Alert>
-        <FluentIconInfo aria-hidden="true" title={null} />
+        <InfoIcon aria-hidden="true" />
         <AlertTitle>同步已开启</AlertTitle>
         <AlertDescription>
           文档库变化会通过同源事件流自动推送到当前页面。
         </AlertDescription>
       </Alert>
       <Alert variant="destructive">
-        <FluentIconErrorCircle aria-hidden="true" title={null} />
+        <CircleAlertIcon aria-hidden="true" />
         <AlertTitle>无法保存元数据</AlertTitle>
         <AlertDescription>
           请检查 frontmatter 的 YAML 语法后重试。
@@ -336,7 +338,7 @@ function EmptyPreview() {
       <Empty className="border border-dashed">
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <FluentIconDocument aria-hidden="true" title={null} />
+            <FileTextIcon aria-hidden="true" />
           </EmptyMedia>
           <EmptyTitle>文档库还是空的</EmptyTitle>
           <EmptyDescription>
@@ -393,11 +395,7 @@ function CollapsiblePreview() {
             'data-[panel-open]:[&_svg]:rotate-90',
           )}
         >
-          <FluentIconChevronRight
-            data-icon="inline-start"
-            aria-hidden="true"
-            title={null}
-          />
+          <ChevronRightIcon data-icon="inline-start" aria-hidden="true" />
           切换详情
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2 rounded-lg border p-3 text-muted-foreground">

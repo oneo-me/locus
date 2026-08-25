@@ -85,9 +85,6 @@ importers:
       '@locus/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@oneo/fluentui-icons-like-react':
-        specifier: ^2.1.1
-        version: 2.1.1(react@19.2.8)
       '@tailwindcss/browser':
         specifier: 4.3.3
         version: 4.3.3
@@ -153,9 +150,6 @@ importers:
       '@fontsource-variable/geist':
         specifier: ^5.3.0
         version: 5.3.0
-      '@oneo/fluentui-icons-like-react':
-        specifier: ^2.1.1
-        version: 2.1.1(react@19.2.8)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -802,11 +796,6 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
-
-  '@oneo/fluentui-icons-like-react@2.1.1':
-    resolution: {integrity: sha512-hPq3Tcpya/627zBhkMMiLUT/d7F7B5CNg78RRxMA1BTR7D0zwcm4z/LSwDzCpTV8IUGjLAWcbi/XWzChjxNxOQ==}
-    peerDependencies:
-      react: '>=16.8.0'
 
   '@oxc-project/types@0.146.0':
     resolution: {integrity: sha512-XC0QsnnhVe7sLIWmYmdPw7x5P0h4W8vUU3Nv1ySgWXtvCz8NizoAEpGXA0sOYoJQV2Rl13LgURAHQ5cI5ILCSA==}
@@ -3796,10 +3785,6 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
-
-  '@oneo/fluentui-icons-like-react@2.1.1(react@19.2.8)':
-    dependencies:
-      react: 19.2.8
 
   '@oxc-project/types@0.146.0': {}
 

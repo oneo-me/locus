@@ -5,8 +5,7 @@ import {
 } from '@locus/document-library/contracts/library-api';
 import { libraryReferenceScheme } from '@locus/document-library/contracts/library-reference';
 import type { DocumentContent } from '@locus/document-library/contracts/library-types';
-import FluentIconErrorCircle from '@oneo/fluentui-icons-like-react/FluentIconErrorCircle';
-import FluentIconTextQuote from '@oneo/fluentui-icons-like-react/FluentIconTextQuote';
+import { CircleAlertIcon, TextQuoteIcon } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 import { Link, useRevalidator } from 'react-router';
 import { Alert, AlertDescription } from '@locus/ui/components/alert';
@@ -113,7 +112,7 @@ function DocumentArticle({
           />
           {document.issue ? (
             <Alert variant="destructive">
-              <FluentIconErrorCircle aria-hidden="true" title={null} />
+              <CircleAlertIcon aria-hidden="true" />
               <AlertDescription>{document.issue}</AlertDescription>
             </Alert>
           ) : null}
@@ -168,11 +167,7 @@ export function DocumentActions({ path }: { path: string }) {
         title={referenceStatus ?? '复制文章引用'}
         variant="secondary"
       >
-        <FluentIconTextQuote
-          aria-hidden="true"
-          data-icon="inline-start"
-          title={null}
-        />
+        <TextQuoteIcon aria-hidden="true" data-icon="inline-start" />
       </Button>
       <p aria-live="polite" className="sr-only" role="status">
         {referenceStatus}

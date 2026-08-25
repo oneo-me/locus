@@ -26,8 +26,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import FluentIconChevronRight from '@oneo/fluentui-icons-like-react/FluentIconChevronRight';
-import { PaperclipIcon } from 'lucide-react';
+import { ChevronRightIcon, PaperclipIcon } from 'lucide-react';
 import {
   type ReactNode,
   useEffect,
@@ -469,11 +468,7 @@ function SortableDocumentTreeItem({
               type="button"
               variant="nav"
             >
-              <FluentIconChevronRight
-                aria-hidden="true"
-                variant="Filled"
-                title={null}
-              />
+              <ChevronRightIcon aria-hidden="true" />
             </Button>
           ) : (
             <span aria-hidden="true" />

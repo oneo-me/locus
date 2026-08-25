@@ -1,8 +1,11 @@
-import FluentIconBot from '@oneo/fluentui-icons-like-react/FluentIconBot';
-import FluentIconDocument from '@oneo/fluentui-icons-like-react/FluentIconDocument';
-import FluentIconEye from '@oneo/fluentui-icons-like-react/FluentIconEye';
-import FluentIconSettings from '@oneo/fluentui-icons-like-react/FluentIconSettings';
-import type { ComponentType, ReactNode } from 'react';
+import {
+  BotIcon,
+  EyeIcon,
+  FileTextIcon,
+  type LucideIcon,
+  SettingsIcon,
+} from 'lucide-react';
+import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
 import { buttonVariants } from '@locus/ui/components/button';
 import { cn } from '@locus/ui/utils';
@@ -10,17 +13,14 @@ import { cn } from '@locus/ui/utils';
 interface AppNavigationItem {
   label: string;
   path: string;
-  icon: ComponentType<{
-    'aria-hidden'?: boolean | 'true' | 'false';
-    title?: null;
-  }>;
+  icon: LucideIcon;
 }
 
 const APP_NAVIGATION: AppNavigationItem[] = [
-  { label: '笔记', path: '/notes', icon: FluentIconDocument },
-  { label: 'Agent', path: '/agents', icon: FluentIconBot },
-  { label: '设计系统', path: '/design-system', icon: FluentIconEye },
-  { label: '设置', path: '/settings', icon: FluentIconSettings },
+  { label: '笔记', path: '/notes', icon: FileTextIcon },
+  { label: 'Agent', path: '/agents', icon: BotIcon },
+  { label: '设计系统', path: '/design-system', icon: EyeIcon },
+  { label: '设置', path: '/settings', icon: SettingsIcon },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               title={label}
               to={path}
             >
-              <Icon aria-hidden="true" title={null} />
+              <Icon aria-hidden="true" />
             </NavLink>
           ))}
         </nav>
