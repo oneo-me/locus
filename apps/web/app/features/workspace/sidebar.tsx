@@ -177,7 +177,7 @@ function LibraryNavigation({
 
       {documents.length > 0 || directories.length > 0 ? (
         <nav
-          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-4"
           aria-label="文档树"
           ref={navRef}
         >
@@ -455,11 +455,7 @@ function SortableDocumentTreeItem({
         open={open}
       >
         <div
-          className={cn(
-            'grid w-full min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-center rounded-lg',
-            selected && 'bg-sidebar-accent text-sidebar-accent-foreground',
-          )}
-          data-selected={selected ? '' : undefined}
+          className="grid w-full min-w-0 grid-cols-[1.625rem_minmax(0,1fr)] items-center"
           ref={setDroppableNodeRef}
         >
           {hasChildren ? (
@@ -467,15 +463,20 @@ function SortableDocumentTreeItem({
               aria-expanded={open}
               aria-label={open ? `收起 ${title}` : `展开 ${title}`}
               className={cn(
-                'justify-self-center text-sidebar-foreground/40 transition-transform',
+                'size-6.5 justify-self-center rounded-full text-sidebar-foreground/40 transition-transform',
                 open && 'rotate-90',
               )}
               onClick={() => onToggleOpen(path)}
-              size="icon-2xs"
+              size="icon-xs"
               type="button"
               variant="nav"
             >
-              <ChevronRightIcon aria-hidden="true" />
+              <ChevronRightIcon
+                aria-hidden="true"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+              />
             </Button>
           ) : (
             <span aria-hidden="true" />
@@ -635,9 +636,12 @@ function DocumentUrlLink({
       className={buttonVariants({
         variant: 'nav',
         size: 'nav',
-        className:
-          'h-8 w-full min-w-0 cursor-default justify-start overflow-hidden px-2.5 no-underline [&>*:first-child]:-ml-1',
+        className: cn(
+          'h-8 w-full min-w-0 cursor-default justify-start overflow-hidden px-2.5 no-underline',
+          selected && 'bg-sidebar-accent text-sidebar-accent-foreground',
+        ),
       })}
+      data-selected={selected ? '' : undefined}
       data-slot="button"
       draggable={false}
       onDragStart={(event) => event.preventDefault()}
