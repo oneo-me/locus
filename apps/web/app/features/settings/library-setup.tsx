@@ -22,7 +22,7 @@ export function LibrarySetup({ error }: { error?: string }) {
           <Link
             className={buttonVariants({ variant: 'default' })}
             state={{ libraryError: error }}
-            to="/settings/general"
+            to="/settings/library"
           >
             打开设置
           </Link>

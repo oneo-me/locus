@@ -16,6 +16,7 @@ export function normalizeWorkspaceSidebarWidth(value: unknown): number {
 
 export interface GlobalSettings {
   libraryPath: string | null;
+  defaultDocumentPath: string | null;
   theme: GlobalTheme;
   showGraphAttachments: boolean;
   mcpEnabled: boolean;
@@ -24,6 +25,7 @@ export interface GlobalSettings {
 
 export interface UpdateGlobalSettingsInput {
   libraryPath?: string;
+  defaultDocumentPath?: string | null;
   theme?: GlobalTheme;
   showGraphAttachments?: boolean;
   mcpEnabled?: boolean;
@@ -32,6 +34,7 @@ export interface UpdateGlobalSettingsInput {
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   libraryPath: null,
+  defaultDocumentPath: null,
   theme: 'system',
   showGraphAttachments: true,
   mcpEnabled: false,
@@ -53,6 +56,11 @@ export function normalizeGlobalSettings(value: unknown): GlobalSettings {
       typeof record.libraryPath === 'string' && record.libraryPath.trim()
         ? record.libraryPath.trim()
         : DEFAULT_GLOBAL_SETTINGS.libraryPath,
+    defaultDocumentPath:
+      typeof record.defaultDocumentPath === 'string' &&
+      record.defaultDocumentPath.trim()
+        ? record.defaultDocumentPath.trim()
+        : DEFAULT_GLOBAL_SETTINGS.defaultDocumentPath,
     theme: isGlobalTheme(record.theme)
       ? record.theme
       : DEFAULT_GLOBAL_SETTINGS.theme,

@@ -8,7 +8,8 @@ import {
   MIN_WORKSPACE_SIDEBAR_WIDTH,
   type UpdateGlobalSettingsInput,
 } from '@locus/document-library/contracts/global-settings';
-import { closeLibrary } from '~/features/library/instance.server';
+import { closeLibrary, getLibrary } from '~/features/library/instance.server';
+import { readLibraryNavigation } from '~/features/library/navigation';
 import { logInfo } from '~/logging';
 import { accessSync, constants, statSync } from 'node:fs';
 import { isAbsolute, normalize } from 'node:path';
@@ -25,6 +26,12 @@ export async function updateGlobalSettings(
   }
 
   const next: UpdateGlobalSettingsInput = {};
+  if (
+    input.libraryPath !== undefined &&
+    input.defaultDocumentPath !== undefined
+  ) {
+    throw new Error('不能同时更新文档库路径和默认笔记。');
+  }
   if (input.libraryPath !== undefined) {
     if (typeof input.libraryPath !== 'string' || !input.libraryPath.trim()) {
       throw new Error('文档库路径不能为空。');
@@ -40,6 +47,28 @@ export async function updateGlobalSettings(
       throw new Error('文档库路径必须指向可读写的现有目录。');
     }
     next.libraryPath = libraryPath;
+    next.defaultDocumentPath = null;
+  }
+  if (input.defaultDocumentPath !== undefined) {
+    if (input.defaultDocumentPath === null) {
+      next.defaultDocumentPath = null;
+    } else {
+      if (
+        typeof input.defaultDocumentPath !== 'string' ||
+        !input.defaultDocumentPath.trim()
+      ) {
+        throw new Error('默认笔记路径必须是非空字符串或 null。');
+      }
+      const defaultDocumentPath = input.defaultDocumentPath.trim();
+      const library = await getLibrary();
+      const document = readLibraryNavigation(library).documents.find(
+        (candidate) => candidate.path === defaultDocumentPath,
+      );
+      if (!document || document.directory.includes('/')) {
+        throw new Error('默认笔记必须是未归档的顶级笔记。');
+      }
+      next.defaultDocumentPath = defaultDocumentPath;
+    }
   }
   if (input.theme !== undefined) {
     if (

@@ -1,3 +1,4 @@
+import { getDocumentIconUrl } from '@locus/document-library/contracts/asset';
 import { ArchiveIcon, ArchiveRestoreIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useRevalidator } from 'react-router';
@@ -12,6 +13,7 @@ import {
   EmptyTitle,
 } from '@locus/ui/components/empty';
 import { useDocumentApi } from '~/lib/document-api-context';
+import { DocumentIcon } from '../document/icons';
 import { SettingsPage } from './page';
 import { SettingsRow, SettingsSection } from './section';
 
@@ -64,7 +66,19 @@ export function ArchiveSettings({
             <SettingsRow
               description={document.directory || '笔记库根目录'}
               key={document.path}
-              label={document.title}
+              label={
+                <span className="flex min-w-0 items-center gap-2">
+                  <DocumentIcon
+                    className="size-4 shrink-0 text-sm"
+                    icon={document.icon}
+                    imageSrc={getDocumentIconUrl(
+                      document.path,
+                      document.iconImageModifiedAt,
+                    )}
+                  />
+                  <span className="truncate">{document.title}</span>
+                </span>
+              }
             >
               <Button
                 disabled={pendingPath !== null}

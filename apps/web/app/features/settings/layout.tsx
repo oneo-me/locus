@@ -1,8 +1,8 @@
 import {
   ArchiveIcon,
   InfoIcon,
+  LibraryIcon,
   type LucideIcon,
-  NetworkIcon,
   PlugZapIcon,
   SettingsIcon,
 } from 'lucide-react';
@@ -23,21 +23,22 @@ interface SettingsNavGroup {
 
 const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
-    label: '偏好设置',
-    items: [
-      { label: '常规', path: '/settings/general', icon: SettingsIcon },
-      { label: '知识图谱', path: '/settings/graph', icon: NetworkIcon },
-    ],
+    label: '通用',
+    items: [{ label: '常规', path: '/settings/general', icon: SettingsIcon }],
   },
   {
-    label: '数据与连接',
+    label: '笔记库',
     items: [
+      { label: '配置', path: '/settings/library', icon: LibraryIcon },
       { label: '归档', path: '/settings/archives', icon: ArchiveIcon },
-      { label: 'MCP', path: '/settings/mcp', icon: PlugZapIcon },
     ],
   },
   {
-    label: '信息',
+    label: '连接',
+    items: [{ label: 'MCP', path: '/settings/mcp', icon: PlugZapIcon }],
+  },
+  {
+    label: '帮助',
     items: [{ label: '关于', path: '/settings/about', icon: InfoIcon }],
   },
 ];

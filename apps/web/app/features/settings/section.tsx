@@ -34,7 +34,7 @@ export function SettingsRow({
 }: {
   children: ReactNode;
   description?: string;
-  label: string;
+  label: ReactNode;
 }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 first:pt-0 last:pb-0">

@@ -18,7 +18,7 @@ export default [
     route('settings', 'routes/settings.tsx', [
       index('routes/settings-index.tsx'),
       route('general', 'routes/settings-general.tsx'),
-      route('graph', 'routes/settings-graph.tsx'),
+      route('library', 'routes/settings-library.tsx'),
       route('archives', 'routes/settings-archives.tsx'),
       route('mcp', 'routes/settings-mcp.tsx'),
       route('about', 'routes/settings-about.tsx'),
