@@ -10,6 +10,7 @@ import {
   getAssetUrl,
   getMarkdownAssetName,
 } from '@locus/document-library/contracts/asset';
+import { documentIconName } from '@locus/document-library/contracts/document-icon';
 
 const invalidCanvasContentMessage =
   '请在 ::canvas 区域中仅放置一个 html fenced code block。';
@@ -143,6 +144,59 @@ export function CanvasBlock({
   );
 }
 
+function resolveCanvasDocumentIconUrl(
+  source: string,
+  documentPath: string,
+): string | null {
+  if (
+    !source ||
+    source.startsWith('/') ||
+    source.startsWith('//') ||
+    /^[a-z][a-z\d+.-]*:/i.test(source)
+  ) {
+    return null;
+  }
+
+  const pathEnd = source.search(/[?#]/);
+  const encodedPath = pathEnd < 0 ? source : source.slice(0, pathEnd);
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURIComponent(encodedPath).normalize('NFC');
+  } catch {
+    return null;
+  }
+
+  const segments = decodedPath.replace(/^\.\//, '').split('/');
+  if (
+    segments.length === 0 ||
+    segments.some(
+      (segment) => !segment || segment === '.' || segment === '..',
+    ) ||
+    segments.at(-1)?.toLowerCase() !== documentIconName
+  ) {
+    return null;
+  }
+
+  const documentDirectory = canvasDocumentDirectory(documentPath);
+  if (documentDirectory === null) return null;
+
+  const iconDirectory = [documentDirectory, ...segments.slice(0, -1)]
+    .filter(Boolean)
+    .join('/');
+  const iconDocumentPath = iconDirectory
+    ? `${iconDirectory}/index.md`
+    : 'index.md';
+  return getAssetUrl(iconDocumentPath, documentIconName);
+}
+
+function canvasDocumentDirectory(documentPath: string): string | null {
+  return documentPath.endsWith('/index.md')
+    ? documentPath.slice(0, -'/index.md'.length)
+    : documentPath === 'index.md'
+      ? ''
+      : null;
+}
+
 function sanitizeCanvasFragment(
   source: string,
   documentPath: string,
@@ -175,7 +229,13 @@ function sanitizeCanvasFragment(
             attribute.name,
             getAssetUrl(documentPath, assetName),
           );
+          continue;
         }
+        const iconUrl = resolveCanvasDocumentIconUrl(
+          attribute.value,
+          documentPath,
+        );
+        if (iconUrl) element.setAttribute(attribute.name, iconUrl);
         continue;
       }
       if (
@@ -337,26 +397,32 @@ async function inlineCanvasAssets(source: string): Promise<string> {
   );
   await Promise.all(
     references.map(async ({ attribute, element, sourceUrl }) => {
-      try {
-        const response = await fetch(sourceUrl);
-        if (!response.ok) return;
-        const blob = await response.blob();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.addEventListener('error', () => reject(reader.error));
-          reader.addEventListener('load', () => {
-            if (typeof reader.result === 'string') resolve(reader.result);
-            else reject(new Error('无法读取画布附件。'));
-          });
-          reader.readAsDataURL(blob);
-        });
-        element.setAttribute(attribute, dataUrl);
-      } catch {
-        // The protected URL remains in place and displays its normal failure state.
-      }
+      const dataUrl = await readCanvasAssetDataUrl(sourceUrl);
+      if (dataUrl) element.setAttribute(attribute, dataUrl);
     }),
   );
   return template.innerHTML;
+}
+
+async function readCanvasAssetDataUrl(
+  sourceUrl: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch(sourceUrl);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('error', () => reject(reader.error));
+      reader.addEventListener('load', () => {
+        if (typeof reader.result === 'string') resolve(reader.result);
+        else reject(new Error('无法读取画布附件。'));
+      });
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 function canvasDocument(source: string, theme: CanvasTheme): string {
