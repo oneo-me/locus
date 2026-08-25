@@ -512,15 +512,6 @@ export function splitFilenameForMiddleEllipsis(
   ];
 }
 
-function assetTypeLabel(name: string): string {
-  const extensionStart = name.lastIndexOf('.');
-  if (extensionStart <= 0 || extensionStart === name.length - 1) return 'FILE';
-  return name
-    .slice(extensionStart + 1)
-    .toUpperCase()
-    .slice(0, 4);
-}
-
 export function AttachmentList({
   documentPath,
   error,
@@ -556,19 +547,13 @@ export function AttachmentList({
                     ? `在新标签页打开附件：${item.name}`
                     : `下载附件：${item.name}`
                 }
-                className="flex min-w-0 items-center gap-3 px-3 py-2.5 text-foreground no-underline transition-colors hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                className="flex min-w-0 items-center px-3 py-2.5 text-foreground no-underline transition-colors hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                 download={browserViewable ? undefined : item.name}
                 href={getAssetUrl(documentPath, item.name)}
                 rel={browserViewable ? 'noopener noreferrer' : undefined}
                 target={browserViewable ? '_blank' : undefined}
                 title={item.name}
               >
-                <span
-                  aria-hidden="true"
-                  className="grid size-9 shrink-0 place-items-center rounded-md bg-muted px-1 text-[0.625rem] font-semibold text-muted-foreground"
-                >
-                  {assetTypeLabel(item.name)}
-                </span>
                 <span className="min-w-0 flex-1 text-foreground">
                   <MiddleTruncatedFilename value={item.name} />
                 </span>
