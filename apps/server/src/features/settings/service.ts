@@ -57,6 +57,12 @@ export async function updateGlobalSettings(
     }
     next.mcpEnabled = input.mcpEnabled;
   }
+  if (input.showGraphAttachments !== undefined) {
+    if (typeof input.showGraphAttachments !== 'boolean') {
+      throw new Error('showGraphAttachments 必须是布尔值。');
+    }
+    next.showGraphAttachments = input.showGraphAttachments;
+  }
   if (input.workspaceSidebarWidth !== undefined) {
     if (
       typeof input.workspaceSidebarWidth !== 'number' ||

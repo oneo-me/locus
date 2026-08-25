@@ -1,6 +1,7 @@
 import {
   BotIcon,
   FileTextIcon,
+  NetworkIcon,
   PaletteIcon,
   type LucideIcon,
   SettingsIcon,
@@ -19,6 +20,7 @@ interface AppNavigationItem {
 const APP_NAVIGATION: AppNavigationItem[] = [
   { label: '笔记', path: '/notes', icon: FileTextIcon },
   { label: 'Agent', path: '/agents', icon: BotIcon },
+  { label: '知识图谱', path: '/graph', icon: NetworkIcon },
   { label: '设计系统', path: '/design-system', icon: PaletteIcon },
   { label: '设置', path: '/settings', icon: SettingsIcon },
 ];

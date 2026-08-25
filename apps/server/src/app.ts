@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type {
   ReorderDocumentsInput,
+  SetDocumentGraphParticipationInput,
   UpdateDocumentIconImageInput,
 } from '@locus/document-library/contracts/library-api';
 import type { UpdateGlobalSettingsInput } from '@locus/document-library/contracts/global-settings';
@@ -11,8 +12,10 @@ import { createRouteAssetResponse } from '~/features/asset/route.server';
 import { createWorkspaceEventsResponse } from '~/features/workspace/workspace-events';
 import {
   getLibrarySelection,
+  getLibraryGraph,
   getLibraryWorkspaceView,
   reorderDocuments,
+  setDocumentGraphParticipation,
   updateDocumentIconImage,
 } from '~/features/library/service';
 import { handleMcpRequest } from '~/features/mcp/handler.server';
@@ -54,6 +57,9 @@ export function createApp(staticRoot?: string) {
   app.get('/api/library', () =>
     jsonRoute('library.workspace.read', () => getLibraryWorkspaceView()),
   );
+  app.get('/api/library/graph', () =>
+    jsonRoute('library.graph.read', () => getLibraryGraph()),
+  );
   app.get('/api/library/document', (context) =>
     jsonRoute('library.document.read', () =>
       getLibrarySelection({ doc: context.req.query('doc') ?? '' }),
@@ -69,6 +75,13 @@ export function createApp(staticRoot?: string) {
   app.post('/api/library/reorder', async (context) =>
     jsonRoute('library.documents.reorder', async () =>
       reorderDocuments(await body<ReorderDocumentsInput>(context)),
+    ),
+  );
+  app.post('/api/library/graph-participation', async (context) =>
+    jsonRoute('library.graph_participation.update', async () =>
+      setDocumentGraphParticipation(
+        await body<SetDocumentGraphParticipationInput>(context),
+      ),
     ),
   );
   app.get('/api/settings', () => jsonRoute('settings.read', getGlobalSettings));

@@ -6,6 +6,8 @@ import {
   readLibraryRepositoryView,
   repositoryViewChanged,
 } from '~/features/library/repository-view.server';
+import { excludedDocumentGraphPaths } from '@locus/document-library/contracts/library-state';
+import { readLibraryState } from '~/features/library/state.server';
 
 const encoder = new TextEncoder();
 const HEARTBEAT_INTERVAL_MS = 5_000;
@@ -15,6 +17,7 @@ export async function createWorkspaceEventsResponse(
   request: Request,
 ): Promise<Response> {
   const library: DocumentLibrary = await getLibrary();
+  const includeGraph = new URL(request.url).searchParams.get('graph') === '1';
   let cleanup = () => {};
   let flushPendingSnapshot = () => {};
 
@@ -58,9 +61,22 @@ export async function createWorkspaceEventsResponse(
         const nextRepositoryView =
           repositoryView ?? readLibraryRepositoryView(library);
         repositoryRevision = nextRepositoryView.revision;
+        const state = includeGraph ? readLibraryState() : null;
         enqueue(
           `data: ${JSON.stringify({
             status: library.status(),
+            ...(state
+              ? {
+                  graph: library.getDocumentGraph(
+                    excludedDocumentGraphPaths(
+                      state,
+                      library
+                        .listAllDocuments()
+                        .map((document) => document.path),
+                    ),
+                  ),
+                }
+              : {}),
             repositoryChanges: nextRepositoryView.changes,
             repositoryError: nextRepositoryView.error,
             repositoryRevision: nextRepositoryView.revision,

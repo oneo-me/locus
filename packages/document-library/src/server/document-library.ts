@@ -49,6 +49,8 @@ import type {
   WriteArticleContentResult,
 } from './article-types.js';
 import { DocumentCache, type ParsedCacheDocument } from './document-cache.js';
+import type { DocumentGraph } from '../contracts/document-graph.js';
+import { buildDocumentGraph } from './document-graph.js';
 import {
   assertValidDocumentIcon,
   documentIconName,
@@ -120,6 +122,8 @@ export class DocumentLibrary {
   #fullRefreshPending = false;
   #watchBatchStartedAt: number | null = null;
   #documentSummaries: DocumentSummary[] | null = null;
+  #documentGraph: DocumentGraph | null = null;
+  #documentGraphExclusions = '';
 
   constructor(rootPath: string) {
     const normalizedRoot = rootPath.trim();
@@ -268,6 +272,23 @@ export class DocumentLibrary {
     const document = this.#requireCache().get(normalizedPath);
     if (!document) throw new Error(`文档不存在：${normalizedPath}`);
     return document;
+  }
+
+  getDocumentGraph(excludedPaths: readonly string[] = []): DocumentGraph {
+    const exclusions = JSON.stringify([...new Set(excludedPaths)].sort());
+    if (this.#documentGraph && this.#documentGraphExclusions === exclusions) {
+      return this.#documentGraph;
+    }
+    const excluded = new Set(excludedPaths);
+    const documents = this.#requireCache()
+      .all()
+      .map((document) => ({
+        ...document.summary,
+        content: document.content,
+      }));
+    this.#documentGraph = buildDocumentGraph(documents, excluded);
+    this.#documentGraphExclusions = exclusions;
+    return this.#documentGraph;
   }
 
   readAsset(path: string, assetName: string): DocumentAsset {
@@ -902,6 +923,8 @@ export class DocumentLibrary {
 
   #invalidateDerivedViews(): void {
     this.#documentSummaries = null;
+    this.#documentGraph = null;
+    this.#documentGraphExclusions = '';
   }
 
   #getArticle(path: string): DocumentContent {

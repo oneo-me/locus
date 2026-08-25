@@ -1,6 +1,7 @@
 import {
   InfoIcon,
   type LucideIcon,
+  NetworkIcon,
   PlugZapIcon,
   SettingsIcon,
 } from 'lucide-react';
@@ -43,8 +44,9 @@ import { Spinner } from '@locus/ui/components/spinner';
 import { McpEnabledSwitch } from '../settings/mcp-control';
 import { McpInstallationGuide } from '../settings/mcp-installation-guide';
 import { useGlobalSettings } from '../settings/global-settings-provider';
+import { GraphAttachmentsSwitch } from '../graph/attachments-control';
 
-type SettingsSectionId = 'general' | 'mcp' | 'about';
+type SettingsSectionId = 'general' | 'graph' | 'mcp' | 'about';
 
 interface SettingsNavItem {
   id: SettingsSectionId;
@@ -57,6 +59,11 @@ const SETTINGS_NAV: SettingsNavItem[] = [
     id: 'general',
     label: '常规',
     icon: SettingsIcon,
+  },
+  {
+    id: 'graph',
+    label: '知识图谱',
+    icon: NetworkIcon,
   },
   {
     id: 'mcp',
@@ -144,11 +151,26 @@ function SettingsPanel({
   switch (id) {
     case 'general':
       return <GeneralPanel libraryError={libraryError} />;
+    case 'graph':
+      return <GraphPanel />;
     case 'mcp':
       return <McpPanel />;
     case 'about':
       return <AboutPanel />;
   }
+}
+
+function GraphPanel() {
+  return (
+    <SettingsBlock title="显示">
+      <SettingsRow
+        description="在知识图谱中显示文档同目录附件节点。"
+        label="显示附件"
+      >
+        <GraphAttachmentsSwitch />
+      </SettingsRow>
+    </SettingsBlock>
+  );
 }
 
 function GeneralPanel({ libraryError }: { libraryError?: string }) {

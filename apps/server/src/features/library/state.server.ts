@@ -75,3 +75,17 @@ export function updateLibraryDocumentOrder(
     },
   });
 }
+
+export function updateDocumentGraphParticipation(
+  path: string,
+  participates: boolean,
+): LibraryState {
+  const current = readLibraryState();
+  return writeLibraryState({
+    ...current,
+    graphParticipation: {
+      ...current.graphParticipation,
+      [path]: participates,
+    },
+  });
+}

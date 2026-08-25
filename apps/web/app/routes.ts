@@ -13,6 +13,7 @@ export default [
       route('*', 'routes/workspace-document.tsx'),
     ]),
     route('agents', 'routes/agents.tsx'),
+    route('graph', 'routes/graph.tsx'),
     route('design-system', 'routes/design-system.tsx'),
     route('settings', 'routes/settings.tsx'),
   ]),

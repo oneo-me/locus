@@ -19,6 +19,8 @@ import { readLibraryNavigation } from './navigation';
 import { readLibraryRepositoryView } from './repository-view.server';
 import { resolveLibrarySelection } from './selection.server';
 import { readLibraryState, updateLibraryDocumentOrder } from './state.server';
+import { updateDocumentGraphParticipation } from './state.server';
+import { excludedDocumentGraphPaths } from '@locus/document-library/contracts/library-state';
 
 async function readAssetImageSizes(
   library: Awaited<ReturnType<typeof getLibrary>>,
@@ -74,6 +76,20 @@ export async function getLibraryWorkspaceView() {
     repositoryError: repositoryView.error,
     repositoryRevision: repositoryView.revision,
     libraryState: readLibraryState(),
+  };
+}
+
+export async function getLibraryGraph() {
+  const library = await getLibrary();
+  const state = readLibraryState();
+  const documentPaths = library
+    .listAllDocuments()
+    .map((document) => document.path);
+  return {
+    status: library.status(),
+    graph: library.getDocumentGraph(
+      excludedDocumentGraphPaths(state, documentPaths),
+    ),
   };
 }
 
@@ -145,4 +161,28 @@ export async function reorderDocuments(input: ReorderDocumentsInput) {
   updateLibraryDocumentOrder(items);
   logInfo('library.documents.reordered', { count: items.length });
   return { ok: true as const };
+}
+
+export interface SetDocumentGraphParticipationInput {
+  path: string;
+  participates: boolean;
+}
+
+export async function setDocumentGraphParticipation(
+  input: SetDocumentGraphParticipationInput,
+) {
+  if (!input || typeof input.path !== 'string' || !input.path.trim()) {
+    throw new Error('path 必须是非空字符串。');
+  }
+  if (typeof input.participates !== 'boolean') {
+    throw new Error('participates 必须是布尔值。');
+  }
+  const path = input.path.trim();
+  const library = await getLibrary();
+  library.getDocument(path);
+  const state = updateDocumentGraphParticipation(path, input.participates);
+  return {
+    ok: true as const,
+    participates: state.graphParticipation[path] ?? true,
+  };
 }

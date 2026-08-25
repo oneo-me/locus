@@ -10,6 +10,10 @@ export function parseWorkspaceEventSnapshot(
   try {
     const snapshot = JSON.parse(value) as Partial<WorkspaceEventSnapshot>;
     if (
+      (snapshot.graph !== undefined &&
+        (!snapshot.graph ||
+          !Array.isArray(snapshot.graph.nodes) ||
+          !Array.isArray(snapshot.graph.edges))) ||
       !snapshot.status ||
       !snapshot.navigation ||
       !Array.isArray(snapshot.navigation.directories) ||

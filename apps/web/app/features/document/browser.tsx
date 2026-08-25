@@ -4,6 +4,7 @@ import {
   type LibraryWorkspaceView,
 } from '@locus/document-library/contracts/library-api';
 import { libraryReferenceScheme } from '@locus/document-library/contracts/library-reference';
+import { documentGraphParticipation } from '@locus/document-library/contracts/library-state';
 import type { DocumentContent } from '@locus/document-library/contracts/library-types';
 import { CircleAlertIcon, CopyIcon } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
@@ -22,6 +23,7 @@ import { MarkdownContent } from './markdown';
 import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
 import { DocumentIconUpload } from './icon-upload';
+import { DocumentGraphParticipationControl } from './graph-participation-control';
 
 export function DocumentBrowser({
   data,
@@ -49,6 +51,10 @@ export function DocumentBrowser({
             key={data.selected.path}
             document={data.selected}
             documents={data.documents}
+            graphParticipation={documentGraphParticipation(
+              data.libraryState,
+              data.selected.path,
+            )}
           />
         ) : data.selectedPath ? null : data.documents.length === 0 ? (
           <MessageState title="文档库还是空的">
@@ -72,9 +78,11 @@ export function DocumentBrowser({
 function DocumentArticle({
   document,
   documents,
+  graphParticipation,
 }: {
   document: NonNullable<LibrarySelectionView['selected']>;
   documents: LibraryWorkspaceView['documents'];
+  graphParticipation: ReturnType<typeof documentGraphParticipation>;
 }) {
   const { updateDocumentIconImage } = useDocumentApi();
   const { revalidate } = useRevalidator();
@@ -104,7 +112,14 @@ function DocumentArticle({
       <article className="relative mx-auto flex w-[calc(100%-4rem)] max-w-[52rem] flex-col gap-6 pt-6 pb-14">
         <header className="flex flex-col gap-3">
           <DocumentYamlMetadata
-            actions={<DocumentActions path={document.directory} />}
+            actions={
+              <DocumentActions
+                documentPath={document.path}
+                graphParticipation={graphParticipation}
+                onGraphParticipationSaved={revalidate}
+                path={document.directory}
+              />
+            }
             document={document}
             error={iconError}
             onImageUpload={saveIconImage}
@@ -147,7 +162,17 @@ export function formatDocumentReference(path: string): string {
   return `${libraryReferenceScheme}${path}`;
 }
 
-export function DocumentActions({ path }: { path: string }) {
+export function DocumentActions({
+  documentPath,
+  graphParticipation,
+  onGraphParticipationSaved,
+  path,
+}: {
+  documentPath: string;
+  graphParticipation: ReturnType<typeof documentGraphParticipation>;
+  onGraphParticipationSaved?: () => void | Promise<void>;
+  path: string;
+}) {
   const [referenceStatus, setReferenceStatus] = useState<string | null>(null);
 
   const copyValue = async (value: string) => {
@@ -169,6 +194,13 @@ export function DocumentActions({ path }: { path: string }) {
       >
         <CopyIcon aria-hidden="true" data-icon="inline-start" />
       </Button>
+      <DocumentGraphParticipationControl
+        documentPath={documentPath}
+        inherited={graphParticipation.inheritedFrom !== null}
+        initialValue={graphParticipation.configured}
+        key={documentPath}
+        onSaved={onGraphParticipationSaved}
+      />
       <p aria-live="polite" className="sr-only" role="status">
         {referenceStatus}
       </p>
