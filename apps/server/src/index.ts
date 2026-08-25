@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createApp } from './app';
 import { closeLibrary } from './features/library/instance.server';
+import { logError, logInfo } from './logging';
 
 const clientDirectory = fileURLToPath(new URL('./client', import.meta.url));
 const staticRoot = existsSync(join(clientDirectory, 'index.html'))
@@ -46,19 +47,31 @@ function run() {
   try {
     port = parsePort(process.argv[2]);
   } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
+    logError('server.start_failed', error);
     process.exitCode = 1;
     return;
   }
 
   const server = startServer(port);
-  console.log(`Locus server listening on http://127.0.0.1:${port}`);
+  server.once('listening', () =>
+    logInfo('server.started', { address: `http://127.0.0.1:${port}` }),
+  );
+  server.on('error', (error) => {
+    logError('server.failed', error);
+    process.exitCode = 1;
+  });
 
   let closing = false;
-  const closeOnce = () => {
+  const closeOnce = (signal: NodeJS.Signals) => {
     if (closing) return;
     closing = true;
-    void close(server);
+    logInfo('server.stopping', { signal });
+    void close(server)
+      .then(() => logInfo('server.stopped'))
+      .catch((error) => {
+        logError('server.stop_failed', error);
+        process.exitCode = 1;
+      });
   };
 
   process.once('SIGINT', closeOnce);

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import { logger } from 'hono/logger';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type {
   ReorderDocumentsInput,
@@ -20,11 +21,13 @@ import {
   updateGlobalSettings,
 } from '~/features/settings/service';
 import { jsonError, jsonOk } from '~/http/json';
+import { logError } from '~/logging';
 
-async function jsonRoute<T>(operation: () => T | Promise<T>) {
+async function jsonRoute<T>(event: string, operation: () => T | Promise<T>) {
   try {
     return jsonOk(await operation());
   } catch (error) {
+    logError(`${event}.failed`, error);
     return jsonError(error);
   }
 }
@@ -45,30 +48,34 @@ function isServerPath(path: string): boolean {
 export function createApp(staticRoot?: string) {
   const app = new Hono();
 
+  app.use(logger());
+
   app.get('/api/health', (context) => context.json({ status: 'ok' as const }));
   app.get('/api/library', (context) =>
-    jsonRoute(() => getLibraryWorkspaceView({ query: context.req.query('q') })),
+    jsonRoute('library.workspace.read', () =>
+      getLibraryWorkspaceView({ query: context.req.query('q') }),
+    ),
   );
   app.get('/api/library/document', (context) =>
-    jsonRoute(() =>
+    jsonRoute('library.document.read', () =>
       getLibrarySelection({ doc: context.req.query('doc') ?? '' }),
     ),
   );
   app.post('/api/library/document/icon', async (context) =>
-    jsonRoute(async () =>
+    jsonRoute('library.document_icon.update', async () =>
       updateDocumentIconImage(
         await body<UpdateDocumentIconImageInput>(context),
       ),
     ),
   );
   app.post('/api/library/reorder', async (context) =>
-    jsonRoute(async () =>
+    jsonRoute('library.documents.reorder', async () =>
       reorderDocuments(await body<ReorderDocumentsInput>(context)),
     ),
   );
-  app.get('/api/settings', () => jsonRoute(getGlobalSettings));
+  app.get('/api/settings', () => jsonRoute('settings.read', getGlobalSettings));
   app.patch('/api/settings', async (context) =>
-    jsonRoute(async () =>
+    jsonRoute('settings.update', async () =>
       updateGlobalSettings(await body<UpdateGlobalSettingsInput>(context)),
     ),
   );
@@ -126,7 +133,10 @@ export function createApp(staticRoot?: string) {
   }
 
   app.notFound((context) => context.json({ error: 'Not Found' }, 404));
-  app.onError((error) => jsonError(error, 500));
+  app.onError((error) => {
+    logError('http.request.failed', error);
+    return jsonError(error, 500);
+  });
 
   return app;
 }

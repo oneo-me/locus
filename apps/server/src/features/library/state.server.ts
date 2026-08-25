@@ -14,8 +14,11 @@ import {
   type LibraryState,
   normalizeLibraryState,
 } from '@locus/document-library/contracts/library-state';
+import { logWarn } from '~/logging';
 
 export { normalizeLibraryState } from '@locus/document-library/contracts/library-state';
+
+let loggedReadError: string | undefined;
 
 function resolveLibraryStatePath(): string {
   return join(resolveDataDirectory(), 'state.json');
@@ -23,10 +26,20 @@ function resolveLibraryStatePath(): string {
 
 export function readLibraryState(): LibraryState {
   const path = resolveLibraryStatePath();
-  if (!existsSync(path)) return normalizeLibraryState(null);
+  if (!existsSync(path)) {
+    loggedReadError = undefined;
+    return normalizeLibraryState(null);
+  }
   try {
-    return normalizeLibraryState(JSON.parse(readFileSync(path, 'utf8')));
-  } catch {
+    const state = normalizeLibraryState(JSON.parse(readFileSync(path, 'utf8')));
+    loggedReadError = undefined;
+    return state;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (loggedReadError !== message) {
+      logWarn('library.state.read_failed', error);
+      loggedReadError = message;
+    }
     return normalizeLibraryState(null);
   }
 }

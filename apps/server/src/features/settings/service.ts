@@ -9,6 +9,7 @@ import {
   type UpdateGlobalSettingsInput,
 } from '@locus/document-library/contracts/global-settings';
 import { closeLibrary } from '~/features/library/instance.server';
+import { logInfo } from '~/logging';
 import { accessSync, constants, statSync } from 'node:fs';
 import { isAbsolute, normalize } from 'node:path';
 
@@ -73,5 +74,7 @@ export async function updateGlobalSettings(
     throw new Error('至少需要提供一个要更新的字段。');
   }
   if (next.libraryPath !== undefined) await closeLibrary();
-  return writeGlobalSettings(next);
+  const settings = writeGlobalSettings(next);
+  logInfo('settings.updated', { fields: Object.keys(next).sort() });
+  return settings;
 }

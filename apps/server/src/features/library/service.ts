@@ -1,4 +1,5 @@
 import { bytesFromBase64, bytesToBase64 } from '~/lib/base64';
+import { logInfo } from '~/logging';
 import type {
   LibrarySelectionSourceView,
   LibrarySelectionViewInput,
@@ -114,14 +115,18 @@ export async function updateDocumentIconImage(
 
   const library = await getLibrary();
   if (input.dataBase64 === null) {
-    return library.deleteDocumentIcon(input.path);
+    const result = library.deleteDocumentIcon(input.path);
+    logInfo('library.document_icon.deleted', { path: input.path });
+    return result;
   }
 
   const bytes = bytesFromBase64(input.dataBase64);
   if (bytesToBase64(bytes) !== input.dataBase64) {
     throw new Error('dataBase64 必须是规范的 Base64 字符串。');
   }
-  return library.writeDocumentIcon(input.path, bytes);
+  const result = library.writeDocumentIcon(input.path, bytes);
+  logInfo('library.document_icon.updated', { path: input.path });
+  return result;
 }
 
 export interface ReorderDocumentsInput {
@@ -144,5 +149,6 @@ export async function reorderDocuments(input: ReorderDocumentsInput) {
   const library = await getLibrary();
   for (const item of items) library.getDocument(item.path);
   updateLibraryDocumentOrder(items);
+  logInfo('library.documents.reordered', { count: items.length });
   return { ok: true as const };
 }

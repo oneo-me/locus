@@ -3,6 +3,7 @@ import type {
   LibraryRepositoryChange,
   LibraryRepositoryChanges,
 } from '@locus/document-library/contracts/repository';
+import { logWarn } from '~/logging';
 
 export interface LibraryRepositoryView {
   revision: string | null;
@@ -24,7 +25,7 @@ export function readLibraryRepositoryView(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (loggedRepositoryErrors.get(library) !== message) {
-      console.error('无法读取文档库 Git 状态。', error);
+      logWarn('library.repository.read_failed', error);
       loggedRepositoryErrors.set(library, message);
     }
     const view = {

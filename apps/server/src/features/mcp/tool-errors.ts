@@ -1,3 +1,5 @@
+import { logError, logInfo } from '~/logging';
+
 interface McpToolErrorDefinition {
   code: string;
   message: string;
@@ -146,11 +148,22 @@ export function toolErrorResult(error: unknown) {
 }
 
 export async function handleMcpToolCall<T>(
+  tool: string,
   operation: () => T | Promise<T>,
 ): Promise<T | ReturnType<typeof toolErrorResult>> {
+  const startedAt = performance.now();
   try {
-    return await operation();
+    const result = await operation();
+    logInfo('mcp.tool.completed', {
+      tool,
+      durationMs: Math.round(performance.now() - startedAt),
+    });
+    return result;
   } catch (error) {
+    logError('mcp.tool.failed', error, {
+      tool,
+      durationMs: Math.round(performance.now() - startedAt),
+    });
     return toolErrorResult(error);
   }
 }

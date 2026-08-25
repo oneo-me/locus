@@ -113,7 +113,7 @@ export function createLocusMcpServer(library: DocumentLibrary): McpServer {
       },
     },
     async ({ parent, cursor, limit }) =>
-      handleMcpToolCall(() => {
+      handleMcpToolCall('list_articles', () => {
         const articles = library.listChildArticles(parent);
         const page = articles.slice(cursor, cursor + limit);
         return toolResult({
@@ -147,7 +147,7 @@ export function createLocusMcpServer(library: DocumentLibrary): McpServer {
       },
     },
     async ({ query, limit }) =>
-      handleMcpToolCall(() => {
+      handleMcpToolCall('search_articles', () => {
         const result = library.searchDocuments(query, limit);
         return toolResult({
           query: result.query,
@@ -182,7 +182,7 @@ export function createLocusMcpServer(library: DocumentLibrary): McpServer {
       },
     },
     async ({ path: rawPath }) =>
-      handleMcpToolCall(() => {
+      handleMcpToolCall('resolve_article', () => {
         const path = normalizeResolveArticlePath(rawPath);
         if (!path.split('/').some((segment) => segment.length > 0)) {
           throw new Error('根文章不存在。');
