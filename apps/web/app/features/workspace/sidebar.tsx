@@ -505,9 +505,6 @@ function SortableDocumentTreeItem({
               </span>
             ) : null}
             <span className="min-w-0 flex-1 truncate text-left">{title}</span>
-            {changeState ? (
-              <DocumentChangeIndicator state={changeState} />
-            ) : null}
             {attachmentCount > 0 ? (
               <Badge
                 aria-hidden="true"
@@ -522,6 +519,9 @@ function SortableDocumentTreeItem({
               <span className="sr-only" id={attachmentDescriptionId}>
                 {attachmentCount} 个附件
               </span>
+            ) : null}
+            {changeState ? (
+              <DocumentChangeIndicator state={changeState} />
             ) : null}
           </DocumentUrlLink>
         </div>
