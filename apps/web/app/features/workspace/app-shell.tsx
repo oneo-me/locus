@@ -1,7 +1,7 @@
 import {
   BotIcon,
-  EyeIcon,
   FileTextIcon,
+  PaletteIcon,
   type LucideIcon,
   SettingsIcon,
 } from 'lucide-react';
@@ -19,7 +19,7 @@ interface AppNavigationItem {
 const APP_NAVIGATION: AppNavigationItem[] = [
   { label: '笔记', path: '/notes', icon: FileTextIcon },
   { label: 'Agent', path: '/agents', icon: BotIcon },
-  { label: '设计系统', path: '/design-system', icon: EyeIcon },
+  { label: '设计系统', path: '/design-system', icon: PaletteIcon },
   { label: '设置', path: '/settings', icon: SettingsIcon },
 ];
 
