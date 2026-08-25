@@ -89,4 +89,4 @@ pnpm run deploy 4000
 
 Hono 在指定端口同源提供前端、API 与 MCP，运行输出记录在 `.build/runtime.log`，进程信息记录在 `.build/server.json`。重复部署时会自动结束上一个由部署命令启动的进程；如果目标端口被其他进程占用，命令会展示 PID 与启动命令，并且只在输入 `y` 后结束该进程并继续部署。
 
-项目的产品、设计、架构和包边界以 `asterweft://projects/locus` 下的 Locus 笔记为准。
+项目的产品、设计、架构和包边界以 `locus://projects/locus` 下的 Locus 笔记为准。
