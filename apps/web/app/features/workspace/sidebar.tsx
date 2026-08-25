@@ -175,7 +175,7 @@ function LibraryNavigation({
 
       {documents.length > 0 || directories.length > 0 ? (
         <nav
-          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-3"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4"
           aria-label="文档树"
           ref={navRef}
         >
@@ -359,7 +359,7 @@ function DocumentTreeItems({
         items={renderedItems.map(nodeKey)}
         strategy={verticalListSortingStrategy}
       >
-        <ul className="flex w-full min-w-0 max-w-full flex-col gap-px overflow-x-hidden">
+        <ul className="flex w-full min-w-0 max-w-full flex-col gap-0.5 overflow-x-hidden">
           {renderedItems.map((node) => (
             <SortableDocumentTreeItem
               changeState={changeStates.get(node.path)}
@@ -634,7 +634,7 @@ function DocumentUrlLink({
         variant: 'nav',
         size: 'nav',
         className:
-          'w-full min-w-0 cursor-default justify-start overflow-hidden px-1.5 no-underline [&>*:first-child]:-ml-2',
+          'h-8 w-full min-w-0 cursor-default justify-start overflow-hidden px-2.5 no-underline [&>*:first-child]:-ml-1',
       })}
       data-slot="button"
       draggable={false}

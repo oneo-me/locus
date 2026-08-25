@@ -1,9 +1,8 @@
 import { SettingsBrowser } from '~/features/settings/browser';
-import { useLocation, useSearchParams } from 'react-router';
+import { useLocation } from 'react-router';
 
 export default function SettingsRoute() {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const libraryError =
     location.state !== null &&
     typeof location.state === 'object' &&
@@ -11,12 +10,5 @@ export default function SettingsRoute() {
     typeof location.state.libraryError === 'string'
       ? location.state.libraryError
       : undefined;
-  return (
-    <SettingsBrowser
-      initialSection={
-        searchParams.get('section') === 'library' ? 'library' : 'appearance'
-      }
-      libraryError={libraryError}
-    />
-  );
+  return <SettingsBrowser libraryError={libraryError} />;
 }

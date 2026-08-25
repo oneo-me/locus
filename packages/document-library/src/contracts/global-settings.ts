@@ -1,8 +1,8 @@
 export type GlobalTheme = 'light' | 'dark' | 'system';
 
-export const DEFAULT_WORKSPACE_SIDEBAR_WIDTH = 284;
+export const DEFAULT_WORKSPACE_SIDEBAR_WIDTH = 304;
 export const MIN_WORKSPACE_SIDEBAR_WIDTH = DEFAULT_WORKSPACE_SIDEBAR_WIDTH;
-export const MAX_WORKSPACE_SIDEBAR_WIDTH = 420;
+export const MAX_WORKSPACE_SIDEBAR_WIDTH = 440;
 
 export function normalizeWorkspaceSidebarWidth(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {

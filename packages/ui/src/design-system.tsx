@@ -50,7 +50,7 @@ import { cn } from './utils';
 export function DesignSystemBrowser() {
   return (
     <main
-      className="h-dvh min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-background text-sm"
+      className="h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-background text-sm"
       id="main-content"
     >
       <h1 className="sr-only">设计系统</h1>

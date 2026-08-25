@@ -1,5 +1,6 @@
 import FluentIconBot from '@oneo/fluentui-icons-like-react/FluentIconBot';
 import FluentIconDocument from '@oneo/fluentui-icons-like-react/FluentIconDocument';
+import FluentIconEye from '@oneo/fluentui-icons-like-react/FluentIconEye';
 import FluentIconSettings from '@oneo/fluentui-icons-like-react/FluentIconSettings';
 import type { ComponentType, ReactNode } from 'react';
 import { NavLink } from 'react-router';
@@ -18,6 +19,7 @@ interface AppNavigationItem {
 const APP_NAVIGATION: AppNavigationItem[] = [
   { label: '笔记', path: '/notes', icon: FluentIconDocument },
   { label: 'Agent', path: '/agents', icon: FluentIconBot },
+  { label: '设计系统', path: '/design-system', icon: FluentIconEye },
   { label: '设置', path: '/settings', icon: FluentIconSettings },
 ];
 

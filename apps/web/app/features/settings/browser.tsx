@@ -1,9 +1,6 @@
-import FluentIconEye from '@oneo/fluentui-icons-like-react/FluentIconEye';
 import FluentIconInfo from '@oneo/fluentui-icons-like-react/FluentIconInfo';
-import FluentIconPaintBrush from '@oneo/fluentui-icons-like-react/FluentIconPaintBrush';
 import FluentIconPlugConnected from '@oneo/fluentui-icons-like-react/FluentIconPlugConnected';
-import FluentIconSearch from '@oneo/fluentui-icons-like-react/FluentIconSearch';
-import { FolderOpenIcon } from 'lucide-react';
+import FluentIconSettings from '@oneo/fluentui-icons-like-react/FluentIconSettings';
 import { useNavigate } from 'react-router';
 import {
   Children,
@@ -12,7 +9,6 @@ import {
   Fragment,
   isValidElement,
   type ReactNode,
-  useMemo,
   useState,
 } from 'react';
 import { type Theme, useTheme } from '@locus/ui/theme-provider';
@@ -20,15 +16,16 @@ import { Badge } from '@locus/ui/components/badge';
 import { Button } from '@locus/ui/components/button';
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from '@locus/ui/components/field';
-import { Input } from '@locus/ui/components/input';
 import {
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
 } from '@locus/ui/components/input-group';
 import {
@@ -44,16 +41,12 @@ import { Spinner } from '@locus/ui/components/spinner';
 import { McpEnabledSwitch } from '../settings/mcp-control';
 import { McpInstallationGuide } from '../settings/mcp-installation-guide';
 import { useGlobalSettings } from '../settings/global-settings-provider';
-import { cn } from '@locus/ui/utils';
 
-type SettingsSectionId = 'library' | 'appearance' | 'mcp' | 'about';
+type SettingsSectionId = 'general' | 'mcp' | 'about';
 
 interface SettingsNavItem {
   id: SettingsSectionId;
   label: string;
-  description: string;
-  group: string;
-  keywords: string[];
   icon: ComponentType<{
     'aria-hidden'?: boolean | 'true' | 'false';
     'data-icon'?: string;
@@ -64,103 +57,38 @@ interface SettingsNavItem {
 
 const SETTINGS_NAV: SettingsNavItem[] = [
   {
-    id: 'library',
-    label: '文档库',
-    description: '选择 Locus 使用的本地 Markdown 文档库。',
-    group: '工作区',
-    keywords: ['文档库', '路径', '文件夹', 'Markdown'],
-    icon: FolderOpenIcon,
-  },
-  {
-    id: 'appearance',
-    label: '外观',
-    description: '控制主题与界面呈现。更改后立即生效。',
-    group: '偏好',
-    keywords: ['主题', '亮色', '暗色', '跟随系统'],
-    icon: FluentIconPaintBrush,
+    id: 'general',
+    label: '常规',
+    icon: FluentIconSettings,
   },
   {
     id: 'mcp',
     label: 'MCP',
-    description: '允许 MCP 客户端通过 Streamable HTTP 访问文档库。',
-    group: '服务',
-    keywords: ['MCP', '协议', 'Streamable HTTP', '文章'],
     icon: FluentIconPlugConnected,
   },
   {
     id: 'about',
     label: '关于',
-    description: '当前软件版本与运行环境。',
-    group: '关于',
-    keywords: ['版本', 'Locus'],
     icon: FluentIconInfo,
   },
 ];
 
-export function SettingsBrowser({
-  initialSection = 'appearance',
-  libraryError,
-}: {
-  initialSection?: SettingsSectionId;
-  libraryError?: string;
-}) {
-  const [activeId, setActiveId] = useState<SettingsSectionId>(initialSection);
-  const [query, setQuery] = useState('');
-
-  const filteredNav = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return SETTINGS_NAV;
-    return SETTINGS_NAV.filter((item) => {
-      const haystack = [item.label, item.description, ...item.keywords]
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(normalized);
-    });
-  }, [query]);
-
-  const navGroups = useMemo(() => {
-    const groups: Array<{ label: string; items: SettingsNavItem[] }> = [];
-    for (const item of filteredNav) {
-      const last = groups.at(-1);
-      if (last?.label === item.group) {
-        last.items.push(item);
-      } else {
-        groups.push({ label: item.group, items: [item] });
-      }
-    }
-    return groups;
-  }, [filteredNav]);
-
+export function SettingsBrowser({ libraryError }: { libraryError?: string }) {
+  const [activeId, setActiveId] = useState<SettingsSectionId>('general');
   const activeItem =
-    filteredNav.find((item) => item.id === activeId) ?? filteredNav[0] ?? null;
+    SETTINGS_NAV.find((item) => item.id === activeId) ?? SETTINGS_NAV[0];
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[13rem_minmax(0,1fr)] overflow-hidden">
-      <SettingsSidebar
-        activeId={activeItem?.id ?? null}
-        groups={navGroups}
-        onSelect={setActiveId}
-        onQueryChange={setQuery}
-        query={query}
-      />
+    <div className="grid h-full min-h-0 grid-cols-[14rem_minmax(0,1fr)] overflow-hidden">
+      <SettingsSidebar activeId={activeItem.id} onSelect={setActiveId} />
       <div className="flex min-h-0 min-w-0 flex-col bg-card">
-        <header className="flex h-12 shrink-0 items-center px-6">
-          <h1 className="truncate text-sm font-medium">
-            {activeItem?.label ?? '设置'}
-          </h1>
+        <header className="flex h-11 shrink-0 items-center border-b px-5">
+          <h1 className="truncate text-sm font-medium">{activeItem.label}</h1>
         </header>
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
-          {activeItem ? (
-            <div className="px-6 pt-3 pb-8">
-              <SettingsPanel id={activeItem.id} libraryError={libraryError} />
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center px-6">
-              <p className="text-sm text-muted-foreground">
-                没有匹配的设置项。
-              </p>
-            </div>
-          )}
+          <div className="px-5 pt-5 pb-8">
+            <SettingsPanel id={activeItem.id} libraryError={libraryError} />
+          </div>
         </div>
       </div>
     </div>
@@ -169,98 +97,46 @@ export function SettingsBrowser({
 
 function SettingsSidebar({
   activeId,
-  groups,
   onSelect,
-  onQueryChange,
-  query,
 }: {
-  activeId: SettingsSectionId | null;
-  groups: Array<{ label: string; items: SettingsNavItem[] }>;
+  activeId: SettingsSectionId;
   onSelect: (id: SettingsSectionId) => void;
-  onQueryChange: (value: string) => void;
-  query: string;
 }) {
   return (
     <aside
       className="flex min-h-0 flex-col overflow-hidden border-r bg-sidebar text-sidebar-foreground"
       aria-label="设置分类"
     >
-      <header className="flex h-12 shrink-0 items-center px-3">
+      <header className="flex h-11 shrink-0 items-center border-b border-sidebar-border px-4">
         <h2 className="text-sm font-medium">设置</h2>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col gap-2.5 px-3 pb-3">
-        <InputGroup className="h-8 bg-card [&_svg:not([class*='size-'])]:size-4">
-          <InputGroupAddon>
-            <FluentIconSearch aria-hidden="true" size={16} title={null} />
-          </InputGroupAddon>
-          <InputGroupInput
-            aria-label="搜索设置"
-            autoComplete="off"
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="搜索设置…"
-            value={query}
-          />
-        </InputGroup>
-        <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
-          {groups.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {groups.map((group) => (
-                <div key={group.label} className="flex flex-col gap-1">
-                  <p className="px-2 text-xs text-muted-foreground">
-                    {group.label}
-                  </p>
-                  <ul className="flex flex-col gap-px">
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const active = item.id === activeId;
-                      return (
-                        <li key={item.id}>
-                          <button
-                            aria-current={active ? 'true' : undefined}
-                            className={cn(
-                              'flex h-7 w-full cursor-default items-center gap-1.5 rounded-lg px-2 text-left text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 [&_svg]:size-3.5',
-                              active
-                                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                            )}
-                            onClick={() => onSelect(item.id)}
-                            type="button"
-                          >
-                            <Icon
-                              aria-hidden="true"
-                              data-icon="inline-start"
-                              size={16}
-                              title={null}
-                            />
-                            {item.label}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="px-2 text-xs text-muted-foreground">无匹配分类</p>
-          )}
-        </nav>
-        <a
-          aria-label="设计系统"
-          className="flex h-7 shrink-0 cursor-default items-center gap-1.5 rounded-lg px-2 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 [&_svg]:size-3.5"
-          href="/design-system"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          <FluentIconEye
-            aria-hidden="true"
-            data-icon="inline-start"
-            size={16}
-            title={null}
-          />
-          设计系统
-        </a>
-      </div>
+      <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-3">
+        <ul className="flex flex-col gap-1">
+          {SETTINGS_NAV.map((item) => {
+            const Icon = item.icon;
+            const active = item.id === activeId;
+            return (
+              <li key={item.id}>
+                <Button
+                  aria-current={active ? 'true' : undefined}
+                  className="w-full cursor-default justify-start"
+                  onClick={() => onSelect(item.id)}
+                  size="sm"
+                  type="button"
+                  variant={active ? 'selected' : 'ghost'}
+                >
+                  <Icon
+                    aria-hidden="true"
+                    data-icon="inline-start"
+                    title={null}
+                  />
+                  {item.label}
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </aside>
   );
 }
@@ -273,15 +149,22 @@ function SettingsPanel({
   libraryError?: string;
 }) {
   switch (id) {
-    case 'library':
-      return <LibraryPanel initialError={libraryError} />;
-    case 'appearance':
-      return <AppearancePanel />;
+    case 'general':
+      return <GeneralPanel libraryError={libraryError} />;
     case 'mcp':
       return <McpPanel />;
     case 'about':
       return <AboutPanel />;
   }
+}
+
+function GeneralPanel({ libraryError }: { libraryError?: string }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <LibraryPanel initialError={libraryError} />
+      <AppearancePanel />
+    </div>
+  );
 }
 
 function LibraryPanel({ initialError }: { initialError?: string }) {
@@ -295,7 +178,7 @@ function LibraryPanel({ initialError }: { initialError?: string }) {
     event.preventDefault();
     const libraryPath = path.trim();
     if (!libraryPath) {
-      setError('请输入文档库的绝对路径。');
+      setError('请输入笔记库的绝对路径。');
       return;
     }
 
@@ -312,35 +195,45 @@ function LibraryPanel({ initialError }: { initialError?: string }) {
 
   return (
     <form onSubmit={saveLibraryPath}>
-      <SettingsBlock title="本地文档库">
+      <SettingsBlock title="笔记库">
         <FieldGroup>
-          <Field data-invalid={Boolean(error)}>
-            <FieldLabel htmlFor="library-path">文档库路径</FieldLabel>
-            <Input
-              aria-invalid={Boolean(error)}
-              autoComplete="off"
-              id="library-path"
-              onChange={(event) => setPath(event.target.value)}
-              placeholder="/absolute/path/to/markdown-library"
-              spellCheck={false}
-              value={path}
-            />
-            <FieldDescription>
-              填写包含 Markdown 文章目录的绝对路径。保存后会重新载入工作区。
-            </FieldDescription>
-            <FieldError>{error}</FieldError>
+          <Field data-invalid={Boolean(error)} orientation="horizontal">
+            <FieldContent>
+              <FieldLabel className="font-normal" htmlFor="library-path">
+                笔记路路径
+              </FieldLabel>
+              <FieldDescription className="text-xs">
+                包含 Markdown 笔记的本地目录，保存后会重新载入工作区。
+              </FieldDescription>
+            </FieldContent>
+            <div className="flex w-[28rem] min-w-0 flex-col gap-1.5">
+              <InputGroup className="bg-card!">
+                <InputGroupInput
+                  aria-invalid={Boolean(error)}
+                  autoComplete="off"
+                  id="library-path"
+                  onChange={(event) => setPath(event.target.value)}
+                  placeholder="/absolute/path/to/notes"
+                  spellCheck={false}
+                  value={path}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    disabled={
+                      saving ||
+                      !path.trim() ||
+                      path.trim() === settings.libraryPath
+                    }
+                    type="submit"
+                  >
+                    {saving ? <Spinner data-icon="inline-start" /> : null}
+                    确定
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+              <FieldError className="text-xs">{error}</FieldError>
+            </div>
           </Field>
-          <div className="flex justify-end">
-            <Button
-              disabled={
-                saving || !path.trim() || path.trim() === settings.libraryPath
-              }
-              type="submit"
-            >
-              {saving ? <Spinner data-icon="inline-start" /> : null}
-              保存并载入
-            </Button>
-          </div>
         </FieldGroup>
       </SettingsBlock>
     </form>
