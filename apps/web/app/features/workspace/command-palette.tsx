@@ -74,9 +74,11 @@ const DOCUMENT_ACTIONS = [
 }[];
 
 export function AppCommandPalette({
+  defaultExpanded,
   onOpenChange,
   open,
 }: {
+  defaultExpanded: boolean;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) {
@@ -93,6 +95,9 @@ export function AppCommandPalette({
   );
   const [actionError, setActionError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [expandedByKeyboard, setExpandedByKeyboard] = useState(false);
+  const expanded =
+    defaultExpanded || expandedByKeyboard || query.trim().length > 0;
   const currentPath = location.pathname.startsWith('/notes')
     ? pathnameToUrlPath(location.pathname)
     : undefined;
@@ -190,6 +195,7 @@ export function AppCommandPalette({
       description="搜索笔记或执行当前笔记操作"
       onOpenChange={(nextOpen) => {
         setQuery('');
+        setExpandedByKeyboard(false);
         if (nextOpen) setActionError(null);
         onOpenChange(nextOpen);
       }}
@@ -201,88 +207,100 @@ export function AppCommandPalette({
           autoFocus
           key={open ? 'open' : 'closed'}
           onDebouncedValueChange={setQuery}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown' && !expanded) {
+              event.preventDefault();
+              setExpandedByKeyboard(true);
+            }
+          }}
           placeholder="搜索笔记或输入命令…"
         />
-        <CommandList ref={listRef}>
-          {documentsPending ? (
-            <CommandGroup heading="笔记">
-              <CommandItem disabled value="正在载入笔记">
-                <Spinner aria-hidden="true" />
-                正在载入笔记…
-              </CommandItem>
-            </CommandGroup>
-          ) : null}
-          {documentsError ? (
-            <CommandGroup heading="笔记">
-              <CommandItem disabled value={documentsError}>
-                无法读取笔记：{documentsError}
-              </CommandItem>
-            </CommandGroup>
-          ) : null}
-          {currentDocument && matchingDocumentActions.length > 0 ? (
-            <CommandGroup heading={`当前笔记 · ${currentDocument.title}`}>
-              {matchingDocumentActions.map((item) => (
-                <DocumentActionItem
-                  key={item.action}
-                  {...item}
-                  onSelect={runDocumentAction}
-                  pendingAction={pendingAction}
-                />
-              ))}
-              {actionError ? (
-                <p
-                  className="px-2 py-1.5 text-xs text-destructive"
-                  role="alert"
-                >
-                  {actionError}
-                </p>
-              ) : null}
-            </CommandGroup>
-          ) : null}
-          {matchingDocumentActions.length > 0 &&
-          matchingDocuments.length > 0 ? (
-            <CommandSeparator />
-          ) : null}
-          {matchingDocuments.length > 0 ? (
-            <CommandGroup heading="切换笔记">
-              {matchingDocuments.map((document) => (
-                <CommandItem
-                  key={document.path}
-                  keywords={[document.title, document.directory, document.path]}
-                  onSelect={() => selectDocument(document)}
-                  value={document.path}
-                >
-                  {document.icon || document.iconImageModifiedAt ? (
-                    <DocumentIcon
-                      className="size-4 text-sm"
-                      icon={document.icon}
-                      imageSrc={getDocumentIconUrl(
-                        document.path,
-                        document.iconImageModifiedAt,
-                      )}
-                    />
-                  ) : (
-                    <FileTextIcon aria-hidden="true" />
-                  )}
-                  <span className="min-w-0 flex-1 truncate">
-                    {document.title}
-                  </span>
-                  <span className="max-w-56 truncate text-xs text-muted-foreground">
-                    {document.directory || '根目录'}
-                  </span>
+        {expanded ? (
+          <CommandList ref={listRef}>
+            {documentsPending ? (
+              <CommandGroup heading="笔记">
+                <CommandItem disabled value="正在载入笔记">
+                  <Spinner aria-hidden="true" />
+                  正在载入笔记…
                 </CommandItem>
-              ))}
-            </CommandGroup>
-          ) : null}
-          {!documentsPending &&
-          !documentsError &&
-          matchingDocumentActions.length === 0 &&
-          matchingDocuments.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              没有匹配的笔记或命令
-            </p>
-          ) : null}
-        </CommandList>
+              </CommandGroup>
+            ) : null}
+            {documentsError ? (
+              <CommandGroup heading="笔记">
+                <CommandItem disabled value={documentsError}>
+                  无法读取笔记：{documentsError}
+                </CommandItem>
+              </CommandGroup>
+            ) : null}
+            {currentDocument && matchingDocumentActions.length > 0 ? (
+              <CommandGroup heading={`当前笔记 · ${currentDocument.title}`}>
+                {matchingDocumentActions.map((item) => (
+                  <DocumentActionItem
+                    key={item.action}
+                    {...item}
+                    onSelect={runDocumentAction}
+                    pendingAction={pendingAction}
+                  />
+                ))}
+                {actionError ? (
+                  <p
+                    className="px-2 py-1.5 text-xs text-destructive"
+                    role="alert"
+                  >
+                    {actionError}
+                  </p>
+                ) : null}
+              </CommandGroup>
+            ) : null}
+            {matchingDocumentActions.length > 0 &&
+            matchingDocuments.length > 0 ? (
+              <CommandSeparator />
+            ) : null}
+            {matchingDocuments.length > 0 ? (
+              <CommandGroup heading="切换笔记">
+                {matchingDocuments.map((document) => (
+                  <CommandItem
+                    key={document.path}
+                    keywords={[
+                      document.title,
+                      document.directory,
+                      document.path,
+                    ]}
+                    onSelect={() => selectDocument(document)}
+                    value={document.path}
+                  >
+                    {document.icon || document.iconImageModifiedAt ? (
+                      <DocumentIcon
+                        className="size-4 text-sm"
+                        icon={document.icon}
+                        imageSrc={getDocumentIconUrl(
+                          document.path,
+                          document.iconImageModifiedAt,
+                        )}
+                      />
+                    ) : (
+                      <FileTextIcon aria-hidden="true" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate">
+                      {document.title}
+                    </span>
+                    <span className="max-w-56 truncate text-xs text-muted-foreground">
+                      {document.directory || '根目录'}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ) : null}
+            {!documentsPending &&
+            !documentsError &&
+            matchingDocumentActions.length === 0 &&
+            matchingDocuments.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                没有匹配的笔记或命令
+              </p>
+            ) : null}
+          </CommandList>
+        ) : null}
       </Command>
     </CommandDialog>
   );

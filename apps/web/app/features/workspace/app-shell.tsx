@@ -12,6 +12,7 @@ import { NavLink } from 'react-router';
 import { Button, buttonVariants } from '@locus/ui/components/button';
 import { cn } from '@locus/ui/utils';
 import { AppCommandPalette } from './command-palette';
+import { useGlobalSettings } from '../settings/global-settings-provider';
 
 interface AppNavigationItem {
   label: string;
@@ -31,6 +32,7 @@ const APP_SECONDARY_NAVIGATION: AppNavigationItem[] = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { settings } = useGlobalSettings();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   useEffect(() => {
@@ -97,9 +99,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
         <div className="h-full min-h-0 min-w-0">{children}</div>
       </div>
-      {commandPaletteOpen ? (
-        <AppCommandPalette onOpenChange={setCommandPaletteOpen} open />
-      ) : null}
+      <AppCommandPalette
+        defaultExpanded={settings.commandPaletteDefaultExpanded}
+        onOpenChange={setCommandPaletteOpen}
+        open={commandPaletteOpen}
+      />
     </>
   );
 }

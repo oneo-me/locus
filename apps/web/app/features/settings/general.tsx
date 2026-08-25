@@ -7,6 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@locus/ui/components/select';
+import { Switch } from '@locus/ui/components/switch';
+import { useGlobalSettings } from './global-settings-provider';
 import { SettingsPage } from './page';
 import { SettingsRow, SettingsSection } from './section';
 
@@ -20,7 +22,31 @@ export function GeneralSettings() {
   return (
     <SettingsPage title="常规">
       <AppearanceSettings />
+      <CommandPaletteSettings />
     </SettingsPage>
+  );
+}
+
+function CommandPaletteSettings() {
+  const { settings, updateSettings } = useGlobalSettings();
+
+  return (
+    <SettingsSection title="命令面板">
+      <SettingsRow
+        description="打开命令面板时直接显示命令和笔记。"
+        label="默认展开"
+      >
+        <Switch
+          aria-label="默认展开命令面板"
+          checked={settings.commandPaletteDefaultExpanded}
+          onCheckedChange={(checked) => {
+            void updateSettings({
+              commandPaletteDefaultExpanded: checked,
+            }).catch(() => {});
+          }}
+        />
+      </SettingsRow>
+    </SettingsSection>
   );
 }
 

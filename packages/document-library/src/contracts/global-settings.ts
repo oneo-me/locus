@@ -18,6 +18,7 @@ export interface GlobalSettings {
   libraryPath: string | null;
   defaultDocumentPath: string | null;
   theme: GlobalTheme;
+  commandPaletteDefaultExpanded: boolean;
   showGraphAttachments: boolean;
   mcpEnabled: boolean;
   workspaceSidebarWidth: number;
@@ -27,6 +28,7 @@ export interface UpdateGlobalSettingsInput {
   libraryPath?: string;
   defaultDocumentPath?: string | null;
   theme?: GlobalTheme;
+  commandPaletteDefaultExpanded?: boolean;
   showGraphAttachments?: boolean;
   mcpEnabled?: boolean;
   workspaceSidebarWidth?: number;
@@ -36,6 +38,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   libraryPath: null,
   defaultDocumentPath: null,
   theme: 'system',
+  commandPaletteDefaultExpanded: false,
   showGraphAttachments: true,
   mcpEnabled: false,
   workspaceSidebarWidth: DEFAULT_WORKSPACE_SIDEBAR_WIDTH,
@@ -64,6 +67,10 @@ export function normalizeGlobalSettings(value: unknown): GlobalSettings {
     theme: isGlobalTheme(record.theme)
       ? record.theme
       : DEFAULT_GLOBAL_SETTINGS.theme,
+    commandPaletteDefaultExpanded:
+      typeof record.commandPaletteDefaultExpanded === 'boolean'
+        ? record.commandPaletteDefaultExpanded
+        : DEFAULT_GLOBAL_SETTINGS.commandPaletteDefaultExpanded,
     showGraphAttachments:
       typeof record.showGraphAttachments === 'boolean'
         ? record.showGraphAttachments

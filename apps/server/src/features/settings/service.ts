@@ -80,6 +80,12 @@ export async function updateGlobalSettings(
     }
     next.theme = input.theme;
   }
+  if (input.commandPaletteDefaultExpanded !== undefined) {
+    if (typeof input.commandPaletteDefaultExpanded !== 'boolean') {
+      throw new Error('commandPaletteDefaultExpanded 必须是布尔值。');
+    }
+    next.commandPaletteDefaultExpanded = input.commandPaletteDefaultExpanded;
+  }
   if (input.mcpEnabled !== undefined) {
     if (typeof input.mcpEnabled !== 'boolean') {
       throw new Error('mcpEnabled 必须是布尔值。');

@@ -21,7 +21,7 @@ function Command({
   return (
     <CommandPrimitive
       className={cn(
-        'flex size-full flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground',
+        'flex size-full flex-col overflow-hidden rounded-xl bg-transparent text-popover-foreground',
         className,
       )}
       data-slot="command"
@@ -52,7 +52,7 @@ function CommandDialog({
       </DialogHeader>
       <DialogContent
         className={cn(
-          'top-[18vh] translate-y-0 overflow-hidden rounded-xl p-0 sm:max-w-xl',
+          'top-[18vh] translate-y-0 overflow-hidden rounded-xl bg-popover/80 p-0 backdrop-blur-xl sm:max-w-xl',
           className,
         )}
         showCloseButton={showCloseButton}
@@ -72,8 +72,8 @@ function CommandInput({
   onValueChange?: (value: string) => void;
 }) {
   return (
-    <div className="p-1 pb-0" data-slot="command-input-wrapper">
-      <InputGroup className="h-10 rounded-lg border-input/30 bg-input/30 shadow-none">
+    <div className="p-1" data-slot="command-input-wrapper">
+      <InputGroup className="h-10 border-transparent bg-transparent shadow-none dark:bg-transparent">
         <InputGroupAddon>
           <SearchIcon aria-hidden="true" />
         </InputGroupAddon>
@@ -82,7 +82,7 @@ function CommandInput({
           autoComplete="off"
           autoCorrect="off"
           className={cn(
-            'w-full text-sm outline-hidden placeholder:text-muted-foreground/60 disabled:cursor-not-allowed disabled:opacity-50',
+            'w-full border-0 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground/60 disabled:cursor-not-allowed disabled:opacity-50',
             className,
           )}
           data-slot="command-input"
