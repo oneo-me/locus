@@ -4,6 +4,10 @@ import type {
   LibraryWorkspaceView,
 } from '@locus/document-library/contracts/library-api';
 import {
+  type LibraryState,
+  participatesInDocumentGraph,
+} from '@locus/document-library/contracts/library-state';
+import {
   documentPathToUrlPath,
   pathnameToUrlPath,
   urlPathToHref,
@@ -81,6 +85,7 @@ export function AppCommandPalette({
   const { openDocument } = useDocumentApi();
   const listRef = useRef<HTMLDivElement>(null);
   const [documents, setDocuments] = useState<LibraryNavigationDocument[]>([]);
+  const [libraryState, setLibraryState] = useState<LibraryState | null>(null);
   const [documentsError, setDocumentsError] = useState<string | null>(null);
   const [documentsPending, setDocumentsPending] = useState(true);
   const [pendingAction, setPendingAction] = useState<DocumentAction | null>(
@@ -107,6 +112,11 @@ export function AppCommandPalette({
         .map(({ item }) => item)
     : [];
   const matchingDocuments = documents
+    .filter(
+      (document) =>
+        libraryState !== null &&
+        participatesInDocumentGraph(libraryState, document.path),
+    )
     .map((document) => ({
       document,
       score: scoreCommand(document.title, query, [
@@ -122,7 +132,10 @@ export function AppCommandPalette({
     let active = true;
     void apiGet<LibraryWorkspaceView>('/api/library')
       .then((library) => {
-        if (active) setDocuments(library.documents);
+        if (active) {
+          setDocuments(library.documents);
+          setLibraryState(library.libraryState);
+        }
       })
       .catch((error: unknown) => {
         if (active) {
