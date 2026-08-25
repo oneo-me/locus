@@ -11,7 +11,13 @@ import {
   FilePenLineIcon,
   FolderOpenIcon,
 } from 'lucide-react';
-import { type CSSProperties, type ReactNode, useState } from 'react';
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useRevalidator } from 'react-router';
 import { Alert, AlertDescription } from '@locus/ui/components/alert';
 import { Button } from '@locus/ui/components/button';
@@ -21,8 +27,9 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@locus/ui/components/empty';
+import { cn } from '@locus/ui/utils';
 import { useDocumentApi } from '~/lib/document-api-context';
-import { deriveYamlPanelHue } from './atmosphere';
+import { deriveDocumentThemeHue } from './atmosphere';
 import { MarkdownContent } from './markdown';
 import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
@@ -111,42 +118,47 @@ function DocumentArticle({
   };
 
   return (
-    <div className="relative min-h-full">
+    <div
+      className="relative min-h-full"
+      style={
+        {
+          '--document-theme-hue': deriveDocumentThemeHue(document.title),
+        } as CSSProperties
+      }
+    >
       <DocumentHeaderAtmosphere title={document.title} />
-      <article className="relative mx-auto flex w-[calc(100%-4rem)] max-w-[52rem] flex-col gap-6 pt-6 pb-14">
-        <header className="flex flex-col gap-3">
-          <DocumentYamlMetadata
-            actions={
-              <DocumentActions
-                documentPath={document.path}
-                referencePath={document.directory}
-              />
-            }
-            document={document}
-            error={iconError}
-            menu={
-              <DocumentMenu
-                archived={document.archived}
-                documentPath={document.path}
-                graphParticipation={graphParticipation}
-                icon={document.icon}
-                iconImageSrc={getDocumentIconUrl(
-                  document.path,
-                  document.iconImageModifiedAt,
-                )}
-                iconPending={iconPending}
-                onGraphParticipationSaved={revalidate}
-                onImageUpload={saveIconImage}
-              />
-            }
+      <DocumentTitleHeader
+        actions={
+          <DocumentActions
+            documentPath={document.path}
+            referencePath={document.directory}
           />
-          {document.issue ? (
-            <Alert variant="destructive">
-              <CircleAlertIcon aria-hidden="true" />
-              <AlertDescription>{document.issue}</AlertDescription>
-            </Alert>
-          ) : null}
-        </header>
+        }
+        menu={
+          <DocumentMenu
+            archived={document.archived}
+            documentPath={document.path}
+            graphParticipation={graphParticipation}
+            icon={document.icon}
+            iconImageSrc={getDocumentIconUrl(
+              document.path,
+              document.iconImageModifiedAt,
+            )}
+            iconPending={iconPending}
+            onGraphParticipationSaved={revalidate}
+            onImageUpload={saveIconImage}
+          />
+        }
+        title={document.title}
+      />
+      <article className="relative mx-auto flex w-[calc(100%-4rem)] max-w-[52rem] flex-col gap-6 pt-6 pb-14">
+        <DocumentYamlMetadata document={document} error={iconError} />
+        {document.issue ? (
+          <Alert variant="destructive">
+            <CircleAlertIcon aria-hidden="true" />
+            <AlertDescription>{document.issue}</AlertDescription>
+          </Alert>
+        ) : null}
         <MarkdownContent
           assets={document.assets}
           content={document.content}
@@ -199,6 +211,7 @@ export function DocumentActions({
     <div className="flex flex-nowrap items-center justify-end gap-1.5">
       <Button
         aria-label="打开目录"
+        className="document-theme-button"
         disabled={pendingTarget !== null}
         onClick={() => {
           void open('directory');
@@ -211,6 +224,7 @@ export function DocumentActions({
       </Button>
       <Button
         aria-label="用 VS Code 编辑文件"
+        className="document-theme-button"
         disabled={pendingTarget !== null}
         onClick={() => {
           void open('vscode');
@@ -223,6 +237,7 @@ export function DocumentActions({
       </Button>
       <Button
         aria-label="复制文章引用"
+        className="document-theme-button"
         onClick={() => {
           void copyValue(formatDocumentReference(referencePath));
         }}
@@ -239,51 +254,96 @@ export function DocumentActions({
   );
 }
 
-export function DocumentYamlMetadata({
+function DocumentTitleHeader({
   actions,
-  document,
-  error,
   menu,
+  title,
 }: {
   actions?: ReactNode;
-  document: Omit<DocumentContent, 'content'>;
-  error: string | null;
   menu: ReactNode;
+  title: string;
 }) {
-  const summary = document.summary?.trim() || null;
+  const titleRef = useRef<HTMLElement>(null);
+  const [stuck, setStuck] = useState(false);
+
+  useEffect(() => {
+    const header = titleRef.current;
+    const scroller = header?.closest<HTMLElement>('#main-content');
+    if (!header || !scroller) return;
+
+    const update = () => {
+      setStuck(
+        scroller.scrollTop > 0 &&
+          header.getBoundingClientRect().top <=
+            scroller.getBoundingClientRect().top + 0.5,
+      );
+    };
+
+    update();
+    scroller.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      scroller.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
 
   return (
-    <section className="flex flex-col gap-6" aria-label="文档元数据">
-      <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5">
+    <header
+      className={cn(
+        'document-theme-header sticky top-0 z-10 border-b border-transparent transition-[background-color,border-color] duration-200 motion-reduce:transition-none',
+        stuck && 'backdrop-blur-md',
+      )}
+      data-stuck={stuck ? '' : undefined}
+      ref={titleRef}
+    >
+      <div
+        className={cn(
+          'mx-auto grid w-[calc(100%-4rem)] max-w-[52rem] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 py-4 transition-[padding] duration-200 motion-reduce:transition-none',
+          stuck && 'py-2.5',
+        )}
+      >
         {menu}
-        <h1 className="col-start-2 min-w-0 truncate text-xl leading-7 font-medium">
-          {document.title}
+        <h1
+          className={cn(
+            'col-start-2 min-w-0 truncate font-medium transition-[font-size,line-height] duration-200 motion-reduce:transition-none',
+            stuck ? 'text-sm leading-5' : 'text-xl leading-7',
+          )}
+        >
+          {title}
         </h1>
         {actions ? (
           <div className="col-start-3 min-w-0 justify-self-end">{actions}</div>
         ) : null}
       </div>
-      {summary || error ? (
-        <div className="flex flex-col gap-2">
-          {summary ? (
-            <p
-              aria-label="摘要"
-              className="doc-yaml-panel w-full rounded-lg px-3.5 py-2.5 text-sm text-pretty leading-relaxed text-foreground backdrop-blur-[3px]"
-              style={
-                {
-                  '--doc-yaml-hue': deriveYamlPanelHue(document.title),
-                } as CSSProperties
-              }
-            >
-              {summary}
-            </p>
-          ) : null}
-          {error ? (
-            <p className="text-destructive text-xs" role="alert">
-              {error}
-            </p>
-          ) : null}
-        </div>
+    </header>
+  );
+}
+
+export function DocumentYamlMetadata({
+  document,
+  error,
+}: {
+  document: Omit<DocumentContent, 'content'>;
+  error: string | null;
+}) {
+  const summary = document.summary?.trim() || null;
+  if (!summary && !error) return null;
+
+  return (
+    <section aria-label="文档元数据" className="flex flex-col gap-2">
+      {summary ? (
+        <p
+          aria-label="摘要"
+          className="doc-yaml-panel w-full rounded-lg px-3.5 py-2.5 text-sm text-pretty leading-relaxed text-foreground backdrop-blur-[3px]"
+        >
+          {summary}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="text-destructive text-xs" role="alert">
+          {error}
+        </p>
       ) : null}
     </section>
   );

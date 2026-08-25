@@ -659,19 +659,17 @@ export function atmosphereArcPath(
   return arcPath(shape.cx, shape.cy, shape.r, shape.startDeg, shape.sweepDeg);
 }
 
-/**
- * YAML 属性区半透明主色底的色相：主题明暗由 CSS `.dark .doc-yaml-panel` 切换。
- */
-export function deriveYamlPanelHue(title: string) {
+/** 文档主题色相：主题明暗由各表面的 CSS 规则负责。 */
+export function deriveDocumentThemeHue(title: string) {
   return deriveDocumentAtmosphere(title, 'light').hue;
 }
 
-/** 测试用：直接得到某一主题下的 YAML 面板背景色字符串。 */
-export function deriveYamlPanelBackground(
+/** 测试用：直接得到某一主题下的文档主题背景色字符串。 */
+export function deriveDocumentThemeBackground(
   title: string,
   theme: AtmosphereTheme = 'light',
 ) {
-  const hue = deriveYamlPanelHue(title);
+  const hue = deriveDocumentThemeHue(title);
   const isDark = theme === 'dark';
   return `hsl(${hue} ${isDark ? 34 : 40}% ${isDark ? 28 : 94}% / ${isDark ? 0.42 : 0.48})`;
 }

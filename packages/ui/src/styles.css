@@ -186,9 +186,48 @@
 
 /* 跟随 <html>.dark（内联脚本首屏已写入），不依赖 React resolvedTheme，避免刷新闪色。 */
 .doc-yaml-panel {
-  background-color: hsl(var(--doc-yaml-hue) 40% 94% / 0.48);
+  background-color: hsl(var(--document-theme-hue) 40% 94% / 0.48);
 }
 
 .dark .doc-yaml-panel {
-  background-color: hsl(var(--doc-yaml-hue) 34% 28% / 0.42);
+  background-color: hsl(var(--document-theme-hue) 34% 28% / 0.42);
+}
+
+.document-theme-header[data-stuck] {
+  border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent);
+  background-color: color-mix(in srgb, var(--card) 78%, transparent);
+}
+
+.document-theme-button {
+  border-color: hsl(var(--document-theme-hue) 32% 78% / 0.72);
+  background-image: linear-gradient(
+    to bottom,
+    hsl(var(--document-theme-hue) 42% 97% / 0.92),
+    hsl(var(--document-theme-hue) 38% 91% / 0.9)
+  );
+}
+
+.document-theme-button:hover {
+  background-image: linear-gradient(
+    to bottom,
+    hsl(var(--document-theme-hue) 44% 95% / 0.96),
+    hsl(var(--document-theme-hue) 40% 87% / 0.94)
+  );
+}
+
+.dark .document-theme-button {
+  border-color: hsl(var(--document-theme-hue) 28% 40% / 0.72);
+  background-image: linear-gradient(
+    to bottom,
+    hsl(var(--document-theme-hue) 28% 25% / 0.92),
+    hsl(var(--document-theme-hue) 25% 19% / 0.9)
+  );
+}
+
+.dark .document-theme-button:hover {
+  background-image: linear-gradient(
+    to bottom,
+    hsl(var(--document-theme-hue) 30% 29% / 0.96),
+    hsl(var(--document-theme-hue) 27% 23% / 0.94)
+  );
 }
