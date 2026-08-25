@@ -33,7 +33,7 @@ import { deriveDocumentThemeHue } from './atmosphere';
 import { MarkdownContent } from './markdown';
 import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
-import { DocumentMenu } from './document-menu';
+import { DocumentIconUpload, DocumentMenu } from './document-menu';
 import { copyDocumentText, formatDocumentReference } from './document-actions';
 
 export function DocumentBrowser({
@@ -132,21 +132,24 @@ function DocumentArticle({
           <DocumentActions
             documentPath={document.path}
             referencePath={document.directory}
-          />
+          >
+            <DocumentMenu
+              archived={document.archived}
+              documentPath={document.path}
+              graphParticipation={graphParticipation}
+              onGraphParticipationSaved={revalidate}
+            />
+          </DocumentActions>
         }
-        menu={
-          <DocumentMenu
-            archived={document.archived}
-            documentPath={document.path}
-            graphParticipation={graphParticipation}
+        icon={
+          <DocumentIconUpload
             icon={document.icon}
             iconImageSrc={getDocumentIconUrl(
               document.path,
               document.iconImageModifiedAt,
             )}
-            iconPending={iconPending}
-            onGraphParticipationSaved={revalidate}
-            onImageUpload={saveIconImage}
+            onUpload={saveIconImage}
+            pending={iconPending}
           />
         }
         title={document.title}
@@ -171,9 +174,11 @@ function DocumentArticle({
 }
 
 export function DocumentActions({
+  children,
   documentPath,
   referencePath,
 }: {
+  children?: ReactNode;
   documentPath: string;
   referencePath: string;
 }) {
@@ -247,6 +252,7 @@ export function DocumentActions({
       >
         <CopyIcon aria-hidden="true" data-icon="inline-start" />
       </Button>
+      {children}
       <p aria-live="polite" className="sr-only" role="status">
         {actionStatus}
       </p>
@@ -256,11 +262,11 @@ export function DocumentActions({
 
 function DocumentTitleHeader({
   actions,
-  menu,
+  icon,
   title,
 }: {
   actions?: ReactNode;
-  menu: ReactNode;
+  icon: ReactNode;
   title: string;
 }) {
   const titleRef = useRef<HTMLElement>(null);
@@ -303,7 +309,7 @@ function DocumentTitleHeader({
           stuck && 'py-2.5',
         )}
       >
-        {menu}
+        {icon}
         <h1
           className={cn(
             'col-start-2 min-w-0 truncate font-medium transition-[font-size,line-height] duration-200 motion-reduce:transition-none',
