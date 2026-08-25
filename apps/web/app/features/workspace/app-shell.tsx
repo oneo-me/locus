@@ -11,6 +11,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { NavLink } from 'react-router';
 import { Button, buttonVariants } from '@locus/ui/components/button';
 import { cn } from '@locus/ui/utils';
+import logoUrl from '../../assets/logo.png';
 import { AppCommandPalette } from './command-palette';
 import { useGlobalSettings } from '../settings/global-settings-provider';
 
@@ -71,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className="size-full object-cover"
                 draggable={false}
                 height={64}
-                src="/icons/locus-mark-64.png"
+                src={logoUrl}
                 width={64}
               />
             </span>

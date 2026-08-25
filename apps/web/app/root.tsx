@@ -8,19 +8,14 @@ import {
 } from 'react-router';
 import type { Route } from './+types/root';
 import '@locus/ui/styles.css';
+import logoUrl from './assets/logo.png';
 
 export const links: Route.LinksFunction = () => [
   {
     rel: 'icon',
     type: 'image/png',
-    sizes: '32x32',
-    href: '/icons/locus-mark-32.png',
-  },
-  {
-    rel: 'icon',
-    type: 'image/png',
-    sizes: '16x16',
-    href: '/icons/locus-mark-16.png',
+    sizes: '64x64',
+    href: logoUrl,
   },
 ];
 
