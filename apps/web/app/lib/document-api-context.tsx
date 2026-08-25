@@ -1,4 +1,5 @@
 import type {
+  OpenDocumentInput,
   ReorderDocumentsInput,
   SetDocumentArchivedInput,
   SetDocumentGraphParticipationInput,
@@ -11,6 +12,7 @@ import type {
 import { createContext, type ReactNode, useContext } from 'react';
 
 export interface DocumentApiClient {
+  openDocument: (data: OpenDocumentInput) => Promise<{ ok: true }>;
   reorderDocuments: (data: ReorderDocumentsInput) => Promise<{ ok: true }>;
   setDocumentArchived: (
     data: SetDocumentArchivedInput,

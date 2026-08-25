@@ -6,7 +6,12 @@ import {
 import { libraryReferenceScheme } from '@locus/document-library/contracts/library-reference';
 import { documentGraphParticipation } from '@locus/document-library/contracts/library-state';
 import type { DocumentContent } from '@locus/document-library/contracts/library-types';
-import { CircleAlertIcon, CopyIcon } from 'lucide-react';
+import {
+  CircleAlertIcon,
+  CopyIcon,
+  FilePenLineIcon,
+  FolderOpenIcon,
+} from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 import { Link, useRevalidator } from 'react-router';
 import { Alert, AlertDescription } from '@locus/ui/components/alert';
@@ -111,7 +116,12 @@ function DocumentArticle({
       <article className="relative mx-auto flex w-[calc(100%-4rem)] max-w-[52rem] flex-col gap-6 pt-6 pb-14">
         <header className="flex flex-col gap-3">
           <DocumentYamlMetadata
-            actions={<DocumentActions path={document.directory} />}
+            actions={
+              <DocumentActions
+                documentPath={document.path}
+                referencePath={document.directory}
+              />
+            }
             document={document}
             error={iconError}
             menu={
@@ -167,30 +177,82 @@ export function formatDocumentReference(path: string): string {
   return `${libraryReferenceScheme}${path}`;
 }
 
-export function DocumentActions({ path }: { path: string }) {
-  const [referenceStatus, setReferenceStatus] = useState<string | null>(null);
+export function DocumentActions({
+  documentPath,
+  referencePath,
+}: {
+  documentPath: string;
+  referencePath: string;
+}) {
+  const { openDocument } = useDocumentApi();
+  const [pendingTarget, setPendingTarget] = useState<
+    'directory' | 'vscode' | null
+  >(null);
+  const [actionStatus, setActionStatus] = useState<string | null>(null);
 
   const copyValue = async (value: string) => {
-    setReferenceStatus(null);
+    setActionStatus(null);
     const copied = await copyDocumentText(value);
-    setReferenceStatus(copied ? '已复制文章引用' : '文章引用复制失败');
+    setActionStatus(copied ? '已复制文章引用' : '文章引用复制失败');
+  };
+
+  const open = async (target: 'directory' | 'vscode') => {
+    setPendingTarget(target);
+    setActionStatus(null);
+    try {
+      await openDocument({ path: documentPath, target });
+      setActionStatus(
+        target === 'directory' ? '已打开目录' : '已在 VS Code 中打开',
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionStatus(
+        `${target === 'directory' ? '打开目录' : '用 VS Code 编辑'}失败：${message}`,
+      );
+    } finally {
+      setPendingTarget(null);
+    }
   };
 
   return (
     <div className="flex flex-nowrap items-center justify-end gap-1.5">
       <Button
-        aria-label="复制文章引用"
+        aria-label="打开目录"
+        disabled={pendingTarget !== null}
         onClick={() => {
-          void copyValue(formatDocumentReference(path));
+          void open('directory');
         }}
         size="icon-sm"
-        title={referenceStatus ?? '复制文章引用'}
+        title="打开目录"
+        variant="secondary"
+      >
+        <FolderOpenIcon aria-hidden="true" data-icon="inline-start" />
+      </Button>
+      <Button
+        aria-label="用 VS Code 编辑文件"
+        disabled={pendingTarget !== null}
+        onClick={() => {
+          void open('vscode');
+        }}
+        size="icon-sm"
+        title="用 VS Code 编辑文件"
+        variant="secondary"
+      >
+        <FilePenLineIcon aria-hidden="true" data-icon="inline-start" />
+      </Button>
+      <Button
+        aria-label="复制文章引用"
+        onClick={() => {
+          void copyValue(formatDocumentReference(referencePath));
+        }}
+        size="icon-sm"
+        title="复制文章引用"
         variant="secondary"
       >
         <CopyIcon aria-hidden="true" data-icon="inline-start" />
       </Button>
       <p aria-live="polite" className="sr-only" role="status">
-        {referenceStatus}
+        {actionStatus}
       </p>
     </div>
   );

@@ -1,9 +1,14 @@
 import { bytesFromBase64, bytesToBase64 } from '~/lib/base64';
 import { logInfo } from '~/logging';
+import { execFile } from 'node:child_process';
+import { dirname } from 'node:path';
+import { promisify } from 'node:util';
 import type {
   LibrarySelectionSourceView,
   LibrarySelectionViewInput,
+  OpenDocumentInput,
 } from '@locus/document-library/contracts/library-api';
+import { resolveExistingDocument } from '@locus/document-library/server/paths';
 import { isPreviewableImageAsset } from '@locus/document-library/contracts/asset';
 import {
   ensureAssetThumbnailCacheDir,
@@ -21,6 +26,8 @@ import { resolveLibrarySelection } from './selection.server';
 import { readLibraryState, updateLibraryDocumentOrder } from './state.server';
 import { updateDocumentGraphParticipation } from './state.server';
 import { excludedDocumentGraphPaths } from '@locus/document-library/contracts/library-state';
+
+const execFileAsync = promisify(execFile);
 
 async function readAssetImageSizes(
   library: Awaited<ReturnType<typeof getLibrary>>,
@@ -116,6 +123,47 @@ export async function getLibrarySelection(input: LibrarySelectionViewInput) {
   const documentPath = input.doc.trim();
   const library = await getLibrary();
   return readSelectionView(library, documentPath);
+}
+
+export async function openDocument(input: OpenDocumentInput) {
+  if (!input || typeof input.path !== 'string' || !input.path.trim()) {
+    throw new Error('path 必须是非空字符串。');
+  }
+  if (input.target !== 'directory' && input.target !== 'vscode') {
+    throw new Error('target 必须是 directory 或 vscode。');
+  }
+
+  const library = await getLibrary();
+  const document = library.getDocument(input.path);
+  const file = resolveExistingDocument(
+    library.status().rootPath,
+    document.path,
+  );
+  const target = input.target === 'directory' ? dirname(file) : file;
+
+  if (process.platform === 'darwin') {
+    await execFileAsync(
+      'open',
+      input.target === 'vscode'
+        ? ['-a', 'Visual Studio Code', target]
+        : [target],
+    );
+  } else if (process.platform === 'win32') {
+    await execFileAsync(
+      input.target === 'vscode' ? 'code.cmd' : 'explorer.exe',
+      [target],
+    );
+  } else {
+    await execFileAsync(input.target === 'vscode' ? 'code' : 'xdg-open', [
+      target,
+    ]);
+  }
+
+  logInfo('library.document.opened', {
+    path: document.path,
+    target: input.target,
+  });
+  return { ok: true as const };
 }
 
 export interface UpdateDocumentIconImageInput {

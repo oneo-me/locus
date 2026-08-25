@@ -67,6 +67,11 @@ export interface UpdateDocumentIconImageInput {
   dataBase64: string | null;
 }
 
+export interface OpenDocumentInput {
+  path: string;
+  target: 'directory' | 'vscode';
+}
+
 export interface ReorderDocumentsInput {
   items: Array<{ path: string; order: number }>;
 }

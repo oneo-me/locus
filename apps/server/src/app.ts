@@ -3,6 +3,7 @@ import type { Context } from 'hono';
 import { logger } from 'hono/logger';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type {
+  OpenDocumentInput,
   ReorderDocumentsInput,
   SetDocumentArchivedInput,
   SetDocumentGraphParticipationInput,
@@ -16,6 +17,7 @@ import {
   getLibraryArchiveView,
   getLibraryGraph,
   getLibraryWorkspaceView,
+  openDocument,
   reorderDocuments,
   setDocumentArchived,
   setDocumentGraphParticipation,
@@ -76,6 +78,11 @@ export function createApp(staticRoot?: string) {
       updateDocumentIconImage(
         await body<UpdateDocumentIconImageInput>(context),
       ),
+    ),
+  );
+  app.post('/api/library/document/open', async (context) =>
+    jsonRoute('library.document.open', async () =>
+      openDocument(await body<OpenDocumentInput>(context)),
     ),
   );
   app.post('/api/library/reorder', async (context) =>
