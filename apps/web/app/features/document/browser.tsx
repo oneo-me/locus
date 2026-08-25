@@ -3,7 +3,6 @@ import {
   type LibrarySelectionView,
   type LibraryWorkspaceView,
 } from '@locus/document-library/contracts/library-api';
-import { libraryReferenceScheme } from '@locus/document-library/contracts/library-reference';
 import { documentGraphParticipation } from '@locus/document-library/contracts/library-state';
 import type { DocumentContent } from '@locus/document-library/contracts/library-types';
 import {
@@ -28,6 +27,7 @@ import { MarkdownContent } from './markdown';
 import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
 import { DocumentMenu } from './document-menu';
+import { copyDocumentText, formatDocumentReference } from './document-actions';
 
 export function DocumentBrowser({
   data,
@@ -156,25 +156,6 @@ function DocumentArticle({
       </article>
     </div>
   );
-}
-
-export async function copyDocumentText(
-  value: string,
-  clipboard: Pick<Clipboard, 'writeText'> | undefined = globalThis.navigator
-    ?.clipboard,
-): Promise<boolean> {
-  if (!clipboard) return false;
-
-  try {
-    await clipboard.writeText(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function formatDocumentReference(path: string): string {
-  return `${libraryReferenceScheme}${path}`;
 }
 
 export function DocumentActions({
