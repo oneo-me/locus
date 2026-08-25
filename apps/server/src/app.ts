@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type {
   ReorderDocumentsInput,
+  SetDocumentArchivedInput,
   SetDocumentGraphParticipationInput,
   UpdateDocumentIconImageInput,
 } from '@locus/document-library/contracts/library-api';
@@ -12,9 +13,11 @@ import { createRouteAssetResponse } from '~/features/asset/route.server';
 import { createWorkspaceEventsResponse } from '~/features/workspace/workspace-events';
 import {
   getLibrarySelection,
+  getLibraryArchiveView,
   getLibraryGraph,
   getLibraryWorkspaceView,
   reorderDocuments,
+  setDocumentArchived,
   setDocumentGraphParticipation,
   updateDocumentIconImage,
 } from '~/features/library/service';
@@ -60,6 +63,9 @@ export function createApp(staticRoot?: string) {
   app.get('/api/library/graph', () =>
     jsonRoute('library.graph.read', () => getLibraryGraph()),
   );
+  app.get('/api/library/archives', () =>
+    jsonRoute('library.archives.read', () => getLibraryArchiveView()),
+  );
   app.get('/api/library/document', (context) =>
     jsonRoute('library.document.read', () =>
       getLibrarySelection({ doc: context.req.query('doc') ?? '' }),
@@ -82,6 +88,11 @@ export function createApp(staticRoot?: string) {
       setDocumentGraphParticipation(
         await body<SetDocumentGraphParticipationInput>(context),
       ),
+    ),
+  );
+  app.post('/api/library/archive', async (context) =>
+    jsonRoute('library.archive.update', async () =>
+      setDocumentArchived(await body<SetDocumentArchivedInput>(context)),
     ),
   );
   app.get('/api/settings', () => jsonRoute('settings.read', getGlobalSettings));

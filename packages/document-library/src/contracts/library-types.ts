@@ -1,4 +1,5 @@
 export interface DocumentMetadata {
+  archived: boolean;
   title: string;
   icon: string | null;
   summary: string | null;
@@ -10,6 +11,7 @@ export const documentMetadataKeys: DocumentMetadataKey[] = [
   'title',
   'icon',
   'summary',
+  'archived',
 ];
 
 export interface DocumentSummary extends DocumentMetadata {

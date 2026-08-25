@@ -1,11 +1,14 @@
 import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
   InfoIcon,
   type LucideIcon,
   NetworkIcon,
   PlugZapIcon,
   SettingsIcon,
 } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useRevalidator } from 'react-router';
+import type { LibraryArchiveView } from '@locus/document-library/contracts/library-api';
 import {
   Children,
   type FormEvent,
@@ -16,7 +19,15 @@ import {
 } from 'react';
 import { type Theme, useTheme } from '@locus/ui/theme-provider';
 import { Badge } from '@locus/ui/components/badge';
+import { Alert, AlertDescription } from '@locus/ui/components/alert';
 import { Button } from '@locus/ui/components/button';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@locus/ui/components/empty';
 import {
   Field,
   FieldContent,
@@ -45,8 +56,9 @@ import { McpEnabledSwitch } from '../settings/mcp-control';
 import { McpInstallationGuide } from '../settings/mcp-installation-guide';
 import { useGlobalSettings } from '../settings/global-settings-provider';
 import { GraphAttachmentsSwitch } from '../graph/attachments-control';
+import { useDocumentApi } from '~/lib/document-api-context';
 
-type SettingsSectionId = 'general' | 'graph' | 'mcp' | 'about';
+type SettingsSectionId = 'general' | 'graph' | 'archives' | 'mcp' | 'about';
 
 interface SettingsNavItem {
   id: SettingsSectionId;
@@ -66,6 +78,11 @@ const SETTINGS_NAV: SettingsNavItem[] = [
     icon: NetworkIcon,
   },
   {
+    id: 'archives',
+    label: '归档',
+    icon: ArchiveIcon,
+  },
+  {
     id: 'mcp',
     label: 'MCP',
     icon: PlugZapIcon,
@@ -77,7 +94,15 @@ const SETTINGS_NAV: SettingsNavItem[] = [
   },
 ];
 
-export function SettingsBrowser({ libraryError }: { libraryError?: string }) {
+export function SettingsBrowser({
+  archives,
+  archivesError,
+  libraryError,
+}: {
+  archives: LibraryArchiveView;
+  archivesError: string | null;
+  libraryError?: string;
+}) {
   const [activeId, setActiveId] = useState<SettingsSectionId>('general');
   const activeItem =
     SETTINGS_NAV.find((item) => item.id === activeId) ?? SETTINGS_NAV[0];
@@ -91,7 +116,12 @@ export function SettingsBrowser({ libraryError }: { libraryError?: string }) {
         </header>
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
           <div className="px-5 pt-5 pb-8">
-            <SettingsPanel id={activeItem.id} libraryError={libraryError} />
+            <SettingsPanel
+              archives={archives}
+              archivesError={archivesError}
+              id={activeItem.id}
+              libraryError={libraryError}
+            />
           </div>
         </div>
       </div>
@@ -142,9 +172,13 @@ function SettingsSidebar({
 }
 
 function SettingsPanel({
+  archives,
+  archivesError,
   id,
   libraryError,
 }: {
+  archives: LibraryArchiveView;
+  archivesError: string | null;
   id: SettingsSectionId;
   libraryError?: string;
 }) {
@@ -153,11 +187,85 @@ function SettingsPanel({
       return <GeneralPanel libraryError={libraryError} />;
     case 'graph':
       return <GraphPanel />;
+    case 'archives':
+      return <ArchivesPanel data={archives} error={archivesError} />;
     case 'mcp':
       return <McpPanel />;
     case 'about':
       return <AboutPanel />;
   }
+}
+
+function ArchivesPanel({
+  data,
+  error,
+}: {
+  data: LibraryArchiveView;
+  error: string | null;
+}) {
+  const { setDocumentArchived } = useDocumentApi();
+  const { revalidate } = useRevalidator();
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const restore = async (path: string) => {
+    setPendingPath(path);
+    setActionError(null);
+    try {
+      await setDocumentArchived({ path, archived: false });
+      await revalidate();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setPendingPath(null);
+    }
+  };
+
+  return (
+    <SettingsBlock title="已归档笔记">
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>无法读取归档：{error}</AlertDescription>
+        </Alert>
+      ) : data.documents.length === 0 ? (
+        <Empty className="py-8">
+          <EmptyMedia variant="icon">
+            <ArchiveIcon aria-hidden="true" />
+          </EmptyMedia>
+          <EmptyHeader>
+            <EmptyTitle>暂无归档笔记</EmptyTitle>
+            <EmptyDescription>
+              点击笔记标题左侧的图标可以归档笔记。
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        data.documents.map((document) => (
+          <SettingsRow
+            description={document.directory || '笔记库根目录'}
+            key={document.path}
+            label={document.title}
+          >
+            <Button
+              disabled={pendingPath !== null}
+              onClick={() => void restore(document.path)}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <ArchiveRestoreIcon aria-hidden="true" data-icon="inline-start" />
+              {pendingPath === document.path ? '正在移除…' : '移除归档'}
+            </Button>
+          </SettingsRow>
+        ))
+      )}
+      {actionError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      ) : null}
+    </SettingsBlock>
+  );
 }
 
 function GraphPanel() {

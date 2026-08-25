@@ -58,6 +58,10 @@ export interface LibraryGraph {
   status: LibraryStatus;
 }
 
+export interface LibraryArchiveView {
+  documents: LibraryNavigationDocument[];
+}
+
 export interface UpdateDocumentIconImageInput {
   path: string;
   dataBase64: string | null;
@@ -70,4 +74,9 @@ export interface ReorderDocumentsInput {
 export interface SetDocumentGraphParticipationInput {
   path: string;
   participates: boolean;
+}
+
+export interface SetDocumentArchivedInput {
+  path: string;
+  archived: boolean;
 }

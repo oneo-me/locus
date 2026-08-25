@@ -1,5 +1,6 @@
 import type {
   ReorderDocumentsInput,
+  SetDocumentArchivedInput,
   SetDocumentGraphParticipationInput,
   UpdateDocumentIconImageInput,
 } from '@locus/document-library/contracts/library-api';
@@ -11,6 +12,9 @@ import { createContext, type ReactNode, useContext } from 'react';
 
 export interface DocumentApiClient {
   reorderDocuments: (data: ReorderDocumentsInput) => Promise<{ ok: true }>;
+  setDocumentArchived: (
+    data: SetDocumentArchivedInput,
+  ) => Promise<{ ok: true; archived: boolean }>;
   setDocumentGraphParticipation: (
     data: SetDocumentGraphParticipationInput,
   ) => Promise<{ ok: true; participates: boolean }>;

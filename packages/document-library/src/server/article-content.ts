@@ -13,6 +13,7 @@ export function articleContentLines(content: string): string[] {
 
 export function articleMetadata(document: DocumentContent): ArticleMetadata {
   return {
+    archived: document.archived,
     path: documentPathToArticlePath(document.path),
     title: document.title,
     icon:
@@ -28,6 +29,7 @@ export function articleRevision(document: DocumentContent): string {
     .update(
       JSON.stringify({
         path: document.path,
+        archived: document.archived,
         title: document.title,
         icon: document.icon,
         summary: document.summary,

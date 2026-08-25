@@ -1,6 +1,10 @@
 import type { LibraryNavigationDocument } from '@locus/document-library/contracts/library-api';
 import type { DocumentLibrary } from '@locus/document-library/server/document-library';
 import type { DocumentSummary } from '@locus/document-library/contracts/library-types';
+import {
+  archivedDocumentPaths,
+  isDocumentArchived,
+} from '@locus/document-library/contracts/document-archive';
 
 export function toLibraryNavigationDocument(
   document: DocumentSummary,
@@ -19,8 +23,17 @@ export function readLibraryNavigation(library: DocumentLibrary): {
   directories: string[];
   documents: LibraryNavigationDocument[];
 } {
+  const documents = library.listAllDocuments();
+  const archivedPaths = archivedDocumentPaths(documents);
   return {
-    directories: library.listAllDirectories(),
-    documents: library.listAllDocuments().map(toLibraryNavigationDocument),
+    directories: library
+      .listAllDirectories()
+      .filter(
+        (directory) =>
+          !isDocumentArchived(archivedPaths, `${directory}/index.md`),
+      ),
+    documents: documents
+      .filter((document) => !isDocumentArchived(archivedPaths, document.path))
+      .map(toLibraryNavigationDocument),
   };
 }

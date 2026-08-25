@@ -66,6 +66,7 @@ async function readSelectionView(
 
 export async function getLibraryWorkspaceView() {
   const library = await getLibrary();
+  const libraryState = readLibraryState();
   const navigation = readLibraryNavigation(library);
   const repositoryView = readLibraryRepositoryView(library);
 
@@ -75,20 +76,35 @@ export async function getLibraryWorkspaceView() {
     repositoryChanges: repositoryView.changes,
     repositoryError: repositoryView.error,
     repositoryRevision: repositoryView.revision,
-    libraryState: readLibraryState(),
+    libraryState,
+  };
+}
+
+export async function getLibraryArchiveView() {
+  const library = await getLibrary();
+  return {
+    documents: library
+      .listAllDocuments()
+      .filter((document) => document.archived)
+      .map((document) => ({
+        attachmentCount: document.assets.length,
+        directory: document.directory,
+        icon: document.icon,
+        iconImageModifiedAt: document.iconImageModifiedAt,
+        path: document.path,
+        title: document.title,
+      })),
   };
 }
 
 export async function getLibraryGraph() {
   const library = await getLibrary();
   const state = readLibraryState();
-  const documentPaths = library
-    .listAllDocuments()
-    .map((document) => document.path);
+  const documents = library.listAllDocuments();
   return {
     status: library.status(),
     graph: library.getDocumentGraph(
-      excludedDocumentGraphPaths(state, documentPaths),
+      excludedDocumentGraphPaths(state, documents),
     ),
   };
 }
@@ -184,5 +200,34 @@ export async function setDocumentGraphParticipation(
   return {
     ok: true as const,
     participates: state.graphParticipation[path] ?? true,
+  };
+}
+
+export interface SetDocumentArchivedInput {
+  path: string;
+  archived: boolean;
+}
+
+export async function setDocumentArchived(input: SetDocumentArchivedInput) {
+  if (!input || typeof input.path !== 'string' || !input.path.trim()) {
+    throw new Error('path 必须是非空字符串。');
+  }
+  if (typeof input.archived !== 'boolean') {
+    throw new Error('archived 必须是布尔值。');
+  }
+  const library = await getLibrary();
+  const document = library.getDocument(input.path.trim());
+  const updated = library.setDocumentArchived(document.path, input.archived);
+  logInfo(
+    input.archived
+      ? 'library.document.archived'
+      : 'library.document.unarchived',
+    {
+      path: document.path,
+    },
+  );
+  return {
+    ok: true as const,
+    archived: updated.archived,
   };
 }

@@ -1,3 +1,9 @@
+import {
+  archivedDocumentPaths,
+  isDocumentArchived,
+} from './document-archive.js';
+import type { DocumentSummary } from './library-types.js';
+
 export interface LibraryState {
   order: Record<string, number>;
   graphParticipation: Record<string, boolean>;
@@ -83,9 +89,14 @@ export function participatesInDocumentGraph(
 
 export function excludedDocumentGraphPaths(
   state: LibraryState,
-  documentPaths: readonly string[],
+  documents: readonly DocumentSummary[],
 ): string[] {
-  return documentPaths.filter(
-    (path) => !participatesInDocumentGraph(state, path),
-  );
+  const archivedPaths = archivedDocumentPaths(documents);
+  return documents
+    .map((document) => document.path)
+    .filter(
+      (path) =>
+        isDocumentArchived(archivedPaths, path) ||
+        !participatesInDocumentGraph(state, path),
+    );
 }

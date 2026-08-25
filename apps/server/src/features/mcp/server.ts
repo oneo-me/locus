@@ -38,7 +38,7 @@ const mcpInstructions = [
   'Use search_articles for titles or keywords; use list_articles to browse children.',
   'Each result includes an article path for hierarchy navigation plus absolute file and directory paths.',
   'Edit content with the client file tools: each article is a directory containing index.md;',
-  'YAML frontmatter holds title, icon, and summary; sibling regular files are attachments.',
+  'YAML frontmatter holds title, icon, summary, and archived state; sibling regular files are attachments.',
   'Do not recreate CRUD or attachment tools through MCP.',
 ].join(' ');
 

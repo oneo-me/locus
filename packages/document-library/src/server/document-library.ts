@@ -72,6 +72,7 @@ import {
   normalizeIcon,
   parseDocument,
   serializeDocument,
+  serializeDocumentArchive,
 } from './markdown.js';
 import {
   documentIndexName,
@@ -843,6 +844,7 @@ export class DocumentLibrary {
         : input.title.trim();
     if (!title) throw new Error('title 不能为空。');
     const metadata: DocumentMetadata = {
+      archived: false,
       title,
       icon: normalizeIcon(input.icon),
       summary: input.summary?.trim() || null,
@@ -868,6 +870,7 @@ export class DocumentLibrary {
     const target = resolveExistingDocument(this.#rootPath, normalizedPath);
     const current = this.getDocument(normalizedPath);
     const metadata: DocumentMetadata = {
+      archived: current.archived,
       title: input.title === undefined ? current.title : input.title.trim(),
       icon: input.icon === undefined ? current.icon : normalizeIcon(input.icon),
       summary:
@@ -880,6 +883,21 @@ export class DocumentLibrary {
       target,
       normalizedPath,
       serializeDocument(metadata, input.content ?? current.content),
+    );
+    this.#refreshDocumentSynchronously(normalizedPath);
+    return this.getDocument(normalizedPath);
+  }
+
+  setDocumentArchived(path: string, archived: boolean): DocumentContent {
+    const normalizedPath = normalizeRelativePath(path);
+    const target = resolveExistingDocument(this.#rootPath, normalizedPath);
+    const current = this.getDocument(normalizedPath);
+    if (current.archived === archived) return current;
+    const raw = readFileSync(target, 'utf8');
+    this.#writeAtomically(
+      target,
+      normalizedPath,
+      serializeDocumentArchive(raw, archived),
     );
     this.#refreshDocumentSynchronously(normalizedPath);
     return this.getDocument(normalizedPath);

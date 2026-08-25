@@ -70,9 +70,7 @@ export async function createWorkspaceEventsResponse(
                   graph: library.getDocumentGraph(
                     excludedDocumentGraphPaths(
                       state,
-                      library
-                        .listAllDocuments()
-                        .map((document) => document.path),
+                      library.listAllDocuments(),
                     ),
                   ),
                 }

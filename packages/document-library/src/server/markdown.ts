@@ -1,5 +1,9 @@
 import { dirname } from 'node:path';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import {
+  parse as parseYaml,
+  parseDocument as parseYamlDocument,
+  stringify as stringifyYaml,
+} from 'yaml';
 import {
   type DocumentMetadata,
   type DocumentMetadataKey,
@@ -77,6 +81,7 @@ export function parseDocument(
 
   return {
     summary: {
+      archived: attributes.archived === true,
       path,
       directory: dirname(path) === '.' ? '' : dirname(path),
       title: optionalString(attributes.title) ?? fallbackTitle,
@@ -103,6 +108,7 @@ function frontmatterValue(
   metadata: DocumentMetadata,
 ): unknown {
   const value = metadata[key];
+  if (key === 'archived' && value === false) return undefined;
   if (value === null || value === undefined) return undefined;
   return value;
 }
@@ -118,6 +124,25 @@ export function serializeDocument(
   }
   const yaml = stringifyYaml(frontmatter, { indent: 2 }).trimEnd();
   return `---\n${yaml}\n---\n${content.replace(/^\uFEFF/, '')}`;
+}
+
+export function serializeDocumentArchive(
+  raw: string,
+  archived: boolean,
+): string {
+  const normalized = raw.replace(/^\uFEFF/, '');
+  const match = normalized.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) throw new Error('缺少有效的 YAML frontmatter。');
+
+  const document = parseYamlDocument(match[1] ?? '');
+  if (document.errors.length > 0) {
+    throw new Error(`YAML 解析失败：${document.errors[0]?.message}`);
+  }
+  if (archived) document.set('archived', true);
+  else document.delete('archived');
+
+  const yaml = document.toString({ indent: 2 }).trimEnd();
+  return `---\n${yaml}\n---\n${normalized.slice(match[0].length)}`;
 }
 
 export function createExcerpt(content: string, query: string): string {

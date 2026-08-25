@@ -15,16 +15,19 @@ export function WorkspaceDocumentLandingState({
 }: {
   data: LibraryWorkspaceView;
 }) {
-  const libraryIsEmpty = data.documents.length === 0;
-  const title = '文档库还是空的';
-  const description = `在 ${data.status.rootPath} 下新建文章目录，并在其中加入 index.md。`;
+  const navigationIsEmpty = data.documents.length === 0;
+  const libraryIsEmpty = data.status.documentCount === 0;
+  const title = libraryIsEmpty ? '文档库还是空的' : '所有笔记均已归档';
+  const description = libraryIsEmpty
+    ? `在 ${data.status.rootPath} 下新建文章目录，并在其中加入 index.md。`
+    : '前往设置中的归档分类，可以移除笔记的归档状态。';
 
   return (
     <main
       className="h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-card text-sm"
       id="main-content"
     >
-      {libraryIsEmpty ? (
+      {navigationIsEmpty ? (
         <Empty className="mx-auto mt-[18vh] w-[calc(100%-3rem)] max-w-xl">
           <EmptyHeader>
             <EmptyMedia variant="icon">

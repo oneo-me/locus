@@ -1,4 +1,5 @@
 export interface ArticleMetadata {
+  archived: boolean;
   path: string;
   title: string;
   icon: string | null;

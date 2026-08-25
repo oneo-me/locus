@@ -22,8 +22,7 @@ import { deriveYamlPanelHue } from './atmosphere';
 import { MarkdownContent } from './markdown';
 import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
-import { DocumentIconUpload } from './icon-upload';
-import { DocumentGraphParticipationControl } from './graph-participation-control';
+import { DocumentMenu } from './document-menu';
 
 export function DocumentBrowser({
   data,
@@ -112,18 +111,24 @@ function DocumentArticle({
       <article className="relative mx-auto flex w-[calc(100%-4rem)] max-w-[52rem] flex-col gap-6 pt-6 pb-14">
         <header className="flex flex-col gap-3">
           <DocumentYamlMetadata
-            actions={
-              <DocumentActions
-                documentPath={document.path}
-                graphParticipation={graphParticipation}
-                onGraphParticipationSaved={revalidate}
-                path={document.directory}
-              />
-            }
+            actions={<DocumentActions path={document.directory} />}
             document={document}
             error={iconError}
-            onImageUpload={saveIconImage}
-            pending={iconPending}
+            menu={
+              <DocumentMenu
+                archived={document.archived}
+                documentPath={document.path}
+                graphParticipation={graphParticipation}
+                icon={document.icon}
+                iconImageSrc={getDocumentIconUrl(
+                  document.path,
+                  document.iconImageModifiedAt,
+                )}
+                iconPending={iconPending}
+                onGraphParticipationSaved={revalidate}
+                onImageUpload={saveIconImage}
+              />
+            }
           />
           {document.issue ? (
             <Alert variant="destructive">
@@ -162,17 +167,7 @@ export function formatDocumentReference(path: string): string {
   return `${libraryReferenceScheme}${path}`;
 }
 
-export function DocumentActions({
-  documentPath,
-  graphParticipation,
-  onGraphParticipationSaved,
-  path,
-}: {
-  documentPath: string;
-  graphParticipation: ReturnType<typeof documentGraphParticipation>;
-  onGraphParticipationSaved?: () => void | Promise<void>;
-  path: string;
-}) {
+export function DocumentActions({ path }: { path: string }) {
   const [referenceStatus, setReferenceStatus] = useState<string | null>(null);
 
   const copyValue = async (value: string) => {
@@ -194,13 +189,6 @@ export function DocumentActions({
       >
         <CopyIcon aria-hidden="true" data-icon="inline-start" />
       </Button>
-      <DocumentGraphParticipationControl
-        documentPath={documentPath}
-        inherited={graphParticipation.inheritedFrom !== null}
-        initialValue={graphParticipation.configured}
-        key={documentPath}
-        onSaved={onGraphParticipationSaved}
-      />
       <p aria-live="polite" className="sr-only" role="status">
         {referenceStatus}
       </p>
@@ -212,31 +200,19 @@ export function DocumentYamlMetadata({
   actions,
   document,
   error,
-  onImageUpload,
-  pending,
+  menu,
 }: {
   actions?: ReactNode;
   document: Omit<DocumentContent, 'content'>;
   error: string | null;
-  onImageUpload: (file: File) => void;
-  pending: boolean;
+  menu: ReactNode;
 }) {
   const summary = document.summary?.trim() || null;
 
   return (
     <section className="flex flex-col gap-6" aria-label="文档元数据">
       <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5">
-        <DocumentIconUpload
-          className="size-8"
-          disabled={pending}
-          icon={document.icon}
-          iconClassName="size-6 text-xl"
-          imageSrc={getDocumentIconUrl(
-            document.path,
-            document.iconImageModifiedAt,
-          )}
-          onImageUpload={onImageUpload}
-        />
+        {menu}
         <h1 className="col-start-2 min-w-0 truncate text-xl leading-7 font-medium">
           {document.title}
         </h1>

@@ -77,6 +77,7 @@ export function WorkspaceSidebar({
         currentPath={currentPath}
         directories={data.directories}
         documents={data.documents}
+        libraryDocumentCount={data.status.documentCount}
         repositoryChanges={data.repositoryChanges}
         repositoryError={data.repositoryError}
         treeState={data.libraryState}
@@ -89,6 +90,7 @@ function LibraryNavigation({
   currentPath,
   directories,
   documents,
+  libraryDocumentCount,
   repositoryChanges,
   repositoryError,
   treeState,
@@ -96,6 +98,7 @@ function LibraryNavigation({
   currentPath?: string;
   directories: string[];
   documents: LibraryNavigationDocument[];
+  libraryDocumentCount: number;
   repositoryChanges: LibraryWorkspaceView['repositoryChanges'];
   repositoryError: LibraryWorkspaceView['repositoryError'];
   treeState: LibraryWorkspaceView['libraryState'];
@@ -188,7 +191,11 @@ function LibraryNavigation({
           />
         </nav>
       ) : (
-        <p className="m-3 text-muted-foreground">文档库还是空的。</p>
+        <p className="m-3 text-muted-foreground">
+          {libraryDocumentCount === 0
+            ? '文档库还是空的。'
+            : '所有笔记均已归档。'}
+        </p>
       )}
     </div>
   );

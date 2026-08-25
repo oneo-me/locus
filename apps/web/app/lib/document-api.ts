@@ -3,6 +3,7 @@ import { apiSend } from './api-client';
 
 export const documentApi: DocumentApiClient = {
   reorderDocuments: (data) => apiSend('/api/library/reorder', 'POST', data),
+  setDocumentArchived: (data) => apiSend('/api/library/archive', 'POST', data),
   setDocumentGraphParticipation: (data) =>
     apiSend('/api/library/graph-participation', 'POST', data),
   updateDocumentIconImage: (data) =>
