@@ -8,20 +8,16 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { cn } from '@locus/ui/utils';
 import {
   parseWorkspaceEventSnapshot,
   type WorkspaceEventSnapshot,
   WORKSPACE_EVENTS_PATH,
 } from './events';
 import { useGlobalSettings } from '../settings/global-settings-provider';
-import type { WorkspaceEventStatus } from './header';
-import { WorkspaceMobileEdgeSwipe } from './mobile-navigation';
 import { WorkspaceSidebar } from './sidebar';
 import { WorkspaceSidebarResizeHandle } from './sidebar-resize-handle';
 
 export interface WorkspaceSnapshotState {
-  query: string | null;
   snapshot: WorkspaceEventSnapshot;
 }
 
@@ -35,8 +31,6 @@ function liveSnapshotMatchesLoaderData(
       JSON.stringify(snapshot.navigation.directories) &&
     JSON.stringify(data.documents) ===
       JSON.stringify(snapshot.navigation.documents) &&
-    JSON.stringify(data.search) ===
-      JSON.stringify(snapshot.navigation.search) &&
     JSON.stringify(data.repositoryChanges) ===
       JSON.stringify(snapshot.repositoryChanges) &&
     data.repositoryError === snapshot.repositoryError &&
@@ -48,38 +42,14 @@ const WorkspaceLibraryDataContext = createContext<LibraryWorkspaceView | null>(
   null,
 );
 
-const eventTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false,
-});
-
-function createInitialEventStatus(): WorkspaceEventStatus {
-  return {
-    connection: 'connecting',
-    lastEventAt: null,
-  };
-}
-
-export function createWorkspaceEventPath(query: string | null): string {
-  const search = new URLSearchParams();
-  if (query) search.set('q', query);
-  return search.size > 0
-    ? `${WORKSPACE_EVENTS_PATH}?${search}`
-    : WORKSPACE_EVENTS_PATH;
-}
-
 export function mergeWorkspaceLibraryData(
   data: LibraryWorkspaceView,
   snapshotState: WorkspaceSnapshotState | null,
-  query: string | null,
 ): LibraryWorkspaceView {
   const snapshot = snapshotState?.snapshot;
   if (snapshot && liveSnapshotMatchesLoaderData(data, snapshot)) {
     return data;
   }
-  const searchSnapshot = snapshotState?.query === query ? snapshot : undefined;
   return {
     ...data,
     ...(snapshot
@@ -92,7 +62,6 @@ export function mergeWorkspaceLibraryData(
           status: snapshot.status,
         }
       : {}),
-    search: searchSnapshot ? searchSnapshot.navigation.search : data.search,
   };
 }
 
@@ -100,82 +69,50 @@ export function WorkspaceShell({
   children,
   currentPath,
   data,
-  mobileContentVisible,
-  query,
 }: {
   children: ReactNode;
   currentPath?: string;
   data: LibraryWorkspaceView;
-  mobileContentVisible: boolean;
-  query?: string;
 }) {
   const { settings, updateSettings } = useGlobalSettings();
   const [sidebarWidthDraft, setSidebarWidthDraft] = useState<number | null>(
     null,
   );
   const sidebarWidth = sidebarWidthDraft ?? settings.workspaceSidebarWidth;
-  const normalizedQuery = query?.trim() || null;
   const [snapshotState, setSnapshotState] =
     useState<WorkspaceSnapshotState | null>(null);
-  const [eventStatus, setEventStatus] = useState<WorkspaceEventStatus>(
-    createInitialEventStatus,
-  );
 
   useEffect(() => {
     let active = true;
-    const events = new EventSource(createWorkspaceEventPath(normalizedQuery));
-    events.onopen = () => {
-      if (!active) return;
-      setEventStatus((current) => ({
-        ...current,
-        connection: 'connected',
-      }));
-    };
+    const events = new EventSource(WORKSPACE_EVENTS_PATH);
     events.onmessage = (event) => {
       if (!active) return;
       const nextSnapshot = parseWorkspaceEventSnapshot(event.data);
       if (nextSnapshot) {
-        setSnapshotState({ query: normalizedQuery, snapshot: nextSnapshot });
-        setEventStatus({
-          connection: 'connected',
-          lastEventAt: eventTimeFormatter.format(new Date()),
-        });
+        setSnapshotState({ snapshot: nextSnapshot });
       }
-    };
-    events.onerror = () => {
-      if (!active) return;
-      setEventStatus((current) => ({
-        ...current,
-        connection: 'reconnecting',
-      }));
     };
     return () => {
       active = false;
       events.close();
     };
-  }, [normalizedQuery]);
+  }, []);
 
   const liveLibraryData = useMemo(
-    () => mergeWorkspaceLibraryData(data, snapshotState, normalizedQuery),
-    [data, normalizedQuery, snapshotState],
+    () => mergeWorkspaceLibraryData(data, snapshotState),
+    [data, snapshotState],
   );
   return (
     <WorkspaceLibraryDataContext.Provider value={liveLibraryData}>
       <div
-        className="grid h-dvh min-w-0 grid-cols-1 bg-background text-sm md:grid-cols-[var(--workspace-sidebar-width)_0_minmax(0,1fr)]"
+        className="grid h-full min-w-0 grid-cols-[var(--workspace-sidebar-width)_0_minmax(0,1fr)] bg-background text-sm"
         style={
           {
             '--workspace-sidebar-width': `${sidebarWidth}px`,
           } as CSSProperties
         }
       >
-        <WorkspaceSidebar
-          currentPath={currentPath}
-          data={liveLibraryData}
-          eventStatus={eventStatus}
-          hiddenOnMobile={mobileContentVisible}
-          query={query}
-        />
+        <WorkspaceSidebar currentPath={currentPath} data={liveLibraryData} />
         <WorkspaceSidebarResizeHandle
           onWidthChange={setSidebarWidthDraft}
           onWidthCommit={(width) => {
@@ -189,16 +126,7 @@ export function WorkspaceShell({
           }}
           width={sidebarWidth}
         />
-        <div
-          className={cn(
-            'h-full min-h-0 min-w-0',
-            mobileContentVisible ? 'block' : 'hidden md:block',
-          )}
-          data-workspace-mobile-pane="secondary"
-        >
-          {children}
-        </div>
-        {mobileContentVisible ? <WorkspaceMobileEdgeSwipe /> : null}
+        <div className="h-full min-h-0 min-w-0">{children}</div>
       </div>
     </WorkspaceLibraryDataContext.Provider>
   );

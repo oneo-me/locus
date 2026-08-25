@@ -12,10 +12,6 @@ export interface SerializedMarkdownTree {
   nodes: unknown[];
 }
 
-export interface LibraryWorkspaceViewInput {
-  query?: string;
-}
-
 export interface LibrarySelectionViewInput {
   doc: string;
 }
@@ -46,12 +42,6 @@ export type LibraryNavigationDocument = Pick<
   attachmentCount: number;
 };
 
-export interface LibraryNavigationSearchResult {
-  query: string;
-  total: number;
-  results: LibraryNavigationDocument[];
-}
-
 export interface LibraryWorkspaceView {
   directories: string[];
   documents: LibraryNavigationDocument[];
@@ -59,7 +49,6 @@ export interface LibraryWorkspaceView {
   repositoryChanges: LibraryRepositoryChange[];
   repositoryError: string | null;
   repositoryRevision: string | null;
-  search: LibraryNavigationSearchResult | null;
   status: LibraryStatus;
 }
 

@@ -26,6 +26,8 @@ const buttonVariants = cva(
         selected: 'bg-sidebar-accent text-sidebar-accent-foreground',
         ghost:
           'hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
+        overlay:
+          'bg-primary-foreground/15 text-primary-foreground shadow-sm backdrop-blur-sm hover:bg-primary-foreground/25',
         'destructive-ghost':
           'text-muted-foreground hover:bg-destructive hover:text-white focus-visible:border-destructive/40 focus-visible:ring-destructive/20',
         destructive:
@@ -42,6 +44,8 @@ const buttonVariants = cva(
         icon: 'size-9',
         'icon-xs':
           "size-7 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3.5",
+        'icon-2xs':
+          "size-6 rounded-[min(var(--radius-md),8px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
         'icon-sm':
           'size-8 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg',
         'icon-lg': 'size-10',

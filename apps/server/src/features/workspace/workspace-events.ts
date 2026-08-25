@@ -15,7 +15,6 @@ export async function createWorkspaceEventsResponse(
   request: Request,
 ): Promise<Response> {
   const library: DocumentLibrary = await getLibrary();
-  const query = new URL(request.url).searchParams.get('q')?.trim();
   let cleanup = () => {};
   let flushPendingSnapshot = () => {};
 
@@ -65,7 +64,7 @@ export async function createWorkspaceEventsResponse(
             repositoryChanges: nextRepositoryView.changes,
             repositoryError: nextRepositoryView.error,
             repositoryRevision: nextRepositoryView.revision,
-            navigation: readLibraryNavigation(library, query),
+            navigation: readLibraryNavigation(library),
           })}\n\n`,
         );
       };

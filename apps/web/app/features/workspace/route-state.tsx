@@ -15,25 +15,16 @@ export function WorkspaceDocumentLandingState({
 }: {
   data: LibraryWorkspaceView;
 }) {
-  const searchIsEmpty = data.search?.total === 0;
   const libraryIsEmpty = data.documents.length === 0;
-  const title = searchIsEmpty
-    ? '没有匹配的文章'
-    : libraryIsEmpty
-      ? '文档库还是空的'
-      : '选择一篇搜索结果';
-  const description = searchIsEmpty
-    ? '换一个关键词，或清除搜索查看全部文章。'
-    : libraryIsEmpty
-      ? `在 ${data.status.rootPath} 下新建文章目录，并在其中加入 index.md。`
-      : '从左侧搜索结果中选择一篇文章开始阅读。';
+  const title = '文档库还是空的';
+  const description = `在 ${data.status.rootPath} 下新建文章目录，并在其中加入 index.md。`;
 
   return (
     <main
       className="h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-card text-sm"
       id="main-content"
     >
-      {data.search || libraryIsEmpty ? (
+      {libraryIsEmpty ? (
         <Empty className="mx-auto mt-[18vh] w-[calc(100%-3rem)] max-w-xl">
           <EmptyHeader>
             <EmptyMedia variant="icon">

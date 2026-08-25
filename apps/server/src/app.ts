@@ -51,10 +51,8 @@ export function createApp(staticRoot?: string) {
   app.use(logger());
 
   app.get('/api/health', (context) => context.json({ status: 'ok' as const }));
-  app.get('/api/library', (context) =>
-    jsonRoute('library.workspace.read', () =>
-      getLibraryWorkspaceView({ query: context.req.query('q') }),
-    ),
+  app.get('/api/library', () =>
+    jsonRoute('library.workspace.read', () => getLibraryWorkspaceView()),
   );
   app.get('/api/library/document', (context) =>
     jsonRoute('library.document.read', () =>

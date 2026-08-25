@@ -3,8 +3,8 @@ import FluentIconInfo from '@oneo/fluentui-icons-like-react/FluentIconInfo';
 import FluentIconPaintBrush from '@oneo/fluentui-icons-like-react/FluentIconPaintBrush';
 import FluentIconPlugConnected from '@oneo/fluentui-icons-like-react/FluentIconPlugConnected';
 import FluentIconSearch from '@oneo/fluentui-icons-like-react/FluentIconSearch';
-import FluentIconSettings from '@oneo/fluentui-icons-like-react/FluentIconSettings';
-import { ArrowLeftIcon, FolderOpenIcon, XIcon } from 'lucide-react';
+import { FolderOpenIcon } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import {
   Children,
   type ComponentType,
@@ -12,22 +12,12 @@ import {
   Fragment,
   isValidElement,
   type ReactNode,
-  useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { type Theme, useTheme } from '@locus/ui/theme-provider';
 import { Badge } from '@locus/ui/components/badge';
-import { Button, buttonVariants } from '@locus/ui/components/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from '@locus/ui/components/dialog';
+import { Button } from '@locus/ui/components/button';
 import {
   Field,
   FieldDescription,
@@ -107,88 +97,15 @@ const SETTINGS_NAV: SettingsNavItem[] = [
   },
 ];
 
-export function SettingsDialog({
+export function SettingsBrowser({
   initialSection = 'appearance',
-  initiallyOpen = false,
   libraryError,
-  requiredLibraryPath = false,
 }: {
   initialSection?: SettingsSectionId;
-  initiallyOpen?: boolean;
   libraryError?: string;
-  requiredLibraryPath?: boolean;
-}) {
-  const [open, setOpen] = useState(initiallyOpen);
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!requiredLibraryPath || nextOpen) setOpen(nextOpen);
-      }}
-    >
-      {!requiredLibraryPath ? (
-        <DialogTrigger
-          aria-label="设置"
-          className={cn(
-            buttonVariants({ size: 'icon', variant: 'ghost' }),
-            'cursor-default aria-expanded:bg-accent aria-expanded:text-foreground',
-          )}
-        >
-          <FluentIconSettings
-            aria-hidden="true"
-            data-icon="inline-start"
-            title={null}
-          />
-        </DialogTrigger>
-      ) : null}
-      <DialogContent
-        className="flex h-dvh max-h-dvh w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 ring-0 sm:max-w-none md:h-[min(48rem,calc(100dvh-2rem))] md:max-h-[min(48rem,calc(100dvh-2rem))] md:w-[min(60rem,calc(100vw-2rem))] md:max-w-none md:rounded-2xl md:ring-1"
-        showCloseButton={false}
-      >
-        <DialogDescription className="sr-only">
-          调整 Locus 的外观与其他偏好。
-        </DialogDescription>
-        <SettingsBrowser
-          canClose={!requiredLibraryPath}
-          initialSection={initialSection}
-          libraryError={libraryError}
-          onNavigate={() => setOpen(false)}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function SettingsBrowser({
-  canClose,
-  initialSection,
-  libraryError,
-  onNavigate,
-}: {
-  canClose: boolean;
-  initialSection: SettingsSectionId;
-  libraryError?: string;
-  onNavigate: () => void;
 }) {
   const [activeId, setActiveId] = useState<SettingsSectionId>(initialSection);
-  const [mobilePanelOpen, setMobilePanelOpen] = useState(!canClose);
   const [query, setQuery] = useState('');
-  const root = useRef<HTMLDivElement>(null);
-  const previousMobilePanelOpen = useRef(false);
-
-  useEffect(() => {
-    const wasOpen = previousMobilePanelOpen.current;
-    previousMobilePanelOpen.current = mobilePanelOpen;
-    if (!wasOpen || mobilePanelOpen) return;
-
-    const frame = window.requestAnimationFrame(() => {
-      root.current
-        ?.querySelector<HTMLElement>('[aria-current="true"]')
-        ?.focus();
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [mobilePanelOpen]);
 
   const filteredNav = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -218,63 +135,19 @@ function SettingsBrowser({
     filteredNav.find((item) => item.id === activeId) ?? filteredNav[0] ?? null;
 
   return (
-    <div
-      className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[13rem_minmax(0,1fr)]"
-      ref={root}
-    >
+    <div className="grid h-full min-h-0 grid-cols-[13rem_minmax(0,1fr)] overflow-hidden">
       <SettingsSidebar
         activeId={activeItem?.id ?? null}
-        canClose={canClose}
         groups={navGroups}
-        hiddenOnMobile={mobilePanelOpen}
-        onNavigate={() => {
-          setMobilePanelOpen(false);
-          if (canClose) onNavigate();
-        }}
-        onSelect={(id) => {
-          setActiveId(id);
-          setMobilePanelOpen(true);
-        }}
+        onSelect={setActiveId}
         onQueryChange={setQuery}
         query={query}
       />
-      <div
-        className={cn(
-          'min-h-0 min-w-0 flex-col bg-card md:flex',
-          mobilePanelOpen ? 'flex' : 'hidden',
-        )}
-        data-settings-mobile-pane="secondary"
-      >
-        <header className="grid h-12 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 pr-3 pl-2 md:grid-cols-[minmax(0,1fr)_auto] md:pl-6">
-          <Button
-            aria-label="返回设置分类"
-            className="md:hidden"
-            onClick={() => setMobilePanelOpen(false)}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <ArrowLeftIcon aria-hidden="true" data-icon="inline-start" />
-          </Button>
-          <DialogTitle className="truncate">
+      <div className="flex min-h-0 min-w-0 flex-col bg-card">
+        <header className="flex h-12 shrink-0 items-center px-6">
+          <h1 className="truncate text-sm font-medium">
             {activeItem?.label ?? '设置'}
-          </DialogTitle>
-          {canClose ? (
-            <DialogClose
-              render={
-                <Button
-                  className="rounded-full"
-                  size="icon-sm"
-                  variant="destructive-ghost"
-                />
-              }
-            >
-              <XIcon aria-hidden="true" data-icon="inline-start" />
-              <span className="sr-only">关闭</span>
-            </DialogClose>
-          ) : (
-            <span />
-          )}
+          </h1>
         </header>
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
           {activeItem ? (
@@ -296,43 +169,24 @@ function SettingsBrowser({
 
 function SettingsSidebar({
   activeId,
-  canClose,
   groups,
-  hiddenOnMobile,
-  onNavigate,
   onSelect,
   onQueryChange,
   query,
 }: {
   activeId: SettingsSectionId | null;
-  canClose: boolean;
   groups: Array<{ label: string; items: SettingsNavItem[] }>;
-  hiddenOnMobile: boolean;
-  onNavigate: () => void;
   onSelect: (id: SettingsSectionId) => void;
   onQueryChange: (value: string) => void;
   query: string;
 }) {
   return (
     <aside
-      className={cn(
-        'min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground md:flex md:border-r',
-        hiddenOnMobile ? 'hidden' : 'flex',
-      )}
+      className="flex min-h-0 flex-col overflow-hidden border-r bg-sidebar text-sidebar-foreground"
       aria-label="设置分类"
-      data-settings-mobile-pane="primary"
     >
-      <header className="flex h-12 shrink-0 items-center justify-between px-3">
+      <header className="flex h-12 shrink-0 items-center px-3">
         <h2 className="text-sm font-medium">设置</h2>
-        {canClose ? (
-          <DialogClose
-            className="md:hidden"
-            render={<Button size="icon-sm" variant="destructive-ghost" />}
-          >
-            <XIcon aria-hidden="true" data-icon="inline-start" />
-            <span className="sr-only">关闭</span>
-          </DialogClose>
-        ) : null}
       </header>
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 px-3 pb-3">
         <InputGroup className="h-8 bg-card [&_svg:not([class*='size-'])]:size-4">
@@ -395,7 +249,6 @@ function SettingsSidebar({
           aria-label="设计系统"
           className="flex h-7 shrink-0 cursor-default items-center gap-1.5 rounded-lg px-2 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 [&_svg]:size-3.5"
           href="/design-system"
-          onClick={onNavigate}
           rel="noopener noreferrer"
           target="_blank"
         >
@@ -433,6 +286,7 @@ function SettingsPanel({
 
 function LibraryPanel({ initialError }: { initialError?: string }) {
   const { settings, updateSettings } = useGlobalSettings();
+  const navigate = useNavigate();
   const [path, setPath] = useState(settings.libraryPath ?? '');
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [saving, setSaving] = useState(false);
@@ -449,7 +303,7 @@ function LibraryPanel({ initialError }: { initialError?: string }) {
     setSaving(true);
     try {
       await updateSettings({ libraryPath });
-      window.location.reload();
+      await navigate('/notes');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
       setSaving(false);

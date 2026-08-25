@@ -192,17 +192,3 @@
 .dark .doc-yaml-panel {
   background-color: hsl(var(--doc-yaml-hue) 34% 28% / 0.42);
 }
-
-.phone-only {
-  display: none;
-}
-
-@media (max-width: 767px) and (hover: none) and (pointer: coarse) {
-  .phone-hidden {
-    display: none;
-  }
-
-  .phone-only {
-    display: inline-flex;
-  }
-}

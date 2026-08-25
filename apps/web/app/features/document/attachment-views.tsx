@@ -1,5 +1,5 @@
 import type { ComarkPlugin, ElementNode, Node } from 'comark';
-import { CircleAlertIcon, ImageOffIcon } from 'lucide-react';
+import { CircleAlertIcon, ImageOffIcon, XIcon } from 'lucide-react';
 import {
   type ComponentProps,
   type CSSProperties,
@@ -15,6 +15,7 @@ import {
 import { Button } from '@locus/ui/components/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogTitle,
 } from '@locus/ui/components/dialog';
@@ -338,14 +339,29 @@ function AttachmentImageDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       {open ? (
         <DialogContent
-          className="inset-0 top-0 left-0 size-full max-w-none translate-x-0 translate-y-0 place-items-center gap-0 rounded-none bg-transparent p-0 text-white shadow-none ring-0 sm:max-w-none data-open:zoom-in-100 data-closed:zoom-out-100"
+          className="place-items-center gap-0 bg-transparent p-0 text-primary-foreground"
+          fullscreen
           onClick={() => onOpenChange(false)}
           overlayClassName="bg-black/80"
+          showCloseButton={false}
         >
           <DialogTitle className="sr-only">{item.alt}</DialogTitle>
           <div className="flex size-full min-h-0 min-w-0 items-center justify-center overflow-hidden p-4">
             <OriginalAttachmentImage documentPath={documentPath} item={item} />
           </div>
+          <DialogClose
+            onClick={(event) => event.stopPropagation()}
+            render={
+              <Button
+                className="absolute top-3 right-3"
+                size="icon-sm"
+                variant="overlay"
+              />
+            }
+          >
+            <XIcon aria-hidden="true" />
+            <span className="sr-only">关闭</span>
+          </DialogClose>
         </DialogContent>
       ) : null}
     </Dialog>
@@ -437,14 +453,13 @@ export function AttachmentGallery({
         {items.map((item, index) => {
           const aspectRatio = item.width / item.height;
           const style = {
-            '--gallery-item-mobile-width': `${aspectRatio * 120}px`,
             '--gallery-item-width': `${aspectRatio * 180}px`,
             aspectRatio: `${item.width} / ${item.height}`,
             flexGrow: aspectRatio,
           } as CSSProperties;
           return (
             <li
-              className="min-w-0 max-w-full shrink basis-[var(--gallery-item-mobile-width)] overflow-hidden sm:basis-[var(--gallery-item-width)]"
+              className="min-w-0 max-w-full shrink basis-[var(--gallery-item-width)] overflow-hidden"
               data-gallery-height={item.height}
               data-gallery-width={item.width}
               key={`${item.name}:${index}`}

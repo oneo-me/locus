@@ -72,7 +72,7 @@ export function WorkspaceSidebarResizeHandle({
       aria-valuemax={MAX_WORKSPACE_SIDEBAR_WIDTH}
       aria-valuemin={MIN_WORKSPACE_SIDEBAR_WIDTH}
       aria-valuenow={width}
-      className="group relative z-20 m-0 hidden h-full w-3 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent outline-none after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-border after:content-[''] focus-visible:after:bg-primary md:block"
+      className="group relative z-20 m-0 block h-full w-3 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent outline-none after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-border after:content-[''] focus-visible:after:bg-primary"
       onKeyDown={handleKeyDown}
       onLostPointerCapture={finishDrag}
       onPointerDown={handlePointerDown}

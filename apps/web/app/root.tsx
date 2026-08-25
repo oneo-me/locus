@@ -47,7 +47,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         />
         <meta
           name="description"
-          content="Knowledge, woven together. 浏览与搜索本地 Markdown 文档库。"
+          content="Knowledge, woven together. 浏览与阅读本地 Markdown 笔记。"
         />
         <Meta />
         <Links />
@@ -68,10 +68,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return <Outlet />;
-}
-
-export function HydrateFallback() {
-  return <main className="grid h-dvh place-items-center">正在加载 Locus…</main>;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

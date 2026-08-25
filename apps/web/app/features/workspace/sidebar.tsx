@@ -27,38 +27,23 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import FluentIconChevronRight from '@oneo/fluentui-icons-like-react/FluentIconChevronRight';
-import FluentIconSearch from '@oneo/fluentui-icons-like-react/FluentIconSearch';
 import { PaperclipIcon } from 'lucide-react';
 import {
-  type FormEvent,
-  type MouseEvent,
   type ReactNode,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  createSearchParams,
-  Link,
-  useLocation,
-  useNavigate,
-  useRevalidator,
-} from 'react-router';
-import { buttonVariants } from '@locus/ui/components/button';
+import { Link, useRevalidator } from 'react-router';
+import { Button, buttonVariants } from '@locus/ui/components/button';
 import { Badge } from '@locus/ui/components/badge';
 import {
   Collapsible,
   CollapsibleContent,
 } from '@locus/ui/components/collapsible';
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from '@locus/ui/components/input-group';
 import { DocumentIcon } from '../document/icons';
 import { cn } from '@locus/ui/utils';
 import type { LibraryWorkspaceView } from '@locus/document-library/contracts/library-api';
@@ -67,7 +52,6 @@ import {
   buildDocumentTree,
   type DocumentTreeNode,
   getOpenNodePaths,
-  includeSearchResultAncestors,
 } from '../library/tree';
 import {
   type DocumentChangeStatus,
@@ -76,105 +60,26 @@ import {
   getDocumentTreeChangeLabel,
   getDocumentTreeChangeStates,
 } from './document-change-status';
-import { type WorkspaceEventStatus, WorkspaceHeader } from './header';
-import {
-  workspaceMobileSecondaryState,
-  workspaceRequestsMobileNavigation,
-} from './mobile-navigation';
 import { buildTreeReorderItems, reorderTreeNodes } from './tree-reorder';
-
-const workspaceDesktopMediaQuery = '(min-width: 768px)';
-
-function subscribeToWorkspaceDesktopViewport(onChange: () => void) {
-  const mediaQuery = window.matchMedia(workspaceDesktopMediaQuery);
-  mediaQuery.addEventListener('change', onChange);
-  return () => mediaQuery.removeEventListener('change', onChange);
-}
-
-function getWorkspaceDesktopViewport() {
-  return window.matchMedia(workspaceDesktopMediaQuery).matches;
-}
-
-function getWorkspaceServerDesktopViewport() {
-  return false;
-}
 
 export function WorkspaceSidebar({
   currentPath,
   data,
-  eventStatus,
-  hiddenOnMobile,
-  query,
 }: {
   currentPath?: string;
   data: LibraryWorkspaceView;
-  eventStatus: WorkspaceEventStatus;
-  hiddenOnMobile: boolean;
-  query?: string;
 }) {
-  const visibleDocuments = useMemo(
-    () =>
-      data.search
-        ? includeSearchResultAncestors(data.search.results, data.documents)
-        : data.documents,
-    [data.documents, data.search],
-  );
-  const visibleDirectories = data.search ? [] : data.directories;
-  const location = useLocation();
-  const sidebar = useRef<HTMLElement>(null);
-  const restoredFocusLocation = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (
-      hiddenOnMobile ||
-      restoredFocusLocation.current === location.key ||
-      !workspaceRequestsMobileNavigation(location.state) ||
-      (currentPath !== undefined && visibleDocuments.length === 0) ||
-      !window.matchMedia('(max-width: 767px)').matches
-    ) {
-      return;
-    }
-
-    const target = sidebar.current?.querySelector<HTMLElement>(
-      currentPath === undefined
-        ? 'a[aria-label="Locus 首页"]'
-        : '[aria-current="page"]',
-    );
-    if (!target) return;
-
-    target.focus({ preventScroll: true });
-    restoredFocusLocation.current = location.key;
-  }, [
-    currentPath,
-    hiddenOnMobile,
-    location.key,
-    location.state,
-    visibleDocuments,
-  ]);
-
   return (
     <aside
-      className={cn(
-        'min-h-0 flex-col overflow-hidden bg-sidebar text-sm font-normal text-sidebar-foreground max-md:p-2 md:flex',
-        hiddenOnMobile ? 'hidden' : 'flex',
-      )}
+      className="flex min-h-0 flex-col overflow-hidden bg-sidebar text-sm font-normal text-sidebar-foreground"
       aria-label="文档导航"
-      data-workspace-mobile-pane="primary"
-      ref={sidebar}
     >
-      <WorkspaceHeader
-        eventStatus={eventStatus}
-        query={query}
-        refreshing={data.status.refreshing}
-      />
       <LibraryNavigation
         currentPath={currentPath}
-        directories={visibleDirectories}
-        documents={visibleDocuments}
-        query={query}
+        directories={data.directories}
+        documents={data.documents}
         repositoryChanges={data.repositoryChanges}
         repositoryError={data.repositoryError}
-        sortable={!data.search}
         treeState={data.libraryState}
       />
     </aside>
@@ -185,31 +90,19 @@ function LibraryNavigation({
   currentPath,
   directories,
   documents,
-  query,
   repositoryChanges,
   repositoryError,
-  sortable,
   treeState,
 }: {
   currentPath?: string;
   directories: string[];
   documents: LibraryNavigationDocument[];
-  query?: string;
   repositoryChanges: LibraryWorkspaceView['repositoryChanges'];
   repositoryError: LibraryWorkspaceView['repositoryError'];
-  sortable: boolean;
   treeState: LibraryWorkspaceView['libraryState'];
 }) {
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
   const navRef = useRef<HTMLElement>(null);
   const restoredTreeScrollRef = useRef(false);
-  const desktopViewport = useSyncExternalStore(
-    subscribeToWorkspaceDesktopViewport,
-    getWorkspaceDesktopViewport,
-    getWorkspaceServerDesktopViewport,
-  );
-  const mobile = !desktopViewport;
   const tree = useMemo(
     () => buildDocumentTree(documents, directories, treeState.order),
     [directories, documents, treeState.order],
@@ -222,16 +115,6 @@ function LibraryNavigation({
     () => getDocumentTreeChangeStates(tree, changeStatuses),
     [changeStatuses, tree],
   );
-  const searchOpenPaths = useMemo(
-    () =>
-      query
-        ? documents.flatMap((document) =>
-            getOpenNodePaths(document.path, directories),
-          )
-        : [],
-    [directories, documents, query],
-  );
-
   const [openNodes, setOpenNodes] = useState(() => {
     const initial = new Set<string>();
     if (currentPath !== undefined) {
@@ -257,12 +140,6 @@ function LibraryNavigation({
     );
   }
 
-  const visibleOpenNodes = useMemo(() => {
-    const next = new Set(openNodes);
-    for (const path of searchOpenPaths) next.add(path);
-    return next;
-  }, [openNodes, searchOpenPaths]);
-
   const toggleOpenNode = (path: string) => {
     setOpenNodes((current) => {
       if (current.has(path)) {
@@ -270,10 +147,7 @@ function LibraryNavigation({
         next.delete(path);
         return next;
       }
-      return focusSelectedNode(
-        getOpenNodePaths(`${path}/index.md`, directories),
-        searchOpenPaths,
-      );
+      return new Set(getOpenNodePaths(`${path}/index.md`, directories));
     });
   };
 
@@ -287,44 +161,11 @@ function LibraryNavigation({
     centerTreeScrollTarget(nav, target);
   }, [currentPath, documents]);
 
-  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const value = new FormData(event.currentTarget).get('q');
-    const nextQuery = typeof value === 'string' ? value.trim() : '';
-    void navigate(
-      {
-        pathname,
-        search: nextQuery ? `?${createSearchParams({ q: nextQuery })}` : '',
-      },
-      { preventScrollReset: true },
-    );
-  };
-
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <form
-        className="shrink-0 px-3 pt-0.5 pb-2.5"
-        method="get"
-        onSubmit={handleSearch}
-      >
-        <InputGroup className="h-8 bg-card">
-          <InputGroupInput
-            key={query ?? ''}
-            name="q"
-            aria-label="搜索文档"
-            defaultValue={query}
-            placeholder="标题、标签或正文"
-            autoComplete="off"
-          />
-          <InputGroupAddon>
-            <FluentIconSearch aria-hidden="true" title={null} />
-          </InputGroupAddon>
-        </InputGroup>
-      </form>
-
       {repositoryError ? (
         <p
-          className="mx-3.5 mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-destructive"
+          className="mx-3.5 mt-3 mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-destructive"
           role="alert"
           title={repositoryError}
         >
@@ -334,23 +175,21 @@ function LibraryNavigation({
 
       {documents.length > 0 || directories.length > 0 ? (
         <nav
-          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 pb-3"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-3"
           aria-label="文档树"
           ref={navRef}
         >
           <DocumentTreeItems
             currentPath={currentPath}
             changeStates={treeChangeStates}
-            mobile={mobile}
             nodes={tree}
             onToggleOpen={toggleOpenNode}
-            openNodes={visibleOpenNodes}
-            query={query}
-            sortable={sortable && desktopViewport}
+            openNodes={openNodes}
+            sortable
           />
         </nav>
       ) : (
-        <p className="m-3 text-muted-foreground">没有匹配项。</p>
+        <p className="m-3 text-muted-foreground">文档库还是空的。</p>
       )}
     </div>
   );
@@ -358,24 +197,6 @@ function LibraryNavigation({
 
 function nodeKey(node: DocumentTreeNode) {
   return node.document?.path ?? `directory:${node.path}`;
-}
-
-export function treeItemTapBehavior(
-  mobile: boolean,
-  hasChildren: boolean,
-  open: boolean,
-): 'expand' | 'view' {
-  if (mobile && hasChildren && !open) return 'expand';
-  return 'view';
-}
-
-export function focusSelectedNode(
-  selectedParentPaths: readonly string[],
-  searchOpenPaths: readonly string[],
-): Set<string> {
-  const next = new Set(selectedParentPaths);
-  for (const path of searchOpenPaths) next.add(path);
-  return next;
 }
 
 export function centerTreeScrollTarget(
@@ -412,20 +233,16 @@ export function reconcileTreeItems(
 function DocumentTreeItems({
   changeStates,
   currentPath,
-  mobile,
   nodes,
   onToggleOpen,
   openNodes,
-  query,
   sortable,
 }: {
   changeStates: Map<string, DocumentTreeChangeState>;
   currentPath?: string;
-  mobile: boolean;
   nodes: DocumentTreeNode[];
   onToggleOpen: (path: string) => void;
   openNodes: Set<string>;
-  query?: string;
   sortable: boolean;
 }) {
   const { reorderDocuments } = useDocumentApi();
@@ -549,12 +366,10 @@ function DocumentTreeItems({
               changeStates={changeStates}
               currentPath={currentPath}
               key={nodeKey(node)}
-              mobile={mobile}
               node={node}
               onToggleOpen={onToggleOpen}
               openNodes={openNodes}
               pending={pending}
-              query={query}
               sortable={sortable}
             />
           ))}
@@ -582,23 +397,19 @@ function SortableDocumentTreeItem({
   changeState,
   changeStates,
   currentPath,
-  mobile,
   node,
   onToggleOpen,
   openNodes,
   pending,
-  query,
   sortable,
 }: {
   changeState?: DocumentTreeChangeState;
   changeStates: Map<string, DocumentTreeChangeState>;
   currentPath?: string;
-  mobile: boolean;
   node: DocumentTreeNode;
   onToggleOpen: (path: string) => void;
   openNodes: Set<string>;
   pending: boolean;
-  query?: string;
   sortable: boolean;
 }) {
   const { name, path, document, children } = node;
@@ -608,7 +419,6 @@ function SortableDocumentTreeItem({
   const selected = currentPath !== undefined && urlPath === currentPath;
   const disabled = !sortable || pending;
   const open = openNodes.has(path);
-  const tapBehavior = treeItemTapBehavior(mobile, hasChildren, open);
   const attachmentCount = document?.attachmentCount ?? 0;
   const attachmentDescriptionId = useId();
   const {
@@ -621,12 +431,6 @@ function SortableDocumentTreeItem({
     transform,
     transition,
   } = useSortable({ disabled, id: nodeKey(node) });
-
-  const handleTap = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (tapBehavior !== 'expand') return;
-    event.preventDefault();
-    onToggleOpen(path);
-  };
 
   return (
     <li
@@ -646,31 +450,35 @@ function SortableDocumentTreeItem({
       >
         <div
           className={cn(
-            'grid w-full min-w-0 grid-cols-[1.75rem_minmax(0,1fr)] items-center rounded-lg',
+            'grid w-full min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-center rounded-lg',
             selected && 'bg-sidebar-accent text-sidebar-accent-foreground',
           )}
           data-selected={selected ? '' : undefined}
           ref={setDroppableNodeRef}
         >
           {hasChildren ? (
-            <span
-              aria-hidden="true"
+            <Button
+              aria-expanded={open}
+              aria-label={open ? `收起 ${title}` : `展开 ${title}`}
               className={cn(
-                'grid h-7 w-6 shrink-0 place-items-center justify-self-center text-sidebar-foreground/40 transition-transform max-md:h-9 max-md:w-7',
+                'justify-self-center text-sidebar-foreground/40 transition-transform',
                 open && 'rotate-90',
               )}
+              onClick={() => onToggleOpen(path)}
+              size="icon-2xs"
+              type="button"
+              variant="nav"
             >
               <FluentIconChevronRight
-                size={mobile ? 16 : 12}
+                aria-hidden="true"
                 variant="Filled"
                 title={null}
               />
-            </span>
+            </Button>
           ) : (
             <span aria-hidden="true" />
           )}
           <DocumentUrlLink
-            ariaExpanded={mobile && hasChildren ? open : undefined}
             attachmentDescriptionId={
               attachmentCount > 0 ? attachmentDescriptionId : undefined
             }
@@ -680,9 +488,7 @@ function SortableDocumentTreeItem({
             }
             dragListeners={disabled ? undefined : listeners}
             dragRef={disabled ? undefined : setActivatorNodeRef}
-            onClick={handleTap}
             path={urlPath}
-            query={query}
             selected={selected}
             sortable={!disabled}
             title={title}
@@ -694,7 +500,7 @@ function SortableDocumentTreeItem({
                 data-icon="inline-start"
               >
                 <DocumentIcon
-                  className="size-3.5 text-xs max-md:size-4"
+                  className="size-3.5 text-xs"
                   icon={document.icon}
                   imageSrc={getDocumentIconUrl(
                     document.path,
@@ -729,11 +535,9 @@ function SortableDocumentTreeItem({
             <DocumentTreeItems
               changeStates={changeStates}
               currentPath={currentPath}
-              mobile={mobile}
               nodes={children}
               onToggleOpen={onToggleOpen}
               openNodes={openNodes}
-              query={query}
               sortable={sortable}
             />
           </CollapsibleContent>
@@ -793,30 +597,24 @@ function DocumentTreeDragOverlay({
 }
 
 function DocumentUrlLink({
-  ariaExpanded,
   attachmentDescriptionId,
   changeState,
   children,
   dragDescriptionId,
   dragListeners,
   dragRef,
-  onClick,
   path,
-  query,
   selected,
   sortable,
   title,
 }: {
-  ariaExpanded?: boolean;
   attachmentDescriptionId?: string;
   changeState?: DocumentTreeChangeState;
   children: ReactNode;
   dragDescriptionId?: string;
   dragListeners?: DraggableSyntheticListeners;
   dragRef?: (node: HTMLElement | null) => void;
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   path: string;
-  query?: string;
   selected: boolean;
   sortable: boolean;
   title: string;
@@ -825,7 +623,6 @@ function DocumentUrlLink({
     <Link
       {...dragListeners}
       aria-current={selected ? 'page' : undefined}
-      aria-expanded={ariaExpanded}
       aria-label={title}
       aria-describedby={
         [dragDescriptionId, attachmentDescriptionId]
@@ -837,11 +634,10 @@ function DocumentUrlLink({
         variant: 'nav',
         size: 'nav',
         className:
-          'w-full min-w-0 cursor-default justify-start overflow-hidden no-underline max-md:h-9 max-md:text-sm [&>*:first-child]:-ml-2',
+          'w-full min-w-0 cursor-default justify-start overflow-hidden px-1.5 no-underline [&>*:first-child]:-ml-2',
       })}
       data-slot="button"
       draggable={false}
-      onClick={onClick}
       onDragStart={(event) => event.preventDefault()}
       ref={dragRef}
       title={
@@ -851,9 +647,7 @@ function DocumentUrlLink({
       }
       to={{
         pathname: urlPathToHref(path),
-        search: query ? `?${createSearchParams({ q: query })}` : '',
       }}
-      state={workspaceMobileSecondaryState}
     >
       {children}
     </Link>

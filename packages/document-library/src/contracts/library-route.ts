@@ -1,5 +1,6 @@
 const documentIndexName = 'index.md';
 const documentIndexSuffix = `/${documentIndexName}`;
+const notesRoutePath = '/notes';
 
 export function documentPathToUrlPath(documentPath: string): string {
   if (documentPath === documentIndexName) return '';
@@ -18,7 +19,12 @@ export function urlPathToDocumentPath(urlPath?: string): string {
 }
 
 export function pathnameToUrlPath(pathname: string): string {
-  const normalizedPath = pathname.replace(/^\/+|\/+$/g, '');
+  const routePath = pathname.startsWith(`${notesRoutePath}/`)
+    ? pathname.slice(notesRoutePath.length)
+    : pathname === notesRoutePath
+      ? ''
+      : pathname;
+  const normalizedPath = routePath.replace(/^\/+|\/+$/g, '');
   if (!normalizedPath) return '';
 
   try {
@@ -34,8 +40,8 @@ export function pathnameToUrlPath(pathname: string): string {
 
 export function urlPathToHref(urlPath: string): string {
   const normalizedPath = urlPath.replace(/^\/+|\/+$/g, '');
-  if (!normalizedPath) return '/';
-  return `/${normalizedPath
+  if (!normalizedPath) return notesRoutePath;
+  return `${notesRoutePath}/${normalizedPath
     .split('/')
     .map((segment) => encodeURIComponent(segment))
     .join('/')}`;

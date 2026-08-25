@@ -43,7 +43,7 @@ export function DocumentBrowser({
         {data.selectionError ? (
           <MessageState title="无法打开文档">
             <p>{data.selectionError}</p>
-            <Link to="/">返回文档导航</Link>
+            <Link to="/notes">返回笔记导航</Link>
           </MessageState>
         ) : data.selected ? (
           <DocumentArticle
@@ -51,12 +51,7 @@ export function DocumentBrowser({
             document={data.selected}
             documents={data.documents}
           />
-        ) : data.selectedPath ? null : data.search?.total === 0 ? (
-          <MessageState title="没有匹配的文档">
-            <p>换一个关键词，或清除搜索查看全部文档。</p>
-            <Link to="/">清除搜索</Link>
-          </MessageState>
-        ) : data.documents.length === 0 ? (
+        ) : data.selectedPath ? null : data.documents.length === 0 ? (
           <MessageState title="文档库还是空的">
             <p>
               在 <code>{data.status.rootPath}</code>{' '}
@@ -107,7 +102,7 @@ function DocumentArticle({
   return (
     <div className="relative min-h-full">
       <DocumentHeaderAtmosphere title={document.title} />
-      <article className="relative mx-auto flex w-[calc(100%-2rem)] max-w-[52rem] flex-col gap-6 py-4 md:w-[calc(100%-4rem)] md:pt-6 md:pb-14">
+      <article className="relative mx-auto flex w-[calc(100%-4rem)] max-w-[52rem] flex-col gap-6 pt-6 pb-14">
         <header className="flex flex-col gap-3">
           <DocumentYamlMetadata
             actions={<DocumentActions path={document.directory} />}
@@ -166,7 +161,6 @@ export function DocumentActions({ path }: { path: string }) {
     <div className="flex flex-nowrap items-center justify-end gap-1.5">
       <Button
         aria-label="复制文章引用"
-        className="phone-hidden"
         onClick={() => {
           void copyValue(formatDocumentReference(path));
         }}

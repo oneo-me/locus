@@ -14,37 +14,6 @@ interface MutableDocumentTreeNode {
   children: Map<string, MutableDocumentTreeNode>;
 }
 
-export function includeSearchResultAncestors(
-  results: LibraryNavigationDocument[],
-  documents: LibraryNavigationDocument[],
-): LibraryNavigationDocument[] {
-  const documentsByDirectory = new Map(
-    documents.map((document) => [document.directory, document]),
-  );
-  const includedPaths = new Set(results.map((document) => document.path));
-
-  for (const result of results) {
-    let directory = result.directory;
-    while (directory) {
-      const ancestor = documentsByDirectory.get(directory);
-      if (ancestor) includedPaths.add(ancestor.path);
-      directory = directory.split('/').slice(0, -1).join('/');
-    }
-  }
-
-  const includedDocuments = documents.filter((document) =>
-    includedPaths.has(document.path),
-  );
-  const knownPaths = new Set(
-    includedDocuments.map((document) => document.path),
-  );
-
-  return [
-    ...includedDocuments,
-    ...results.filter((document) => !knownPaths.has(document.path)),
-  ];
-}
-
 export function buildDocumentTree(
   documents: LibraryNavigationDocument[],
   directories: string[] = [],

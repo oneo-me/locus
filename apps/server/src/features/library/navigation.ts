@@ -1,7 +1,4 @@
-import type {
-  LibraryNavigationDocument,
-  LibraryNavigationSearchResult,
-} from '@locus/document-library/contracts/library-api';
+import type { LibraryNavigationDocument } from '@locus/document-library/contracts/library-api';
 import type { DocumentLibrary } from '@locus/document-library/server/document-library';
 import type { DocumentSummary } from '@locus/document-library/contracts/library-types';
 
@@ -18,24 +15,12 @@ export function toLibraryNavigationDocument(
   };
 }
 
-export function readLibraryNavigation(
-  library: DocumentLibrary,
-  query?: string,
-): {
+export function readLibraryNavigation(library: DocumentLibrary): {
   directories: string[];
   documents: LibraryNavigationDocument[];
-  search: LibraryNavigationSearchResult | null;
 } {
-  const search = query ? library.searchDocuments(query, 100) : null;
   return {
     directories: library.listAllDirectories(),
     documents: library.listAllDocuments().map(toLibraryNavigationDocument),
-    search: search
-      ? {
-          query: search.query,
-          total: search.total,
-          results: search.results.map(toLibraryNavigationDocument),
-        }
-      : null,
   };
 }

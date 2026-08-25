@@ -3,7 +3,6 @@ import { logInfo } from '~/logging';
 import type {
   LibrarySelectionSourceView,
   LibrarySelectionViewInput,
-  LibraryWorkspaceViewInput,
 } from '@locus/document-library/contracts/library-api';
 import { isPreviewableImageAsset } from '@locus/document-library/contracts/asset';
 import {
@@ -63,14 +62,9 @@ async function readSelectionView(
   };
 }
 
-export async function getLibraryWorkspaceView(
-  input: LibraryWorkspaceViewInput,
-) {
-  const data = {
-    query: typeof input.query === 'string' ? input.query.trim() : undefined,
-  };
+export async function getLibraryWorkspaceView() {
   const library = await getLibrary();
-  const navigation = readLibraryNavigation(library, data.query);
+  const navigation = readLibraryNavigation(library);
   const repositoryView = readLibraryRepositoryView(library);
 
   return {

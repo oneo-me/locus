@@ -8,12 +8,7 @@ import { prepareLibrarySelectionView } from '~/features/document/markdown-parser
 import { useWorkspaceLibraryData } from '~/features/workspace/shell';
 import { apiGet } from '~/lib/api-client';
 import { useEffect } from 'react';
-import {
-  type ShouldRevalidateFunctionArgs,
-  useLocation,
-  useNavigation,
-  useRevalidator,
-} from 'react-router';
+import { useLocation, useNavigation, useRevalidator } from 'react-router';
 import type { Route } from './+types/workspace-document';
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
@@ -23,22 +18,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     { doc: urlPathToDocumentPath(pathnameToUrlPath(pathname)) },
   );
   return prepareLibrarySelectionView(source);
-}
-
-export function shouldRevalidate({
-  currentUrl,
-  defaultShouldRevalidate,
-  formMethod,
-  nextUrl,
-}: ShouldRevalidateFunctionArgs): boolean {
-  if (formMethod) return defaultShouldRevalidate;
-  if (
-    currentUrl.pathname === nextUrl.pathname &&
-    currentUrl.search !== nextUrl.search
-  ) {
-    return false;
-  }
-  return defaultShouldRevalidate;
 }
 
 export default function WorkspaceDocumentRoute({
