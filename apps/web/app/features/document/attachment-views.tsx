@@ -32,7 +32,7 @@ import type { ImageSize } from '@locus/document-library/contracts/library-types'
 const invalidGalleryMessage =
   '请在 ::gallery 中只放置当前文章的本地图片附件，并为每张图片填写替代文本。';
 const invalidAttachmentsMessage =
-  '请在 ::attachments 中只放置当前文章的本地普通附件，并使用文件名作为链接文字。';
+  '请在 ::attachments 中只放置当前文章的本地附件，并使用文件名作为链接文字。';
 
 interface AttachmentImageItem {
   alt: string;
@@ -118,11 +118,7 @@ function prepareAttachments(
     const source = typeof link[1].href === 'string' ? link[1].href : '';
     const name = getMarkdownAssetName(documentPath, assets, source);
     const label = textContent(link).trim().normalize('NFC');
-    return name &&
-      !isPreviewableImageAsset(name) &&
-      label === name.normalize('NFC')
-      ? [{ name }]
-      : [];
+    return name && label === name.normalize('NFC') ? [{ name }] : [];
   });
 
   if (!links || !items || items.length !== links.length) {
