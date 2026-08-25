@@ -128,7 +128,7 @@
   --foreground: var(--ink);
   --card: var(--surface);
   --card-foreground: var(--ink);
-  --popover: var(--surface);
+  --popover: oklch(0.255 0.016 252);
   --popover-foreground: var(--ink);
   --primary: var(--brand);
   --primary-foreground: white;
