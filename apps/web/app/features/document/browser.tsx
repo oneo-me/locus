@@ -10,6 +10,7 @@ import {
   CopyIcon,
   FilePenLineIcon,
   FolderOpenIcon,
+  SquareTerminalIcon,
 } from 'lucide-react';
 import {
   type CSSProperties,
@@ -182,9 +183,9 @@ export function DocumentActions({
   documentPath: string;
   referencePath: string;
 }) {
-  const { openDocument } = useDocumentApi();
-  const [pendingTarget, setPendingTarget] = useState<
-    'directory' | 'vscode' | null
+  const { openDocument, openLibraryTerminal } = useDocumentApi();
+  const [pendingAction, setPendingAction] = useState<
+    'directory' | 'ghostty' | 'vscode' | null
   >(null);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
 
@@ -195,7 +196,7 @@ export function DocumentActions({
   };
 
   const open = async (target: 'directory' | 'vscode') => {
-    setPendingTarget(target);
+    setPendingAction(target);
     setActionStatus(null);
     try {
       await openDocument({ path: documentPath, target });
@@ -208,38 +209,26 @@ export function DocumentActions({
         `${target === 'directory' ? '打开目录' : '用 VS Code 编辑'}失败：${message}`,
       );
     } finally {
-      setPendingTarget(null);
+      setPendingAction(null);
+    }
+  };
+
+  const openTerminal = async () => {
+    setPendingAction('ghostty');
+    setActionStatus(null);
+    try {
+      await openLibraryTerminal();
+      setActionStatus('已在 Ghostty 中打开文档库');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionStatus(`用 Ghostty 打开文档库失败：${message}`);
+    } finally {
+      setPendingAction(null);
     }
   };
 
   return (
     <div className="flex flex-nowrap items-center justify-end gap-1.5">
-      <Button
-        aria-label="打开目录"
-        className="document-theme-button"
-        disabled={pendingTarget !== null}
-        onClick={() => {
-          void open('directory');
-        }}
-        size="icon-sm"
-        title="打开目录"
-        variant="secondary"
-      >
-        <FolderOpenIcon aria-hidden="true" data-icon="inline-start" />
-      </Button>
-      <Button
-        aria-label="用 VS Code 编辑文件"
-        className="document-theme-button"
-        disabled={pendingTarget !== null}
-        onClick={() => {
-          void open('vscode');
-        }}
-        size="icon-sm"
-        title="用 VS Code 编辑文件"
-        variant="secondary"
-      >
-        <FilePenLineIcon aria-hidden="true" data-icon="inline-start" />
-      </Button>
       <Button
         aria-label="复制文章引用"
         className="document-theme-button"
@@ -251,6 +240,45 @@ export function DocumentActions({
         variant="secondary"
       >
         <CopyIcon aria-hidden="true" data-icon="inline-start" />
+      </Button>
+      <Button
+        aria-label="用 VS Code 编辑文件"
+        className="document-theme-button"
+        disabled={pendingAction !== null}
+        onClick={() => {
+          void open('vscode');
+        }}
+        size="icon-sm"
+        title="用 VS Code 编辑文件"
+        variant="secondary"
+      >
+        <FilePenLineIcon aria-hidden="true" data-icon="inline-start" />
+      </Button>
+      <Button
+        aria-label="打开目录"
+        className="document-theme-button"
+        disabled={pendingAction !== null}
+        onClick={() => {
+          void open('directory');
+        }}
+        size="icon-sm"
+        title="打开目录"
+        variant="secondary"
+      >
+        <FolderOpenIcon aria-hidden="true" data-icon="inline-start" />
+      </Button>
+      <Button
+        aria-label="在 Ghostty 中打开文档库"
+        className="document-theme-button"
+        disabled={pendingAction !== null}
+        onClick={() => {
+          void openTerminal();
+        }}
+        size="icon-sm"
+        title="在 Ghostty 中打开文档库"
+        variant="secondary"
+      >
+        <SquareTerminalIcon aria-hidden="true" data-icon="inline-start" />
       </Button>
       {children}
       <p aria-live="polite" className="sr-only" role="status">

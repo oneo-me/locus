@@ -3,6 +3,7 @@ import { apiSend } from './api-client';
 
 export const documentApi: DocumentApiClient = {
   openDocument: (data) => apiSend('/api/library/document/open', 'POST', data),
+  openLibraryTerminal: () => apiSend('/api/library/terminal/open', 'POST'),
   reorderDocuments: (data) => apiSend('/api/library/reorder', 'POST', data),
   setDocumentArchived: (data) => apiSend('/api/library/archive', 'POST', data),
   setDocumentGraphParticipation: (data) =>

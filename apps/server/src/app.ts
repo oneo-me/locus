@@ -18,6 +18,7 @@ import {
   getLibraryGraph,
   getLibraryWorkspaceView,
   openDocument,
+  openLibraryTerminal,
   reorderDocuments,
   setDocumentArchived,
   setDocumentGraphParticipation,
@@ -84,6 +85,9 @@ export function createApp(staticRoot?: string) {
     jsonRoute('library.document.open', async () =>
       openDocument(await body<OpenDocumentInput>(context)),
     ),
+  );
+  app.post('/api/library/terminal/open', () =>
+    jsonRoute('library.terminal.open', openLibraryTerminal),
   );
   app.post('/api/library/reorder', async (context) =>
     jsonRoute('library.documents.reorder', async () =>
