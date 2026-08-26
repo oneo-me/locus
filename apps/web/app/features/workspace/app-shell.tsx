@@ -24,7 +24,7 @@ interface AppNavigationItem {
 
 const APP_NAVIGATION: AppNavigationItem[] = [
   { label: '笔记', path: '/notes', icon: FileTextIcon },
-  { label: 'Agent', path: '/agents', icon: BotIcon },
+  { label: 'Tasks', path: '/tasks', icon: BotIcon },
   { label: '知识图谱', path: '/graph', icon: NetworkIcon },
 ];
 

@@ -1,0 +1,523 @@
+import { randomUUID } from 'node:crypto';
+import type {
+  SessionNotification,
+  ToolCallContent,
+} from '@agentclientprotocol/sdk';
+import type {
+  AgentConversation,
+  AgentConversationEvent,
+  AgentConversationList,
+  AgentProject,
+  AgentPermissionEntry,
+  AgentPlanTranscriptEntry,
+  AgentThoughtEntry,
+  AgentToolEntry,
+} from '../contracts/conversation.js';
+import {
+  ACP_AGENT_PROVIDER_IDS,
+  type AcpAgentProviderId,
+  type AgentProviderId,
+  isAcpAgentProviderId,
+} from '../contracts/provider.js';
+import { AcpRuntime, type AcpPermissionRequest } from './acp-runtime.js';
+import { AgentConversationStore } from './conversation-store.js';
+import {
+  detectAgentProviders,
+  findAgentProviderExecutable,
+} from './provider-detection.js';
+import { normalizeSessionConfig } from './session-config.js';
+
+type AgentEventListener = (event: AgentConversationEvent) => void;
+
+export class AgentService {
+  readonly #listeners = new Set<AgentEventListener>();
+  readonly #runtimes = new Map<string, AcpRuntime>();
+  readonly #store: AgentConversationStore;
+
+  constructor(dataDirectory: string) {
+    this.#store = new AgentConversationStore(dataDirectory);
+  }
+
+  listConversations(): AgentConversationList {
+    return { conversations: this.#store.list() };
+  }
+
+  getConversation(id: string): AgentConversation {
+    const conversation = this.#store.get(id);
+    if (!conversation) throw new Error('对话不存在。');
+    return conversation;
+  }
+
+  async connect(id: string): Promise<AgentConversation> {
+    const conversation = this.getConversation(id);
+    await this.#ensureRuntime(conversation);
+    return conversation;
+  }
+
+  renameConversation(id: string, rawTitle: string): AgentConversation {
+    const conversation = this.getConversation(id);
+    const title = rawTitle.trim();
+    if (!title) throw new Error('标题不能为空。');
+    if (title.length > 100) throw new Error('标题过长。');
+    conversation.title = title;
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+    return conversation;
+  }
+
+  createConversation(
+    project: AgentProject,
+    requestedProviderId?: AgentProviderId,
+  ): AgentConversation {
+    const providerId = this.#resolveProvider(requestedProviderId);
+    const now = new Date().toISOString();
+    const conversation: AgentConversation = {
+      acpSessionId: null,
+      availableCommands: [],
+      configOptions: [],
+      contextTokens: null,
+      contextWindow: null,
+      createdAt: now,
+      cwd: project.sourcePath,
+      id: randomUUID(),
+      modes: null,
+      projectId: project.id,
+      projectName: project.name,
+      providerId,
+      status: 'idle',
+      title: '新对话',
+      transcript: [],
+      updatedAt: now,
+    };
+    this.#save(conversation);
+    return conversation;
+  }
+
+  async sendMessage(
+    id: string,
+    rawContent: string,
+  ): Promise<AgentConversation> {
+    const conversation = this.getConversation(id);
+    const content = rawContent.trim();
+    if (!content) throw new Error('消息不能为空。');
+    if (content.length > 100_000) throw new Error('消息内容过长。');
+    if (
+      conversation.status === 'working' ||
+      conversation.status === 'connecting'
+    ) {
+      throw new Error('当前对话仍在工作。');
+    }
+    const runtime = await this.#ensureRuntime(conversation);
+    const now = new Date().toISOString();
+    conversation.transcript.push({
+      content,
+      createdAt: now,
+      id: randomUUID(),
+      kind: 'message',
+      role: 'user',
+      streaming: false,
+    });
+    if (
+      conversation.transcript.filter((entry) => entry.kind === 'message')
+        .length === 1
+    ) {
+      conversation.title = titleFromPrompt(content);
+    }
+    conversation.status = 'working';
+    conversation.updatedAt = now;
+    this.#save(conversation);
+    void runtime.prompt(content).then(
+      () => this.#finishTurn(conversation),
+      (error) => this.#failConversation(conversation, error),
+    );
+    return conversation;
+  }
+
+  async cancel(id: string): Promise<AgentConversation> {
+    const conversation = this.getConversation(id);
+    await this.#runtimes.get(id)?.cancel();
+    this.#settleStreaming(conversation);
+    conversation.status = 'idle';
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+    return conversation;
+  }
+
+  respondPermission(
+    conversationId: string,
+    requestId: string,
+    optionId: string,
+  ): AgentConversation {
+    const conversation = this.getConversation(conversationId);
+    const permission = conversation.transcript.find(
+      (entry): entry is AgentPermissionEntry =>
+        entry.kind === 'permission' && entry.requestId === requestId,
+    );
+    if (!permission || permission.status !== 'pending') {
+      throw new Error('权限请求不存在或已经处理。');
+    }
+    if (!permission.options.some((option) => option.id === optionId)) {
+      throw new Error('权限选项无效。');
+    }
+    const runtime = this.#runtimes.get(conversationId);
+    if (!runtime?.respondPermission(requestId, optionId)) {
+      throw new Error('权限请求已经失效。');
+    }
+    permission.status = 'selected';
+    permission.selectedOptionId = optionId;
+    conversation.status = 'working';
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+    return conversation;
+  }
+
+  async setMode(id: string, modeId: string): Promise<AgentConversation> {
+    const conversation = this.getConversation(id);
+    if (!conversation.modes?.available.some((mode) => mode.id === modeId)) {
+      throw new Error('会话模式无效。');
+    }
+    const runtime = await this.#ensureRuntime(conversation);
+    await runtime.setMode(modeId);
+    conversation.modes.currentId = modeId;
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+    return conversation;
+  }
+
+  async setConfig(
+    id: string,
+    configId: string,
+    value: boolean | string,
+  ): Promise<AgentConversation> {
+    const conversation = this.getConversation(id);
+    const option = conversation.configOptions.find(
+      (candidate) => candidate.id === configId,
+    );
+    if (!option || typeof option.currentValue !== typeof value) {
+      throw new Error('会话配置无效。');
+    }
+    if (
+      option.type === 'select' &&
+      !option.options.some((candidate) => candidate.value === value)
+    ) {
+      throw new Error('会话配置值无效。');
+    }
+    const runtime = await this.#ensureRuntime(conversation);
+    conversation.configOptions = await runtime.setConfig(configId, value);
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+    return conversation;
+  }
+
+  deleteConversation(id: string): void {
+    this.#runtimes.get(id)?.close();
+    this.#runtimes.delete(id);
+    if (!this.#store.delete(id)) throw new Error('对话不存在。');
+  }
+
+  subscribe(listener: AgentEventListener): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
+  close(): void {
+    for (const runtime of this.#runtimes.values()) runtime.close();
+    this.#runtimes.clear();
+  }
+
+  async #ensureRuntime(conversation: AgentConversation): Promise<AcpRuntime> {
+    const existing = this.#runtimes.get(conversation.id);
+    if (existing) return existing;
+    if (!isAcpAgentProviderId(conversation.providerId)) {
+      throw new Error('该服务商当前不使用 ACP 协议。');
+    }
+    const binary = findAgentProviderExecutable(conversation.providerId);
+    if (!binary) throw new Error('服务商 CLI 不可用。');
+    conversation.status = 'connecting';
+    this.#save(conversation);
+    let runtimeRef: AcpRuntime | null = null;
+    const runtime = await AcpRuntime.start({
+      binary,
+      cwd: conversation.cwd,
+      handlers: {
+        onConnected: (sessionId, modes, configOptions) => {
+          conversation.acpSessionId = sessionId;
+          conversation.configOptions = configOptions;
+          conversation.modes = modes;
+          conversation.status = 'idle';
+          conversation.updatedAt = new Date().toISOString();
+          this.#save(conversation);
+        },
+        onError: (message) => this.#failConversation(conversation, message),
+        onExit: () => {
+          if (
+            runtimeRef &&
+            this.#runtimes.get(conversation.id) === runtimeRef
+          ) {
+            this.#runtimes.delete(conversation.id);
+          }
+        },
+        onPermission: (permission) =>
+          this.#handlePermission(conversation, permission),
+        onUpdate: (notification) =>
+          this.#handleUpdate(conversation, notification),
+      },
+      providerId: conversation.providerId,
+      sessionId: conversation.acpSessionId,
+    }).catch((error) => {
+      if (conversation.status === 'connecting') {
+        this.#failConversation(conversation, error);
+      }
+      throw error;
+    });
+    runtimeRef = runtime;
+    this.#runtimes.set(conversation.id, runtime);
+    return runtime;
+  }
+
+  #handleUpdate(
+    conversation: AgentConversation,
+    notification: SessionNotification,
+  ): void {
+    if (
+      conversation.acpSessionId &&
+      notification.sessionId !== conversation.acpSessionId
+    ) {
+      return;
+    }
+    const update = notification.update;
+    const now = new Date().toISOString();
+    if (
+      (update.sessionUpdate === 'agent_message_chunk' ||
+        update.sessionUpdate === 'agent_thought_chunk') &&
+      update.content.type === 'text'
+    ) {
+      const kind =
+        update.sessionUpdate === 'agent_message_chunk' ? 'message' : 'thought';
+      const existing = [...conversation.transcript]
+        .reverse()
+        .find(
+          (entry) =>
+            entry.kind === kind &&
+            (entry.kind === 'message' || entry.kind === 'thought') &&
+            entry.streaming,
+        );
+      if (existing) {
+        if (existing.kind === 'message' || existing.kind === 'thought') {
+          existing.content += update.content.text;
+          existing.streaming = true;
+        }
+      } else if (kind === 'message') {
+        conversation.transcript.push({
+          content: update.content.text,
+          createdAt: now,
+          id: randomUUID(),
+          kind,
+          role: 'assistant',
+          streaming: true,
+        });
+      } else {
+        conversation.transcript.push({
+          content: update.content.text,
+          createdAt: now,
+          id: randomUUID(),
+          kind,
+          streaming: true,
+        } satisfies AgentThoughtEntry);
+      }
+    } else if (update.sessionUpdate === 'tool_call') {
+      const tool: AgentToolEntry = {
+        content: toolContentText(update.content),
+        createdAt: now,
+        id: `tool:${update.toolCallId}`,
+        kind: 'tool',
+        status: update.status ?? 'pending',
+        title: update.title,
+        toolKind: update.kind ?? null,
+      };
+      const index = conversation.transcript.findIndex(
+        (entry) => entry.id === tool.id,
+      );
+      if (index === -1) conversation.transcript.push(tool);
+      else conversation.transcript[index] = tool;
+    } else if (update.sessionUpdate === 'tool_call_update') {
+      const tool = conversation.transcript.find(
+        (entry): entry is AgentToolEntry =>
+          entry.kind === 'tool' && entry.id === `tool:${update.toolCallId}`,
+      );
+      if (tool) {
+        if (update.title) tool.title = update.title;
+        if (update.status) tool.status = update.status;
+        if (update.kind) tool.toolKind = update.kind;
+        if (update.content) tool.content = toolContentText(update.content);
+      } else {
+        conversation.transcript.push({
+          content: toolContentText(update.content),
+          createdAt: now,
+          id: `tool:${update.toolCallId}`,
+          kind: 'tool',
+          status: update.status ?? 'pending',
+          title: update.title ?? '工具调用',
+          toolKind: update.kind ?? null,
+        });
+      }
+    } else if (update.sessionUpdate === 'plan') {
+      const plan: AgentPlanTranscriptEntry = {
+        createdAt: now,
+        entries: update.entries.map(({ content, priority, status }) => ({
+          content,
+          priority,
+          status,
+        })),
+        id: 'plan:current',
+        kind: 'plan',
+      };
+      const index = conversation.transcript.findIndex(
+        (entry) => entry.id === plan.id,
+      );
+      if (index === -1) conversation.transcript.push(plan);
+      else conversation.transcript[index] = plan;
+    } else if (
+      update.sessionUpdate === 'plan_update' &&
+      update.plan.type === 'items'
+    ) {
+      const plan: AgentPlanTranscriptEntry = {
+        createdAt: now,
+        entries: update.plan.entries.map(({ content, priority, status }) => ({
+          content,
+          priority,
+          status,
+        })),
+        id: `plan:${update.plan.planId}`,
+        kind: 'plan',
+      };
+      const index = conversation.transcript.findIndex(
+        (entry) => entry.id === plan.id,
+      );
+      if (index === -1) conversation.transcript.push(plan);
+      else conversation.transcript[index] = plan;
+    } else if (update.sessionUpdate === 'plan_removed') {
+      const index = conversation.transcript.findIndex(
+        (entry) => entry.id === `plan:${update.planId}`,
+      );
+      if (index !== -1) conversation.transcript.splice(index, 1);
+    } else if (update.sessionUpdate === 'current_mode_update') {
+      if (conversation.modes) {
+        conversation.modes.currentId = update.currentModeId;
+      }
+    } else if (update.sessionUpdate === 'config_option_update') {
+      conversation.configOptions = normalizeSessionConfig(update.configOptions);
+    } else if (update.sessionUpdate === 'available_commands_update') {
+      conversation.availableCommands = update.availableCommands.map(
+        ({ description, name }) => ({ description, name }),
+      );
+    } else if (update.sessionUpdate === 'session_info_update') {
+      if (update.title) conversation.title = update.title;
+    } else if (update.sessionUpdate === 'usage_update') {
+      conversation.contextTokens = update.used;
+      conversation.contextWindow = update.size;
+    }
+    conversation.updatedAt = now;
+    this.#save(conversation);
+  }
+
+  #handlePermission(
+    conversation: AgentConversation,
+    request: AcpPermissionRequest,
+  ): void {
+    conversation.transcript.push({
+      createdAt: new Date().toISOString(),
+      id: `permission:${request.requestId}`,
+      kind: 'permission',
+      options: request.options,
+      requestId: request.requestId,
+      selectedOptionId: null,
+      status: 'pending',
+      title: request.title,
+    });
+    conversation.status = 'waiting';
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+  }
+
+  #finishTurn(conversation: AgentConversation): void {
+    this.#settleStreaming(conversation);
+    conversation.status = 'idle';
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+  }
+
+  #failConversation(conversation: AgentConversation, error: unknown): void {
+    const content = error instanceof Error ? error.message : String(error);
+    if (!content) return;
+    this.#settleStreaming(conversation);
+    conversation.transcript.push({
+      content,
+      createdAt: new Date().toISOString(),
+      id: randomUUID(),
+      kind: 'error',
+    });
+    conversation.status = 'failed';
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+  }
+
+  #settleStreaming(conversation: AgentConversation): void {
+    for (const entry of conversation.transcript) {
+      if (entry.kind === 'message' || entry.kind === 'thought') {
+        entry.streaming = false;
+      } else if (entry.kind === 'permission' && entry.status === 'pending') {
+        entry.status = 'cancelled';
+      }
+    }
+  }
+
+  #save(conversation: AgentConversation): void {
+    this.#store.save(conversation);
+    const event: AgentConversationEvent = {
+      conversation,
+      type: 'conversation',
+    };
+    for (const listener of this.#listeners) listener(event);
+  }
+
+  #resolveProvider(requested?: AgentProviderId): AcpAgentProviderId {
+    if (requested) {
+      if (!isAcpAgentProviderId(requested)) {
+        throw new Error('该服务商当前不使用 ACP 协议。');
+      }
+      if (!findAgentProviderExecutable(requested)) {
+        throw new Error('服务商 CLI 不可用。');
+      }
+      return requested;
+    }
+    const installed = new Set(
+      detectAgentProviders()
+        .providers.filter((provider) => provider.installed)
+        .map((provider) => provider.id),
+    );
+    const providerId = ACP_AGENT_PROVIDER_IDS.find((id) => installed.has(id));
+    if (!providerId) throw new Error('没有检测到支持 ACP 的服务商。');
+    return providerId;
+  }
+}
+
+function titleFromPrompt(content: string): string {
+  const title = content.split(/\s+/).slice(0, 7).join(' ');
+  return title.length > 54 ? `${title.slice(0, 53)}…` : title;
+}
+
+function toolContentText(
+  content: ToolCallContent[] | null | undefined,
+): string | null {
+  if (!content?.length) return null;
+  const parts = content.flatMap((item) => {
+    if (item.type === 'content' && item.content.type === 'text') {
+      return [item.content.text];
+    }
+    if (item.type === 'diff') return [`${item.path}`];
+    if (item.type === 'terminal') return ['终端输出'];
+    return [];
+  });
+  return parts.length ? parts.join('\n') : null;
+}

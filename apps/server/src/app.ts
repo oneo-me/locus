@@ -11,6 +11,14 @@ import type {
   UpdateDocumentIconImageInput,
 } from '@locus/document-library/contracts/library-api';
 import type { UpdateGlobalSettingsInput } from '@locus/document-library/contracts/global-settings';
+import type {
+  CreateAgentConversationInput,
+  RenameAgentConversationInput,
+  RespondAgentPermissionInput,
+  SendAgentMessageInput,
+  SetAgentConfigInput,
+  SetAgentModeInput,
+} from '@locus/agent/contracts/conversation';
 import type { CreateTerminalSessionOptions } from '@shellweb/core/server';
 import { createRouteAssetResponse } from '~/features/asset/route.server';
 import { createWorkspaceEventsResponse } from '~/features/workspace/workspace-events';
@@ -46,6 +54,12 @@ import {
   type OpenLocalDirectoryInput,
 } from '~/features/system/open-path.server';
 import { detectAgentProviders } from '@locus/agent/server/provider-detection';
+import { getAgentService } from '~/features/agents/service.server';
+import { createAgentEventsResponse } from '~/features/agents/events.server';
+import {
+  getAgentProject,
+  listAgentProjects,
+} from '~/features/agents/projects.server';
 
 async function jsonRoute<T>(event: string, operation: () => T | Promise<T>) {
   try {
@@ -180,6 +194,89 @@ export function createApp(staticRoot?: string) {
   app.get('/api/settings', () => jsonRoute('settings.read', getGlobalSettings));
   app.get('/api/agent-providers', () =>
     jsonRoute('agent_providers.detect', detectAgentProviders),
+  );
+  app.get('/api/task-projects', () =>
+    jsonRoute('task_projects.list', listAgentProjects),
+  );
+  app.get('/api/tasks', () =>
+    jsonRoute('tasks.list', () => getAgentService().listConversations()),
+  );
+  app.post('/api/tasks', async (context) =>
+    jsonRoute('tasks.create', async () => {
+      const input = await body<CreateAgentConversationInput>(context);
+      return getAgentService().createConversation(
+        await getAgentProject(input.projectId),
+        input.providerId,
+      );
+    }),
+  );
+  app.get('/api/tasks/:id', (context) =>
+    jsonRoute('tasks.read', () =>
+      getAgentService().getConversation(context.req.param('id')),
+    ),
+  );
+  app.patch('/api/tasks/:id', async (context) =>
+    jsonRoute('tasks.rename', async () => {
+      const input = await body<RenameAgentConversationInput>(context);
+      return getAgentService().renameConversation(
+        context.req.param('id'),
+        input.title,
+      );
+    }),
+  );
+  app.post('/api/tasks/:id/connect', (context) =>
+    jsonRoute('tasks.connect', () =>
+      getAgentService().connect(context.req.param('id')),
+    ),
+  );
+  app.post('/api/tasks/:id/mode', async (context) =>
+    jsonRoute('tasks.mode', async () => {
+      const input = await body<SetAgentModeInput>(context);
+      return getAgentService().setMode(context.req.param('id'), input.modeId);
+    }),
+  );
+  app.post('/api/tasks/:id/config', async (context) =>
+    jsonRoute('tasks.config', async () => {
+      const input = await body<SetAgentConfigInput>(context);
+      return getAgentService().setConfig(
+        context.req.param('id'),
+        input.configId,
+        input.value,
+      );
+    }),
+  );
+  app.delete('/api/tasks/:id', (context) =>
+    jsonRoute('tasks.delete', () => {
+      getAgentService().deleteConversation(context.req.param('id'));
+      return { ok: true as const };
+    }),
+  );
+  app.post('/api/tasks/:id/messages', async (context) =>
+    jsonRoute('tasks.message', async () => {
+      const input = await body<SendAgentMessageInput>(context);
+      return getAgentService().sendMessage(
+        context.req.param('id'),
+        input.content,
+      );
+    }),
+  );
+  app.post('/api/tasks/:id/cancel', (context) =>
+    jsonRoute('tasks.cancel', () =>
+      getAgentService().cancel(context.req.param('id')),
+    ),
+  );
+  app.post('/api/tasks/:id/permissions/:requestId', async (context) =>
+    jsonRoute('tasks.permission', async () => {
+      const input = await body<RespondAgentPermissionInput>(context);
+      return getAgentService().respondPermission(
+        context.req.param('id'),
+        context.req.param('requestId'),
+        input.optionId,
+      );
+    }),
+  );
+  app.get('/api/task-events', (context) =>
+    createAgentEventsResponse(context.req.raw),
   );
   app.patch('/api/settings', async (context) =>
     jsonRoute('settings.update', async () =>

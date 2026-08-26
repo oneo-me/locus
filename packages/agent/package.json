@@ -8,7 +8,11 @@
     "./server/*": "./src/server/*.ts"
   },
   "scripts": {
+    "test": "node --import tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "^1.4.0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

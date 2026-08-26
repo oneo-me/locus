@@ -9,6 +9,7 @@ import {
   terminalWebSocketServer,
 } from './features/terminal/service.server';
 import { logError, logInfo } from './logging';
+import { closeAgentService } from './features/agents/service.server';
 
 const clientDirectory = fileURLToPath(new URL('./client', import.meta.url));
 const staticRoot = existsSync(join(clientDirectory, 'index.html'))
@@ -38,6 +39,7 @@ function parsePort(value: string | undefined): number {
 }
 
 async function close(server: ReturnType<typeof startServer>) {
+  closeAgentService();
   closeTerminalService();
   await new Promise<void>((resolveClose, reject) => {
     server.close((error) => (error ? reject(error) : resolveClose()));

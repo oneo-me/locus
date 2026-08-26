@@ -4,6 +4,7 @@ import { delimiter, join } from 'node:path';
 import {
   AGENT_PROVIDERS,
   type AgentProviderDetection,
+  type AgentProviderId,
 } from '../contracts/provider.js';
 
 function executableSearchDirectories(): string[] {
@@ -89,6 +90,17 @@ function findExecutable(command: string, directories: string[]): string | null {
     }
   }
   return null;
+}
+
+export function findAgentProviderExecutable(
+  providerId: AgentProviderId,
+): string | null {
+  const provider = AGENT_PROVIDERS.find(
+    (candidate) => candidate.id === providerId,
+  );
+  return provider
+    ? findExecutable(provider.command, executableSearchDirectories())
+    : null;
 }
 
 export function detectAgentProviders(): AgentProviderDetection {

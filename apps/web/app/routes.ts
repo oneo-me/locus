@@ -12,7 +12,7 @@ export default [
       index('routes/workspace-index.tsx'),
       route('*', 'routes/workspace-document.tsx'),
     ]),
-    route('agents', 'routes/agents.tsx'),
+    route('tasks/:taskId?', 'routes/tasks.tsx'),
     route('graph', 'routes/graph.tsx'),
     route('design-system', 'routes/design-system.tsx'),
     route('settings', 'routes/settings.tsx', [

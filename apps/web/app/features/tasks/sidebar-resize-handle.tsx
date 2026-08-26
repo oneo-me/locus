@@ -12,7 +12,7 @@ function normalizeSidebarWidth(width: number) {
   return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width));
 }
 
-export function AgentsSidebarResizeHandle({
+export function TasksSidebarResizeHandle({
   onWidthChange,
   width,
 }: {
