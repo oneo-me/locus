@@ -3,7 +3,7 @@ import type {
   AgentProject,
 } from '@locus/agent/contracts/conversation';
 import {
-  isAcpAgentProviderId,
+  isTaskAgentProviderId,
   type AgentProviderId,
   type AgentProviderProbe,
 } from '@locus/agent/contracts/provider';
@@ -81,7 +81,7 @@ export function AgentComposer({
     .filter(
       (provider) =>
         provider.installed &&
-        isAcpAgentProviderId(provider.id) &&
+        isTaskAgentProviderId(provider.id) &&
         provider.models.length > 0,
     )
     .map((provider) => ({

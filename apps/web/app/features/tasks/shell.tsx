@@ -5,7 +5,7 @@ import type {
   AgentWorkspaceEvent,
 } from '@locus/agent/contracts/conversation';
 import {
-  isAcpAgentProviderId,
+  isTaskAgentProviderId,
   type AgentProviderDetection,
   type AgentProviderId,
 } from '@locus/agent/contracts/provider';
@@ -31,7 +31,7 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
   const availableProviders = initialData.providers.providers.filter(
     (provider) =>
       provider.installed &&
-      isAcpAgentProviderId(provider.id) &&
+      isTaskAgentProviderId(provider.id) &&
       provider.models.length > 0,
   );
   const preferredProvider = availableProviders.find(

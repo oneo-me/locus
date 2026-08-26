@@ -18,12 +18,16 @@ import {
   agentConversationTitleFromPrompt,
 } from '../contracts/conversation.js';
 import {
-  ACP_AGENT_PROVIDER_IDS,
-  type AcpAgentProviderId,
+  TASK_AGENT_PROVIDER_IDS,
   type AgentProviderId,
-  isAcpAgentProviderId,
+  type TaskAgentProviderId,
+  isTaskAgentProviderId,
 } from '../contracts/provider.js';
-import { AcpRuntime, type AcpPermissionRequest } from './acp-runtime.js';
+import { AcpRuntime } from './acp-runtime.js';
+import type {
+  AgentRuntime,
+  AgentRuntimePermissionRequest,
+} from './agent-runtime.js';
 import { AgentConversationStore } from './conversation-store.js';
 import {
   detectAgentProviders,
@@ -31,15 +35,16 @@ import {
 } from './provider-detection.js';
 import { normalizeSessionConfig } from './session-config.js';
 import { providerPromptContent } from './prompt-content.js';
-import { readOpenCodeSessionTitle } from './opencode-title.js';
 import { readGrokSessionTitle } from './grok-title.js';
 import { NativeTitleRefresh } from './native-title-refresh.js';
+import { discoverAgentProviderModels } from './provider-models.js';
+import { OpenCodeRuntime } from './opencode-runtime.js';
 
 type AgentEventListener = (event: AgentConversationEvent) => void;
 
 export class AgentService {
   readonly #listeners = new Set<AgentEventListener>();
-  readonly #runtimes = new Map<string, AcpRuntime>();
+  readonly #runtimes = new Map<string, AgentRuntime>();
   readonly #store: AgentConversationStore;
   readonly #titleRefreshes = new Map<string, NativeTitleRefresh>();
 
@@ -60,7 +65,6 @@ export class AgentService {
   async connect(id: string): Promise<AgentConversation> {
     const conversation = this.getConversation(id);
     await this.#ensureRuntime(conversation);
-    this.#startOpenCodeTitleRefresh(conversation);
     return conversation;
   }
 
@@ -71,7 +75,6 @@ export class AgentService {
     const providerId = this.#resolveProvider(requestedProviderId);
     const now = new Date().toISOString();
     const conversation: AgentConversation = {
-      acpSessionId: null,
       activityAt: now,
       autoTitle: null,
       availableCommands: [],
@@ -84,6 +87,7 @@ export class AgentService {
       modes: null,
       projectId: project.id,
       projectName: project.name,
+      providerSessionId: null,
       providerId,
       status: 'idle',
       transcript: [],
@@ -136,7 +140,6 @@ export class AgentService {
           this.#finishTurn(conversation, stopReason, transcriptLength),
         (error) => this.#failConversation(conversation, error),
       );
-    this.#startOpenCodeTitleRefresh(conversation);
     return conversation;
   }
 
@@ -245,29 +248,11 @@ export class AgentService {
     this.#titleRefreshes.clear();
   }
 
-  #startOpenCodeTitleRefresh(conversation: AgentConversation): void {
-    if (conversation.providerId !== 'opencode' || !conversation.acpSessionId) {
-      return;
-    }
-    const refresh = this.#titleRefresh(conversation);
-    refresh.start(
-      [500, 1_000, 2_000, 4_000, 8_000],
-      () => {
-        const title = readOpenCodeSessionTitle(conversation.acpSessionId ?? '');
-        return title === conversation.autoTitle ? null : title;
-      },
-      (title) => {
-        this.#applyProviderTitle(conversation, title);
-        refresh.close();
-      },
-    );
-  }
-
   #startGrokTitleRefresh(conversation: AgentConversation): void {
-    if (!conversation.acpSessionId) return;
+    if (!conversation.providerSessionId) return;
     this.#titleRefresh(conversation).start(
       [0, 250, 750, 1_500, 3_000, 5_000, 7_500, 10_000],
-      () => readGrokSessionTitle(conversation.acpSessionId ?? ''),
+      () => readGrokSessionTitle(conversation.providerSessionId ?? ''),
       (title) => this.#applyProviderTitle(conversation, title),
     );
   }
@@ -292,11 +277,11 @@ export class AgentService {
     this.#save(conversation);
   }
 
-  async #ensureRuntime(conversation: AgentConversation): Promise<AcpRuntime> {
+  async #ensureRuntime(conversation: AgentConversation): Promise<AgentRuntime> {
     const existing = this.#runtimes.get(conversation.id);
     if (existing) return existing;
-    if (!isAcpAgentProviderId(conversation.providerId)) {
-      throw new Error('该服务商当前不使用 ACP 协议。');
+    if (!isTaskAgentProviderId(conversation.providerId)) {
+      throw new Error('该服务商当前不支持任务会话。');
     }
     const binary = findAgentProviderExecutable(conversation.providerId);
     if (!binary) throw new Error('服务商 CLI 不可用。');
@@ -309,36 +294,79 @@ export class AgentService {
       persistedModelOption?.type === 'select'
         ? persistedModelOption.currentValue
         : undefined;
-    let runtimeRef: AcpRuntime | null = null;
-    const runtime = await AcpRuntime.start({
-      binary,
-      cwd: conversation.cwd,
-      handlers: {
-        onConnected: (sessionId, modes, configOptions) => {
-          conversation.acpSessionId = sessionId;
-          conversation.configOptions = configOptions;
-          conversation.modes = modes;
-          conversation.status = 'idle';
-          conversation.updatedAt = new Date().toISOString();
-          this.#save(conversation);
-        },
-        onError: (message) => this.#failConversation(conversation, message),
-        onExit: () => {
-          if (
-            runtimeRef &&
-            this.#runtimes.get(conversation.id) === runtimeRef
-          ) {
-            this.#runtimes.delete(conversation.id);
-          }
-        },
-        onPermission: (permission) =>
-          this.#handlePermission(conversation, permission),
-        onUpdate: (notification) =>
-          this.#handleUpdate(conversation, notification),
+    let runtimeRef: AgentRuntime | null = null;
+    const handlers = {
+      onConnected: (
+        sessionId: string,
+        modes: AgentConversation['modes'],
+        configOptions: AgentConversation['configOptions'],
+      ) => {
+        conversation.providerSessionId = sessionId;
+        conversation.configOptions = configOptions;
+        conversation.modes = modes;
+        conversation.status = 'idle' as const;
+        conversation.updatedAt = new Date().toISOString();
+        this.#save(conversation);
       },
-      providerId: conversation.providerId,
-      sessionId: conversation.acpSessionId,
-    }).catch((error) => {
+      onError: (message: string) =>
+        this.#failConversation(conversation, message),
+      onExit: () => {
+        if (runtimeRef && this.#runtimes.get(conversation.id) === runtimeRef) {
+          this.#runtimes.delete(conversation.id);
+        }
+      },
+      onPermission: (permission: AgentRuntimePermissionRequest) =>
+        this.#handlePermission(conversation, permission),
+    };
+    const runtime = await (
+      conversation.providerId === 'opencode'
+        ? discoverAgentProviderModels('opencode', binary).then((models) =>
+            OpenCodeRuntime.start({
+              binary,
+              cwd: conversation.cwd,
+              handlers: {
+                onConnected: (sessionId, configOptions) =>
+                  handlers.onConnected(sessionId, null, configOptions),
+                onError: handlers.onError,
+                onExit: handlers.onExit,
+                onIdle: () => {
+                  this.#settleStreaming(conversation);
+                  conversation.status = 'idle';
+                  const now = new Date().toISOString();
+                  conversation.activityAt = now;
+                  conversation.updatedAt = now;
+                  this.#save(conversation);
+                },
+                onPermission: handlers.onPermission,
+                onText: (kind, text) =>
+                  this.#handleText(conversation, kind, text),
+                onTitle: (title) =>
+                  this.#applyProviderTitle(conversation, title),
+                onTool: (tool) => this.#handleTool(conversation, tool),
+                onUsage: (tokens, window) => {
+                  if (tokens !== null) conversation.contextTokens = tokens;
+                  if (window !== null) conversation.contextWindow = window;
+                  conversation.updatedAt = new Date().toISOString();
+                  this.#save(conversation);
+                },
+              },
+              models,
+              selectedModel,
+              sessionId: conversation.providerSessionId,
+            }),
+          )
+        : AcpRuntime.start({
+            binary,
+            cwd: conversation.cwd,
+            handlers: {
+              ...handlers,
+              onUpdate: (notification) =>
+                this.#handleUpdate(conversation, notification),
+            },
+            providerId: conversation.providerId,
+            sessionId: conversation.providerSessionId,
+          })
+    ).catch((error) => {
       if (conversation.status === 'connecting') {
         this.#failConversation(conversation, error);
       }
@@ -376,8 +404,8 @@ export class AgentService {
     notification: SessionNotification,
   ): void {
     if (
-      conversation.acpSessionId &&
-      notification.sessionId !== conversation.acpSessionId
+      conversation.providerSessionId &&
+      notification.sessionId !== conversation.providerSessionId
     ) {
       return;
     }
@@ -526,9 +554,64 @@ export class AgentService {
     this.#save(conversation);
   }
 
+  #handleText(
+    conversation: AgentConversation,
+    kind: 'message' | 'thought',
+    text: string,
+  ): void {
+    const existing = [...conversation.transcript]
+      .reverse()
+      .find(
+        (entry) =>
+          entry.kind === kind &&
+          (entry.kind === 'message' || entry.kind === 'thought') &&
+          entry.streaming,
+      );
+    if (existing?.kind === 'message' || existing?.kind === 'thought') {
+      existing.content += text;
+    } else if (kind === 'message') {
+      conversation.transcript.push({
+        content: text,
+        createdAt: new Date().toISOString(),
+        id: randomUUID(),
+        kind,
+        role: 'assistant',
+        streaming: true,
+      });
+    } else {
+      conversation.transcript.push({
+        content: text,
+        createdAt: new Date().toISOString(),
+        id: randomUUID(),
+        kind,
+        streaming: true,
+      });
+    }
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+  }
+
+  #handleTool(
+    conversation: AgentConversation,
+    tool: Omit<AgentToolEntry, 'createdAt' | 'kind'>,
+  ): void {
+    const entry: AgentToolEntry = {
+      ...tool,
+      createdAt: new Date().toISOString(),
+      kind: 'tool',
+    };
+    const index = conversation.transcript.findIndex(
+      (candidate) => candidate.id === entry.id,
+    );
+    if (index === -1) conversation.transcript.push(entry);
+    else conversation.transcript[index] = entry;
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
+  }
+
   #handlePermission(
     conversation: AgentConversation,
-    request: AcpPermissionRequest,
+    request: AgentRuntimePermissionRequest,
   ): void {
     conversation.transcript.push({
       createdAt: new Date().toISOString(),
@@ -574,8 +657,6 @@ export class AgentService {
     this.#save(conversation);
     if (conversation.providerId === 'grok' && stopReason === 'end_turn') {
       this.#startGrokTitleRefresh(conversation);
-    } else if (conversation.providerId === 'opencode') {
-      this.#startOpenCodeTitleRefresh(conversation);
     }
   }
 
@@ -615,10 +696,10 @@ export class AgentService {
     for (const listener of this.#listeners) listener(event);
   }
 
-  #resolveProvider(requested?: AgentProviderId): AcpAgentProviderId {
+  #resolveProvider(requested?: AgentProviderId): TaskAgentProviderId {
     if (requested) {
-      if (!isAcpAgentProviderId(requested)) {
-        throw new Error('该服务商当前不使用 ACP 协议。');
+      if (!isTaskAgentProviderId(requested)) {
+        throw new Error('该服务商当前不支持任务会话。');
       }
       if (!findAgentProviderExecutable(requested)) {
         throw new Error('服务商 CLI 不可用。');
@@ -630,8 +711,8 @@ export class AgentService {
         .providers.filter((provider) => provider.installed)
         .map((provider) => provider.id),
     );
-    const providerId = ACP_AGENT_PROVIDER_IDS.find((id) => installed.has(id));
-    if (!providerId) throw new Error('没有检测到支持 ACP 的服务商。');
+    const providerId = TASK_AGENT_PROVIDER_IDS.find((id) => installed.has(id));
+    if (!providerId) throw new Error('没有检测到支持任务会话的服务商。');
     return providerId;
   }
 }

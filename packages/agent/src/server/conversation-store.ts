@@ -32,10 +32,11 @@ export class AgentConversationStore {
             typeof candidate.autoTitle === 'string') &&
           candidate.projectId &&
           candidate.projectName &&
+          (candidate.providerSessionId === null ||
+            typeof candidate.providerSessionId === 'string') &&
           Array.isArray(candidate.transcript)
         ) {
           const conversation: AgentConversation = {
-            acpSessionId: candidate.acpSessionId,
             activityAt: candidate.activityAt,
             autoTitle: candidate.autoTitle,
             availableCommands: candidate.availableCommands,
@@ -48,6 +49,7 @@ export class AgentConversationStore {
             modes: candidate.modes,
             projectId: candidate.projectId,
             projectName: candidate.projectName,
+            providerSessionId: candidate.providerSessionId,
             providerId: candidate.providerId,
             status: candidate.status,
             transcript: candidate.transcript,

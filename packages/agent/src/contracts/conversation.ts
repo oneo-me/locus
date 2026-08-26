@@ -143,7 +143,6 @@ export type AgentTranscriptEntry =
   | AgentToolEntry;
 
 export interface AgentConversation {
-  acpSessionId: string | null;
   activityAt: string;
   autoTitle: string | null;
   availableCommands: Array<{ description: string; name: string }>;
@@ -156,6 +155,7 @@ export interface AgentConversation {
   modes: AgentSessionModeState | null;
   projectId: string;
   projectName: string;
+  providerSessionId: string | null;
   providerId: AgentProviderId;
   status: AgentConversationStatus;
   transcript: AgentTranscriptEntry[];

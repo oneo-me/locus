@@ -32,7 +32,7 @@ void test('connects to an ACP process and streams a prompt response', async () =
       onPermission: () => assert.fail('unexpected permission request'),
       onUpdate: (notification) => updates.push(notification),
     },
-    providerId: 'opencode',
+    providerId: 'kimi',
     sessionId: null,
   });
   try {

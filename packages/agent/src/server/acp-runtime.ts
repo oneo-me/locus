@@ -18,6 +18,10 @@ import type {
   AgentSessionModeState,
 } from '../contracts/conversation.js';
 import { normalizeSessionConfig } from './session-config.js';
+import type {
+  AgentRuntime,
+  AgentRuntimePermissionRequest,
+} from './agent-runtime.js';
 
 interface Deferred<T> {
   promise: Promise<T>;
@@ -35,7 +39,7 @@ function deferred<T>(): Deferred<T> {
   return { promise, reject, resolve };
 }
 
-interface AcpRuntimeHandlers {
+export interface AcpRuntimeHandlers {
   onConnected: (
     sessionId: string,
     modes: AgentSessionModeState | null,
@@ -43,17 +47,11 @@ interface AcpRuntimeHandlers {
   ) => void;
   onError: (message: string) => void;
   onExit: () => void;
-  onPermission: (permission: AcpPermissionRequest) => void;
+  onPermission: (permission: AgentRuntimePermissionRequest) => void;
   onUpdate: (notification: SessionNotification) => void;
 }
 
-export interface AcpPermissionRequest {
-  options: Array<{ id: string; kind: string; name: string }>;
-  requestId: string;
-  title: string;
-}
-
-interface AcpRuntimeOptions {
+export interface AcpRuntimeOptions {
   binary: string;
   cwd: string;
   handlers: AcpRuntimeHandlers;
@@ -78,10 +76,9 @@ const ACP_LAUNCH: Record<
     env: { GROK_OAUTH2_REFERRER: 'locus' },
   },
   kimi: { args: ['acp'] },
-  opencode: { args: ['acp'] },
 };
 
-export class AcpRuntime {
+export class AcpRuntime implements AgentRuntime {
   readonly #child: ChildProcessWithoutNullStreams;
   readonly #closed = deferred<void>();
   readonly #handlers: AcpRuntimeHandlers;
