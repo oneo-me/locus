@@ -52,7 +52,7 @@ function CommandDialog({
       </DialogHeader>
       <DialogContent
         className={cn(
-          'top-[18vh] translate-y-0 overflow-hidden rounded-xl bg-popover/80 p-0 backdrop-blur-xl sm:max-w-xl',
+          'top-[18vh] translate-y-0 overflow-hidden rounded-xl bg-popover/80 p-0 shadow-xl backdrop-blur-xl sm:max-w-xl',
           className,
         )}
         showCloseButton={showCloseButton}
@@ -169,7 +169,7 @@ function CommandItem({
   return (
     <CommandPrimitive.Item
       className={cn(
-        'group/command-item relative flex cursor-default items-center gap-2 rounded-lg px-2 py-2 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-muted data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-4',
+        'group/command-item relative flex cursor-default items-center gap-2 rounded-lg px-2 py-2 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-black/5 data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-4',
         className,
       )}
       data-slot="command-item"

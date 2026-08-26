@@ -17,6 +17,7 @@ import {
   FilePenLineIcon,
   FileTextIcon,
   FolderOpenIcon,
+  SquareTerminalIcon,
 } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -40,16 +41,16 @@ import {
 } from '../document/document-actions';
 import { DocumentIcon } from '../document/icons';
 
-type DocumentAction = 'copy' | 'directory' | 'vscode';
+type DocumentAction = 'copy' | 'directory' | 'ghostty' | 'vscode';
 
 const SEARCH_DEBOUNCE_MS = 150;
 const DOCUMENT_ACTIONS = [
   {
-    action: 'directory',
-    aliases: ['open folder', 'folder', 'reveal'],
-    englishLabel: 'Open Folder',
-    icon: FolderOpenIcon,
-    label: '打开所在目录',
+    action: 'copy',
+    aliases: ['copy', 'reference', 'link', 'uri'],
+    englishLabel: 'Copy Reference',
+    icon: CopyIcon,
+    label: '复制笔记引用',
   },
   {
     action: 'vscode',
@@ -59,11 +60,18 @@ const DOCUMENT_ACTIONS = [
     label: '用 VS Code 编辑',
   },
   {
-    action: 'copy',
-    aliases: ['copy', 'reference', 'link', 'uri'],
-    englishLabel: 'Copy Reference',
-    icon: CopyIcon,
-    label: '复制笔记引用',
+    action: 'directory',
+    aliases: ['open folder', 'folder', 'reveal'],
+    englishLabel: 'Open Folder',
+    icon: FolderOpenIcon,
+    label: '打开所在目录',
+  },
+  {
+    action: 'ghostty',
+    aliases: ['ghostty', 'terminal', 'shell'],
+    englishLabel: 'Open Library in Ghostty',
+    icon: SquareTerminalIcon,
+    label: '在 Ghostty 中打开文档库',
   },
 ] satisfies {
   action: DocumentAction;
@@ -84,7 +92,7 @@ export function AppCommandPalette({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { openDocument } = useDocumentApi();
+  const { openDocument, openLibraryTerminal } = useDocumentApi();
   const listRef = useRef<HTMLDivElement>(null);
   const [documents, setDocuments] = useState<LibraryNavigationDocument[]>([]);
   const [libraryState, setLibraryState] = useState<LibraryState | null>(null);
@@ -95,6 +103,7 @@ export function AppCommandPalette({
   );
   const [actionError, setActionError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [selection, setSelection] = useState({ query: '', value: '' });
   const [expandedByKeyboard, setExpandedByKeyboard] = useState(false);
   const expanded =
     defaultExpanded || expandedByKeyboard || query.trim().length > 0;
@@ -132,6 +141,20 @@ export function AppCommandPalette({
     .filter(({ score }) => score > 0)
     .sort((left, right) => right.score - left.score)
     .map(({ document }) => document);
+  const firstSelectableValue =
+    matchingDocumentActions[0]?.action ?? matchingDocuments[0]?.path ?? '';
+  const selectableValues = [
+    ...matchingDocumentActions.map((item) => item.action),
+    ...matchingDocuments.map((document) => document.path),
+  ];
+  const selectedValue =
+    expanded &&
+    selection.query === query &&
+    selectableValues.includes(selection.value)
+      ? selection.value
+      : expanded
+        ? firstSelectableValue
+        : '';
 
   useEffect(() => {
     let active = true;
@@ -179,6 +202,8 @@ export function AppCommandPalette({
           formatDocumentReference(currentDocument.directory),
         );
         if (!copied) throw new Error('无法写入剪贴板。');
+      } else if (action === 'ghostty') {
+        await openLibraryTerminal();
       } else {
         await openDocument({ path: currentDocument.path, target: action });
       }
@@ -195,6 +220,7 @@ export function AppCommandPalette({
       description="搜索笔记或执行当前笔记操作"
       onOpenChange={(nextOpen) => {
         setQuery('');
+        setSelection({ query: '', value: '' });
         setExpandedByKeyboard(false);
         if (nextOpen) setActionError(null);
         onOpenChange(nextOpen);
@@ -202,7 +228,12 @@ export function AppCommandPalette({
       open={open}
       title="命令面板"
     >
-      <Command label="命令面板" shouldFilter={false}>
+      <Command
+        label="命令面板"
+        onValueChange={(value) => setSelection({ query, value })}
+        shouldFilter={false}
+        value={selectedValue}
+      >
         <DebouncedCommandInput
           autoFocus
           key={open ? 'open' : 'closed'}
@@ -382,7 +413,7 @@ function DocumentActionItem({
       disabled={pendingAction !== null}
       keywords={[englishLabel, ...aliases]}
       onSelect={() => void onSelect(action)}
-      value={label}
+      value={action}
     >
       {pendingAction === action ? (
         <Spinner aria-hidden="true" />
