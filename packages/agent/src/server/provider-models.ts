@@ -2,6 +2,8 @@ import { execFile } from 'node:child_process';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { promisify, stripVTControlCharacters } from 'node:util';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type {
   AgentProviderId,
   AgentProviderModel,
@@ -32,6 +34,8 @@ const FALLBACK_MODELS: Partial<Record<AgentProviderId, AgentProviderModel[]>> =
     ),
     cursor: models(['auto'], 'auto'),
     grok: models(['grok-build'], 'grok-build'),
+    opencode: models(['default'], 'default'),
+    pi: models(['default'], 'default'),
   };
 
 export function fallbackAgentProviderModels(
@@ -43,11 +47,62 @@ export function fallbackAgentProviderModels(
 export async function discoverAgentProviderModels(
   providerId: AgentProviderId,
   path: string,
+  cacheDirectory?: string,
 ): Promise<AgentProviderModel[]> {
   const discovered = await discover(providerId, path).catch(() => []);
-  return discovered.length > 0
-    ? deduplicate(discovered)
-    : fallbackAgentProviderModels(providerId);
+  if (discovered.length > 0) {
+    const models = deduplicate(discovered);
+    if (cacheDirectory)
+      await writeModelCache(cacheDirectory, providerId, models);
+    return models;
+  }
+  return (
+    (cacheDirectory
+      ? await readModelCache(cacheDirectory, providerId)
+      : null) ?? fallbackAgentProviderModels(providerId)
+  );
+}
+
+async function readModelCache(
+  directory: string,
+  providerId: AgentProviderId,
+): Promise<AgentProviderModel[] | null> {
+  try {
+    const value = JSON.parse(
+      await readFile(join(directory, `${providerId}.json`), 'utf8'),
+    ) as unknown;
+    if (!Array.isArray(value)) return null;
+    const models = value.filter(isAgentProviderModel);
+    return models.length > 0 ? models : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeModelCache(
+  directory: string,
+  providerId: AgentProviderId,
+  models: AgentProviderModel[],
+): Promise<void> {
+  try {
+    await mkdir(directory, { recursive: true });
+    const path = join(directory, `${providerId}.json`);
+    const temporary = `${path}.tmp`;
+    await writeFile(temporary, JSON.stringify(models));
+    await rename(temporary, path);
+  } catch {
+    return;
+  }
+}
+
+function isAgentProviderModel(value: unknown): value is AgentProviderModel {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as AgentProviderModel).id === 'string' &&
+    typeof (value as AgentProviderModel).name === 'string' &&
+    typeof (value as AgentProviderModel).isDefault === 'boolean'
+  );
 }
 
 async function discover(

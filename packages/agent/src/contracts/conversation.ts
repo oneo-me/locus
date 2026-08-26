@@ -156,6 +156,7 @@ export interface AgentConversation {
   projectId: string;
   projectName: string;
   providerSessionId: string | null;
+  providerSessionPath: string | null;
   providerId: AgentProviderId;
   status: AgentConversationStatus;
   transcript: AgentTranscriptEntry[];

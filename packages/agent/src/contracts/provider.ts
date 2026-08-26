@@ -20,7 +20,10 @@ export const ACP_AGENT_PROVIDER_IDS = ['cursor', 'grok', 'fx', 'kimi'] as const;
 
 export const TASK_AGENT_PROVIDER_IDS = [
   ...ACP_AGENT_PROVIDER_IDS,
+  'claude',
+  'codex',
   'opencode',
+  'pi',
 ] as const;
 
 export type AgentProviderId = (typeof AGENT_PROVIDERS)[number]['id'];

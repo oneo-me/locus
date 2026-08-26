@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
 import type {
   SessionNotification,
   ToolCallContent,
@@ -27,6 +28,7 @@ import { AcpRuntime } from './acp-runtime.js';
 import type {
   AgentRuntime,
   AgentRuntimePermissionRequest,
+  NativeAgentRuntimeHandlers,
 } from './agent-runtime.js';
 import { AgentConversationStore } from './conversation-store.js';
 import {
@@ -39,16 +41,21 @@ import { readGrokSessionTitle } from './grok-title.js';
 import { NativeTitleRefresh } from './native-title-refresh.js';
 import { discoverAgentProviderModels } from './provider-models.js';
 import { OpenCodeRuntime } from './opencode-runtime.js';
+import { ClaudeRuntime } from './claude-runtime.js';
+import { CodexRuntime } from './codex-runtime.js';
+import { PiRuntime } from './pi-runtime.js';
 
 type AgentEventListener = (event: AgentConversationEvent) => void;
 
 export class AgentService {
+  readonly #dataDirectory: string;
   readonly #listeners = new Set<AgentEventListener>();
   readonly #runtimes = new Map<string, AgentRuntime>();
   readonly #store: AgentConversationStore;
   readonly #titleRefreshes = new Map<string, NativeTitleRefresh>();
 
   constructor(dataDirectory: string) {
+    this.#dataDirectory = dataDirectory;
     this.#store = new AgentConversationStore(dataDirectory);
   }
 
@@ -88,6 +95,7 @@ export class AgentService {
       projectId: project.id,
       projectName: project.name,
       providerSessionId: null,
+      providerSessionPath: null,
       providerId,
       status: 'idle',
       transcript: [],
@@ -300,8 +308,10 @@ export class AgentService {
         sessionId: string,
         modes: AgentConversation['modes'],
         configOptions: AgentConversation['configOptions'],
+        sessionPath: string | null = null,
       ) => {
         conversation.providerSessionId = sessionId;
+        conversation.providerSessionPath = sessionPath;
         conversation.configOptions = configOptions;
         conversation.modes = modes;
         conversation.status = 'idle' as const;
@@ -318,54 +328,102 @@ export class AgentService {
       onPermission: (permission: AgentRuntimePermissionRequest) =>
         this.#handlePermission(conversation, permission),
     };
+    const nativeHandlers: NativeAgentRuntimeHandlers = {
+      onCommands: (commands) => {
+        conversation.availableCommands = commands;
+        conversation.updatedAt = new Date().toISOString();
+        this.#save(conversation);
+      },
+      onConnected: (sessionId, configOptions, sessionPath) =>
+        handlers.onConnected(
+          sessionId,
+          null,
+          configOptions,
+          sessionPath ?? null,
+        ),
+      onError: handlers.onError,
+      onExit: handlers.onExit,
+      onIdle: () => {
+        this.#settleStreaming(conversation);
+        conversation.status = 'idle';
+        const now = new Date().toISOString();
+        conversation.activityAt = now;
+        conversation.updatedAt = now;
+        this.#save(conversation);
+      },
+      onPermission: handlers.onPermission,
+      onText: (kind, text) => this.#handleText(conversation, kind, text),
+      onTitle: (title) => this.#applyProviderTitle(conversation, title),
+      onTool: (tool) => this.#handleTool(conversation, tool),
+      onUsage: (tokens, window) => {
+        if (tokens !== null) conversation.contextTokens = tokens;
+        if (window !== null) conversation.contextWindow = window;
+        conversation.updatedAt = new Date().toISOString();
+        this.#save(conversation);
+      },
+    };
+    const models = async () =>
+      discoverAgentProviderModels(
+        conversation.providerId,
+        binary,
+        join(this.#dataDirectory, 'model-cache'),
+      );
     const runtime = await (
       conversation.providerId === 'opencode'
-        ? discoverAgentProviderModels('opencode', binary).then((models) =>
+        ? models().then((models) =>
             OpenCodeRuntime.start({
               binary,
               cwd: conversation.cwd,
-              handlers: {
-                onConnected: (sessionId, configOptions) =>
-                  handlers.onConnected(sessionId, null, configOptions),
-                onError: handlers.onError,
-                onExit: handlers.onExit,
-                onIdle: () => {
-                  this.#settleStreaming(conversation);
-                  conversation.status = 'idle';
-                  const now = new Date().toISOString();
-                  conversation.activityAt = now;
-                  conversation.updatedAt = now;
-                  this.#save(conversation);
-                },
-                onPermission: handlers.onPermission,
-                onText: (kind, text) =>
-                  this.#handleText(conversation, kind, text),
-                onTitle: (title) =>
-                  this.#applyProviderTitle(conversation, title),
-                onTool: (tool) => this.#handleTool(conversation, tool),
-                onUsage: (tokens, window) => {
-                  if (tokens !== null) conversation.contextTokens = tokens;
-                  if (window !== null) conversation.contextWindow = window;
-                  conversation.updatedAt = new Date().toISOString();
-                  this.#save(conversation);
-                },
-              },
+              handlers: nativeHandlers,
               models,
               selectedModel,
               sessionId: conversation.providerSessionId,
             }),
           )
-        : AcpRuntime.start({
-            binary,
-            cwd: conversation.cwd,
-            handlers: {
-              ...handlers,
-              onUpdate: (notification) =>
-                this.#handleUpdate(conversation, notification),
-            },
-            providerId: conversation.providerId,
-            sessionId: conversation.providerSessionId,
-          })
+        : conversation.providerId === 'claude'
+          ? models().then((models) =>
+              ClaudeRuntime.start({
+                binary,
+                cwd: conversation.cwd,
+                handlers: nativeHandlers,
+                models,
+                selectedModel,
+                sessionId: conversation.providerSessionId,
+              }),
+            )
+          : conversation.providerId === 'codex'
+            ? models().then((models) =>
+                CodexRuntime.start({
+                  binary,
+                  cwd: conversation.cwd,
+                  handlers: nativeHandlers,
+                  models,
+                  selectedModel,
+                  sessionId: conversation.providerSessionId,
+                }),
+              )
+            : conversation.providerId === 'pi'
+              ? models().then((models) =>
+                  PiRuntime.start({
+                    binary,
+                    cwd: conversation.cwd,
+                    handlers: nativeHandlers,
+                    models,
+                    selectedModel,
+                    sessionPath: conversation.providerSessionPath,
+                  }),
+                )
+              : AcpRuntime.start({
+                  binary,
+                  cwd: conversation.cwd,
+                  handlers: {
+                    ...handlers,
+                    onUpdate: (notification) =>
+                      this.#handleUpdate(conversation, notification),
+                  },
+                  providerId: conversation.providerId,
+                  sessionId: conversation.providerSessionId,
+                })
     ).catch((error) => {
       if (conversation.status === 'connecting') {
         this.#failConversation(conversation, error);

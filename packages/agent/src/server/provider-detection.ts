@@ -131,6 +131,7 @@ let cachedDetection: AgentProviderDetection | null = null;
 
 export async function detectAgentProvidersWithModels(
   refresh = false,
+  modelCacheDirectory?: string,
 ): Promise<AgentProviderDetection> {
   if (!refresh && cachedDetection) return structuredClone(cachedDetection);
   const detection = detectAgentProviders();
@@ -140,6 +141,7 @@ export async function detectAgentProvidersWithModels(
       provider.models = await discoverAgentProviderModels(
         provider.id,
         provider.path,
+        modelCacheDirectory,
       );
     }),
   );

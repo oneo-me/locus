@@ -23,6 +23,7 @@ void test('shares a native OpenCode server and consumes its session events', asy
   const permissions: Array<{ requestId: string }> = [];
   let config: AgentSessionConfig[] = [];
   const handlers = {
+    onCommands: () => undefined,
     onConnected: (_sessionId: string, options: AgentSessionConfig[]) => {
       config = options;
     },

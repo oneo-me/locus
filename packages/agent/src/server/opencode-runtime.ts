@@ -1,11 +1,8 @@
-import type {
-  AgentSessionConfig,
-  AgentToolEntry,
-} from '../contracts/conversation.js';
+import type { AgentSessionConfig } from '../contracts/conversation.js';
 import type { AgentProviderModel } from '../contracts/provider.js';
 import type {
   AgentRuntime,
-  AgentRuntimePermissionRequest,
+  NativeAgentRuntimeHandlers,
 } from './agent-runtime.js';
 import {
   acquireOpenCodeServer,
@@ -18,22 +15,10 @@ interface Deferred<T> {
   resolve: (value: T) => void;
 }
 
-interface OpenCodeRuntimeHandlers {
-  onConnected: (sessionId: string, configOptions: AgentSessionConfig[]) => void;
-  onError: (message: string) => void;
-  onExit: () => void;
-  onIdle: () => void;
-  onPermission: (permission: AgentRuntimePermissionRequest) => void;
-  onText: (kind: 'message' | 'thought', text: string) => void;
-  onTitle: (title: string) => void;
-  onTool: (tool: Omit<AgentToolEntry, 'createdAt' | 'kind'>) => void;
-  onUsage: (tokens: number | null, window: number | null) => void;
-}
-
 interface OpenCodeRuntimeOptions {
   binary: string;
   cwd: string;
-  handlers: OpenCodeRuntimeHandlers;
+  handlers: NativeAgentRuntimeHandlers;
   models: AgentProviderModel[];
   selectedModel?: string;
   sessionId: string | null;
@@ -48,7 +33,7 @@ interface NativePermission {
 export class OpenCodeRuntime implements AgentRuntime {
   readonly #abort = new AbortController();
   readonly #approved = new Set<string>();
-  readonly #handlers: OpenCodeRuntimeHandlers;
+  readonly #handlers: NativeAgentRuntimeHandlers;
   readonly #contextWindows = new Map<string, number>();
   readonly #lease: OpenCodeServerLease;
   readonly #models: AgentProviderModel[];

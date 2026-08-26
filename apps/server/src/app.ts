@@ -55,6 +55,8 @@ import {
 import { detectAgentProvidersWithModels } from '@locus/agent/server/provider-detection';
 import { getAgentService } from '~/features/agents/service.server';
 import { createAgentEventsResponse } from '~/features/agents/events.server';
+import { ensureDataDirectory } from '~/data-directory.server';
+import { join } from 'node:path';
 import {
   getAgentProject,
   listAgentProjects,
@@ -193,7 +195,10 @@ export function createApp(staticRoot?: string) {
   app.get('/api/settings', () => jsonRoute('settings.read', getGlobalSettings));
   app.get('/api/agent-providers', (context) =>
     jsonRoute('agent_providers.detect', () =>
-      detectAgentProvidersWithModels(context.req.query('refresh') === '1'),
+      detectAgentProvidersWithModels(
+        context.req.query('refresh') === '1',
+        join(ensureDataDirectory(), 'model-cache'),
+      ),
     ),
   );
   app.get('/api/task-projects', () =>
