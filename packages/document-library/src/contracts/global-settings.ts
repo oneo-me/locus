@@ -1,6 +1,12 @@
 export type GlobalTheme = 'light' | 'dark' | 'system';
 export type TerminalTheme = 'auto' | 'light' | 'dark';
 
+export interface TaskDraftPreference {
+  modelId: string | null;
+  projectId: string | null;
+  providerId: string | null;
+}
+
 export const DEFAULT_WORKSPACE_SIDEBAR_WIDTH = 304;
 export const MIN_WORKSPACE_SIDEBAR_WIDTH = DEFAULT_WORKSPACE_SIDEBAR_WIDTH;
 export const MAX_WORKSPACE_SIDEBAR_WIDTH = 440;
@@ -22,6 +28,7 @@ export interface GlobalSettings {
   commandPaletteDefaultExpanded: boolean;
   showGraphAttachments: boolean;
   mcpEnabled: boolean;
+  taskDraft: TaskDraftPreference;
   workspaceSidebarWidth: number;
   terminalShell: string | null;
   terminalStartupCommand: string;
@@ -35,6 +42,7 @@ export interface UpdateGlobalSettingsInput {
   commandPaletteDefaultExpanded?: boolean;
   showGraphAttachments?: boolean;
   mcpEnabled?: boolean;
+  taskDraft?: TaskDraftPreference;
   workspaceSidebarWidth?: number;
   terminalShell?: string | null;
   terminalStartupCommand?: string;
@@ -48,6 +56,11 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   commandPaletteDefaultExpanded: false,
   showGraphAttachments: true,
   mcpEnabled: false,
+  taskDraft: {
+    modelId: null,
+    projectId: null,
+    providerId: null,
+  },
   workspaceSidebarWidth: DEFAULT_WORKSPACE_SIDEBAR_WIDTH,
   terminalShell: null,
   terminalStartupCommand: '',
@@ -60,6 +73,22 @@ export function isGlobalTheme(value: unknown): value is GlobalTheme {
 
 export function isTerminalTheme(value: unknown): value is TerminalTheme {
   return value === 'auto' || value === 'light' || value === 'dark';
+}
+
+function normalizePreferenceId(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function normalizeTaskDraft(value: unknown): TaskDraftPreference {
+  const record =
+    value && typeof value === 'object'
+      ? (value as Record<string, unknown>)
+      : {};
+  return {
+    modelId: normalizePreferenceId(record.modelId),
+    projectId: normalizePreferenceId(record.projectId),
+    providerId: normalizePreferenceId(record.providerId),
+  };
 }
 
 export function normalizeGlobalSettings(value: unknown): GlobalSettings {
@@ -93,6 +122,7 @@ export function normalizeGlobalSettings(value: unknown): GlobalSettings {
       typeof record.mcpEnabled === 'boolean'
         ? record.mcpEnabled
         : DEFAULT_GLOBAL_SETTINGS.mcpEnabled,
+    taskDraft: normalizeTaskDraft(record.taskDraft),
     workspaceSidebarWidth: normalizeWorkspaceSidebarWidth(
       record.workspaceSidebarWidth,
     ),

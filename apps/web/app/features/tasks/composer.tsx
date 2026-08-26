@@ -157,7 +157,7 @@ export function AgentComposer({
             <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
               {!conversation && providerId && draftModels?.length ? (
                 <AgentModelPicker
-                  disabled={pending}
+                  disabled={false}
                   onChange={onDraftModelChange}
                   selectedModelId={modelId ?? draftModels[0].id}
                   selectedProviderId={providerId}

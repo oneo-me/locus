@@ -106,6 +106,36 @@ export async function updateGlobalSettings(
     }
     next.showGraphAttachments = input.showGraphAttachments;
   }
+  if (input.taskDraft !== undefined) {
+    if (!input.taskDraft || typeof input.taskDraft !== 'object') {
+      throw new Error('taskDraft 必须是对象。');
+    }
+    const taskDraft = input.taskDraft as unknown as Record<string, unknown>;
+    for (const field of ['modelId', 'projectId', 'providerId'] as const) {
+      const value = taskDraft[field];
+      if (
+        value !== null &&
+        (typeof value !== 'string' ||
+          !value.trim() ||
+          value.length > 1024 ||
+          containsControlCharacter(value))
+      ) {
+        throw new Error(`taskDraft.${field} 必须是有效标识或 null。`);
+      }
+    }
+    next.taskDraft = {
+      modelId:
+        typeof taskDraft.modelId === 'string' ? taskDraft.modelId.trim() : null,
+      projectId:
+        typeof taskDraft.projectId === 'string'
+          ? taskDraft.projectId.trim()
+          : null,
+      providerId:
+        typeof taskDraft.providerId === 'string'
+          ? taskDraft.providerId.trim()
+          : null,
+    };
+  }
   if (input.workspaceSidebarWidth !== undefined) {
     if (
       typeof input.workspaceSidebarWidth !== 'number' ||

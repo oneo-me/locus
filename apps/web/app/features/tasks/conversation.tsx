@@ -47,7 +47,6 @@ export function AgentConversationView({
   onDraftModelChange,
   onModeChange,
   onProjectChange,
-  onProviderChange,
   onRespondPermission,
   onRename,
   onSend,
@@ -65,7 +64,6 @@ export function AgentConversationView({
   onDraftModelChange: (providerId: AgentProviderId, modelId: string) => void;
   onModeChange: (modeId: string) => void;
   onProjectChange: (id: string) => void;
-  onProviderChange: (id: AgentProviderId) => void;
   onRespondPermission: (requestId: string, optionId: string) => void;
   onRename: (title: string) => void;
   onSend: (content: string) => void;
@@ -169,12 +167,9 @@ export function AgentConversationView({
             <div className="m-auto flex w-full max-w-2xl flex-col gap-5">
               <NewTask
                 onProjectChange={onProjectChange}
-                onProviderChange={onProviderChange}
                 pending={pending}
                 projectId={projectId}
                 projects={projects}
-                providerId={providerId}
-                providers={providers}
               />
               {error && (
                 <Alert variant="destructive">

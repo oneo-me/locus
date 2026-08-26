@@ -5,11 +5,13 @@ import type {
   AgentWorkspaceEvent,
 } from '@locus/agent/contracts/conversation';
 import {
+  isAcpAgentProviderId,
   type AgentProviderDetection,
   type AgentProviderId,
 } from '@locus/agent/contracts/provider';
 import { type CSSProperties, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useGlobalSettings } from '~/features/settings/global-settings-provider';
 import { taskApi } from '~/lib/task-api';
 import { AgentConversationView } from './conversation';
 import { TasksSidebar } from './sidebar';
@@ -24,19 +26,60 @@ interface TasksInitialData {
 
 export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
   const navigate = useNavigate();
+  const { settings, updateSettings } = useGlobalSettings();
   const routeConversationId = initialData.conversation?.id ?? null;
+  const availableProviders = initialData.providers.providers.filter(
+    (provider) =>
+      provider.installed &&
+      isAcpAgentProviderId(provider.id) &&
+      provider.models.length > 0,
+  );
+  const preferredProvider = availableProviders.find(
+    (provider) => provider.id === settings.taskDraft.providerId,
+  );
+  const defaultProvider = preferredProvider ?? availableProviders[0];
+  const preferredModel = defaultProvider?.models.find(
+    (model) =>
+      defaultProvider.id === settings.taskDraft.providerId &&
+      model.id === settings.taskDraft.modelId,
+  );
+  const defaultProject =
+    initialData.projects.find(
+      (project) => project.id === settings.taskDraft.projectId,
+    ) ?? initialData.projects[0];
   const [sidebarWidth, setSidebarWidth] = useState(272);
   const [conversations, setConversations] = useState(initialData.conversations);
   const [conversation, setConversation] = useState(initialData.conversation);
   const [projectId, setProjectId] = useState(
-    initialData.conversation?.projectId ?? null,
+    initialData.conversation?.projectId ?? defaultProject?.id ?? null,
   );
   const [providerId, setProviderId] = useState<AgentProviderId | null>(
-    initialData.conversation?.providerId ?? null,
+    initialData.conversation?.providerId ?? defaultProvider?.id ?? null,
   );
-  const [modelId, setModelId] = useState<string | null>(null);
+  const [modelId, setModelId] = useState<string | null>(
+    initialData.conversation
+      ? null
+      : (preferredModel?.id ??
+          defaultProvider?.models.find((model) => model.isDefault)?.id ??
+          defaultProvider?.models[0]?.id ??
+          null),
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  const persistTaskDraft = (
+    nextProjectId: string | null,
+    nextProviderId: AgentProviderId | null,
+    nextModelId: string | null,
+  ) => {
+    void updateSettings({
+      taskDraft: {
+        modelId: nextModelId,
+        projectId: nextProjectId,
+        providerId: nextProviderId,
+      },
+    }).catch((cause) => setError(errorMessage(cause)));
+  };
 
   useEffect(() => {
     let active = true;
@@ -188,25 +231,12 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
         }
         onDraftModelChange={(id, nextModelId) => {
           setProviderId(id);
-          setProjectId(
-            (current) => current ?? initialData.projects[0]?.id ?? null,
-          );
           setModelId(nextModelId);
+          persistTaskDraft(projectId, id, nextModelId);
         }}
-        onProjectChange={setProjectId}
-        onProviderChange={(id) => {
-          const provider = initialData.providers.providers.find(
-            (candidate) => candidate.id === id,
-          );
-          setProviderId(id);
-          setProjectId(
-            (current) => current ?? initialData.projects[0]?.id ?? null,
-          );
-          setModelId(
-            provider?.models.find((model) => model.isDefault)?.id ??
-              provider?.models[0]?.id ??
-              null,
-          );
+        onProjectChange={(id) => {
+          setProjectId(id);
+          persistTaskDraft(id, providerId, modelId);
         }}
         onCancel={() =>
           conversation && runAction(() => taskApi.cancel(conversation.id))
