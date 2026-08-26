@@ -15,20 +15,12 @@ void test('only blocks deletion while a conversation is active', () => {
   assert.equal(agentConversationCanDelete('failed'), true);
 });
 
-void test('provider title replaces the prompt fallback without replacing a user title', () => {
+void test('uses the provider title when available', () => {
   assert.equal(
     agentConversationDisplayTitle({
       autoTitle: '修复 Tasks 侧栏',
-      title: DEFAULT_AGENT_CONVERSATION_TITLE,
     }),
     '修复 Tasks 侧栏',
-  );
-  assert.equal(
-    agentConversationDisplayTitle({
-      autoTitle: '新的 Agent 标题',
-      title: '我的任务名称',
-    }),
-    '我的任务名称',
   );
 });
 
@@ -47,7 +39,6 @@ void test('empty automatic titles fall back to the default title', () => {
   assert.equal(
     agentConversationDisplayTitle({
       autoTitle: '  ',
-      title: DEFAULT_AGENT_CONVERSATION_TITLE,
     }),
     DEFAULT_AGENT_CONVERSATION_TITLE,
   );

@@ -22,18 +22,37 @@ export class AgentConversationStore {
     for (const name of readdirSync(this.#directory)) {
       if (!name.endsWith('.json')) continue;
       try {
-        const conversation = JSON.parse(
+        const candidate = JSON.parse(
           readFileSync(join(this.#directory, name), 'utf8'),
         ) as AgentConversation;
         if (
-          conversation.id &&
-          typeof conversation.activityAt === 'string' &&
-          (conversation.autoTitle === null ||
-            typeof conversation.autoTitle === 'string') &&
-          conversation.projectId &&
-          conversation.projectName &&
-          Array.isArray(conversation.transcript)
+          candidate.id &&
+          typeof candidate.activityAt === 'string' &&
+          (candidate.autoTitle === null ||
+            typeof candidate.autoTitle === 'string') &&
+          candidate.projectId &&
+          candidate.projectName &&
+          Array.isArray(candidate.transcript)
         ) {
+          const conversation: AgentConversation = {
+            acpSessionId: candidate.acpSessionId,
+            activityAt: candidate.activityAt,
+            autoTitle: candidate.autoTitle,
+            availableCommands: candidate.availableCommands,
+            configOptions: candidate.configOptions,
+            contextTokens: candidate.contextTokens,
+            contextWindow: candidate.contextWindow,
+            createdAt: candidate.createdAt,
+            cwd: candidate.cwd,
+            id: candidate.id,
+            modes: candidate.modes,
+            projectId: candidate.projectId,
+            projectName: candidate.projectName,
+            providerId: candidate.providerId,
+            status: candidate.status,
+            transcript: candidate.transcript,
+            updatedAt: candidate.updatedAt,
+          };
           if (conversation.status !== 'idle') conversation.status = 'idle';
           this.#conversations.set(conversation.id, conversation);
         }
@@ -56,7 +75,6 @@ export class AgentConversationStore {
           projectName,
           providerId,
           status,
-          title,
           updatedAt,
         }) => ({
           activityAt,
@@ -67,7 +85,6 @@ export class AgentConversationStore {
           projectName,
           providerId,
           status,
-          title,
           updatedAt,
         }),
       );

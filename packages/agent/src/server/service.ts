@@ -16,7 +16,6 @@ import type {
 import {
   agentConversationCanDelete,
   agentConversationTitleFromPrompt,
-  DEFAULT_AGENT_CONVERSATION_TITLE,
 } from '../contracts/conversation.js';
 import {
   ACP_AGENT_PROVIDER_IDS,
@@ -32,6 +31,9 @@ import {
 } from './provider-detection.js';
 import { normalizeSessionConfig } from './session-config.js';
 import { providerPromptContent } from './prompt-content.js';
+import { readOpenCodeSessionTitle } from './opencode-title.js';
+import { readGrokSessionTitle } from './grok-title.js';
+import { NativeTitleRefresh } from './native-title-refresh.js';
 
 type AgentEventListener = (event: AgentConversationEvent) => void;
 
@@ -39,6 +41,7 @@ export class AgentService {
   readonly #listeners = new Set<AgentEventListener>();
   readonly #runtimes = new Map<string, AcpRuntime>();
   readonly #store: AgentConversationStore;
+  readonly #titleRefreshes = new Map<string, NativeTitleRefresh>();
 
   constructor(dataDirectory: string) {
     this.#store = new AgentConversationStore(dataDirectory);
@@ -57,17 +60,7 @@ export class AgentService {
   async connect(id: string): Promise<AgentConversation> {
     const conversation = this.getConversation(id);
     await this.#ensureRuntime(conversation);
-    return conversation;
-  }
-
-  renameConversation(id: string, rawTitle: string): AgentConversation {
-    const conversation = this.getConversation(id);
-    const title = rawTitle.trim();
-    if (!title) throw new Error('标题不能为空。');
-    if (title.length > 100) throw new Error('标题过长。');
-    conversation.title = title;
-    conversation.updatedAt = new Date().toISOString();
-    this.#save(conversation);
+    this.#startOpenCodeTitleRefresh(conversation);
     return conversation;
   }
 
@@ -93,7 +86,6 @@ export class AgentService {
       projectName: project.name,
       providerId,
       status: 'idle',
-      title: DEFAULT_AGENT_CONVERSATION_TITLE,
       transcript: [],
       updatedAt: now,
     };
@@ -128,7 +120,6 @@ export class AgentService {
     if (
       conversation.transcript.filter((entry) => entry.kind === 'message')
         .length === 1 &&
-      conversation.title === DEFAULT_AGENT_CONVERSATION_TITLE &&
       conversation.autoTitle === null
     ) {
       conversation.autoTitle = agentConversationTitleFromPrompt(content);
@@ -145,6 +136,7 @@ export class AgentService {
           this.#finishTurn(conversation, stopReason, transcriptLength),
         (error) => this.#failConversation(conversation, error),
       );
+    this.#startOpenCodeTitleRefresh(conversation);
     return conversation;
   }
 
@@ -236,6 +228,8 @@ export class AgentService {
     }
     this.#runtimes.get(id)?.close();
     this.#runtimes.delete(id);
+    this.#titleRefreshes.get(id)?.close();
+    this.#titleRefreshes.delete(id);
     if (!this.#store.delete(id)) throw new Error('对话不存在。');
   }
 
@@ -247,6 +241,55 @@ export class AgentService {
   close(): void {
     for (const runtime of this.#runtimes.values()) runtime.close();
     this.#runtimes.clear();
+    for (const refresh of this.#titleRefreshes.values()) refresh.close();
+    this.#titleRefreshes.clear();
+  }
+
+  #startOpenCodeTitleRefresh(conversation: AgentConversation): void {
+    if (conversation.providerId !== 'opencode' || !conversation.acpSessionId) {
+      return;
+    }
+    const refresh = this.#titleRefresh(conversation);
+    refresh.start(
+      [500, 1_000, 2_000, 4_000, 8_000],
+      () => {
+        const title = readOpenCodeSessionTitle(conversation.acpSessionId ?? '');
+        return title === conversation.autoTitle ? null : title;
+      },
+      (title) => {
+        this.#applyProviderTitle(conversation, title);
+        refresh.close();
+      },
+    );
+  }
+
+  #startGrokTitleRefresh(conversation: AgentConversation): void {
+    if (!conversation.acpSessionId) return;
+    this.#titleRefresh(conversation).start(
+      [0, 250, 750, 1_500, 3_000, 5_000, 7_500, 10_000],
+      () => readGrokSessionTitle(conversation.acpSessionId ?? ''),
+      (title) => this.#applyProviderTitle(conversation, title),
+    );
+  }
+
+  #titleRefresh(conversation: AgentConversation): NativeTitleRefresh {
+    const existing = this.#titleRefreshes.get(conversation.id);
+    if (existing) return existing;
+    const refresh = new NativeTitleRefresh();
+    this.#titleRefreshes.set(conversation.id, refresh);
+    return refresh;
+  }
+
+  #applyProviderTitle(conversation: AgentConversation, title: string): void {
+    if (
+      this.#store.get(conversation.id) !== conversation ||
+      conversation.autoTitle === title
+    ) {
+      return;
+    }
+    conversation.autoTitle = title;
+    conversation.updatedAt = new Date().toISOString();
+    this.#save(conversation);
   }
 
   async #ensureRuntime(conversation: AgentConversation): Promise<AcpRuntime> {
@@ -470,7 +513,10 @@ export class AgentService {
           conversation.providerId,
           update.title,
         );
-        if (title !== undefined) conversation.autoTitle = title;
+        if (title !== undefined) {
+          conversation.autoTitle = title;
+          if (title) this.#titleRefreshes.get(conversation.id)?.resolve();
+        }
       }
     } else if (update.sessionUpdate === 'usage_update') {
       conversation.contextTokens = update.used;
@@ -526,6 +572,11 @@ export class AgentService {
     conversation.activityAt = now;
     conversation.updatedAt = now;
     this.#save(conversation);
+    if (conversation.providerId === 'grok' && stopReason === 'end_turn') {
+      this.#startGrokTitleRefresh(conversation);
+    } else if (conversation.providerId === 'opencode') {
+      this.#startOpenCodeTitleRefresh(conversation);
+    }
   }
 
   #failConversation(conversation: AgentConversation, error: unknown): void {

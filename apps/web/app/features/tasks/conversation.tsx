@@ -11,23 +11,14 @@ import {
   CheckCircle2Icon,
   CircleIcon,
   CircleXIcon,
-  EllipsisIcon,
   LoaderCircleIcon,
   PanelRightIcon,
-  PencilIcon,
   ShieldAlertIcon,
   WrenchIcon,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@locus/ui/components/alert';
 import { Button } from '@locus/ui/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@locus/ui/components/dropdown-menu';
-import { Input } from '@locus/ui/components/input';
 import { Separator } from '@locus/ui/components/separator';
 import { cn } from '@locus/ui/utils';
 import { MarkdownRenderer } from '~/components/markdown/renderer';
@@ -48,7 +39,6 @@ export function AgentConversationView({
   onModeChange,
   onProjectChange,
   onRespondPermission,
-  onRename,
   onSend,
   pending,
   modelId,
@@ -65,7 +55,6 @@ export function AgentConversationView({
   onModeChange: (modeId: string) => void;
   onProjectChange: (id: string) => void;
   onRespondPermission: (requestId: string, optionId: string) => void;
-  onRename: (title: string) => void;
   onSend: (content: string) => void;
   pending: boolean;
   modelId: string | null;
@@ -75,8 +64,6 @@ export function AgentConversationView({
   providers: AgentProviderProbe[];
 }) {
   const end = useRef<HTMLDivElement>(null);
-  const [renaming, setRenaming] = useState(false);
-  const [title, setTitle] = useState('');
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' });
   }, [conversation?.transcript]);
@@ -85,53 +72,12 @@ export function AgentConversationView({
     <main className="flex min-h-0 min-w-0 flex-col bg-card" id="main-content">
       <header className="flex h-12 shrink-0 items-center gap-3 px-4">
         <div className="min-w-0 flex-1">
-          {renaming && conversation ? (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!title.trim()) return;
-                onRename(title);
-                setRenaming(false);
-              }}
-            >
-              <Input
-                autoFocus
-                className="h-8 max-w-80"
-                onBlur={() => setRenaming(false)}
-                onChange={(event) => setTitle(event.target.value)}
-                value={title}
-              />
-            </form>
-          ) : (
-            <h2 className="truncate text-sm">
-              {conversation
-                ? agentConversationDisplayTitle(conversation)
-                : '新任务'}
-            </h2>
-          )}
+          <h2 className="truncate text-sm">
+            {conversation
+              ? agentConversationDisplayTitle(conversation)
+              : '新任务'}
+          </h2>
         </div>
-        {conversation && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button aria-label="任务操作" size="icon-sm" variant="ghost">
-                  <EllipsisIcon aria-hidden="true" />
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {
-                  setTitle(agentConversationDisplayTitle(conversation));
-                  setRenaming(true);
-                }}
-              >
-                <PencilIcon aria-hidden="true" />
-                重命名
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
         <Button
           aria-disabled="true"
           aria-label="打开右侧面板"
@@ -145,7 +91,7 @@ export function AgentConversationView({
       <Separator />
       <section aria-label="对话内容" className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1 overflow-y-auto px-5 py-6">
-          {conversation && conversation.transcript.length > 0 ? (
+          {conversation ? (
             <div className="mx-auto flex w-full max-w-[45rem] flex-col gap-5">
               {conversation.transcript.map((entry) => (
                 <TranscriptEntry

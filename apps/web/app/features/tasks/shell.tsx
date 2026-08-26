@@ -151,12 +151,13 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
     }
     setPending(true);
     setError(null);
-    let created: AgentConversation | null = null;
     try {
-      created = await taskApi.create({
+      const created = await taskApi.create({
         projectId,
         providerId,
       });
+      setConversation(created);
+      setConversations((current) => upsertSummary(current, created));
       const connected = await taskApi.connect(created.id);
       const modelOption = connected.configOptions.find(
         (option) => option.type === 'select' && option.category === 'model',
@@ -171,10 +172,11 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
           value: modelId,
         });
       }
-      await taskApi.sendMessage(created.id, { content });
+      const sent = await taskApi.sendMessage(created.id, { content });
+      setConversation(sent);
+      setConversations((current) => upsertSummary(current, sent));
       await navigate(`/tasks/${created.id}`);
     } catch (cause) {
-      if (created) await taskApi.delete(created.id).catch(() => undefined);
       setError(errorMessage(cause));
     } finally {
       setPending(false);
@@ -249,10 +251,6 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
             }),
           )
         }
-        onRename={(title) =>
-          conversation &&
-          runAction(() => taskApi.rename(conversation.id, { title }))
-        }
         onSend={(content) => void sendMessage(content)}
         pending={pending}
         modelId={modelId}
@@ -286,7 +284,6 @@ function upsertSummary(
     projectName: conversation.projectName,
     providerId: conversation.providerId,
     status: conversation.status,
-    title: conversation.title,
     updatedAt: conversation.updatedAt,
   };
   return [summary, ...current.filter((item) => item.id !== summary.id)].sort(

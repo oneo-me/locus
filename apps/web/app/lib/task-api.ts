@@ -3,7 +3,6 @@ import type {
   AgentConversationList,
   AgentProjectList,
   CreateAgentConversationInput,
-  RenameAgentConversationInput,
   RespondAgentPermissionInput,
   SendAgentMessageInput,
   SetAgentConfigInput,
@@ -34,8 +33,6 @@ export const taskApi = {
       'POST',
       input,
     ),
-  rename: (id: string, input: RenameAgentConversationInput) =>
-    apiSend<AgentConversation>(`/api/tasks/${id}`, 'PATCH', input),
   sendMessage: (id: string, input: SendAgentMessageInput) =>
     apiSend<AgentConversation>(`/api/tasks/${id}/messages`, 'POST', input),
   setConfig: (id: string, input: SetAgentConfigInput) =>

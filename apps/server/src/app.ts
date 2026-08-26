@@ -13,7 +13,6 @@ import type {
 import type { UpdateGlobalSettingsInput } from '@locus/document-library/contracts/global-settings';
 import type {
   CreateAgentConversationInput,
-  RenameAgentConversationInput,
   RespondAgentPermissionInput,
   SendAgentMessageInput,
   SetAgentConfigInput,
@@ -216,15 +215,6 @@ export function createApp(staticRoot?: string) {
     jsonRoute('tasks.read', () =>
       getAgentService().getConversation(context.req.param('id')),
     ),
-  );
-  app.patch('/api/tasks/:id', async (context) =>
-    jsonRoute('tasks.rename', async () => {
-      const input = await body<RenameAgentConversationInput>(context);
-      return getAgentService().renameConversation(
-        context.req.param('id'),
-        input.title,
-      );
-    }),
   );
   app.post('/api/tasks/:id/connect', (context) =>
     jsonRoute('tasks.connect', () =>

@@ -61,7 +61,6 @@ function conversation(id: string, activityAt: Date): AgentConversationSummary {
     projectName: 'Project',
     providerId: 'cursor',
     status: 'idle',
-    title: '新任务',
     updatedAt: activityAt.toISOString(),
   };
 }

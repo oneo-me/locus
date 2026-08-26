@@ -57,10 +57,8 @@ export function agentConversationCanDelete(
 }
 
 export function agentConversationDisplayTitle(
-  conversation: Pick<AgentConversation, 'autoTitle' | 'title'>,
+  conversation: Pick<AgentConversation, 'autoTitle'>,
 ): string {
-  const title = conversation.title.trim();
-  if (title && title !== DEFAULT_AGENT_CONVERSATION_TITLE) return title;
   return conversation.autoTitle?.trim() || DEFAULT_AGENT_CONVERSATION_TITLE;
 }
 
@@ -160,7 +158,6 @@ export interface AgentConversation {
   projectName: string;
   providerId: AgentProviderId;
   status: AgentConversationStatus;
-  title: string;
   transcript: AgentTranscriptEntry[];
   updatedAt: string;
 }
@@ -174,7 +171,6 @@ export interface AgentConversationSummary {
   projectName: string;
   providerId: AgentProviderId;
   status: AgentConversationStatus;
-  title: string;
   updatedAt: string;
 }
 
@@ -202,10 +198,6 @@ export interface SetAgentModeInput {
 export interface SetAgentConfigInput {
   configId: string;
   value: boolean | string;
-}
-
-export interface RenameAgentConversationInput {
-  title: string;
 }
 
 export interface AgentConversationEvent {
