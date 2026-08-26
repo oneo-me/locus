@@ -32,7 +32,7 @@ void test('connects to an ACP process and streams a prompt response', async () =
       onPermission: () => assert.fail('unexpected permission request'),
       onUpdate: (notification) => updates.push(notification),
     },
-    providerId: 'cursor',
+    providerId: 'opencode',
     sessionId: null,
   });
   try {
@@ -42,6 +42,8 @@ void test('connects to an ACP process and streams a prompt response', async () =
     await runtime.setMode('build');
     const config = await runtime.setConfig('model', 'model-b');
     assert.equal(config[0]?.currentValue, 'model-b');
+    const model = await runtime.setModel('model', 'model-a', config);
+    assert.equal(model[0]?.currentValue, 'model-a');
     await runtime.prompt('hello');
     assert.equal(updates.length, 1);
     assert.equal(updates[0]?.update.sessionUpdate, 'agent_message_chunk');
@@ -91,6 +93,7 @@ const app = agent({ name: 'test-agent' })
       currentValue: params.value,
     })),
   }))
+  .onRequest('session/set_model', (params) => params, () => ({}))
   .onRequest(methods.agent.session.prompt, async ({ client, params }) => {
     await client.notify(methods.client.session.update, {
       sessionId: params.sessionId,

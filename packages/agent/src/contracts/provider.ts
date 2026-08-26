@@ -37,8 +37,15 @@ export interface AgentProviderProbe {
   command: string;
   id: AgentProviderId;
   installed: boolean;
+  models: AgentProviderModel[];
   name: string;
   path: string | null;
+}
+
+export interface AgentProviderModel {
+  id: string;
+  isDefault: boolean;
+  name: string;
 }
 
 export interface AgentProviderDetection {

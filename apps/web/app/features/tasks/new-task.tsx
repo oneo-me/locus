@@ -39,7 +39,7 @@ export function NewTask({
             <button
               aria-pressed={project.id === projectId}
               className={cn(
-                'flex min-w-0 items-start gap-2 rounded-lg px-3 py-2.5 text-left hover:bg-accent',
+                'flex h-8 min-w-0 cursor-default items-center gap-1.5 rounded-lg px-2 text-left disabled:opacity-50',
                 project.id === projectId && 'bg-accent',
               )}
               disabled={pending}
@@ -47,12 +47,10 @@ export function NewTask({
               onClick={() => onProjectChange(project.id)}
               type="button"
             >
-              <FolderIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0">
-                <span className="block truncate">{project.name}</span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {userPath(project.sourcePath)}
-                </span>
+              <FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate">{project.name}</span>
+              <span className="max-w-[50%] truncate text-xs text-muted-foreground">
+                {userPath(project.sourcePath)}
               </span>
             </button>
           ))}
@@ -65,7 +63,7 @@ export function NewTask({
             <button
               aria-pressed={provider.id === providerId}
               className={cn(
-                'flex items-center gap-2 rounded-lg px-3 py-2.5 text-left hover:bg-accent',
+                'flex h-8 cursor-default items-center gap-1.5 rounded-lg px-2 text-left disabled:opacity-50',
                 provider.id === providerId && 'bg-accent',
               )}
               disabled={pending}
@@ -74,7 +72,7 @@ export function NewTask({
               type="button"
             >
               <AgentProviderIcon
-                className="text-muted-foreground"
+                className="size-3.5 text-muted-foreground"
                 providerId={provider.id}
               />
               {provider.name}

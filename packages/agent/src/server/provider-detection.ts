@@ -6,6 +6,10 @@ import {
   type AgentProviderDetection,
   type AgentProviderId,
 } from '../contracts/provider.js';
+import {
+  discoverAgentProviderModels,
+  fallbackAgentProviderModels,
+} from './provider-models.js';
 
 function executableSearchDirectories(): string[] {
   const home = homedir();
@@ -110,6 +114,7 @@ export function detectAgentProviders(): AgentProviderDetection {
     return {
       ...provider,
       installed: path !== null,
+      models: fallbackAgentProviderModels(provider.id),
       path,
     };
   });
@@ -120,4 +125,24 @@ export function detectAgentProviders(): AgentProviderDetection {
     checkedAt: new Date().toISOString(),
     providers,
   };
+}
+
+let cachedDetection: AgentProviderDetection | null = null;
+
+export async function detectAgentProvidersWithModels(
+  refresh = false,
+): Promise<AgentProviderDetection> {
+  if (!refresh && cachedDetection) return structuredClone(cachedDetection);
+  const detection = detectAgentProviders();
+  await Promise.all(
+    detection.providers.map(async (provider) => {
+      if (!provider.path) return;
+      provider.models = await discoverAgentProviderModels(
+        provider.id,
+        provider.path,
+      );
+    }),
+  );
+  cachedDetection = detection;
+  return structuredClone(detection);
 }

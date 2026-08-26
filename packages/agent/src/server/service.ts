@@ -126,8 +126,10 @@ export class AgentService {
     conversation.status = 'working';
     conversation.updatedAt = now;
     this.#save(conversation);
+    const transcriptLength = conversation.transcript.length;
     void runtime.prompt(content).then(
-      () => this.#finishTurn(conversation),
+      (stopReason) =>
+        this.#finishTurn(conversation, stopReason, transcriptLength),
       (error) => this.#failConversation(conversation, error),
     );
     return conversation;
@@ -203,7 +205,10 @@ export class AgentService {
       throw new Error('会话配置值无效。');
     }
     const runtime = await this.#ensureRuntime(conversation);
-    conversation.configOptions = await runtime.setConfig(configId, value);
+    conversation.configOptions =
+      option.category === 'model' && typeof value === 'string'
+        ? await runtime.setModel(configId, value, conversation.configOptions)
+        : await runtime.setConfig(configId, value);
     conversation.updatedAt = new Date().toISOString();
     this.#save(conversation);
     return conversation;
@@ -235,6 +240,13 @@ export class AgentService {
     if (!binary) throw new Error('服务商 CLI 不可用。');
     conversation.status = 'connecting';
     this.#save(conversation);
+    const persistedModelOption = conversation.configOptions.find(
+      (option) => option.type === 'select' && option.category === 'model',
+    );
+    const selectedModel =
+      persistedModelOption?.type === 'select'
+        ? persistedModelOption.currentValue
+        : undefined;
     let runtimeRef: AcpRuntime | null = null;
     const runtime = await AcpRuntime.start({
       binary,
@@ -271,6 +283,28 @@ export class AgentService {
       throw error;
     });
     runtimeRef = runtime;
+    if (selectedModel) {
+      const modelOption = conversation.configOptions.find(
+        (option) =>
+          option.type === 'select' &&
+          option.category === 'model' &&
+          option.options.some((candidate) => candidate.value === selectedModel),
+      );
+      if (modelOption) {
+        try {
+          conversation.configOptions = await runtime.setModel(
+            modelOption.id,
+            selectedModel,
+            conversation.configOptions,
+          );
+          conversation.updatedAt = new Date().toISOString();
+          this.#save(conversation);
+        } catch (error) {
+          runtime.close();
+          throw error;
+        }
+      }
+    }
     this.#runtimes.set(conversation.id, runtime);
     return runtime;
   }
@@ -440,7 +474,27 @@ export class AgentService {
     this.#save(conversation);
   }
 
-  #finishTurn(conversation: AgentConversation): void {
+  #finishTurn(
+    conversation: AgentConversation,
+    stopReason: string,
+    transcriptLength: number,
+  ): void {
+    if (stopReason !== 'end_turn' && stopReason !== 'cancelled') {
+      this.#failConversation(
+        conversation,
+        stopReason === 'refusal'
+          ? 'Agent 拒绝了这个任务。'
+          : `Agent 已停止：${stopReason}。`,
+      );
+      return;
+    }
+    if (
+      stopReason === 'end_turn' &&
+      conversation.transcript.length === transcriptLength
+    ) {
+      this.#failConversation(conversation, 'Agent 未返回任何内容。');
+      return;
+    }
     this.#settleStreaming(conversation);
     conversation.status = 'idle';
     conversation.updatedAt = new Date().toISOString();

@@ -15,7 +15,6 @@ import {
   PanelRightIcon,
   PencilIcon,
   ShieldAlertIcon,
-  Trash2Icon,
   WrenchIcon,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -33,6 +32,7 @@ import { cn } from '@locus/ui/utils';
 import { MarkdownRenderer } from '~/components/markdown/renderer';
 import { AgentComposer } from './composer';
 import { NewTask } from './new-task';
+import { TaskDeleteButton } from './delete-button';
 import type { AgentProject } from '@locus/agent/contracts/conversation';
 import type {
   AgentProviderId,
@@ -45,6 +45,7 @@ export function AgentConversationView({
   onCancel,
   onConfigChange,
   onDelete,
+  onDraftModelChange,
   onModeChange,
   onProjectChange,
   onProviderChange,
@@ -52,6 +53,7 @@ export function AgentConversationView({
   onRename,
   onSend,
   pending,
+  modelId,
   projectId,
   projects,
   providerId,
@@ -62,6 +64,7 @@ export function AgentConversationView({
   onCancel: () => void;
   onConfigChange: (configId: string, value: boolean | string) => void;
   onDelete: () => void;
+  onDraftModelChange: (modelId: string) => void;
   onModeChange: (modeId: string) => void;
   onProjectChange: (id: string) => void;
   onProviderChange: (id: AgentProviderId) => void;
@@ -69,6 +72,7 @@ export function AgentConversationView({
   onRename: (title: string) => void;
   onSend: (content: string) => void;
   pending: boolean;
+  modelId: string | null;
   projectId: string | null;
   projects: AgentProject[];
   providerId: AgentProviderId | null;
@@ -127,17 +131,15 @@ export function AgentConversationView({
                 <PencilIcon aria-hidden="true" />
                 重命名
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  if (window.confirm('删除这个任务？')) onDelete();
-                }}
-                variant="destructive"
-              >
-                <Trash2Icon aria-hidden="true" />
-                删除
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+        {conversation && (
+          <TaskDeleteButton
+            disabled={pending}
+            onDelete={onDelete}
+            size="icon-sm"
+          />
         )}
         <Button
           aria-disabled="true"
@@ -194,12 +196,15 @@ export function AgentConversationView({
           conversation={conversation}
           onCancel={onCancel}
           onConfigChange={onConfigChange}
+          onDraftModelChange={onDraftModelChange}
           onModeChange={onModeChange}
           onSend={onSend}
           pending={pending}
+          modelId={modelId}
           projectId={projectId}
           projects={projects}
           providerId={providerId}
+          providers={providers}
         />
       </section>
     </main>

@@ -32,7 +32,9 @@ export function AgentSettings({
     setError(null);
     try {
       setDetection(
-        await apiGet<AgentProviderDetection>('/api/agent-providers'),
+        await apiGet<AgentProviderDetection>('/api/agent-providers', {
+          refresh: '1',
+        }),
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -81,7 +83,11 @@ export function AgentSettings({
         >
           {detection.providers.map((provider) => (
             <SettingsRow
-              description={provider.path ?? `检测命令：${provider.command}`}
+              description={
+                provider.installed
+                  ? `${provider.path} · ${provider.models.length} 个模型`
+                  : `检测命令：${provider.command}`
+              }
               key={provider.id}
               label={
                 <span className="flex items-center gap-2">

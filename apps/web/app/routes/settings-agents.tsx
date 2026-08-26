@@ -19,6 +19,7 @@ export async function clientLoader() {
         providers: AGENT_PROVIDERS.map((provider) => ({
           ...provider,
           installed: false,
+          models: [],
           path: null,
         })),
       },

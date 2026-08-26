@@ -2,7 +2,10 @@ import type {
   AgentConversation,
   AgentProject,
 } from '@locus/agent/contracts/conversation';
-import type { AgentProviderId } from '@locus/agent/contracts/provider';
+import type {
+  AgentProviderId,
+  AgentProviderProbe,
+} from '@locus/agent/contracts/provider';
 import {
   ArrowUpIcon,
   BrainCircuitIcon,
@@ -36,22 +39,28 @@ export function AgentComposer({
   conversation,
   onCancel,
   onConfigChange,
+  onDraftModelChange,
   onModeChange,
   onSend,
   pending,
+  modelId,
   projectId,
   projects,
   providerId,
+  providers,
 }: {
   conversation: AgentConversation | null;
   onCancel: () => void;
   onConfigChange: (configId: string, value: boolean | string) => void;
+  onDraftModelChange: (modelId: string) => void;
   onModeChange: (modeId: string) => void;
   onSend: (content: string) => void;
   pending: boolean;
+  modelId: string | null;
   projectId: string | null;
   projects: AgentProject[];
   providerId: AgentProviderId | null;
+  providers: AgentProviderProbe[];
 }) {
   const [content, setContent] = useState('');
   const working =
@@ -65,6 +74,9 @@ export function AgentComposer({
   const projectPath =
     conversation?.cwd ??
     projects.find((project) => project.id === projectId)?.sourcePath;
+  const draftModels = providers.find(
+    (provider) => provider.id === providerId,
+  )?.models;
   const commandQuery =
     content.startsWith('/') && !content.includes(' ')
       ? content.slice(1).toLocaleLowerCase()
@@ -122,6 +134,24 @@ export function AgentComposer({
           />
           <InputGroupAddon align="block-end" className="gap-1">
             <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+              {!conversation && providerId && draftModels?.length ? (
+                <AgentModelPicker
+                  disabled={pending}
+                  onChange={onDraftModelChange}
+                  option={{
+                    category: 'model',
+                    currentValue: modelId ?? draftModels[0].id,
+                    id: 'draft-model',
+                    name: '模型',
+                    options: draftModels.map((model) => ({
+                      name: model.name,
+                      value: model.id,
+                    })),
+                    type: 'select',
+                  }}
+                  providerId={providerId}
+                />
+              ) : null}
               {conversation?.modes && (
                 <Select
                   disabled={pending}

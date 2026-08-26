@@ -85,6 +85,7 @@ export class AcpRuntime {
   readonly #child: ChildProcessWithoutNullStreams;
   readonly #closed = deferred<void>();
   readonly #handlers: AcpRuntimeHandlers;
+  readonly #providerId: AcpAgentProviderId;
   readonly #permissionResponses = new Map<
     string,
     (response: RequestPermissionResponse) => void
@@ -98,6 +99,7 @@ export class AcpRuntime {
 
   private constructor(options: AcpRuntimeOptions) {
     this.#handlers = options.handlers;
+    this.#providerId = options.providerId;
     const launch = ACP_LAUNCH[options.providerId];
     this.#child = spawn(options.binary, launch.args, {
       cwd: options.cwd,
@@ -137,13 +139,14 @@ export class AcpRuntime {
     return runtime;
   }
 
-  async prompt(content: string): Promise<void> {
+  async prompt(content: string): Promise<string> {
     if (!this.#context || !this.#sessionId)
       throw new Error('ACP 会话尚未连接。');
-    await this.#context.request(methods.agent.session.prompt, {
+    const response = await this.#context.request(methods.agent.session.prompt, {
       prompt: [{ type: 'text', text: content }],
       sessionId: this.#sessionId,
     });
+    return response.stopReason;
   }
 
   async cancel(): Promise<void> {
@@ -180,6 +183,27 @@ export class AcpRuntime {
       },
     );
     return normalizeSessionConfig(response.configOptions);
+  }
+
+  async setModel(
+    configId: string,
+    modelId: string,
+    configOptions: AgentSessionConfig[],
+  ): Promise<AgentSessionConfig[]> {
+    if (this.#providerId === 'cursor' || this.#providerId === 'fx') {
+      return this.setConfig(configId, modelId);
+    }
+    if (!this.#context || !this.#sessionId)
+      throw new Error('ACP 会话尚未连接。');
+    await this.#context.request('session/set_model', {
+      modelId,
+      sessionId: this.#sessionId,
+    });
+    return configOptions.map((option) =>
+      option.id === configId && option.type === 'select'
+        ? { ...option, currentValue: modelId }
+        : option,
+    );
   }
 
   respondPermission(requestId: string, optionId: string | null): boolean {

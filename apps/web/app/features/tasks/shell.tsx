@@ -24,6 +24,7 @@ interface TasksInitialData {
 
 export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
   const navigate = useNavigate();
+  const routeConversationId = initialData.conversation?.id ?? null;
   const [sidebarWidth, setSidebarWidth] = useState(272);
   const [conversations, setConversations] = useState(initialData.conversations);
   const [conversation, setConversation] = useState(initialData.conversation);
@@ -33,10 +34,12 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
   const [providerId, setProviderId] = useState<AgentProviderId | null>(
     initialData.conversation?.providerId ?? null,
   );
+  const [modelId, setModelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const source = new EventSource('/api/task-events');
     source.onmessage = (message) => {
       let event: AgentWorkspaceEvent;
@@ -52,12 +55,29 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
       }
       const next = event.conversation;
       setConversations((current) => upsertSummary(current, next));
-      setConversation((current) => (current?.id === next.id ? next : current));
+      setConversation((current) => latestConversation(current, next));
     };
-    source.onopen = () => setError(null);
+    source.onopen = () => {
+      setError(null);
+      const id = routeConversationId;
+      if (!id) return;
+      void taskApi.get(id).then(
+        (next) => {
+          if (!active) return;
+          setConversation((current) => latestConversation(current, next));
+          setConversations((current) => upsertSummary(current, next));
+        },
+        (cause) => {
+          if (active) setError(errorMessage(cause));
+        },
+      );
+    };
     source.onerror = () => setError('任务实时连接已断开。');
-    return () => source.close();
-  }, []);
+    return () => {
+      active = false;
+      source.close();
+    };
+  }, [routeConversationId]);
 
   const createConversation = () => {
     void navigate('/tasks');
@@ -88,76 +108,43 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
     }
     setPending(true);
     setError(null);
-    try {
-      const created = await taskApi.create({
-        projectId,
-        providerId,
-      });
-      await taskApi.connect(created.id);
-      await taskApi.sendMessage(created.id, { content });
-      await navigate(`/tasks/${created.id}`);
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const configureDraft = async (
-    nextProjectId: string | null,
-    nextProviderId: AgentProviderId | null,
-  ) => {
-    if (
-      conversation?.transcript.length === 0 &&
-      conversation.projectId === nextProjectId &&
-      conversation.providerId === nextProviderId
-    ) {
-      return;
-    }
-    setProjectId(nextProjectId);
-    setProviderId(nextProviderId);
-    if (!nextProjectId || !nextProviderId) return;
-
-    setPending(true);
-    setError(null);
     let created: AgentConversation | null = null;
     try {
       created = await taskApi.create({
-        projectId: nextProjectId,
-        providerId: nextProviderId,
+        projectId,
+        providerId,
       });
       const connected = await taskApi.connect(created.id);
-      if (conversation && conversation.transcript.length === 0) {
-        await taskApi.delete(conversation.id);
-      }
-      setConversation(connected);
-      setConversations((current) =>
-        upsertSummary(
-          current.filter((item) => item.id !== conversation?.id),
-          connected,
-        ),
+      const modelOption = connected.configOptions.find(
+        (option) => option.type === 'select' && option.category === 'model',
       );
-      await navigate(`/tasks/${connected.id}`);
-    } catch (cause) {
-      if (created) {
-        await taskApi.delete(created.id).catch(() => undefined);
+      if (
+        modelId &&
+        modelOption?.type === 'select' &&
+        modelOption.options.some((option) => option.value === modelId)
+      ) {
+        await taskApi.setConfig(created.id, {
+          configId: modelOption.id,
+          value: modelId,
+        });
       }
+      await taskApi.sendMessage(created.id, { content });
+      await navigate(`/tasks/${created.id}`);
+    } catch (cause) {
+      if (created) await taskApi.delete(created.id).catch(() => undefined);
       setError(errorMessage(cause));
     } finally {
       setPending(false);
     }
   };
 
-  const deleteConversation = async () => {
-    if (!conversation) return;
+  const deleteConversation = async (id: string) => {
     setPending(true);
     setError(null);
     try {
-      await taskApi.delete(conversation.id);
-      setConversations((current) =>
-        current.filter((item) => item.id !== conversation.id),
-      );
-      await navigate('/tasks');
+      await taskApi.delete(id);
+      setConversations((current) => current.filter((item) => item.id !== id));
+      if (conversation?.id === id) await navigate('/tasks');
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -177,6 +164,7 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
       <TasksSidebar
         conversations={conversations}
         onCreate={createConversation}
+        onDelete={(id) => void deleteConversation(id)}
         onSelect={(id) => void navigate(`/tasks/${id}`)}
         pending={pending}
         selectedId={conversation?.id ?? null}
@@ -194,18 +182,29 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
             taskApi.setConfig(conversation.id, { configId, value }),
           )
         }
-        onDelete={() => void deleteConversation()}
+        onDelete={() =>
+          conversation && void deleteConversation(conversation.id)
+        }
         onModeChange={(modeId) =>
           conversation &&
           runAction(() => taskApi.setMode(conversation.id, { modeId }))
         }
-        onProjectChange={(id) => void configureDraft(id, providerId)}
-        onProviderChange={(id) =>
-          void configureDraft(
-            projectId ?? initialData.projects[0]?.id ?? null,
-            id,
-          )
-        }
+        onDraftModelChange={setModelId}
+        onProjectChange={setProjectId}
+        onProviderChange={(id) => {
+          const provider = initialData.providers.providers.find(
+            (candidate) => candidate.id === id,
+          );
+          setProviderId(id);
+          setProjectId(
+            (current) => current ?? initialData.projects[0]?.id ?? null,
+          );
+          setModelId(
+            provider?.models.find((model) => model.isDefault)?.id ??
+              provider?.models[0]?.id ??
+              null,
+          );
+        }}
         onCancel={() =>
           conversation && runAction(() => taskApi.cancel(conversation.id))
         }
@@ -223,6 +222,7 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
         }
         onSend={(content) => void sendMessage(content)}
         pending={pending}
+        modelId={modelId}
         projectId={projectId}
         projects={initialData.projects}
         providerId={providerId}
@@ -230,6 +230,14 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
       />
     </div>
   );
+}
+
+function latestConversation(
+  current: AgentConversation | null,
+  next: AgentConversation,
+): AgentConversation | null {
+  if (current?.id !== next.id) return current;
+  return next.updatedAt >= current.updatedAt ? next : current;
 }
 
 function upsertSummary(

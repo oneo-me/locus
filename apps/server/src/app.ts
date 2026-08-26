@@ -53,7 +53,7 @@ import {
   openLocalDirectory,
   type OpenLocalDirectoryInput,
 } from '~/features/system/open-path.server';
-import { detectAgentProviders } from '@locus/agent/server/provider-detection';
+import { detectAgentProvidersWithModels } from '@locus/agent/server/provider-detection';
 import { getAgentService } from '~/features/agents/service.server';
 import { createAgentEventsResponse } from '~/features/agents/events.server';
 import {
@@ -192,8 +192,10 @@ export function createApp(staticRoot?: string) {
     ),
   );
   app.get('/api/settings', () => jsonRoute('settings.read', getGlobalSettings));
-  app.get('/api/agent-providers', () =>
-    jsonRoute('agent_providers.detect', detectAgentProviders),
+  app.get('/api/agent-providers', (context) =>
+    jsonRoute('agent_providers.detect', () =>
+      detectAgentProvidersWithModels(context.req.query('refresh') === '1'),
+    ),
   );
   app.get('/api/task-projects', () =>
     jsonRoute('task_projects.list', listAgentProjects),

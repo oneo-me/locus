@@ -14,16 +14,19 @@ import {
 import { Button } from '@locus/ui/components/button';
 import { cn } from '@locus/ui/utils';
 import { AgentProviderIcon } from '~/features/agent/provider-icon';
+import { TaskDeleteButton } from './delete-button';
 
 export function TasksSidebar({
   conversations,
   onCreate,
+  onDelete,
   onSelect,
   pending,
   selectedId,
 }: {
   conversations: AgentConversationSummary[];
   onCreate: () => void;
+  onDelete: (id: string) => void;
   onSelect: (id: string) => void;
   pending: boolean;
   selectedId: string | null;
@@ -56,13 +59,13 @@ export function TasksSidebar({
             </div>
             <ul className="flex flex-col gap-0.5">
               {items.map((conversation) => (
-                <li key={conversation.id}>
+                <li className="group relative" key={conversation.id}>
                   <button
                     aria-current={
                       conversation.id === selectedId ? 'page' : undefined
                     }
                     className={cn(
-                      'flex h-8 w-full min-w-0 cursor-default items-center gap-1.5 rounded-lg px-2 text-left',
+                      'flex h-8 w-full min-w-0 cursor-default items-center gap-1.5 rounded-lg py-0 pr-14 pl-2 text-left',
                       conversation.id === selectedId &&
                         'bg-sidebar-accent text-sidebar-accent-foreground',
                     )}
@@ -78,10 +81,17 @@ export function TasksSidebar({
                       {conversation.title}
                     </span>
                     <ConversationStatusIcon status={conversation.status} />
-                    <span className="shrink-0 text-xs text-muted-foreground">
+                  </button>
+                  <div className="group/delete absolute top-1 right-1 flex h-6 min-w-10 items-center justify-end">
+                    <span className="text-xs text-muted-foreground group-hover/delete:invisible group-focus-within:invisible">
                       {activityLabel(conversation)}
                     </span>
-                  </button>
+                    <TaskDeleteButton
+                      className="pointer-events-none absolute top-0 right-0 opacity-0 group-hover/delete:pointer-events-auto group-hover/delete:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+                      disabled={pending}
+                      onDelete={() => onDelete(conversation.id)}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>
