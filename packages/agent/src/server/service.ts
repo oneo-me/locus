@@ -26,6 +26,7 @@ import {
   findAgentProviderExecutable,
 } from './provider-detection.js';
 import { normalizeSessionConfig } from './session-config.js';
+import { providerPromptContent } from './prompt-content.js';
 
 type AgentEventListener = (event: AgentConversationEvent) => void;
 
@@ -127,11 +128,13 @@ export class AgentService {
     conversation.updatedAt = now;
     this.#save(conversation);
     const transcriptLength = conversation.transcript.length;
-    void runtime.prompt(content).then(
-      (stopReason) =>
-        this.#finishTurn(conversation, stopReason, transcriptLength),
-      (error) => this.#failConversation(conversation, error),
-    );
+    void runtime
+      .prompt(providerPromptContent(content, conversation.availableCommands))
+      .then(
+        (stopReason) =>
+          this.#finishTurn(conversation, stopReason, transcriptLength),
+        (error) => this.#failConversation(conversation, error),
+      );
     return conversation;
   }
 
