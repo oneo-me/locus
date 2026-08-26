@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",
+    "@locus/agent": "workspace:*",
     "@modelcontextprotocol/server": "^2.0.0",
     "hono": "^4.13.3",
     "node-pty": "1.2.0-beta.15",

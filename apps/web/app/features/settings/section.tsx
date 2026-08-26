@@ -2,9 +2,11 @@ import { Children, Fragment, isValidElement, type ReactNode } from 'react';
 import { Separator } from '@locus/ui/components/separator';
 
 export function SettingsSection({
+  action,
   children,
   title,
 }: {
+  action?: ReactNode;
   children: ReactNode;
   title: string;
 }) {
@@ -12,7 +14,10 @@ export function SettingsSection({
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-2 text-sm font-medium">{title}</h2>
+      <div className="flex items-center justify-between gap-3 px-2">
+        <h2 className="text-sm font-medium">{title}</h2>
+        {action}
+      </div>
       <div className="flex flex-col overflow-hidden rounded-xl bg-foreground/2 p-3">
         {items.map((item, index) => (
           <Fragment

@@ -45,6 +45,7 @@ import {
   openLocalDirectory,
   type OpenLocalDirectoryInput,
 } from '~/features/system/open-path.server';
+import { detectAgentProviders } from '@locus/agent/server/provider-detection';
 
 async function jsonRoute<T>(event: string, operation: () => T | Promise<T>) {
   try {
@@ -177,6 +178,9 @@ export function createApp(staticRoot?: string) {
     ),
   );
   app.get('/api/settings', () => jsonRoute('settings.read', getGlobalSettings));
+  app.get('/api/agent-providers', () =>
+    jsonRoute('agent_providers.detect', detectAgentProviders),
+  );
   app.patch('/api/settings', async (context) =>
     jsonRoute('settings.update', async () =>
       updateGlobalSettings(await body<UpdateGlobalSettingsInput>(context)),

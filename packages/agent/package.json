@@ -1,0 +1,17 @@
+{
+  "name": "@locus/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contracts/*": "./src/contracts/*.ts",
+    "./server/*": "./src/server/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "~7.0.2"
+  }
+}

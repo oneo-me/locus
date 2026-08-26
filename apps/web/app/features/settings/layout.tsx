@@ -1,5 +1,6 @@
 import {
   ArchiveIcon,
+  BotIcon,
   InfoIcon,
   LibraryIcon,
   type LucideIcon,
@@ -40,6 +41,10 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
       { label: '配置', path: '/settings/library', icon: LibraryIcon },
       { label: '归档', path: '/settings/archives', icon: ArchiveIcon },
     ],
+  },
+  {
+    label: 'Agent',
+    items: [{ label: '服务商', path: '/settings/providers', icon: BotIcon }],
   },
   {
     label: '连接',
