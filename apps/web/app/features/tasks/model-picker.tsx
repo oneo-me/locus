@@ -105,10 +105,14 @@ export function AgentModelPicker({
             aria-label="选择模型"
             className="max-w-64 min-w-0 justify-start"
             disabled={disabled}
+            iconSize="sm"
             size="nav"
             variant="ghost"
           >
-            <AgentProviderIcon providerId={selectedProviderId} />
+            <AgentProviderIcon
+              className="size-3.5"
+              providerId={selectedProviderId}
+            />
             <span className="min-w-0 truncate">
               {selected
                 ? modelDisplayName(selected.name)

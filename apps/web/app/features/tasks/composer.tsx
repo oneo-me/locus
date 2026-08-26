@@ -143,7 +143,7 @@ export function AgentComposer({
             ))}
           </div>
         )}
-        <InputGroup>
+        <InputGroup className="bg-card! focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
           <InputGroupTextarea
             aria-label="给 Agent 发消息"
             className="min-h-12 max-h-48"
@@ -154,7 +154,7 @@ export function AgentComposer({
             value={content}
           />
           <InputGroupAddon align="block-end" className="gap-1">
-            <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+            <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-foreground">
               {!conversation && providerId && draftModels?.length ? (
                 <AgentModelPicker
                   disabled={false}
@@ -179,7 +179,7 @@ export function AgentComposer({
                   ]}
                 />
               ) : null}
-              {conversation?.modes && (
+              {conversation?.modes ? (
                 <Select
                   disabled={pending}
                   onValueChange={(value) => value && onModeChange(value)}
@@ -187,8 +187,9 @@ export function AgentComposer({
                 >
                   <SelectTrigger
                     aria-label="会话模式"
-                    className="h-7 max-w-40 border-0 bg-transparent shadow-none"
+                    className="max-w-40"
                     size="sm"
+                    variant="ghost"
                   >
                     <WrenchIcon aria-hidden="true" />
                     <SelectValue />
@@ -201,7 +202,7 @@ export function AgentComposer({
                     ))}
                   </SelectContent>
                 </Select>
-              )}
+              ) : null}
               {conversation?.configOptions
                 .filter(
                   (option) =>
@@ -220,8 +221,9 @@ export function AgentComposer({
                     >
                       <SelectTrigger
                         aria-label={option.name}
-                        className="h-7 max-w-44 border-0 bg-transparent shadow-none"
+                        className="max-w-44"
                         size="sm"
+                        variant="ghost"
                       >
                         <ConfigIcon category={option.category} />
                         <SelectValue />
@@ -238,6 +240,7 @@ export function AgentComposer({
                     <Button
                       aria-label={option.name}
                       disabled={pending}
+                      iconSize="sm"
                       key={option.id}
                       onClick={() =>
                         onConfigChange(option.id, !option.currentValue)

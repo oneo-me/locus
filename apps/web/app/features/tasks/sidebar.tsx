@@ -121,21 +121,11 @@ export function TasksSidebar({
                           type="button"
                           variant="nav"
                         >
-                          <span
-                            className={cn(
-                              'flex w-full min-w-0 items-center gap-1.5 leading-5',
-                              canDelete && 'pr-6',
-                            )}
-                          >
+                          <span className="flex w-full min-w-0 items-center gap-1.5 leading-5">
                             <span className="min-w-0 flex-1 truncate text-sm">
                               {agentConversationDisplayTitle(conversation)}
                             </span>
-                            <span
-                              className={cn(
-                                canDelete &&
-                                  'group-hover:invisible group-focus-within:invisible',
-                              )}
-                            >
+                            <span>
                               <ConversationStatusIcon
                                 status={conversation.status}
                               />
@@ -156,7 +146,7 @@ export function TasksSidebar({
                         </Button>
                         {canDelete && (
                           <TaskDeleteButton
-                            className="pointer-events-none absolute top-1.5 right-2 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+                            className="absolute top-1.5 right-2 opacity-0 hover:opacity-100 focus-visible:opacity-100"
                             disabled={pending}
                             onDelete={() => onDelete(conversation.id)}
                           />
