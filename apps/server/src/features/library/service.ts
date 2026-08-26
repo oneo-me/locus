@@ -1,8 +1,6 @@
 import { bytesFromBase64, bytesToBase64 } from '~/lib/base64';
 import { logInfo } from '~/logging';
-import { execFile } from 'node:child_process';
 import { dirname } from 'node:path';
-import { promisify } from 'node:util';
 import type {
   LibrarySelectionSourceView,
   LibrarySelectionViewInput,
@@ -26,8 +24,7 @@ import { resolveLibrarySelection } from './selection.server';
 import { readLibraryState, updateLibraryDocumentOrder } from './state.server';
 import { updateDocumentGraphParticipation } from './state.server';
 import { excludedDocumentGraphPaths } from '@locus/document-library/contracts/library-state';
-
-const execFileAsync = promisify(execFile);
+import { openLocalPath } from '../system/open-path.server';
 
 async function readAssetImageSizes(
   library: Awaited<ReturnType<typeof getLibrary>>,
@@ -141,23 +138,7 @@ export async function openDocument(input: OpenDocumentInput) {
   );
   const target = input.target === 'directory' ? dirname(file) : file;
 
-  if (process.platform === 'darwin') {
-    await execFileAsync(
-      'open',
-      input.target === 'vscode'
-        ? ['-a', 'Visual Studio Code', target]
-        : [target],
-    );
-  } else if (process.platform === 'win32') {
-    await execFileAsync(
-      input.target === 'vscode' ? 'code.cmd' : 'explorer.exe',
-      [target],
-    );
-  } else {
-    await execFileAsync(input.target === 'vscode' ? 'code' : 'xdg-open', [
-      target,
-    ]);
-  }
+  await openLocalPath(target, input.target);
 
   logInfo('library.document.opened', {
     path: document.path,

@@ -11,6 +11,7 @@ import {
   getMarkdownAssetName,
 } from '@locus/document-library/contracts/asset';
 import { documentIconName } from '@locus/document-library/contracts/document-icon';
+import { useDocumentApi } from '../../lib/document-api-context';
 
 const invalidCanvasContentMessage =
   '请在 ::canvas 区域中仅放置一个 html fenced code block。';
@@ -18,6 +19,7 @@ const canvasThemeMessageType = 'locus:canvas-theme';
 const canvasRenderMessageType = 'locus:canvas-render';
 const canvasResizeMessageType = 'locus:canvas-resize';
 const canvasSnapshotMessageType = 'locus:canvas-snapshot';
+const canvasActionMessageType = 'locus:canvas-action';
 const defaultCanvasHeight = 160;
 const tailwindBrowserScriptUrl = new URL(
   '../../../node_modules/@tailwindcss/browser/dist/index.global.js',
@@ -89,9 +91,11 @@ function canvasDescriptor({
 function CanvasError({
   describedBy,
   message,
+  title = '无法显示画布',
 }: {
   describedBy?: string;
   message: string;
+  title?: string;
 }) {
   return (
     <Alert
@@ -101,7 +105,7 @@ function CanvasError({
       variant="destructive"
     >
       <CircleAlertIcon aria-hidden="true" />
-      <AlertTitle>无法显示画布</AlertTitle>
+      <AlertTitle>{title}</AlertTitle>
       <AlertDescription>{message}</AlertDescription>
     </Alert>
   );
@@ -197,6 +201,34 @@ function canvasDocumentDirectory(documentPath: string): string | null {
       : null;
 }
 
+function remoteHttpUrl(href: string): URL | null {
+  try {
+    const url = new URL(href);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function canvasDirectoryAction(href: string): { path: string } | null {
+  try {
+    const url = new URL(href);
+    const path = url.searchParams.get('path')?.trim();
+    if (
+      url.protocol !== 'locus-action:' ||
+      url.hostname !== 'open-directory' ||
+      (url.pathname !== '' && url.pathname !== '/') ||
+      url.searchParams.getAll('path').length !== 1 ||
+      !path
+    ) {
+      return null;
+    }
+    return { path };
+  } catch {
+    return null;
+  }
+}
+
 function sanitizeCanvasFragment(
   source: string,
   documentPath: string,
@@ -212,7 +244,8 @@ function sanitizeCanvasFragment(
   }
 
   for (const element of template.content.querySelectorAll('*')) {
-    for (const attribute of element.attributes) {
+    let opensExternalLink = false;
+    for (const attribute of Array.from(element.attributes)) {
       const name = attribute.name.toLowerCase();
       if (name === 'nonce' || name === 'srcdoc' || name === 'target') {
         element.removeAttribute(attribute.name);
@@ -253,10 +286,26 @@ function sanitizeCanvasFragment(
             attribute.name,
             getAssetUrl(documentPath, assetName),
           );
+        } else if (
+          name === 'href' &&
+          element.tagName === 'A' &&
+          remoteHttpUrl(attribute.value)
+        ) {
+          opensExternalLink = true;
+        } else if (
+          name === 'href' &&
+          element.tagName === 'A' &&
+          canvasDirectoryAction(attribute.value)
+        ) {
+          continue;
         } else {
           element.removeAttribute(attribute.name);
         }
       }
+    }
+    if (opensExternalLink) {
+      element.setAttribute('rel', 'noopener noreferrer');
+      element.setAttribute('target', '_blank');
     }
   }
 
@@ -290,6 +339,7 @@ function canvasRuntime(): string {
 var resizeType=${JSON.stringify(canvasResizeMessageType)};
 var snapshotType=${JSON.stringify(canvasSnapshotMessageType)};
 var renderType=${JSON.stringify(canvasRenderMessageType)};
+var actionType=${JSON.stringify(canvasActionMessageType)};
 var scheduled=false;
 function contentHeight(){
   var body=document.body;
@@ -371,6 +421,14 @@ function start(){
   new ResizeObserver(schedule).observe(document.body);
   new MutationObserver(schedule).observe(document.documentElement,{attributes:true,characterData:true,childList:true,subtree:true});
   document.addEventListener('load',schedule,true);
+  document.addEventListener('click',function(event){
+    var target=event.target;
+    if(!(target instanceof Element))return;
+    var link=target.closest('a[href^="locus-action:"]');
+    if(!link)return;
+    event.preventDefault();
+    parent.postMessage({href:link.getAttribute('href'),type:actionType},'*');
+  });
   window.addEventListener('resize',schedule);
   window.addEventListener('message',function(event){
     if(event.source===parent&&event.data&&event.data.type===renderType)schedule();
@@ -455,11 +513,13 @@ function CanvasSurface({
   describedBy?: string;
   documentPath: string;
 }) {
+  const { openLocalDirectory } = useDocumentApi();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const snapshotUrlRef = useRef<string | null>(null);
   const [frameHeight, setFrameHeight] = useState(defaultCanvasHeight);
   const [snapshotUrl, setSnapshotUrl] = useState<string>();
   const [sourceDocument, setSourceDocument] = useState<string>();
+  const [actionError, setActionError] = useState<string>();
 
   useEffect(() => {
     let current = true;
@@ -482,6 +542,21 @@ function CanvasSurface({
       if (event.source !== frameRef.current?.contentWindow) return;
       const data = event.data as Record<string, unknown> | null;
       if (!data || typeof data !== 'object') return;
+
+      if (
+        data.type === canvasActionMessageType &&
+        typeof data.href === 'string'
+      ) {
+        const action = canvasDirectoryAction(data.href);
+        if (!action) return;
+        setActionError(undefined);
+        void openLocalDirectory(action).catch((error: unknown) => {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          setActionError(`打开目录失败：${message}`);
+        });
+        return;
+      }
 
       if (
         data.type === canvasResizeMessageType &&
@@ -509,7 +584,7 @@ function CanvasSurface({
 
     window.addEventListener('message', receiveCanvasMessage);
     return () => window.removeEventListener('message', receiveCanvasMessage);
-  }, []);
+  }, [openLocalDirectory]);
 
   useEffect(
     () => () => {
@@ -557,10 +632,13 @@ function CanvasSurface({
         onLoad={syncCanvasTheme}
         referrerPolicy="no-referrer"
         ref={frameRef}
-        sandbox="allow-scripts"
+        sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts"
         srcDoc={sourceDocument}
         title="画布"
       />
+      {actionError ? (
+        <CanvasError message={actionError} title="无法打开目录" />
+      ) : null}
       {snapshotUrl ? (
         <img
           alt=""

@@ -41,6 +41,10 @@ import {
   terminalCredential,
   terminalErrorResponse,
 } from '~/features/terminal/service.server';
+import {
+  openLocalDirectory,
+  type OpenLocalDirectoryInput,
+} from '~/features/system/open-path.server';
 
 async function jsonRoute<T>(event: string, operation: () => T | Promise<T>) {
   try {
@@ -98,6 +102,11 @@ export function createApp(staticRoot?: string) {
   app.post('/api/library/document/open', async (context) =>
     jsonRoute('library.document.open', async () =>
       openDocument(await body<OpenDocumentInput>(context)),
+    ),
+  );
+  app.post('/api/system/directory/open', async (context) =>
+    jsonRoute('system.directory.open', async () =>
+      openLocalDirectory(await body<OpenLocalDirectoryInput>(context)),
     ),
   );
   app.post('/api/terminal/sessions', async (context) => {
