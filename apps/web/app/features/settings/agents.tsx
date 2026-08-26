@@ -9,10 +9,11 @@ import type { AgentProviderDetection } from '@locus/agent/contracts/provider';
 import { Alert, AlertDescription } from '@locus/ui/components/alert';
 import { Button } from '@locus/ui/components/button';
 import { apiGet } from '~/lib/api-client';
+import { AgentProviderIcon } from '~/features/agent/provider-icon';
 import { SettingsPage } from './page';
 import { SettingsRow, SettingsSection } from './section';
 
-export function ProviderSettings({
+export function AgentSettings({
   initialDetection,
   initialError,
 }: {
@@ -41,11 +42,11 @@ export function ProviderSettings({
   };
 
   return (
-    <SettingsPage title="服务商">
+    <SettingsPage title="Agents">
       <div className="flex flex-col gap-4">
         {error ? (
           <Alert variant="destructive">
-            <AlertDescription>服务商检测失败：{error}</AlertDescription>
+            <AlertDescription>Agent 检测失败：{error}</AlertDescription>
           </Alert>
         ) : null}
         <SettingsSection
@@ -82,7 +83,15 @@ export function ProviderSettings({
             <SettingsRow
               description={provider.path ?? `检测命令：${provider.command}`}
               key={provider.id}
-              label={provider.name}
+              label={
+                <span className="flex items-center gap-2">
+                  <AgentProviderIcon
+                    className="text-muted-foreground"
+                    providerId={provider.id}
+                  />
+                  {provider.name}
+                </span>
+              }
             >
               <span
                 className={

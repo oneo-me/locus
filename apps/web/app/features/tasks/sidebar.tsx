@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@locus/ui/components/button';
 import { cn } from '@locus/ui/utils';
+import { AgentProviderIcon } from '~/features/agent/provider-icon';
 
 export function TasksSidebar({
   conversations,
@@ -61,26 +62,24 @@ export function TasksSidebar({
                       conversation.id === selectedId ? 'page' : undefined
                     }
                     className={cn(
-                      'flex min-h-[3.25rem] w-full min-w-0 cursor-default flex-col gap-1 rounded-lg px-2 py-1.5 text-left',
+                      'flex h-8 w-full min-w-0 cursor-default items-center gap-1.5 rounded-lg px-2 text-left',
                       conversation.id === selectedId &&
                         'bg-sidebar-accent text-sidebar-accent-foreground',
                     )}
                     onClick={() => onSelect(conversation.id)}
                     type="button"
                   >
-                    <span className="flex min-w-0 items-center gap-1.5 leading-5">
-                      <span className="min-w-0 flex-1 truncate">
-                        {conversation.title}
-                      </span>
-                      <ConversationStatusIcon status={conversation.status} />
+                    <AgentProviderIcon
+                      className="size-3.5 text-muted-foreground"
+                      label={providerName(conversation.providerId)}
+                      providerId={conversation.providerId}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {conversation.title}
                     </span>
-                    <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                      <span className="min-w-0 flex-1 truncate">
-                        {providerName(conversation.providerId)}
-                      </span>
-                      <span className="shrink-0">
-                        {activityLabel(conversation)}
-                      </span>
+                    <ConversationStatusIcon status={conversation.status} />
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {activityLabel(conversation)}
                     </span>
                   </button>
                 </li>

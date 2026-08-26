@@ -2,9 +2,9 @@ import {
   AGENT_PROVIDERS,
   type AgentProviderDetection,
 } from '@locus/agent/contracts/provider';
-import { ProviderSettings } from '~/features/settings/providers';
+import { AgentSettings } from '~/features/settings/agents';
 import { apiGet } from '~/lib/api-client';
-import type { Route } from './+types/settings-providers';
+import type { Route } from './+types/settings-agents';
 
 export async function clientLoader() {
   try {
@@ -27,11 +27,11 @@ export async function clientLoader() {
   }
 }
 
-export default function SettingsProvidersRoute({
+export default function SettingsAgentsRoute({
   loaderData,
 }: Route.ComponentProps) {
   return (
-    <ProviderSettings
+    <AgentSettings
       initialDetection={loaderData.detection}
       initialError={loaderData.error}
     />

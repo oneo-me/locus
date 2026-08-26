@@ -4,8 +4,9 @@ import {
   type AgentProviderId,
   type AgentProviderProbe,
 } from '@locus/agent/contracts/provider';
-import { BotIcon, FolderIcon } from 'lucide-react';
+import { FolderIcon } from 'lucide-react';
 import { cn } from '@locus/ui/utils';
+import { AgentProviderIcon } from '~/features/agent/provider-icon';
 import { userPath } from './user-path';
 
 export function NewTask({
@@ -72,7 +73,10 @@ export function NewTask({
               onClick={() => onProviderChange(provider.id)}
               type="button"
             >
-              <BotIcon className="size-4 text-muted-foreground" />
+              <AgentProviderIcon
+                className="text-muted-foreground"
+                providerId={provider.id}
+              />
               {provider.name}
             </button>
           ))}

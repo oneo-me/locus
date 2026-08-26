@@ -43,12 +43,11 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     ],
   },
   {
-    label: 'Agent',
-    items: [{ label: '服务商', path: '/settings/providers', icon: BotIcon }],
-  },
-  {
     label: '连接',
-    items: [{ label: 'MCP', path: '/settings/mcp', icon: PlugZapIcon }],
+    items: [
+      { label: 'Agents', path: '/settings/agents', icon: BotIcon },
+      { label: 'MCP', path: '/settings/mcp', icon: PlugZapIcon },
+    ],
   },
   {
     label: '帮助',

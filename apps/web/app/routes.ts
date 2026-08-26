@@ -20,7 +20,7 @@ export default [
       route('general', 'routes/settings-general.tsx'),
       route('library', 'routes/settings-library.tsx'),
       route('terminal', 'routes/settings-terminal.tsx'),
-      route('providers', 'routes/settings-providers.tsx'),
+      route('agents', 'routes/settings-agents.tsx'),
       route('archives', 'routes/settings-archives.tsx'),
       route('mcp', 'routes/settings-mcp.tsx'),
       route('about', 'routes/settings-about.tsx'),
