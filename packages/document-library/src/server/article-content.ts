@@ -33,6 +33,7 @@ export function articleRevision(document: DocumentContent): string {
         title: document.title,
         icon: document.icon,
         summary: document.summary,
+        additionalMetadata: document.additionalMetadata,
         content: document.content,
       }),
     )

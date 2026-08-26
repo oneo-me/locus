@@ -15,6 +15,7 @@ type Frontmatter = Record<string, unknown>;
 
 export interface ParsedDocument {
   summary: DocumentSummary;
+  additionalMetadata: Record<string, unknown>;
   content: string;
 }
 
@@ -78,8 +79,14 @@ export function parseDocument(
   const metadataKeys = documentMetadataKeys.filter((key) =>
     Object.hasOwn(attributes, key),
   );
+  const additionalMetadata = Object.fromEntries(
+    Object.entries(attributes).filter(
+      ([key]) => !documentMetadataKeys.includes(key as DocumentMetadataKey),
+    ),
+  );
 
   return {
+    additionalMetadata,
     summary: {
       archived: attributes.archived === true,
       path,
@@ -116,11 +123,17 @@ function frontmatterValue(
 export function serializeDocument(
   metadata: DocumentMetadata,
   content: string,
+  additionalMetadata: Record<string, unknown> = {},
 ): string {
   const frontmatter: Frontmatter = {};
   for (const key of documentMetadataKeys) {
     const value = frontmatterValue(key, metadata);
     if (value !== undefined) frontmatter[key] = value;
+  }
+  for (const [key, value] of Object.entries(additionalMetadata)) {
+    if (!documentMetadataKeys.includes(key as DocumentMetadataKey)) {
+      frontmatter[key] = value;
+    }
   }
   const yaml = stringifyYaml(frontmatter, { indent: 2 }).trimEnd();
   return `---\n${yaml}\n---\n${content.replace(/^\uFEFF/, '')}`;

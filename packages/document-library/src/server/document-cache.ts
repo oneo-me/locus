@@ -5,6 +5,7 @@ import type {
 
 interface CachedDocument {
   summary: DocumentSummary;
+  additionalMetadata: Record<string, unknown>;
   content: string;
 }
 
@@ -14,6 +15,8 @@ function matchesParsed(
 ): boolean {
   return (
     cached.content === document.content &&
+    JSON.stringify(cached.additionalMetadata) ===
+      JSON.stringify(document.additionalMetadata) &&
     JSON.stringify(cached.summary) === JSON.stringify(document.summary)
   );
 }
@@ -70,6 +73,7 @@ export class DocumentCache {
     if (!document) return null;
     return {
       ...document.summary,
+      additionalMetadata: document.additionalMetadata,
       content: document.content,
     };
   }
@@ -85,5 +89,6 @@ export class DocumentCache {
 
 export interface ParsedCacheDocument {
   summary: DocumentSummary;
+  additionalMetadata: Record<string, unknown>;
   content: string;
 }

@@ -363,17 +363,36 @@ export function DocumentYamlMetadata({
   error: string | null;
 }) {
   const summary = document.summary?.trim() || null;
-  if (!summary && !error) return null;
+  const additionalMetadata = Object.entries(document.additionalMetadata);
+  if (!summary && additionalMetadata.length === 0 && !error) return null;
 
   return (
     <section aria-label="文档元数据" className="flex flex-col gap-2">
-      {summary ? (
-        <p
-          aria-label="摘要"
-          className="doc-yaml-panel w-full rounded-lg px-3.5 py-2.5 text-sm text-pretty leading-relaxed text-foreground backdrop-blur-[3px]"
-        >
-          {summary}
-        </p>
+      {summary || additionalMetadata.length > 0 ? (
+        <div className="doc-yaml-panel w-full overflow-hidden rounded-lg backdrop-blur-[3px]">
+          {summary ? (
+            <p
+              aria-label="摘要"
+              className="px-3.5 py-2.5 text-sm text-pretty leading-relaxed text-foreground"
+            >
+              {summary}
+            </p>
+          ) : null}
+          {additionalMetadata.length > 0 ? (
+            <dl className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] py-1 text-xs">
+              {additionalMetadata.map(([key, value]) => (
+                <div className="col-span-2 grid grid-cols-subgrid" key={key}>
+                  <dt className="min-w-0 px-3.5 py-1.5 font-medium break-words text-muted-foreground">
+                    {key}
+                  </dt>
+                  <dd className="min-w-0 px-3.5 py-1.5 whitespace-pre-wrap break-words text-foreground">
+                    {formatYamlMetadataValue(value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+        </div>
       ) : null}
       {error ? (
         <p className="text-destructive text-xs" role="alert">
@@ -382,6 +401,15 @@ export function DocumentYamlMetadata({
       ) : null}
     </section>
   );
+}
+
+function formatYamlMetadataValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value === null) return 'null';
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return JSON.stringify(value, null, 2) ?? 'null';
 }
 
 function MessageState({

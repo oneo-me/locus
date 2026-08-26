@@ -27,6 +27,7 @@ export interface DocumentSummary extends DocumentMetadata {
 }
 
 export interface DocumentContent extends DocumentSummary {
+  additionalMetadata: Record<string, unknown>;
   content: string;
 }
 

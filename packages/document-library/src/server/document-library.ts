@@ -285,6 +285,7 @@ export class DocumentLibrary {
       .all()
       .map((document) => ({
         ...document.summary,
+        additionalMetadata: document.additionalMetadata,
         content: document.content,
       }));
     this.#documentGraph = buildDocumentGraph(documents, excluded);
@@ -882,7 +883,11 @@ export class DocumentLibrary {
     this.#writeAtomically(
       target,
       normalizedPath,
-      serializeDocument(metadata, input.content ?? current.content),
+      serializeDocument(
+        metadata,
+        input.content ?? current.content,
+        current.additionalMetadata,
+      ),
     );
     this.#refreshDocumentSynchronously(normalizedPath);
     return this.getDocument(normalizedPath);
