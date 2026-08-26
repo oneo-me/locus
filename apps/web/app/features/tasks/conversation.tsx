@@ -62,7 +62,7 @@ export function AgentConversationView({
   error: string | null;
   onCancel: () => void;
   onConfigChange: (configId: string, value: boolean | string) => void;
-  onDraftModelChange: (modelId: string) => void;
+  onDraftModelChange: (providerId: AgentProviderId, modelId: string) => void;
   onModeChange: (modeId: string) => void;
   onProjectChange: (id: string) => void;
   onProviderChange: (id: AgentProviderId) => void;

@@ -1,57 +1,81 @@
 import type { AgentSessionSelectConfig } from '@locus/agent/contracts/conversation';
 import type { AgentProviderId } from '@locus/agent/contracts/provider';
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  SearchIcon,
-  SparklesIcon,
-  StarIcon,
-} from 'lucide-react';
+import { SearchIcon, StarIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@locus/ui/components/button';
+import { Empty, EmptyHeader, EmptyTitle } from '@locus/ui/components/empty';
 import { Input } from '@locus/ui/components/input';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@locus/ui/components/popover';
+import { Separator } from '@locus/ui/components/separator';
 import { cn } from '@locus/ui/utils';
+import { AgentProviderIcon } from '~/features/agent/provider-icon';
 
 const FAVORITE_MODELS_KEY = 'locus.agent.favorite-models';
+
+interface AgentModelSource {
+  id: AgentProviderId;
+  name: string;
+  options: AgentSessionSelectConfig['options'];
+}
 
 export function AgentModelPicker({
   disabled,
   onChange,
-  option,
-  providerId,
+  selectedModelId,
+  selectedProviderId,
+  sources,
 }: {
   disabled: boolean;
-  onChange: (value: string) => void;
-  option: AgentSessionSelectConfig;
-  providerId: AgentProviderId;
+  onChange: (providerId: AgentProviderId, modelId: string) => void;
+  selectedModelId: string;
+  selectedProviderId: AgentProviderId;
+  sources: AgentModelSource[];
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<
+    'favorites' | AgentProviderId
+  >(selectedProviderId);
   const [favorites, setFavorites] = useState<string[]>(readFavorites);
-  const selected = option.options.find(
-    (item) => item.value === option.currentValue,
-  );
   const normalizedQuery = query.trim().toLocaleLowerCase();
-  const visible = option.options.filter((item) => {
-    if (
-      favoritesOnly &&
-      !favorites.includes(favoriteKey(providerId, item.value))
-    ) {
-      return false;
-    }
-    return (
-      !normalizedQuery ||
-      `${item.name} ${item.value}`.toLocaleLowerCase().includes(normalizedQuery)
-    );
-  });
+  const hasAvailableFavorites = sources.some((source) =>
+    source.options.some((model) =>
+      favorites.includes(favoriteKey(source.id, model.value)),
+    ),
+  );
+  const selectedSource = sources.find(
+    (source) => source.id === selectedProviderId,
+  );
+  const selected = selectedSource?.options.find(
+    (model) => model.value === selectedModelId,
+  );
+  const visibleSources = normalizedQuery
+    ? sources
+    : sources.filter(
+        (source) => sourceFilter === 'favorites' || source.id === sourceFilter,
+      );
+  const visible = visibleSources.flatMap((source) =>
+    source.options
+      .filter((model) => {
+        const favorite = favorites.includes(
+          favoriteKey(source.id, model.value),
+        );
+        if (!normalizedQuery && sourceFilter === 'favorites' && !favorite) {
+          return false;
+        }
+        if (!normalizedQuery) return true;
+        return `${model.name} ${model.value} ${modelProviderName(model.value, source.id)} ${source.name}`
+          .toLocaleLowerCase()
+          .includes(normalizedQuery);
+      })
+      .map((model) => ({ model, source })),
+  );
 
-  const toggleFavorite = (modelId: string) => {
+  const toggleFavorite = (providerId: AgentProviderId, modelId: string) => {
     const key = favoriteKey(providerId, modelId);
     setFavorites((current) => {
       const next = current.includes(key)
@@ -68,7 +92,9 @@ export function AgentModelPicker({
         setOpen(next);
         if (next) {
           setQuery('');
-          setFavoritesOnly(false);
+          setSourceFilter(
+            hasAvailableFavorites ? 'favorites' : selectedProviderId,
+          );
         }
       }}
       open={open}
@@ -76,128 +102,170 @@ export function AgentModelPicker({
       <PopoverTrigger
         render={
           <Button
-            aria-label={option.name}
-            className="h-7 max-w-64 min-w-0 justify-between gap-1.5 rounded-[min(var(--radius-md),10px)] border-0 bg-transparent py-2 pr-2 pl-2.5 text-sm shadow-none"
+            aria-label="选择模型"
+            className="max-w-64 min-w-0 justify-start"
             disabled={disabled}
             size="nav"
-            variant="nav"
+            variant="ghost"
           >
-            <SparklesIcon aria-hidden="true" className="size-4" />
-            <span className="min-w-0 flex-1 truncate text-left">
-              {selected?.name ?? option.currentValue}
+            <AgentProviderIcon providerId={selectedProviderId} />
+            <span className="min-w-0 truncate">
+              {selected
+                ? modelDisplayName(selected.name)
+                : modelDisplayName(selectedModelId)}
             </span>
-            <ChevronDownIcon
-              aria-hidden="true"
-              className="size-4 text-muted-foreground"
-            />
           </Button>
         }
       />
       <PopoverContent
         align="start"
-        className="h-[390px] w-[520px] max-w-[calc(100vw-2rem)] gap-0 overflow-hidden p-0"
+        aria-label="选择模型"
+        className="h-[390px] w-[460px] max-w-[calc(100vw-2rem)] flex-row gap-0 overflow-hidden p-0"
         side="top"
       >
-        <div className="flex shrink-0 items-center gap-1 border-b p-2">
+        <nav
+          aria-label="Agent"
+          className="flex w-12 shrink-0 flex-col items-center gap-1 overflow-y-auto border-r bg-background p-1.5"
+        >
           <Button
-            aria-pressed={!favoritesOnly}
-            onClick={() => setFavoritesOnly(false)}
-            size="sm"
-            variant={!favoritesOnly ? 'secondary' : 'ghost'}
+            aria-label="收藏模型"
+            aria-pressed={sourceFilter === 'favorites' && !normalizedQuery}
+            onClick={() => {
+              setSourceFilter('favorites');
+              setQuery('');
+            }}
+            size="icon"
+            title="收藏模型"
+            variant={
+              sourceFilter === 'favorites' && !normalizedQuery
+                ? 'selected'
+                : 'ghost'
+            }
           >
-            全部
+            <StarIcon aria-hidden="true" />
           </Button>
-          <Button
-            aria-pressed={favoritesOnly}
-            onClick={() => setFavoritesOnly(true)}
-            size="sm"
-            variant={favoritesOnly ? 'secondary' : 'ghost'}
-          >
-            <StarIcon aria-hidden="true" data-icon="inline-start" />
-            星标
-          </Button>
-        </div>
-        <div className="shrink-0 border-b p-2">
-          <div className="relative">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              aria-label="搜索模型"
-              autoFocus
-              className="pl-8"
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索模型"
-              value={query}
-            />
+          <Separator className="my-1 w-8" />
+          {sources.map((source) => (
+            <Button
+              aria-label={source.name}
+              aria-pressed={sourceFilter === source.id && !normalizedQuery}
+              key={source.id}
+              onClick={() => {
+                setSourceFilter(source.id);
+                setQuery('');
+              }}
+              size="icon"
+              title={source.name}
+              variant={
+                sourceFilter === source.id && !normalizedQuery
+                  ? 'selected'
+                  : 'ghost'
+              }
+            >
+              <AgentProviderIcon providerId={source.id} />
+            </Button>
+          ))}
+        </nav>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="shrink-0 p-2.5 pb-2">
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                aria-label="搜索模型"
+                autoFocus
+                className="pl-8"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="搜索模型…"
+                value={query}
+              />
+            </div>
           </div>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          {visible.length === 0 ? (
-            <div className="grid h-full place-items-center text-muted-foreground">
-              {favoritesOnly ? '还没有星标模型' : '没有匹配的模型'}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-0.5" role="listbox">
-              {visible.map((model) => {
-                const favorite = favorites.includes(
-                  favoriteKey(providerId, model.value),
-                );
-                const isSelected = model.value === option.currentValue;
-                return (
-                  <div
-                    aria-selected={isSelected}
-                    className={cn(
-                      'flex min-h-14 cursor-default items-center gap-2 rounded-lg px-3 py-2 outline-none hover:bg-accent focus-visible:bg-accent',
-                      isSelected && 'bg-accent',
-                    )}
-                    key={model.value}
-                    onClick={() => {
-                      onChange(model.value);
-                      setOpen(false);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key !== 'Enter' && event.key !== ' ') return;
-                      event.preventDefault();
-                      onChange(model.value);
-                      setOpen(false);
-                    }}
-                    role="option"
-                    tabIndex={0}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block break-words leading-5">
-                        {model.name}
-                      </span>
-                      {model.value !== model.name && (
-                        <span className="mt-0.5 block break-all text-xs text-muted-foreground">
-                          {model.value}
-                        </span>
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+            {visible.length === 0 ? (
+              <Empty className="h-full p-0">
+                <EmptyHeader>
+                  <EmptyTitle>
+                    {normalizedQuery
+                      ? '没有匹配的模型'
+                      : sourceFilter === 'favorites'
+                        ? '还没有收藏模型'
+                        : 'Agent 没有提供模型'}
+                  </EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <div
+                aria-label="模型"
+                className="flex flex-col gap-0.5"
+                role="listbox"
+              >
+                {visible.map(({ model, source }) => {
+                  const favorite = favorites.includes(
+                    favoriteKey(source.id, model.value),
+                  );
+                  const isSelected =
+                    source.id === selectedProviderId &&
+                    model.value === selectedModelId;
+                  return (
+                    <div
+                      aria-selected={isSelected}
+                      className={cn(
+                        'flex h-[58px] cursor-default items-center gap-2.5 rounded-lg border border-transparent px-3 outline-none hover:bg-accent focus-visible:border-ring focus-visible:bg-accent',
+                        isSelected && 'bg-accent',
                       )}
-                    </span>
-                    {isSelected && (
-                      <CheckIcon className="size-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <button
-                      aria-label={favorite ? '取消星标' : '添加星标'}
-                      className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-background/70 hover:text-foreground"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleFavorite(model.value);
+                      key={`${source.id}:${model.value}`}
+                      onClick={() => {
+                        onChange(source.id, model.value);
+                        setOpen(false);
                       }}
-                      type="button"
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        onChange(source.id, model.value);
+                        setOpen(false);
+                      }}
+                      role="option"
+                      tabIndex={0}
                     >
-                      <StarIcon
-                        aria-hidden="true"
-                        className={cn(
-                          'size-4',
-                          favorite && 'fill-amber-500 text-amber-500',
-                        )}
-                      />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">
+                          {modelDisplayName(model.name)}
+                        </span>
+                        <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                          <AgentProviderIcon
+                            className="size-3"
+                            providerId={source.id}
+                          />
+                          <span className="truncate">
+                            {modelProviderName(model.value, source.id)} ·{' '}
+                            {source.name}
+                          </span>
+                        </span>
+                      </span>
+                      <Button
+                        aria-label={favorite ? '取消收藏' : '添加收藏'}
+                        aria-pressed={favorite}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleFavorite(source.id, model.value);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        size="icon-sm"
+                        variant="ghost"
+                      >
+                        <StarIcon
+                          aria-hidden="true"
+                          className={cn(
+                            favorite && 'fill-yellow-400 text-yellow-500',
+                          )}
+                        />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </PopoverContent>
     </Popover>
@@ -206,6 +274,60 @@ export function AgentModelPicker({
 
 function favoriteKey(providerId: AgentProviderId, modelId: string): string {
   return `${providerId}:${modelId}`;
+}
+
+function modelDisplayName(name: string): string {
+  const separator = name.indexOf('/');
+  return separator >= 0 ? name.slice(separator + 1).trim() || name : name;
+}
+
+function modelProviderName(
+  modelId: string,
+  agentProviderId: AgentProviderId,
+): string {
+  const namespace = modelId.includes('/') ? modelId.split('/')[0] : null;
+  if (namespace) {
+    const known: Record<string, string> = {
+      anthropic: 'Anthropic',
+      'amazon-bedrock': 'Amazon Bedrock',
+      azure: 'Azure OpenAI',
+      'azure-openai': 'Azure OpenAI',
+      deepseek: 'DeepSeek',
+      google: 'Google',
+      'google-vertex': 'Google Vertex',
+      groq: 'Groq',
+      mistral: 'Mistral',
+      moonshot: 'Moonshot',
+      openai: 'OpenAI',
+      opencode: 'OpenCode',
+      openrouter: 'OpenRouter',
+      vertexai: 'Google Vertex',
+      xai: 'xAI',
+    };
+    return known[namespace.toLocaleLowerCase()] ?? displayName(namespace);
+  }
+  const defaults: Record<AgentProviderId, string> = {
+    amp: 'Amp',
+    claude: 'Anthropic',
+    codex: 'OpenAI',
+    cursor: 'Cursor',
+    deepseek: 'DeepSeek',
+    fx: 'Fx',
+    grok: 'xAI',
+    kimi: 'Moonshot',
+    ohmypi: 'Oh My Pi',
+    opencode: 'OpenCode',
+    pi: 'Pi',
+  };
+  return defaults[agentProviderId];
+}
+
+function displayName(value: string): string {
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toLocaleUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 function readFavorites(): string[] {

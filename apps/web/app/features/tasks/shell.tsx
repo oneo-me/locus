@@ -186,7 +186,13 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
           conversation &&
           runAction(() => taskApi.setMode(conversation.id, { modeId }))
         }
-        onDraftModelChange={setModelId}
+        onDraftModelChange={(id, nextModelId) => {
+          setProviderId(id);
+          setProjectId(
+            (current) => current ?? initialData.projects[0]?.id ?? null,
+          );
+          setModelId(nextModelId);
+        }}
         onProjectChange={setProjectId}
         onProviderChange={(id) => {
           const provider = initialData.providers.providers.find(

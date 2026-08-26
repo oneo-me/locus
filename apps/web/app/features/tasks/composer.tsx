@@ -2,9 +2,10 @@ import type {
   AgentConversation,
   AgentProject,
 } from '@locus/agent/contracts/conversation';
-import type {
-  AgentProviderId,
-  AgentProviderProbe,
+import {
+  isAcpAgentProviderId,
+  type AgentProviderId,
+  type AgentProviderProbe,
 } from '@locus/agent/contracts/provider';
 import {
   ArrowUpIcon,
@@ -13,7 +14,6 @@ import {
   GaugeIcon,
   LockKeyholeIcon,
   Settings2Icon,
-  SparklesIcon,
   SquareIcon,
   WrenchIcon,
 } from 'lucide-react';
@@ -52,7 +52,7 @@ export function AgentComposer({
   conversation: AgentConversation | null;
   onCancel: () => void;
   onConfigChange: (configId: string, value: boolean | string) => void;
-  onDraftModelChange: (modelId: string) => void;
+  onDraftModelChange: (providerId: AgentProviderId, modelId: string) => void;
   onModeChange: (modeId: string) => void;
   onSend: (content: string) => void;
   pending: boolean;
@@ -77,6 +77,27 @@ export function AgentComposer({
   const draftModels = providers.find(
     (provider) => provider.id === providerId,
   )?.models;
+  const draftModelSources = providers
+    .filter(
+      (provider) =>
+        provider.installed &&
+        isAcpAgentProviderId(provider.id) &&
+        provider.models.length > 0,
+    )
+    .map((provider) => ({
+      id: provider.id,
+      name: provider.name,
+      options: provider.models.map((model) => ({
+        name: model.name,
+        value: model.id,
+      })),
+    }));
+  const modelOption = conversation?.configOptions.find(
+    (option) => option.type === 'select' && option.category === 'model',
+  );
+  const currentProvider = providers.find(
+    (provider) => provider.id === conversation?.providerId,
+  );
   const commandQuery =
     content.startsWith('/') && !content.includes(' ')
       ? content.slice(1).toLocaleLowerCase()
@@ -138,18 +159,24 @@ export function AgentComposer({
                 <AgentModelPicker
                   disabled={pending}
                   onChange={onDraftModelChange}
-                  option={{
-                    category: 'model',
-                    currentValue: modelId ?? draftModels[0].id,
-                    id: 'draft-model',
-                    name: '模型',
-                    options: draftModels.map((model) => ({
-                      name: model.name,
-                      value: model.id,
-                    })),
-                    type: 'select',
-                  }}
-                  providerId={providerId}
+                  selectedModelId={modelId ?? draftModels[0].id}
+                  selectedProviderId={providerId}
+                  sources={draftModelSources}
+                />
+              ) : null}
+              {conversation && modelOption?.type === 'select' ? (
+                <AgentModelPicker
+                  disabled={pending}
+                  onChange={(_, value) => onConfigChange(modelOption.id, value)}
+                  selectedModelId={modelOption.currentValue}
+                  selectedProviderId={conversation.providerId}
+                  sources={[
+                    {
+                      id: conversation.providerId,
+                      name: currentProvider?.name ?? conversation.providerId,
+                      options: modelOption.options,
+                    },
+                  ]}
                 />
               ) : null}
               {conversation?.modes && (
@@ -177,18 +204,12 @@ export function AgentComposer({
               )}
               {conversation?.configOptions
                 .filter(
-                  (option) => option.category !== 'mode' || !conversation.modes,
+                  (option) =>
+                    option !== modelOption &&
+                    (option.category !== 'mode' || !conversation.modes),
                 )
                 .map((option) =>
-                  option.type === 'select' && option.category === 'model' ? (
-                    <AgentModelPicker
-                      disabled={pending}
-                      key={option.id}
-                      onChange={(value) => onConfigChange(option.id, value)}
-                      option={option}
-                      providerId={conversation.providerId}
-                    />
-                  ) : option.type === 'select' ? (
+                  option.type === 'select' ? (
                     <Select
                       disabled={pending}
                       key={option.id}
@@ -289,12 +310,10 @@ export function AgentComposer({
 
 function ConfigIcon({ category }: { category: string | null }) {
   const Icon =
-    category === 'model'
-      ? SparklesIcon
-      : category === 'thought_level'
-        ? BrainCircuitIcon
-        : category === 'mode'
-          ? LockKeyholeIcon
-          : Settings2Icon;
+    category === 'thought_level'
+      ? BrainCircuitIcon
+      : category === 'mode'
+        ? LockKeyholeIcon
+        : Settings2Icon;
   return <Icon aria-hidden="true" />;
 }
