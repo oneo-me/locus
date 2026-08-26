@@ -1,5 +1,6 @@
-import type {
-  AgentConversation,
+import {
+  agentConversationDisplayTitle,
+  type AgentConversation,
   AgentPermissionEntry,
   AgentTranscriptEntry,
 } from '@locus/agent/contracts/conversation';
@@ -32,7 +33,6 @@ import { cn } from '@locus/ui/utils';
 import { MarkdownRenderer } from '~/components/markdown/renderer';
 import { AgentComposer } from './composer';
 import { NewTask } from './new-task';
-import { TaskDeleteButton } from './delete-button';
 import type { AgentProject } from '@locus/agent/contracts/conversation';
 import type {
   AgentProviderId,
@@ -44,7 +44,6 @@ export function AgentConversationView({
   error,
   onCancel,
   onConfigChange,
-  onDelete,
   onDraftModelChange,
   onModeChange,
   onProjectChange,
@@ -63,7 +62,6 @@ export function AgentConversationView({
   error: string | null;
   onCancel: () => void;
   onConfigChange: (configId: string, value: boolean | string) => void;
-  onDelete: () => void;
   onDraftModelChange: (modelId: string) => void;
   onModeChange: (modeId: string) => void;
   onProjectChange: (id: string) => void;
@@ -108,7 +106,9 @@ export function AgentConversationView({
             </form>
           ) : (
             <h2 className="truncate text-sm">
-              {conversation?.title ?? '新任务'}
+              {conversation
+                ? agentConversationDisplayTitle(conversation)
+                : '新任务'}
             </h2>
           )}
         </div>
@@ -124,7 +124,7 @@ export function AgentConversationView({
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() => {
-                  setTitle(conversation.title);
+                  setTitle(agentConversationDisplayTitle(conversation));
                   setRenaming(true);
                 }}
               >
@@ -133,13 +133,6 @@ export function AgentConversationView({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        )}
-        {conversation && (
-          <TaskDeleteButton
-            disabled={pending}
-            onDelete={onDelete}
-            size="icon-sm"
-          />
         )}
         <Button
           aria-disabled="true"

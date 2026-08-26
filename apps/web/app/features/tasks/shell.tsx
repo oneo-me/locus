@@ -182,9 +182,6 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
             taskApi.setConfig(conversation.id, { configId, value }),
           )
         }
-        onDelete={() =>
-          conversation && void deleteConversation(conversation.id)
-        }
         onModeChange={(modeId) =>
           conversation &&
           runAction(() => taskApi.setMode(conversation.id, { modeId }))
@@ -245,6 +242,8 @@ function upsertSummary(
   conversation: AgentConversation,
 ): AgentConversationSummary[] {
   const summary: AgentConversationSummary = {
+    activityAt: conversation.activityAt,
+    autoTitle: conversation.autoTitle,
     createdAt: conversation.createdAt,
     id: conversation.id,
     projectId: conversation.projectId,
@@ -255,7 +254,7 @@ function upsertSummary(
     updatedAt: conversation.updatedAt,
   };
   return [summary, ...current.filter((item) => item.id !== summary.id)].sort(
-    (left, right) => right.updatedAt.localeCompare(left.updatedAt),
+    (left, right) => right.activityAt.localeCompare(left.activityAt),
   );
 }
 

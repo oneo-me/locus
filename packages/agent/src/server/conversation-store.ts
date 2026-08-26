@@ -27,6 +27,9 @@ export class AgentConversationStore {
         ) as AgentConversation;
         if (
           conversation.id &&
+          typeof conversation.activityAt === 'string' &&
+          (conversation.autoTitle === null ||
+            typeof conversation.autoTitle === 'string') &&
           conversation.projectId &&
           conversation.projectName &&
           Array.isArray(conversation.transcript)
@@ -42,9 +45,11 @@ export class AgentConversationStore {
 
   list(): AgentConversationSummary[] {
     return [...this.#conversations.values()]
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .sort((left, right) => right.activityAt.localeCompare(left.activityAt))
       .map(
         ({
+          activityAt,
+          autoTitle,
           createdAt,
           id,
           projectId,
@@ -54,6 +59,8 @@ export class AgentConversationStore {
           title,
           updatedAt,
         }) => ({
+          activityAt,
+          autoTitle,
           createdAt,
           id,
           projectId,

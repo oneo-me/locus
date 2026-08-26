@@ -7,12 +7,10 @@ export function TaskDeleteButton({
   className,
   disabled,
   onDelete,
-  size = 'icon-2xs',
 }: {
   className?: string;
   disabled?: boolean;
   onDelete: () => void;
-  size?: 'icon-2xs' | 'icon-sm' | 'icon-xs';
 }) {
   const [confirming, setConfirming] = useState(false);
 
@@ -36,10 +34,11 @@ export function TaskDeleteButton({
   return (
     <Button
       aria-label={confirming ? '确认删除任务' : '删除任务'}
-      className={cn(confirming && 'w-auto px-2', className)}
+      className={cn(confirming && 'h-6 w-auto px-2 text-xs', className)}
       disabled={disabled}
       onClick={click}
-      size={confirming ? 'xs' : size}
+      onMouseLeave={() => setConfirming(false)}
+      size="icon-2xs"
       type="button"
       variant={confirming ? 'destructive' : 'destructive-ghost'}
     >

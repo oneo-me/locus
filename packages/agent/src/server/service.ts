@@ -14,6 +14,11 @@ import type {
   AgentToolEntry,
 } from '../contracts/conversation.js';
 import {
+  agentConversationCanDelete,
+  agentConversationTitleFromPrompt,
+  DEFAULT_AGENT_CONVERSATION_TITLE,
+} from '../contracts/conversation.js';
+import {
   ACP_AGENT_PROVIDER_IDS,
   type AcpAgentProviderId,
   type AgentProviderId,
@@ -74,6 +79,8 @@ export class AgentService {
     const now = new Date().toISOString();
     const conversation: AgentConversation = {
       acpSessionId: null,
+      activityAt: now,
+      autoTitle: null,
       availableCommands: [],
       configOptions: [],
       contextTokens: null,
@@ -86,7 +93,7 @@ export class AgentService {
       projectName: project.name,
       providerId,
       status: 'idle',
-      title: '新对话',
+      title: DEFAULT_AGENT_CONVERSATION_TITLE,
       transcript: [],
       updatedAt: now,
     };
@@ -120,11 +127,14 @@ export class AgentService {
     });
     if (
       conversation.transcript.filter((entry) => entry.kind === 'message')
-        .length === 1
+        .length === 1 &&
+      conversation.title === DEFAULT_AGENT_CONVERSATION_TITLE &&
+      conversation.autoTitle === null
     ) {
-      conversation.title = titleFromPrompt(content);
+      conversation.autoTitle = agentConversationTitleFromPrompt(content);
     }
     conversation.status = 'working';
+    conversation.activityAt = now;
     conversation.updatedAt = now;
     this.#save(conversation);
     const transcriptLength = conversation.transcript.length;
@@ -143,7 +153,9 @@ export class AgentService {
     await this.#runtimes.get(id)?.cancel();
     this.#settleStreaming(conversation);
     conversation.status = 'idle';
-    conversation.updatedAt = new Date().toISOString();
+    const now = new Date().toISOString();
+    conversation.activityAt = now;
+    conversation.updatedAt = now;
     this.#save(conversation);
     return conversation;
   }
@@ -218,6 +230,10 @@ export class AgentService {
   }
 
   deleteConversation(id: string): void {
+    const conversation = this.getConversation(id);
+    if (!agentConversationCanDelete(conversation.status)) {
+      throw new Error('工作中的对话不能删除。');
+    }
     this.#runtimes.get(id)?.close();
     this.#runtimes.delete(id);
     if (!this.#store.delete(id)) throw new Error('对话不存在。');
@@ -449,7 +465,13 @@ export class AgentService {
         ({ description, name }) => ({ description, name }),
       );
     } else if (update.sessionUpdate === 'session_info_update') {
-      if (update.title) conversation.title = update.title;
+      if (update.title !== undefined) {
+        const title = normalizeProviderTitle(
+          conversation.providerId,
+          update.title,
+        );
+        if (title !== undefined) conversation.autoTitle = title;
+      }
     } else if (update.sessionUpdate === 'usage_update') {
       conversation.contextTokens = update.used;
       conversation.contextWindow = update.size;
@@ -500,7 +522,9 @@ export class AgentService {
     }
     this.#settleStreaming(conversation);
     conversation.status = 'idle';
-    conversation.updatedAt = new Date().toISOString();
+    const now = new Date().toISOString();
+    conversation.activityAt = now;
+    conversation.updatedAt = now;
     this.#save(conversation);
   }
 
@@ -515,7 +539,9 @@ export class AgentService {
       kind: 'error',
     });
     conversation.status = 'failed';
-    conversation.updatedAt = new Date().toISOString();
+    const now = new Date().toISOString();
+    conversation.activityAt = now;
+    conversation.updatedAt = now;
     this.#save(conversation);
   }
 
@@ -559,9 +585,15 @@ export class AgentService {
   }
 }
 
-function titleFromPrompt(content: string): string {
-  const title = content.split(/\s+/).slice(0, 7).join(' ');
-  return title.length > 54 ? `${title.slice(0, 53)}…` : title;
+function normalizeProviderTitle(
+  providerId: AgentProviderId,
+  rawTitle: string | null,
+): string | null | undefined {
+  const title = rawTitle?.trim() ?? '';
+  if (providerId === 'opencode' && title.startsWith('New session - ')) {
+    return undefined;
+  }
+  return title || null;
 }
 
 function toolContentText(

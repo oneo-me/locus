@@ -48,6 +48,30 @@ export type AgentConversationStatus =
   | 'waiting'
   | 'failed';
 
+export const DEFAULT_AGENT_CONVERSATION_TITLE = '新任务';
+
+export function agentConversationCanDelete(
+  status: AgentConversationStatus,
+): boolean {
+  return status !== 'connecting' && status !== 'working';
+}
+
+export function agentConversationDisplayTitle(
+  conversation: Pick<AgentConversation, 'autoTitle' | 'title'>,
+): string {
+  const title = conversation.title.trim();
+  if (title && title !== DEFAULT_AGENT_CONVERSATION_TITLE) return title;
+  return conversation.autoTitle?.trim() || DEFAULT_AGENT_CONVERSATION_TITLE;
+}
+
+export function agentConversationTitleFromPrompt(content: string): string {
+  const title = content.split(/\s+/).slice(0, 7).join(' ');
+  const characters = Array.from(title);
+  return characters.length > 54
+    ? `${characters.slice(0, 53).join('')}…`
+    : title;
+}
+
 export interface AgentMessageEntry {
   content: string;
   createdAt: string;
@@ -122,6 +146,8 @@ export type AgentTranscriptEntry =
 
 export interface AgentConversation {
   acpSessionId: string | null;
+  activityAt: string;
+  autoTitle: string | null;
   availableCommands: Array<{ description: string; name: string }>;
   configOptions: AgentSessionConfig[];
   contextTokens: number | null;
@@ -140,6 +166,8 @@ export interface AgentConversation {
 }
 
 export interface AgentConversationSummary {
+  activityAt: string;
+  autoTitle: string | null;
   createdAt: string;
   id: string;
   projectId: string;
