@@ -14,6 +14,7 @@ import { cn } from '@locus/ui/utils';
 import logoUrl from '../../assets/logo.png';
 import { AppCommandPalette } from './command-palette';
 import { useGlobalSettings } from '../settings/global-settings-provider';
+import { TerminalPanelProvider } from '../terminal/panel';
 
 interface AppNavigationItem {
   label: string;
@@ -52,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <>
+    <TerminalPanelProvider>
       <div className="grid h-dvh min-w-0 grid-cols-[3.5rem_minmax(0,1fr)] bg-background text-sm">
         <aside
           aria-label="应用导航"
@@ -105,7 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         onOpenChange={setCommandPaletteOpen}
         open={commandPaletteOpen}
       />
-    </>
+    </TerminalPanelProvider>
   );
 }
 

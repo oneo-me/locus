@@ -20,4 +20,7 @@ export default {
       },
     },
   },
+  ssr: {
+    external: ['node-pty'],
+  },
 };

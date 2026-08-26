@@ -13,6 +13,14 @@ import { readLibraryNavigation } from '~/features/library/navigation';
 import { logInfo } from '~/logging';
 import { accessSync, constants, statSync } from 'node:fs';
 import { isAbsolute, normalize } from 'node:path';
+import { resetTerminalSessions } from '~/features/terminal/service.server';
+
+function containsControlCharacter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 31 || code === 127;
+  });
+}
 
 export function getGlobalSettings(): GlobalSettings {
   return readGlobalSettings();
@@ -111,11 +119,52 @@ export async function updateGlobalSettings(
     }
     next.workspaceSidebarWidth = input.workspaceSidebarWidth;
   }
+  if (input.terminalShell !== undefined) {
+    if (
+      input.terminalShell !== null &&
+      (typeof input.terminalShell !== 'string' ||
+        !input.terminalShell.trim() ||
+        input.terminalShell.length > 1024 ||
+        containsControlCharacter(input.terminalShell))
+    ) {
+      throw new Error('terminalShell 必须是单行 shell 命令或 null。');
+    }
+    next.terminalShell = input.terminalShell?.trim() || null;
+  }
+  if (input.terminalStartupCommand !== undefined) {
+    if (
+      typeof input.terminalStartupCommand !== 'string' ||
+      input.terminalStartupCommand.length > 4096 ||
+      containsControlCharacter(input.terminalStartupCommand)
+    ) {
+      throw new Error(
+        'terminalStartupCommand 必须是不超过 4096 字符的单行命令。',
+      );
+    }
+    next.terminalStartupCommand = input.terminalStartupCommand.trim();
+  }
+  if (input.terminalTheme !== undefined) {
+    if (
+      input.terminalTheme !== 'auto' &&
+      input.terminalTheme !== 'light' &&
+      input.terminalTheme !== 'dark'
+    ) {
+      throw new Error('terminalTheme 必须是 auto、light 或 dark。');
+    }
+    next.terminalTheme = input.terminalTheme;
+  }
   if (Object.keys(next).length === 0) {
     throw new Error('至少需要提供一个要更新的字段。');
   }
-  if (next.libraryPath !== undefined) await closeLibrary();
   const settings = writeGlobalSettings(next);
+  if (
+    next.libraryPath !== undefined ||
+    next.terminalShell !== undefined ||
+    next.terminalStartupCommand !== undefined
+  ) {
+    resetTerminalSessions();
+  }
+  if (next.libraryPath !== undefined) await closeLibrary();
   logInfo('settings.updated', { fields: Object.keys(next).sort() });
   return settings;
 }

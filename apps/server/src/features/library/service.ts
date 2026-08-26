@@ -166,18 +166,6 @@ export async function openDocument(input: OpenDocumentInput) {
   return { ok: true as const };
 }
 
-export async function openLibraryTerminal() {
-  if (process.platform !== 'darwin') {
-    throw new Error('当前只支持在 macOS 上使用 Ghostty 打开文档库。');
-  }
-
-  const library = await getLibrary();
-  await execFileAsync('open', ['-a', 'Ghostty', library.status().rootPath]);
-
-  logInfo('library.terminal.opened', { terminal: 'ghostty' });
-  return { ok: true as const };
-}
-
 export interface UpdateDocumentIconImageInput {
   path: string;
   dataBase64: string | null;

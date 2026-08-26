@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { logger } from 'hono/logger';
+import { upgradeWebSocket } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type {
   OpenDocumentInput,
@@ -10,6 +11,7 @@ import type {
   UpdateDocumentIconImageInput,
 } from '@locus/document-library/contracts/library-api';
 import type { UpdateGlobalSettingsInput } from '@locus/document-library/contracts/global-settings';
+import type { CreateTerminalSessionOptions } from '@shellweb/core/server';
 import { createRouteAssetResponse } from '~/features/asset/route.server';
 import { createWorkspaceEventsResponse } from '~/features/workspace/workspace-events';
 import {
@@ -18,7 +20,6 @@ import {
   getLibraryGraph,
   getLibraryWorkspaceView,
   openDocument,
-  openLibraryTerminal,
   reorderDocuments,
   setDocumentArchived,
   setDocumentGraphParticipation,
@@ -31,6 +32,15 @@ import {
 } from '~/features/settings/service';
 import { jsonError, jsonOk } from '~/http/json';
 import { logError } from '~/logging';
+import {
+  createTerminalSession,
+  createTerminalWebSocketEvents,
+  deleteTerminalSession,
+  getTerminalSession,
+  issueTerminalAttachment,
+  terminalCredential,
+  terminalErrorResponse,
+} from '~/features/terminal/service.server';
 
 async function jsonRoute<T>(event: string, operation: () => T | Promise<T>) {
   try {
@@ -60,6 +70,10 @@ export function createApp(staticRoot?: string) {
   app.use(logger());
 
   app.get('/api/health', (context) => context.json({ status: 'ok' as const }));
+  app.get(
+    '/api/terminal/socket',
+    upgradeWebSocket(() => createTerminalWebSocketEvents()),
+  );
   app.get('/api/library', () =>
     jsonRoute('library.workspace.read', () => getLibraryWorkspaceView()),
   );
@@ -86,9 +100,56 @@ export function createApp(staticRoot?: string) {
       openDocument(await body<OpenDocumentInput>(context)),
     ),
   );
-  app.post('/api/library/terminal/open', () =>
-    jsonRoute('library.terminal.open', openLibraryTerminal),
-  );
+  app.post('/api/terminal/sessions', async (context) => {
+    try {
+      return Response.json(
+        await createTerminalSession(
+          await body<Pick<CreateTerminalSessionOptions, 'cols' | 'rows'>>(
+            context,
+          ),
+        ),
+        { status: 201 },
+      );
+    } catch (error) {
+      return terminalErrorResponse(error);
+    }
+  });
+  app.get('/api/terminal/sessions/:id', async (context) => {
+    try {
+      return Response.json(
+        await getTerminalSession(
+          context.req.param('id'),
+          terminalCredential(context.req.header('authorization')),
+        ),
+      );
+    } catch (error) {
+      return terminalErrorResponse(error);
+    }
+  });
+  app.post('/api/terminal/sessions/:id/attachments', async (context) => {
+    try {
+      return Response.json(
+        await issueTerminalAttachment(
+          context.req.param('id'),
+          terminalCredential(context.req.header('authorization')),
+        ),
+        { status: 201 },
+      );
+    } catch (error) {
+      return terminalErrorResponse(error);
+    }
+  });
+  app.delete('/api/terminal/sessions/:id', async (context) => {
+    try {
+      await deleteTerminalSession(
+        context.req.param('id'),
+        terminalCredential(context.req.header('authorization')),
+      );
+      return new Response(null, { status: 204 });
+    } catch (error) {
+      return terminalErrorResponse(error);
+    }
+  });
   app.post('/api/library/reorder', async (context) =>
     jsonRoute('library.documents.reorder', async () =>
       reorderDocuments(await body<ReorderDocumentsInput>(context)),

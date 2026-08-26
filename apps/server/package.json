@@ -16,12 +16,16 @@
     "@hono/node-server": "^2.1.1",
     "@modelcontextprotocol/server": "^2.0.0",
     "hono": "^4.13.3",
+    "node-pty": "1.2.0-beta.15",
     "sharp": "^0.35.3",
+    "ws": "^8.21.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@locus/document-library": "workspace:*",
+    "@shellweb/core": "link:../../../shellweb/packages/shellweb",
     "@types/node": "^26.2.0",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.23.12",
     "typescript": "~7.0.2",
     "vite": "^8.2.2"

@@ -5,6 +5,7 @@ import {
   type LucideIcon,
   PlugZapIcon,
   SettingsIcon,
+  SquareTerminalIcon,
 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router';
 import { buttonVariants } from '@locus/ui/components/button';
@@ -24,7 +25,14 @@ interface SettingsNavGroup {
 const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
     label: '通用',
-    items: [{ label: '常规', path: '/settings/general', icon: SettingsIcon }],
+    items: [
+      { label: '常规', path: '/settings/general', icon: SettingsIcon },
+      {
+        label: '终端',
+        path: '/settings/terminal',
+        icon: SquareTerminalIcon,
+      },
+    ],
   },
   {
     label: '笔记库',

@@ -4,6 +4,10 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createApp } from './app';
 import { closeLibrary } from './features/library/instance.server';
+import {
+  closeTerminalService,
+  terminalWebSocketServer,
+} from './features/terminal/service.server';
 import { logError, logInfo } from './logging';
 
 const clientDirectory = fileURLToPath(new URL('./client', import.meta.url));
@@ -12,11 +16,13 @@ const staticRoot = existsSync(join(clientDirectory, 'index.html'))
   : undefined;
 
 export function startServer(port = 3001) {
-  return serve({
+  const server = serve({
     fetch: createApp(staticRoot).fetch,
     hostname: '127.0.0.1',
     port,
+    websocket: { server: terminalWebSocketServer },
   });
+  return server;
 }
 
 function parsePort(value: string | undefined): number {
@@ -32,6 +38,7 @@ function parsePort(value: string | undefined): number {
 }
 
 async function close(server: ReturnType<typeof startServer>) {
+  closeTerminalService();
   await new Promise<void>((resolveClose, reject) => {
     server.close((error) => (error ? reject(error) : resolveClose()));
   });

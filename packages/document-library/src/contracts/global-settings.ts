@@ -1,4 +1,5 @@
 export type GlobalTheme = 'light' | 'dark' | 'system';
+export type TerminalTheme = 'auto' | 'light' | 'dark';
 
 export const DEFAULT_WORKSPACE_SIDEBAR_WIDTH = 304;
 export const MIN_WORKSPACE_SIDEBAR_WIDTH = DEFAULT_WORKSPACE_SIDEBAR_WIDTH;
@@ -22,6 +23,9 @@ export interface GlobalSettings {
   showGraphAttachments: boolean;
   mcpEnabled: boolean;
   workspaceSidebarWidth: number;
+  terminalShell: string | null;
+  terminalStartupCommand: string;
+  terminalTheme: TerminalTheme;
 }
 
 export interface UpdateGlobalSettingsInput {
@@ -32,6 +36,9 @@ export interface UpdateGlobalSettingsInput {
   showGraphAttachments?: boolean;
   mcpEnabled?: boolean;
   workspaceSidebarWidth?: number;
+  terminalShell?: string | null;
+  terminalStartupCommand?: string;
+  terminalTheme?: TerminalTheme;
 }
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
@@ -42,10 +49,17 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   showGraphAttachments: true,
   mcpEnabled: false,
   workspaceSidebarWidth: DEFAULT_WORKSPACE_SIDEBAR_WIDTH,
+  terminalShell: null,
+  terminalStartupCommand: '',
+  terminalTheme: 'auto',
 };
 
 export function isGlobalTheme(value: unknown): value is GlobalTheme {
   return value === 'light' || value === 'dark' || value === 'system';
+}
+
+export function isTerminalTheme(value: unknown): value is TerminalTheme {
+  return value === 'auto' || value === 'light' || value === 'dark';
 }
 
 export function normalizeGlobalSettings(value: unknown): GlobalSettings {
@@ -82,5 +96,16 @@ export function normalizeGlobalSettings(value: unknown): GlobalSettings {
     workspaceSidebarWidth: normalizeWorkspaceSidebarWidth(
       record.workspaceSidebarWidth,
     ),
+    terminalShell:
+      typeof record.terminalShell === 'string' && record.terminalShell.trim()
+        ? record.terminalShell.trim()
+        : DEFAULT_GLOBAL_SETTINGS.terminalShell,
+    terminalStartupCommand:
+      typeof record.terminalStartupCommand === 'string'
+        ? record.terminalStartupCommand.trim()
+        : DEFAULT_GLOBAL_SETTINGS.terminalStartupCommand,
+    terminalTheme: isTerminalTheme(record.terminalTheme)
+      ? record.terminalTheme
+      : DEFAULT_GLOBAL_SETTINGS.terminalTheme,
   };
 }

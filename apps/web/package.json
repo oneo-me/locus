@@ -17,6 +17,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@locus/document-library": "workspace:*",
     "@locus/ui": "workspace:*",
+    "@shellweb/core": "link:../../../shellweb/packages/shellweb",
     "@tailwindcss/browser": "4.3.3",
     "comark": "0.6.2",
     "d3-force": "^3.0.0",

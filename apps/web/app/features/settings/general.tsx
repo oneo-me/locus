@@ -21,8 +21,10 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string }> = [
 export function GeneralSettings() {
   return (
     <SettingsPage title="常规">
-      <AppearanceSettings />
-      <CommandPaletteSettings />
+      <div className="flex flex-col gap-6">
+        <AppearanceSettings />
+        <CommandPaletteSettings />
+      </div>
     </SettingsPage>
   );
 }

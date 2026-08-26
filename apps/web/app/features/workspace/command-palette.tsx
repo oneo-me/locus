@@ -40,8 +40,9 @@ import {
   formatDocumentReference,
 } from '../document/document-actions';
 import { DocumentIcon } from '../document/icons';
+import { useTerminalPanel } from '../terminal/panel';
 
-type DocumentAction = 'copy' | 'directory' | 'ghostty' | 'vscode';
+type DocumentAction = 'copy' | 'directory' | 'terminal' | 'vscode';
 
 const SEARCH_DEBOUNCE_MS = 150;
 const DOCUMENT_ACTIONS = [
@@ -67,11 +68,11 @@ const DOCUMENT_ACTIONS = [
     label: '打开所在目录',
   },
   {
-    action: 'ghostty',
-    aliases: ['ghostty', 'terminal', 'shell'],
-    englishLabel: 'Open Library in Ghostty',
+    action: 'terminal',
+    aliases: ['terminal', 'shell', 'panel'],
+    englishLabel: 'Show Library Terminal',
     icon: SquareTerminalIcon,
-    label: '在 Ghostty 中打开文档库',
+    label: '显示文档库终端',
   },
 ] satisfies {
   action: DocumentAction;
@@ -92,7 +93,8 @@ export function AppCommandPalette({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { openDocument, openLibraryTerminal } = useDocumentApi();
+  const { openDocument } = useDocumentApi();
+  const { show: showTerminal } = useTerminalPanel();
   const listRef = useRef<HTMLDivElement>(null);
   const [documents, setDocuments] = useState<LibraryNavigationDocument[]>([]);
   const [libraryState, setLibraryState] = useState<LibraryState | null>(null);
@@ -202,8 +204,8 @@ export function AppCommandPalette({
           formatDocumentReference(currentDocument.directory),
         );
         if (!copied) throw new Error('无法写入剪贴板。');
-      } else if (action === 'ghostty') {
-        await openLibraryTerminal();
+      } else if (action === 'terminal') {
+        showTerminal();
       } else {
         await openDocument({ path: currentDocument.path, target: action });
       }

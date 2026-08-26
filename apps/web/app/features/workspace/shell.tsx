@@ -16,6 +16,8 @@ import {
 import { useGlobalSettings } from '../settings/global-settings-provider';
 import { WorkspaceSidebar } from './sidebar';
 import { WorkspaceSidebarResizeHandle } from './sidebar-resize-handle';
+import { cn } from '@locus/ui/utils';
+import { LibraryTerminalPanel, useTerminalPanel } from '../terminal/panel';
 
 export interface WorkspaceSnapshotState {
   snapshot: WorkspaceEventSnapshot;
@@ -75,6 +77,7 @@ export function WorkspaceShell({
   data: LibraryWorkspaceView;
 }) {
   const { settings, updateSettings } = useGlobalSettings();
+  const { open: terminalOpen } = useTerminalPanel();
   const [sidebarWidthDraft, setSidebarWidthDraft] = useState<number | null>(
     null,
   );
@@ -105,7 +108,12 @@ export function WorkspaceShell({
   return (
     <WorkspaceLibraryDataContext.Provider value={liveLibraryData}>
       <div
-        className="grid h-full min-w-0 grid-cols-[var(--workspace-sidebar-width)_0_minmax(0,1fr)] bg-background text-sm"
+        className={cn(
+          'grid h-full min-w-0 bg-background text-sm',
+          terminalOpen
+            ? 'grid-cols-[var(--workspace-sidebar-width)_0_minmax(0,1fr)_minmax(20rem,40%)]'
+            : 'grid-cols-[var(--workspace-sidebar-width)_0_minmax(0,1fr)]',
+        )}
         style={
           {
             '--workspace-sidebar-width': `${sidebarWidth}px`,
@@ -127,6 +135,7 @@ export function WorkspaceShell({
           width={sidebarWidth}
         />
         <div className="h-full min-h-0 min-w-0">{children}</div>
+        {terminalOpen ? <LibraryTerminalPanel /> : null}
       </div>
     </WorkspaceLibraryDataContext.Provider>
   );

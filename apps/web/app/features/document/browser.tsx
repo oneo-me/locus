@@ -36,6 +36,7 @@ import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
 import { DocumentIconUpload, DocumentMenu } from './document-menu';
 import { copyDocumentText, formatDocumentReference } from './document-actions';
+import { useTerminalPanel } from '../terminal/panel';
 
 export function DocumentBrowser({
   data,
@@ -183,9 +184,11 @@ export function DocumentActions({
   documentPath: string;
   referencePath: string;
 }) {
-  const { openDocument, openLibraryTerminal } = useDocumentApi();
+  const { openDocument } = useDocumentApi();
+  const { open: terminalOpen, toggle: toggleTerminalPanel } =
+    useTerminalPanel();
   const [pendingAction, setPendingAction] = useState<
-    'directory' | 'ghostty' | 'vscode' | null
+    'directory' | 'terminal' | 'vscode' | null
   >(null);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
 
@@ -213,15 +216,15 @@ export function DocumentActions({
     }
   };
 
-  const openTerminal = async () => {
-    setPendingAction('ghostty');
+  const toggleTerminal = async () => {
+    setPendingAction('terminal');
     setActionStatus(null);
     try {
-      await openLibraryTerminal();
-      setActionStatus('已在 Ghostty 中打开文档库');
+      await toggleTerminalPanel();
+      if (terminalOpen) setActionStatus('终端会话已关闭');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      setActionStatus(`用 Ghostty 打开文档库失败：${message}`);
+      setActionStatus(`关闭终端会话失败：${message}`);
     } finally {
       setPendingAction(null);
     }
@@ -268,15 +271,13 @@ export function DocumentActions({
         <FolderOpenIcon aria-hidden="true" data-icon="inline-start" />
       </Button>
       <Button
-        aria-label="在 Ghostty 中打开文档库"
+        aria-label={terminalOpen ? '关闭文档库终端' : '显示文档库终端'}
         className="document-theme-button"
         disabled={pendingAction !== null}
-        onClick={() => {
-          void openTerminal();
-        }}
+        onClick={() => void toggleTerminal()}
         size="icon-sm"
-        title="在 Ghostty 中打开文档库"
-        variant="secondary"
+        title={terminalOpen ? '关闭文档库终端' : '显示文档库终端'}
+        variant={terminalOpen ? 'secondary-selected' : 'secondary'}
       >
         <SquareTerminalIcon aria-hidden="true" data-icon="inline-start" />
       </Button>

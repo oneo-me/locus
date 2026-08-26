@@ -47,6 +47,20 @@ pnpm dev
 
 前端开发服务器默认运行在 <http://localhost:3000>，并把 `/api` 与 `/mcp` 请求转发到 <http://localhost:3001> 的 Hono 后端。
 
+### 联调 Shellweb
+
+Locus 通过 `link:../../../shellweb/packages/shellweb` 使用同级 Shellweb 仓库。持续开发时分别运行 Shellweb Core 编译监听和 Locus 开发服务：
+
+```bash
+# 终端一
+pnpm dev:shellweb
+
+# 终端二
+pnpm dev
+```
+
+Shellweb Core 的 `dist` 更新后，Locus 会继续使用链接包，无需发布或重新安装。生产构建会把 Shellweb 代码打入服务端与前端产物，并单独携带 `node-pty` 运行依赖，因此 `.build` 不依赖相邻的 Shellweb 仓库。
+
 ### 文档库结构
 
 文档库由包含 `index.md` 的文章目录组成：
