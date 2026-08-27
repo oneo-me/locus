@@ -52,8 +52,15 @@ export interface AgentProviderProbe {
 }
 
 export interface AgentProviderModel {
+  defaultReasoningEffort: string | null;
   id: string;
   isDefault: boolean;
+  name: string;
+  reasoningEfforts: AgentProviderModelOption[];
+}
+
+export interface AgentProviderModelOption {
+  id: string;
   name: string;
 }
 

@@ -111,7 +111,12 @@ export async function updateGlobalSettings(
       throw new Error('taskDraft 必须是对象。');
     }
     const taskDraft = input.taskDraft as unknown as Record<string, unknown>;
-    for (const field of ['modelId', 'projectId', 'providerId'] as const) {
+    for (const field of [
+      'modelId',
+      'projectId',
+      'providerId',
+      'reasoningEffort',
+    ] as const) {
       const value = taskDraft[field];
       if (
         value !== null &&
@@ -133,6 +138,10 @@ export async function updateGlobalSettings(
       providerId:
         typeof taskDraft.providerId === 'string'
           ? taskDraft.providerId.trim()
+          : null,
+      reasoningEffort:
+        typeof taskDraft.reasoningEffort === 'string'
+          ? taskDraft.reasoningEffort.trim()
           : null,
     };
   }

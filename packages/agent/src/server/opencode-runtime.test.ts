@@ -43,8 +43,20 @@ void test('shares a native OpenCode server and consumes its session events', asy
     cwd: directory,
     handlers,
     models: [
-      { id: 'provider/model-a', isDefault: true, name: 'Model A' },
-      { id: 'provider/model-b', isDefault: false, name: 'Model B' },
+      {
+        defaultReasoningEffort: null,
+        id: 'provider/model-a',
+        isDefault: true,
+        name: 'Model A',
+        reasoningEfforts: [],
+      },
+      {
+        defaultReasoningEffort: null,
+        id: 'provider/model-b',
+        isDefault: false,
+        name: 'Model B',
+        reasoningEfforts: [],
+      },
     ],
     sessionId: null,
   };

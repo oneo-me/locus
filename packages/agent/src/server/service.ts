@@ -44,6 +44,7 @@ import { OpenCodeRuntime } from './opencode-runtime.js';
 import { ClaudeRuntime } from './claude-runtime.js';
 import { CodexRuntime } from './codex-runtime.js';
 import { PiRuntime } from './pi-runtime.js';
+import { selectedReasoningEffort } from './model-config.js';
 
 type AgentEventListener = (event: AgentConversationEvent) => void;
 
@@ -222,7 +223,32 @@ export class AgentService {
     ) {
       throw new Error('会话配置值无效。');
     }
+    if (
+      conversation.status === 'working' ||
+      conversation.status === 'connecting' ||
+      conversation.status === 'waiting'
+    ) {
+      throw new Error('Agent 工作时不能更改会话配置。');
+    }
     const runtime = await this.#ensureRuntime(conversation);
+    if (
+      conversation.providerId === 'claude' &&
+      option.category === 'thought_level' &&
+      typeof value === 'string'
+    ) {
+      conversation.configOptions = conversation.configOptions.map(
+        (candidate) =>
+          candidate.id === option.id && candidate.type === 'select'
+            ? { ...candidate, currentValue: value }
+            : candidate,
+      );
+      conversation.updatedAt = new Date().toISOString();
+      this.#save(conversation);
+      this.#runtimes.delete(id);
+      runtime.close();
+      await this.#ensureRuntime(conversation);
+      return conversation;
+    }
     conversation.configOptions =
       option.category === 'model' && typeof value === 'string'
         ? await runtime.setModel(configId, value, conversation.configOptions)
@@ -302,6 +328,10 @@ export class AgentService {
       persistedModelOption?.type === 'select'
         ? persistedModelOption.currentValue
         : undefined;
+    const selectedEffort = selectedReasoningEffort(conversation.configOptions);
+    const persistedConfigs = conversation.configOptions.filter(
+      (option) => option.category !== 'model',
+    );
     let runtimeRef: AgentRuntime | null = null;
     const handlers = {
       onConnected: (
@@ -388,6 +418,7 @@ export class AgentService {
                 handlers: nativeHandlers,
                 models,
                 selectedModel,
+                selectedReasoningEffort: selectedEffort,
                 sessionId: conversation.providerSessionId,
               }),
             )
@@ -399,6 +430,7 @@ export class AgentService {
                   handlers: nativeHandlers,
                   models,
                   selectedModel,
+                  selectedReasoningEffort: selectedEffort,
                   sessionId: conversation.providerSessionId,
                 }),
               )
@@ -410,6 +442,7 @@ export class AgentService {
                     handlers: nativeHandlers,
                     models,
                     selectedModel,
+                    selectedReasoningEffort: selectedEffort,
                     sessionPath: conversation.providerSessionPath,
                   }),
                 )
@@ -452,6 +485,28 @@ export class AgentService {
           throw error;
         }
       }
+    }
+    for (const persisted of persistedConfigs) {
+      const current = conversation.configOptions.find(
+        (option) =>
+          option.id === persisted.id && option.type === persisted.type,
+      );
+      if (
+        !current ||
+        current.currentValue === persisted.currentValue ||
+        (current.type === 'select' &&
+          !current.options.some(
+            (option) => option.value === persisted.currentValue,
+          ))
+      ) {
+        continue;
+      }
+      conversation.configOptions = await runtime.setConfig(
+        current.id,
+        persisted.currentValue,
+      );
+      conversation.updatedAt = new Date().toISOString();
+      this.#save(conversation);
     }
     this.#runtimes.set(conversation.id, runtime);
     return runtime;

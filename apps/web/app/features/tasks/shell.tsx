@@ -64,6 +64,14 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
           defaultProvider?.models[0]?.id ??
           null),
   );
+  const initialReasoningEffort = resolveReasoningEffort(
+    preferredModel ??
+      defaultProvider?.models.find((model) => model.id === modelId),
+    settings.taskDraft.reasoningEffort,
+  );
+  const [reasoningEffort, setReasoningEffort] = useState<string | null>(
+    initialData.conversation ? null : initialReasoningEffort,
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -71,12 +79,14 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
     nextProjectId: string | null,
     nextProviderId: AgentProviderId | null,
     nextModelId: string | null,
+    nextReasoningEffort: string | null,
   ) => {
     void updateSettings({
       taskDraft: {
         modelId: nextModelId,
         projectId: nextProjectId,
         providerId: nextProviderId,
+        reasoningEffort: nextReasoningEffort,
       },
     }).catch((cause) => setError(errorMessage(cause)));
   };
@@ -158,7 +168,7 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
       });
       setConversation(created);
       setConversations((current) => upsertSummary(current, created));
-      const connected = await taskApi.connect(created.id);
+      let connected = await taskApi.connect(created.id);
       const modelOption = connected.configOptions.find(
         (option) => option.type === 'select' && option.category === 'model',
       );
@@ -167,9 +177,27 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
         modelOption?.type === 'select' &&
         modelOption.options.some((option) => option.value === modelId)
       ) {
-        await taskApi.setConfig(created.id, {
+        connected = await taskApi.setConfig(created.id, {
           configId: modelOption.id,
           value: modelId,
+        });
+      }
+      const reasoningOption = connected.configOptions.find(
+        (option) =>
+          option.type === 'select' &&
+          (option.category === 'thought_level' ||
+            (providerId === 'grok' && option.id === 'mode')),
+      );
+      if (
+        reasoningEffort &&
+        reasoningOption?.type === 'select' &&
+        reasoningOption.options.some(
+          (option) => option.value === reasoningEffort,
+        )
+      ) {
+        await taskApi.setConfig(created.id, {
+          configId: reasoningOption.id,
+          value: reasoningEffort,
         });
       }
       const sent = await taskApi.sendMessage(created.id, { content });
@@ -232,13 +260,25 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
           runAction(() => taskApi.setMode(conversation.id, { modeId }))
         }
         onDraftModelChange={(id, nextModelId) => {
+          const nextModel = initialData.providers.providers
+            .find((provider) => provider.id === id)
+            ?.models.find((model) => model.id === nextModelId);
+          const nextReasoningEffort = resolveReasoningEffort(
+            nextModel,
+            id === providerId ? reasoningEffort : null,
+          );
           setProviderId(id);
           setModelId(nextModelId);
-          persistTaskDraft(projectId, id, nextModelId);
+          setReasoningEffort(nextReasoningEffort);
+          persistTaskDraft(projectId, id, nextModelId, nextReasoningEffort);
+        }}
+        onDraftReasoningEffortChange={(nextReasoningEffort) => {
+          setReasoningEffort(nextReasoningEffort);
+          persistTaskDraft(projectId, providerId, modelId, nextReasoningEffort);
         }}
         onProjectChange={(id) => {
           setProjectId(id);
-          persistTaskDraft(id, providerId, modelId);
+          persistTaskDraft(id, providerId, modelId, reasoningEffort);
         }}
         onCancel={() =>
           conversation && runAction(() => taskApi.cancel(conversation.id))
@@ -254,6 +294,7 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
         onSend={(content) => void sendMessage(content)}
         pending={pending}
         modelId={modelId}
+        reasoningEffort={reasoningEffort}
         projectId={projectId}
         projects={initialData.projects}
         providerId={providerId}
@@ -261,6 +302,18 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
       />
     </div>
   );
+}
+
+function resolveReasoningEffort(
+  model:
+    | AgentProviderDetection['providers'][number]['models'][number]
+    | undefined,
+  preferred: string | null,
+): string | null {
+  if (!model?.reasoningEfforts.length) return null;
+  return model.reasoningEfforts.some((option) => option.id === preferred)
+    ? preferred
+    : (model.defaultReasoningEffort ?? model.reasoningEfforts[0]?.id ?? null);
 }
 
 function latestConversation(

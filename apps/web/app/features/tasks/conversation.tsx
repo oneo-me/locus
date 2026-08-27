@@ -36,12 +36,14 @@ export function AgentConversationView({
   onCancel,
   onConfigChange,
   onDraftModelChange,
+  onDraftReasoningEffortChange,
   onModeChange,
   onProjectChange,
   onRespondPermission,
   onSend,
   pending,
   modelId,
+  reasoningEffort,
   projectId,
   projects,
   providerId,
@@ -52,12 +54,14 @@ export function AgentConversationView({
   onCancel: () => void;
   onConfigChange: (configId: string, value: boolean | string) => void;
   onDraftModelChange: (providerId: AgentProviderId, modelId: string) => void;
+  onDraftReasoningEffortChange: (reasoningEffort: string) => void;
   onModeChange: (modeId: string) => void;
   onProjectChange: (id: string) => void;
   onRespondPermission: (requestId: string, optionId: string) => void;
   onSend: (content: string) => void;
   pending: boolean;
   modelId: string | null;
+  reasoningEffort: string | null;
   projectId: string | null;
   projects: AgentProject[];
   providerId: AgentProviderId | null;
@@ -131,10 +135,12 @@ export function AgentConversationView({
           onCancel={onCancel}
           onConfigChange={onConfigChange}
           onDraftModelChange={onDraftModelChange}
+          onDraftReasoningEffortChange={onDraftReasoningEffortChange}
           onModeChange={onModeChange}
           onSend={onSend}
           pending={pending}
           modelId={modelId}
+          reasoningEffort={reasoningEffort}
           projectId={projectId}
           projects={projects}
           providerId={providerId}

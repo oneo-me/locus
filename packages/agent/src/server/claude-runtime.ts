@@ -6,6 +6,11 @@ import type {
   NativeAgentRuntimeHandlers,
 } from './agent-runtime.js';
 import { JsonLineProcess } from './json-line-process.js';
+import {
+  MODEL_CONFIG_ID,
+  REASONING_EFFORT_CONFIG_ID,
+  modelConfigOptions,
+} from './model-config.js';
 
 interface ClaudeRuntimeOptions {
   binary: string;
@@ -13,6 +18,7 @@ interface ClaudeRuntimeOptions {
   handlers: NativeAgentRuntimeHandlers;
   models: AgentProviderModel[];
   selectedModel?: string;
+  selectedReasoningEffort?: string;
   sessionId: string | null;
 }
 
@@ -29,6 +35,7 @@ export class ClaudeRuntime implements AgentRuntime {
   readonly #tools = new Map<string, { title: string; toolKind: string }>();
   #closed = false;
   #model: string | undefined;
+  #reasoningEffort: string | undefined;
   #requestId = 0;
   #sawTextDelta = false;
   #sawThoughtDelta = false;
@@ -38,6 +45,8 @@ export class ClaudeRuntime implements AgentRuntime {
     this.#handlers = options.handlers;
     this.#models = options.models;
     this.#model = options.selectedModel ?? defaultModel(options.models);
+    this.#reasoningEffort = options.selectedReasoningEffort;
+    this.#reasoningEffort = this.#resolvedReasoningEffort();
     const args = [
       '-p',
       '--input-format',
@@ -54,6 +63,7 @@ export class ClaudeRuntime implements AgentRuntime {
       '--permission-mode',
       'default',
       ...(this.#model ? ['--model', this.#model] : []),
+      ...(this.#reasoningEffort ? ['--effort', this.#reasoningEffort] : []),
       ...(options.sessionId
         ? ['--resume', sessionId]
         : ['--session-id', sessionId]),
@@ -108,10 +118,22 @@ export class ClaudeRuntime implements AgentRuntime {
     configId: string,
     value: boolean | string,
   ): Promise<AgentSessionConfig[]> {
-    if (configId !== 'model' || typeof value !== 'string') {
+    if (typeof value !== 'string') {
       throw new Error('Claude 会话配置无效。');
     }
-    return this.setModel(configId, value, this.#configOptions());
+    if (configId === MODEL_CONFIG_ID) {
+      return this.setModel(configId, value, this.#configOptions());
+    }
+    if (
+      configId !== REASONING_EFFORT_CONFIG_ID ||
+      !this.#currentModel()?.reasoningEfforts.some(
+        (effort) => effort.id === value,
+      )
+    ) {
+      throw new Error('Claude 推理强度无效。');
+    }
+    this.#reasoningEffort = value;
+    return this.#configOptions();
   }
 
   async setModel(
@@ -120,12 +142,13 @@ export class ClaudeRuntime implements AgentRuntime {
     _configOptions: AgentSessionConfig[],
   ): Promise<AgentSessionConfig[]> {
     if (
-      configId !== 'model' ||
+      configId !== MODEL_CONFIG_ID ||
       !this.#models.some((model) => model.id === modelId)
     ) {
       throw new Error('Claude 模型无效。');
     }
     this.#model = modelId;
+    this.#reasoningEffort = this.#resolvedReasoningEffort();
     this.#requestId += 1;
     this.#process.send({
       request: { model: modelId, subtype: 'set_model' },
@@ -160,17 +183,25 @@ export class ClaudeRuntime implements AgentRuntime {
   }
 
   #configOptions(): AgentSessionConfig[] {
-    if (!this.#model || !this.#models.length) return [];
-    return [
-      {
-        category: 'model',
-        currentValue: this.#model,
-        id: 'model',
-        name: '模型',
-        options: this.#models.map(({ id, name }) => ({ name, value: id })),
-        type: 'select',
-      },
-    ];
+    return modelConfigOptions(
+      this.#models,
+      this.#model,
+      this.#resolvedReasoningEffort(),
+    );
+  }
+
+  #currentModel(): AgentProviderModel | undefined {
+    return this.#models.find((model) => model.id === this.#model);
+  }
+
+  #resolvedReasoningEffort(): string | undefined {
+    const model = this.#currentModel();
+    if (!model?.reasoningEfforts.length) return undefined;
+    return model.reasoningEfforts.some(
+      (effort) => effort.id === this.#reasoningEffort,
+    )
+      ? this.#reasoningEffort
+      : (model.defaultReasoningEffort ?? model.reasoningEfforts[0]?.id);
   }
 
   #handle(value: Record<string, unknown>): void {

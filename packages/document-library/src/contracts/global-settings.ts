@@ -5,6 +5,7 @@ export interface TaskDraftPreference {
   modelId: string | null;
   projectId: string | null;
   providerId: string | null;
+  reasoningEffort: string | null;
 }
 
 export const DEFAULT_WORKSPACE_SIDEBAR_WIDTH = 304;
@@ -60,6 +61,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
     modelId: null,
     projectId: null,
     providerId: null,
+    reasoningEffort: null,
   },
   workspaceSidebarWidth: DEFAULT_WORKSPACE_SIDEBAR_WIDTH,
   terminalShell: null,
@@ -88,6 +90,7 @@ function normalizeTaskDraft(value: unknown): TaskDraftPreference {
     modelId: normalizePreferenceId(record.modelId),
     projectId: normalizePreferenceId(record.projectId),
     providerId: normalizePreferenceId(record.providerId),
+    reasoningEffort: normalizePreferenceId(record.reasoningEffort),
   };
 }
 

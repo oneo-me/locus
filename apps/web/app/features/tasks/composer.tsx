@@ -28,6 +28,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -40,10 +41,12 @@ export function AgentComposer({
   onCancel,
   onConfigChange,
   onDraftModelChange,
+  onDraftReasoningEffortChange,
   onModeChange,
   onSend,
   pending,
   modelId,
+  reasoningEffort,
   projectId,
   projects,
   providerId,
@@ -53,10 +56,12 @@ export function AgentComposer({
   onCancel: () => void;
   onConfigChange: (configId: string, value: boolean | string) => void;
   onDraftModelChange: (providerId: AgentProviderId, modelId: string) => void;
+  onDraftReasoningEffortChange: (reasoningEffort: string) => void;
   onModeChange: (modeId: string) => void;
   onSend: (content: string) => void;
   pending: boolean;
   modelId: string | null;
+  reasoningEffort: string | null;
   projectId: string | null;
   projects: AgentProject[];
   providerId: AgentProviderId | null;
@@ -77,6 +82,12 @@ export function AgentComposer({
   const draftModels = providers.find(
     (provider) => provider.id === providerId,
   )?.models;
+  const draftModel = draftModels?.find((model) => model.id === modelId);
+  const draftReasoningEffort =
+    draftModel?.reasoningEfforts.find((option) => option.id === reasoningEffort)
+      ?.id ??
+    draftModel?.defaultReasoningEffort ??
+    draftModel?.reasoningEfforts[0]?.id;
   const draftModelSources = providers
     .filter(
       (provider) =>
@@ -164,6 +175,39 @@ export function AgentComposer({
                   sources={draftModelSources}
                 />
               ) : null}
+              {!conversation &&
+              draftReasoningEffort &&
+              draftModel?.reasoningEfforts.length ? (
+                <Select
+                  items={draftModel.reasoningEfforts.map((option) => ({
+                    label: option.name,
+                    value: option.id,
+                  }))}
+                  onValueChange={(value) =>
+                    value && onDraftReasoningEffortChange(value)
+                  }
+                  value={draftReasoningEffort}
+                >
+                  <SelectTrigger
+                    aria-label="推理强度"
+                    className="max-w-44"
+                    size="sm"
+                    variant="ghost"
+                  >
+                    <BrainCircuitIcon aria-hidden="true" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      {draftModel.reasoningEfforts.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              ) : null}
               {conversation && modelOption?.type === 'select' ? (
                 <AgentModelPicker
                   disabled={pending}
@@ -195,11 +239,13 @@ export function AgentComposer({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent align="start">
-                    {conversation.modes.available.map((mode) => (
-                      <SelectItem key={mode.id} value={mode.id}>
-                        {mode.name}
-                      </SelectItem>
-                    ))}
+                    <SelectGroup>
+                      {conversation.modes.available.map((mode) => (
+                        <SelectItem key={mode.id} value={mode.id}>
+                          {mode.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               ) : null}
@@ -229,11 +275,13 @@ export function AgentComposer({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent align="start">
-                        {option.options.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.name}
-                          </SelectItem>
-                        ))}
+                        <SelectGroup>
+                          {option.options.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   ) : (

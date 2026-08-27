@@ -14,7 +14,8 @@ void test('drives Claude stream-json across a turn', async () => {
     binary: harness.executable,
     cwd: harness.directory,
     handlers: harness.handlers,
-    models: [{ id: 'claude-test', isDefault: true, name: 'Claude Test' }],
+    models: [reasoningModel('claude-test', 'Claude Test')],
+    selectedReasoningEffort: 'high',
     sessionId: null,
   });
   try {
@@ -32,11 +33,13 @@ void test('drives Codex app-server across a thread and turn', async () => {
     binary: harness.executable,
     cwd: harness.directory,
     handlers: harness.handlers,
-    models: [{ id: 'codex-test', isDefault: true, name: 'Codex Test' }],
+    models: [reasoningModel('codex-test', 'Codex Test')],
+    selectedReasoningEffort: 'high',
     sessionId: null,
   });
   try {
     assert.equal(harness.sessionId, 'codex-thread');
+    await runtime.setConfig('reasoning_effort', 'low');
     assert.equal(await runtime.prompt('hello'), 'end_turn');
     assert.deepEqual(harness.text, ['thought:checking', 'message:Codex OK']);
     assert.deepEqual(harness.titles, ['Codex title']);
@@ -52,13 +55,15 @@ void test('drives Pi RPC and persists its session path', async () => {
     binary: harness.executable,
     cwd: harness.directory,
     handlers: harness.handlers,
-    models: [{ id: 'provider/model', isDefault: true, name: 'Pi Test' }],
+    models: [reasoningModel('provider/model', 'Pi Test')],
     selectedModel: 'provider/model',
+    selectedReasoningEffort: 'high',
     sessionPath: null,
   });
   try {
     assert.equal(harness.sessionId, 'pi-session');
     assert.equal(harness.sessionPath, '/sessions/pi.jsonl');
+    await runtime.setConfig('reasoning_effort', 'low');
     assert.equal(await runtime.prompt('hello'), 'end_turn');
     assert.deepEqual(harness.text, ['thought:checking', 'message:Pi OK']);
   } finally {
@@ -66,6 +71,20 @@ void test('drives Pi RPC and persists its session path', async () => {
     harness.remove();
   }
 });
+
+function reasoningModel(id: string, name: string) {
+  return {
+    defaultReasoningEffort: 'medium',
+    id,
+    isDefault: true,
+    name,
+    reasoningEfforts: [
+      { id: 'low', name: '低' },
+      { id: 'medium', name: '中' },
+      { id: 'high', name: '高' },
+    ],
+  };
+}
 
 function runtimeHarness(provider: 'claude' | 'codex' | 'pi') {
   const directory = mkdtempSync(join(tmpdir(), `locus-${provider}-runtime-`));
@@ -113,9 +132,14 @@ import { createInterface } from 'node:readline';
 const provider = ${JSON.stringify(provider)};
 const send = (value) => process.stdout.write(JSON.stringify(value) + '\\n');
 const lines = createInterface({ input: process.stdin });
+let piEffort = null;
 lines.on('line', (line) => {
   const value = JSON.parse(line);
   if (provider === 'claude' && value.type === 'user') {
+    if (process.argv.at(process.argv.indexOf('--effort') + 1) !== 'high') {
+      send({ type: 'result', is_error: true, result: 'wrong Claude effort' });
+      return;
+    }
     send({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Claude OK' } } });
     send({ type: 'result', is_error: false });
     return;
@@ -124,6 +148,10 @@ lines.on('line', (line) => {
     if (value.id === 1) {
       send({ id: 1, result: { thread: { id: 'codex-thread' } } });
     } else if (value.method === 'turn/start') {
+      if (value.params.effort !== 'low') {
+        send({ method: 'turn/completed', params: { turn: { id: 'turn-1', status: 'failed', error: { message: 'wrong Codex effort' } } } });
+        return;
+      }
       send({ method: 'turn/started', params: { turn: { id: 'turn-1' } } });
       send({ method: 'item/reasoning/summaryTextDelta', params: { delta: 'checking' } });
       send({ method: 'item/agentMessage/delta', params: { delta: 'Codex OK' } });
@@ -133,11 +161,12 @@ lines.on('line', (line) => {
     return;
   }
   if (provider === 'pi') {
+    if (value.type === 'set_thinking_level') piEffort = value.level;
     send({ type: 'response', id: value.id, success: true, data: value.type === 'get_state' ? { sessionId: 'pi-session', sessionFile: '/sessions/pi.jsonl', model: { contextWindow: 200000 } } : {} });
     if (value.type === 'prompt') {
       queueMicrotask(() => {
         send({ type: 'message_update', assistantMessageEvent: { type: 'thinking_delta', delta: 'checking' } });
-        send({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'Pi OK' } });
+        send({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: piEffort === 'low' ? 'Pi OK' : 'wrong Pi effort' } });
         send({ type: 'agent_settled' });
       });
     }

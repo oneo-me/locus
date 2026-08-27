@@ -7,33 +7,38 @@ import { join } from 'node:path';
 import type {
   AgentProviderId,
   AgentProviderModel,
+  AgentProviderModelOption,
 } from '../contracts/provider.js';
+
+const REASONING_LEVELS = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+] as const;
 
 const execute = promisify(execFile);
 
 const FALLBACK_MODELS: Partial<Record<AgentProviderId, AgentProviderModel[]>> =
   {
     amp: models(['low', 'medium', 'high', 'ultra'], 'medium'),
-    claude: models(
-      [
-        'claude-fable-5',
-        'claude-opus-5',
-        'claude-opus-4-8',
-        'claude-opus-4-7',
-        'claude-opus-4-6',
-        'claude-opus-4-5',
-        'claude-sonnet-5',
-        'claude-sonnet-4-6',
-        'claude-haiku-4-5',
-      ],
-      'claude-sonnet-5',
-    ),
+    claude: claudeModels(),
     codex: models(
       ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'],
       'gpt-5.6-sol',
+      reasoningOptions(['low', 'medium', 'high', 'xhigh']),
+      'medium',
     ),
     cursor: models(['auto'], 'auto'),
-    grok: models(['grok-build'], 'grok-build'),
+    grok: models(
+      ['grok-build'],
+      'grok-build',
+      reasoningOptions(['low', 'medium', 'high', 'xhigh']),
+      'high',
+    ),
     opencode: models(['default'], 'default'),
     pi: models(['default'], 'default'),
   };
@@ -101,7 +106,10 @@ function isAgentProviderModel(value: unknown): value is AgentProviderModel {
     value !== null &&
     typeof (value as AgentProviderModel).id === 'string' &&
     typeof (value as AgentProviderModel).name === 'string' &&
-    typeof (value as AgentProviderModel).isDefault === 'boolean'
+    typeof (value as AgentProviderModel).isDefault === 'boolean' &&
+    Array.isArray((value as AgentProviderModel).reasoningEfforts) &&
+    ((value as AgentProviderModel).defaultReasoningEffort === null ||
+      typeof (value as AgentProviderModel).defaultReasoningEffort === 'string')
   );
 }
 
@@ -223,6 +231,10 @@ function parseCodexModels(values: unknown[]): AgentProviderModel[] {
     const defaultValue = candidate.isDefault;
     return [
       {
+        defaultReasoningEffort:
+          typeof candidate.defaultReasoningEffort === 'string'
+            ? candidate.defaultReasoningEffort
+            : null,
         id: candidate.model,
         isDefault:
           defaultValue === true ||
@@ -233,6 +245,15 @@ function parseCodexModels(values: unknown[]): AgentProviderModel[] {
           typeof candidate.displayName === 'string' && candidate.displayName
             ? candidate.displayName
             : displayName(candidate.model),
+        reasoningEfforts: Array.isArray(candidate.supportedReasoningEfforts)
+          ? candidate.supportedReasoningEfforts.flatMap((value) => {
+              if (!value || typeof value !== 'object') return [];
+              const effort = (value as Record<string, unknown>).reasoningEffort;
+              return typeof effort === 'string'
+                ? [{ id: effort, name: reasoningLabel(effort) }]
+                : [];
+            })
+          : [],
       },
     ];
   });
@@ -277,7 +298,18 @@ async function discoverPi(
   });
   return new Promise((resolve) => {
     let settled = false;
-    const timeout = setTimeout(() => finish([]), 5_000);
+    let available: Array<{
+      id?: unknown;
+      name?: unknown;
+      provider?: unknown;
+      reasoning?: unknown;
+      thinkingLevelMap?: unknown;
+    }> | null = null;
+    let state: {
+      model?: { id?: unknown; provider?: unknown };
+      thinkingLevel?: unknown;
+    } | null = null;
+    const timeout = setTimeout(() => finish(piModels(available, state)), 5_000);
     const lines = createInterface({ input: child.stdout });
     const finish = (result: AgentProviderModel[]) => {
       if (settled) return;
@@ -296,37 +328,81 @@ async function discoverPi(
               id?: unknown;
               name?: unknown;
               provider?: unknown;
+              reasoning?: unknown;
+              thinkingLevelMap?: unknown;
             }>;
+            model?: { id?: unknown; provider?: unknown };
+            thinkingLevel?: unknown;
           };
           id?: unknown;
         };
-        if (value.id !== 'locus-models' || !Array.isArray(value.data?.models)) {
+        if (value.id === 'locus-state') {
+          state = value.data ?? null;
+          if (available) finish(piModels(available, state));
+        } else if (
+          value.id === 'locus-models' &&
+          Array.isArray(value.data?.models)
+        ) {
+          available = value.data.models;
+          child.stdin.write(
+            `${JSON.stringify({ id: 'locus-state', type: 'get_state' })}\n`,
+          );
+        } else {
           return;
         }
-        finish(
-          value.data.models.flatMap((model) => {
-            if (
-              typeof model.id !== 'string' ||
-              typeof model.provider !== 'string'
-            ) {
-              return [];
-            }
-            return [
-              {
-                id: `${model.provider}/${model.id}`,
-                isDefault: false,
-                name: typeof model.name === 'string' ? model.name : model.id,
-              },
-            ];
-          }),
-        );
       } catch {
         return;
       }
     });
-    child.stdin.end(
+    child.stdin.write(
       `${JSON.stringify({ id: 'locus-models', type: 'get_available_models' })}\n`,
     );
+  });
+}
+
+function piModels(
+  available: Array<{
+    id?: unknown;
+    name?: unknown;
+    provider?: unknown;
+    reasoning?: unknown;
+    thinkingLevelMap?: unknown;
+  }> | null,
+  state: {
+    model?: { id?: unknown; provider?: unknown };
+    thinkingLevel?: unknown;
+  } | null,
+): AgentProviderModel[] {
+  if (!available) return [];
+  const defaultId =
+    typeof state?.model?.provider === 'string' &&
+    typeof state.model.id === 'string'
+      ? `${state.model.provider}/${state.model.id}`
+      : null;
+  const currentThinking =
+    typeof state?.thinkingLevel === 'string' ? state.thinkingLevel : null;
+  return available.flatMap((model) => {
+    if (typeof model.id !== 'string' || typeof model.provider !== 'string') {
+      return [];
+    }
+    const id = `${model.provider}/${model.id}`;
+    const efforts = piReasoningOptions(model);
+    const defaultReasoningEffort = efforts.some(
+      (effort) => effort.id === currentThinking,
+    )
+      ? currentThinking
+      : efforts.some((effort) => effort.id === 'medium')
+        ? 'medium'
+        : (efforts[0]?.id ?? null);
+    return [
+      {
+        defaultReasoningEffort,
+        id,
+        isDefault: id === defaultId,
+        name: typeof model.name === 'string' ? model.name : model.id,
+        reasoningEfforts: efforts,
+      },
+    ];
   });
 }
 
@@ -355,18 +431,108 @@ function parseGrok(value: string): AgentProviderModel[] {
   const lines = stripVTControlCharacters(value).split('\n');
   const start = lines.findIndex((line) => line.trim() === 'Available models:');
   if (start < 0) return [];
-  return parseLines(lines.slice(start + 1).join('\n'));
+  return parseLines(lines.slice(start + 1).join('\n')).map((model) => ({
+    ...model,
+    defaultReasoningEffort: 'high',
+    reasoningEfforts: reasoningOptions(['low', 'medium', 'high', 'xhigh']),
+  }));
 }
 
-function models(ids: string[], defaultId?: string): AgentProviderModel[] {
+function models(
+  ids: string[],
+  defaultId?: string,
+  reasoningEfforts: AgentProviderModelOption[] = [],
+  defaultReasoningEffort: string | null = null,
+): AgentProviderModel[] {
   return ids
     .map((id) => id.trim())
     .filter(Boolean)
     .map((id) => ({
+      defaultReasoningEffort,
       id,
       isDefault: id === defaultId,
       name: displayName(id),
+      reasoningEfforts,
     }));
+}
+
+function claudeModels(): AgentProviderModel[] {
+  const ultracode = reasoningOptions([
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+    'ultracode',
+  ]);
+  const standard = reasoningOptions(['low', 'medium', 'high', 'xhigh', 'max']);
+  return [
+    'claude-fable-5',
+    'claude-opus-5',
+    'claude-opus-4-8',
+    'claude-opus-4-7',
+    'claude-opus-4-6',
+    'claude-opus-4-5',
+    'claude-sonnet-5',
+    'claude-sonnet-4-6',
+    'claude-haiku-4-5',
+  ].map((id) => {
+    const supportsUltracode =
+      id === 'claude-fable-5' ||
+      id === 'claude-opus-5' ||
+      id === 'claude-opus-4-8' ||
+      id === 'claude-opus-4-7' ||
+      id === 'claude-sonnet-5';
+    const reasoningEfforts =
+      id === 'claude-haiku-4-5' ? [] : supportsUltracode ? ultracode : standard;
+    return {
+      defaultReasoningEffort: reasoningEfforts.length ? 'high' : null,
+      id,
+      isDefault: id === 'claude-sonnet-5',
+      name: displayName(id),
+      reasoningEfforts,
+    };
+  });
+}
+
+function piReasoningOptions(model: {
+  reasoning?: unknown;
+  thinkingLevelMap?: unknown;
+}): AgentProviderModelOption[] {
+  if (model.reasoning !== true) return [];
+  const levelMap =
+    model.thinkingLevelMap && typeof model.thinkingLevelMap === 'object'
+      ? (model.thinkingLevelMap as Record<string, unknown>)
+      : null;
+  return reasoningOptions(
+    REASONING_LEVELS.filter((level) => {
+      const mapped = levelMap?.[level];
+      return level === 'xhigh' || level === 'max'
+        ? mapped !== undefined && mapped !== null
+        : mapped !== null;
+    }),
+  );
+}
+
+function reasoningOptions(ids: readonly string[]): AgentProviderModelOption[] {
+  return ids.map((id) => ({ id, name: reasoningLabel(id) }));
+}
+
+function reasoningLabel(id: string): string {
+  return (
+    (
+      {
+        high: '高',
+        low: '低',
+        max: '最高',
+        medium: '中',
+        minimal: '最低',
+        none: '关闭',
+        ultracode: 'Ultracode',
+        xhigh: '超高',
+      } as Record<string, string>
+    )[id] ?? displayName(id)
+  );
 }
 
 function displayName(id: string): string {

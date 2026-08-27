@@ -6,6 +6,11 @@ import type {
   NativeAgentRuntimeHandlers,
 } from './agent-runtime.js';
 import { JsonLineProcess } from './json-line-process.js';
+import {
+  MODEL_CONFIG_ID,
+  REASONING_EFFORT_CONFIG_ID,
+  modelConfigOptions,
+} from './model-config.js';
 
 interface PiRuntimeOptions {
   binary: string;
@@ -13,6 +18,7 @@ interface PiRuntimeOptions {
   handlers: NativeAgentRuntimeHandlers;
   models: AgentProviderModel[];
   selectedModel?: string;
+  selectedReasoningEffort?: string;
   sessionPath: string | null;
 }
 
@@ -34,6 +40,7 @@ export class PiRuntime implements AgentRuntime {
   readonly #process: JsonLineProcess;
   #closed = false;
   #model: string | undefined;
+  #reasoningEffort: string | undefined;
   #requestId = 0;
   #turn: Deferred<string> | null = null;
 
@@ -41,6 +48,8 @@ export class PiRuntime implements AgentRuntime {
     this.#handlers = options.handlers;
     this.#models = options.models;
     this.#model = options.selectedModel ?? defaultModel(options.models);
+    this.#reasoningEffort = options.selectedReasoningEffort;
+    this.#reasoningEffort = this.#resolvedReasoningEffort();
     this.#process = new JsonLineProcess({
       args: ['--mode', 'rpc', '--approve'],
       binary: options.binary,
@@ -73,6 +82,9 @@ export class PiRuntime implements AgentRuntime {
     }
     if (runtime.#model && runtime.#model !== 'default') {
       await runtime.#selectModel(runtime.#model);
+    }
+    if (runtime.#reasoningEffort) {
+      await runtime.#setReasoningEffort(runtime.#reasoningEffort);
     }
     const state = await runtime.#request({ type: 'get_state' });
     const data = record(state.data);
@@ -118,10 +130,23 @@ export class PiRuntime implements AgentRuntime {
     configId: string,
     value: boolean | string,
   ): Promise<AgentSessionConfig[]> {
-    if (configId !== 'model' || typeof value !== 'string') {
+    if (typeof value !== 'string') {
       throw new Error('Pi 会话配置无效。');
     }
-    return this.setModel(configId, value, this.#configOptions());
+    if (configId === MODEL_CONFIG_ID) {
+      return this.setModel(configId, value, this.#configOptions());
+    }
+    if (
+      configId !== REASONING_EFFORT_CONFIG_ID ||
+      !this.#currentModel()?.reasoningEfforts.some(
+        (effort) => effort.id === value,
+      )
+    ) {
+      throw new Error('Pi 推理强度无效。');
+    }
+    await this.#setReasoningEffort(value);
+    this.#reasoningEffort = value;
+    return this.#configOptions();
   }
 
   async setModel(
@@ -130,13 +155,18 @@ export class PiRuntime implements AgentRuntime {
     _configOptions: AgentSessionConfig[],
   ): Promise<AgentSessionConfig[]> {
     if (
-      configId !== 'model' ||
+      configId !== MODEL_CONFIG_ID ||
       !this.#models.some((model) => model.id === modelId)
     ) {
       throw new Error('Pi 模型无效。');
     }
     if (modelId !== 'default') await this.#selectModel(modelId);
     this.#model = modelId;
+    const effort = this.#resolvedReasoningEffort();
+    if (effort && effort !== this.#reasoningEffort) {
+      await this.#setReasoningEffort(effort);
+    }
+    this.#reasoningEffort = effort;
     return this.#configOptions();
   }
 
@@ -168,6 +198,10 @@ export class PiRuntime implements AgentRuntime {
       provider: model.slice(0, separator),
       type: 'set_model',
     });
+  }
+
+  async #setReasoningEffort(level: string): Promise<void> {
+    await this.#request({ level, type: 'set_thinking_level' });
   }
 
   #request(value: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -259,17 +293,25 @@ export class PiRuntime implements AgentRuntime {
   }
 
   #configOptions(): AgentSessionConfig[] {
-    if (!this.#model || !this.#models.length) return [];
-    return [
-      {
-        category: 'model',
-        currentValue: this.#model,
-        id: 'model',
-        name: '模型',
-        options: this.#models.map(({ id, name }) => ({ name, value: id })),
-        type: 'select',
-      },
-    ];
+    return modelConfigOptions(
+      this.#models,
+      this.#model,
+      this.#resolvedReasoningEffort(),
+    );
+  }
+
+  #currentModel(): AgentProviderModel | undefined {
+    return this.#models.find((model) => model.id === this.#model);
+  }
+
+  #resolvedReasoningEffort(): string | undefined {
+    const model = this.#currentModel();
+    if (!model?.reasoningEfforts.length) return undefined;
+    return model.reasoningEfforts.some(
+      (effort) => effort.id === this.#reasoningEffort,
+    )
+      ? this.#reasoningEffort
+      : (model.defaultReasoningEffort ?? model.reasoningEfforts[0]?.id);
   }
 }
 
