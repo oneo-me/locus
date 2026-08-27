@@ -8,6 +8,8 @@ import {
 } from 'react-router';
 import type { Route } from './+types/root';
 import '@locus/ui/styles.css';
+import '@locus/markdown-ui/styles.css';
+import '@locus/document-library-ui/styles.css';
 import '@shellweb/core/style.css';
 import logoUrl from './assets/logo.png';
 

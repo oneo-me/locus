@@ -43,7 +43,7 @@ import {
   Collapsible,
   CollapsibleContent,
 } from '@locus/ui/components/collapsible';
-import { DocumentIcon } from '../document/icons';
+import { DocumentIcon } from '@locus/document-library-ui/icons';
 import { cn } from '@locus/ui/utils';
 import type { LibraryWorkspaceView } from '@locus/document-library/contracts/library-api';
 import { useDocumentApi } from '~/lib/document-api-context';

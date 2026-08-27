@@ -1,17 +1,14 @@
 import type { ComarkPlugin, ElementNode, Node } from 'comark';
 import { CircleAlertIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+// @ts-ignore Vite resolves the browser script as a public asset URL.
+import tailwindBrowserScriptUrl from '@tailwindcss/browser?url';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
 } from '@locus/ui/components/alert';
-import {
-  getAssetUrl,
-  getMarkdownAssetName,
-} from '@locus/document-library/contracts/asset';
-import { documentIconName } from '@locus/document-library/contracts/document-icon';
-import { useDocumentApi } from '../../lib/document-api-context';
+import type { MarkdownUiExtension } from '@locus/markdown-ui';
 
 const invalidCanvasContentMessage =
   '请在 ::canvas 区域中仅放置一个 html fenced code block。';
@@ -21,14 +18,14 @@ const canvasResizeMessageType = 'locus:canvas-resize';
 const canvasSnapshotMessageType = 'locus:canvas-snapshot';
 const canvasActionMessageType = 'locus:canvas-action';
 const defaultCanvasHeight = 160;
-const tailwindBrowserScriptUrl = new URL(
-  '../../../node_modules/@tailwindcss/browser/dist/index.global.js',
-  import.meta.url,
-).href;
-
 interface CanvasDescriptor {
   source: string;
 }
+
+export type ResolveCanvasUrl = (
+  source: string,
+  attribute: 'href' | 'poster' | 'src',
+) => string | null;
 
 function isElement(node: Node | undefined): node is ElementNode {
   return Array.isArray(node) && typeof node[0] === 'string';
@@ -111,19 +108,44 @@ function CanvasError({
   );
 }
 
+export interface CanvasBlockProps {
+  'aria-describedby'?: string;
+  assetOrigins?: readonly string[];
+  error?: unknown;
+  loadAssetAsDataUrl?: (url: string) => Promise<string | null>;
+  onOpenDirectory?: (path: string) => Promise<unknown>;
+  resolveUrl?: ResolveCanvasUrl;
+  source?: unknown;
+}
+
+export type CanvasMarkdownExtensionOptions = Omit<
+  CanvasBlockProps,
+  'aria-describedby' | 'error' | 'source'
+>;
+
+export function createCanvasMarkdownExtension(
+  options: CanvasMarkdownExtensionOptions = {},
+): MarkdownUiExtension {
+  return {
+    components: {
+      canvas: (props: CanvasBlockProps) => (
+        <CanvasBlock {...props} {...options} />
+      ),
+    },
+    elementNames: ['canvas'],
+    plugins: [createCanvasPlugin()],
+  };
+}
+
 export function CanvasBlock({
   'aria-describedby': describedBy,
-  assets = [],
-  documentPath,
+  assetOrigins = [],
   error,
+  loadAssetAsDataUrl,
+  onOpenDirectory,
+  resolveUrl,
   source,
-}: {
-  'aria-describedby'?: string;
-  assets?: string[];
-  documentPath: string;
-  error?: unknown;
-  source?: unknown;
-}) {
+}: CanvasBlockProps) {
   if (typeof error === 'string') {
     return <CanvasError describedBy={describedBy} message={error} />;
   }
@@ -140,65 +162,14 @@ export function CanvasBlock({
 
   return (
     <CanvasSurface
-      assets={assets}
       canvas={canvas}
       describedBy={describedBy}
-      documentPath={documentPath}
+      assetOrigins={assetOrigins}
+      loadAssetAsDataUrl={loadAssetAsDataUrl}
+      onOpenDirectory={onOpenDirectory}
+      resolveUrl={resolveUrl}
     />
   );
-}
-
-function resolveCanvasDocumentIconUrl(
-  source: string,
-  documentPath: string,
-): string | null {
-  if (
-    !source ||
-    source.startsWith('/') ||
-    source.startsWith('//') ||
-    /^[a-z][a-z\d+.-]*:/i.test(source)
-  ) {
-    return null;
-  }
-
-  const pathEnd = source.search(/[?#]/);
-  const encodedPath = pathEnd < 0 ? source : source.slice(0, pathEnd);
-  let decodedPath: string;
-  try {
-    decodedPath = decodeURIComponent(encodedPath).normalize('NFC');
-  } catch {
-    return null;
-  }
-
-  const segments = decodedPath.replace(/^\.\//, '').split('/');
-  if (
-    segments.length === 0 ||
-    segments.some(
-      (segment) => !segment || segment === '.' || segment === '..',
-    ) ||
-    segments.at(-1)?.toLowerCase() !== documentIconName
-  ) {
-    return null;
-  }
-
-  const documentDirectory = canvasDocumentDirectory(documentPath);
-  if (documentDirectory === null) return null;
-
-  const iconDirectory = [documentDirectory, ...segments.slice(0, -1)]
-    .filter(Boolean)
-    .join('/');
-  const iconDocumentPath = iconDirectory
-    ? `${iconDirectory}/index.md`
-    : 'index.md';
-  return getAssetUrl(iconDocumentPath, documentIconName);
-}
-
-function canvasDocumentDirectory(documentPath: string): string | null {
-  return documentPath.endsWith('/index.md')
-    ? documentPath.slice(0, -'/index.md'.length)
-    : documentPath === 'index.md'
-      ? ''
-      : null;
 }
 
 function remoteHttpUrl(href: string): URL | null {
@@ -231,8 +202,7 @@ function canvasDirectoryAction(href: string): { path: string } | null {
 
 function sanitizeCanvasFragment(
   source: string,
-  documentPath: string,
-  assets: string[],
+  resolveUrl?: ResolveCanvasUrl,
 ): string {
   const template = document.createElement('template');
   template.innerHTML = source;
@@ -252,23 +222,12 @@ function sanitizeCanvasFragment(
         continue;
       }
       if (name === 'src' || name === 'poster') {
-        const assetName = getMarkdownAssetName(
-          documentPath,
-          assets,
+        const resolved = resolveUrl?.(
           attribute.value,
+          name as 'poster' | 'src',
         );
-        if (assetName) {
-          element.setAttribute(
-            attribute.name,
-            getAssetUrl(documentPath, assetName),
-          );
-          continue;
-        }
-        const iconUrl = resolveCanvasDocumentIconUrl(
-          attribute.value,
-          documentPath,
-        );
-        if (iconUrl) element.setAttribute(attribute.name, iconUrl);
+        if (resolved) element.setAttribute(attribute.name, resolved);
+        else element.removeAttribute(attribute.name);
         continue;
       }
       if (
@@ -276,16 +235,9 @@ function sanitizeCanvasFragment(
         attribute.value &&
         !attribute.value.startsWith('#')
       ) {
-        const assetName = getMarkdownAssetName(
-          documentPath,
-          assets,
-          attribute.value,
-        );
-        if (assetName) {
-          element.setAttribute(
-            attribute.name,
-            getAssetUrl(documentPath, assetName),
-          );
+        const resolved = resolveUrl?.(attribute.value, 'href');
+        if (resolved) {
+          element.setAttribute(attribute.name, resolved);
         } else if (
           name === 'href' &&
           element.tagName === 'A' &&
@@ -318,14 +270,15 @@ function currentCanvasTheme(): CanvasTheme {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 
-function canvasContentSecurityPolicy(assetOrigin: string): string {
+function canvasContentSecurityPolicy(assetOrigins: readonly string[]): string {
+  const assetSources = assetOrigins.join(' ');
   return [
     "default-src 'none'",
-    `img-src data: blob: ${assetOrigin}`,
+    `img-src data: blob: ${assetSources}`,
     "style-src 'unsafe-inline'",
-    `script-src 'unsafe-inline' ${tailwindBrowserScriptUrl}`,
+    `script-src 'unsafe-inline' ${assetSources}`,
     'font-src data:',
-    `media-src data: blob: ${assetOrigin}`,
+    `media-src data: blob: ${assetSources}`,
     "connect-src 'none'",
     "frame-src 'none'",
     "object-src 'none'",
@@ -440,7 +393,11 @@ else start();
 })();</script>`;
 }
 
-async function inlineCanvasAssets(source: string): Promise<string> {
+async function inlineCanvasAssets(
+  source: string,
+  loadAssetAsDataUrl?: (url: string) => Promise<string | null>,
+): Promise<string> {
+  if (!loadAssetAsDataUrl) return source;
   const template = document.createElement('template');
   template.innerHTML = source;
   const references = [
@@ -448,49 +405,29 @@ async function inlineCanvasAssets(source: string): Promise<string> {
   ].flatMap((element) =>
     ['src', 'poster'].flatMap((attribute) => {
       const sourceUrl = element.getAttribute(attribute);
-      return sourceUrl?.startsWith('/api/assets?')
-        ? [{ attribute, element, sourceUrl }]
-        : [];
+      return sourceUrl ? [{ attribute, element, sourceUrl }] : [];
     }),
   );
   await Promise.all(
     references.map(async ({ attribute, element, sourceUrl }) => {
-      const dataUrl = await readCanvasAssetDataUrl(sourceUrl);
+      const dataUrl = await loadAssetAsDataUrl(sourceUrl);
       if (dataUrl) element.setAttribute(attribute, dataUrl);
     }),
   );
   return template.innerHTML;
 }
 
-async function readCanvasAssetDataUrl(
-  sourceUrl: string,
-): Promise<string | null> {
-  try {
-    const response = await fetch(sourceUrl);
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.addEventListener('error', () => reject(reader.error));
-      reader.addEventListener('load', () => {
-        if (typeof reader.result === 'string') resolve(reader.result);
-        else reject(new Error('无法读取画布附件。'));
-      });
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
-
-function canvasDocument(source: string, theme: CanvasTheme): string {
-  const assetOrigin = globalThis.location.origin;
+function canvasDocument(
+  source: string,
+  theme: CanvasTheme,
+  assetOrigins: readonly string[],
+): string {
   return [
     '<!doctype html>',
     `<html class="${theme}" lang="zh-CN" style="color-scheme:${theme}">`,
     '<head>',
     '<meta charset="utf-8">',
-    `<meta http-equiv="Content-Security-Policy" content="${canvasContentSecurityPolicy(assetOrigin)}">`,
+    `<meta http-equiv="Content-Security-Policy" content="${canvasContentSecurityPolicy(assetOrigins)}">`,
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     '<style type="text/tailwindcss">@custom-variant dark (&:where(.dark, .dark *));</style>',
     `<script>window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||data.type!=="${canvasThemeMessageType}")return;var theme=data.theme==="dark"?"dark":"light";document.documentElement.classList.remove("light","dark");document.documentElement.classList.add(theme);document.documentElement.style.colorScheme=theme;});</script>`,
@@ -503,17 +440,20 @@ function canvasDocument(source: string, theme: CanvasTheme): string {
 }
 
 function CanvasSurface({
-  assets,
+  assetOrigins,
   canvas,
   describedBy,
-  documentPath,
+  loadAssetAsDataUrl,
+  onOpenDirectory,
+  resolveUrl,
 }: {
-  assets: string[];
+  assetOrigins: readonly string[];
   canvas: CanvasDescriptor;
   describedBy?: string;
-  documentPath: string;
+  loadAssetAsDataUrl?: (url: string) => Promise<string | null>;
+  onOpenDirectory?: (path: string) => Promise<unknown>;
+  resolveUrl?: ResolveCanvasUrl;
 }) {
-  const { openLocalDirectory } = useDocumentApi();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const snapshotUrlRef = useRef<string | null>(null);
   const [frameHeight, setFrameHeight] = useState(defaultCanvasHeight);
@@ -523,19 +463,19 @@ function CanvasSurface({
 
   useEffect(() => {
     let current = true;
-    const sanitizedSource = sanitizeCanvasFragment(
-      canvas.source,
-      documentPath,
-      assets,
+    const sanitizedSource = sanitizeCanvasFragment(canvas.source, resolveUrl);
+    void inlineCanvasAssets(sanitizedSource, loadAssetAsDataUrl).then(
+      (preparedSource) => {
+        if (!current) return;
+        setSourceDocument(
+          canvasDocument(preparedSource, currentCanvasTheme(), assetOrigins),
+        );
+      },
     );
-    void inlineCanvasAssets(sanitizedSource).then((preparedSource) => {
-      if (!current) return;
-      setSourceDocument(canvasDocument(preparedSource, currentCanvasTheme()));
-    });
     return () => {
       current = false;
     };
-  }, [assets, canvas.source, documentPath]);
+  }, [assetOrigins, canvas.source, loadAssetAsDataUrl, resolveUrl]);
 
   useEffect(() => {
     function receiveCanvasMessage(event: MessageEvent) {
@@ -548,9 +488,9 @@ function CanvasSurface({
         typeof data.href === 'string'
       ) {
         const action = canvasDirectoryAction(data.href);
-        if (!action) return;
+        if (!action || !onOpenDirectory) return;
         setActionError(undefined);
-        void openLocalDirectory(action).catch((error: unknown) => {
+        void onOpenDirectory(action.path).catch((error: unknown) => {
           const message =
             error instanceof Error ? error.message : String(error);
           setActionError(`打开目录失败：${message}`);
@@ -584,7 +524,7 @@ function CanvasSurface({
 
     window.addEventListener('message', receiveCanvasMessage);
     return () => window.removeEventListener('message', receiveCanvasMessage);
-  }, [openLocalDirectory]);
+  }, [onOpenDirectory]);
 
   useEffect(
     () => () => {

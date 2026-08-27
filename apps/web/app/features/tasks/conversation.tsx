@@ -21,7 +21,7 @@ import { Alert, AlertDescription } from '@locus/ui/components/alert';
 import { Button } from '@locus/ui/components/button';
 import { Separator } from '@locus/ui/components/separator';
 import { cn } from '@locus/ui/utils';
-import { MarkdownRenderer } from '~/components/markdown/renderer';
+import { MarkdownRenderer } from '@locus/markdown-ui';
 import { AgentComposer } from './composer';
 import { NewTask } from './new-task';
 import type { AgentProject } from '@locus/agent/contracts/conversation';

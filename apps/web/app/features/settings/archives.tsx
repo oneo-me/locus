@@ -13,7 +13,7 @@ import {
   EmptyTitle,
 } from '@locus/ui/components/empty';
 import { useDocumentApi } from '~/lib/document-api-context';
-import { DocumentIcon } from '../document/icons';
+import { DocumentIcon } from '@locus/document-library-ui/icons';
 import { SettingsPage } from './page';
 import { SettingsRow, SettingsSection } from './section';
 

@@ -3,9 +3,16 @@ import {
   urlPathToDocumentPath,
 } from '@locus/document-library/contracts/library-route';
 import type { LibrarySelectionSourceView } from '@locus/document-library/contracts/library-api';
-import { DocumentBrowser } from '~/features/document/browser';
-import { prepareLibrarySelectionView } from '~/features/document/markdown-parser';
+import {
+  DocumentBrowser,
+  DocumentLibraryUiProvider,
+} from '@locus/document-library-ui';
+import {
+  prepareLibrarySelectionView,
+  useDocumentLibraryUiRuntime,
+} from '~/features/document/runtime';
 import { useWorkspaceLibraryData } from '~/features/workspace/shell';
+import { useTerminalPanel } from '~/features/terminal/panel';
 import { apiGet } from '~/lib/api-client';
 import { useEffect } from 'react';
 import { useLocation, useNavigation, useRevalidator } from 'react-router';
@@ -27,6 +34,8 @@ export default function WorkspaceDocumentRoute({
   const location = useLocation();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
+  const terminal = useTerminalPanel();
+  const documentLibraryUiRuntime = useDocumentLibraryUiRuntime();
   const selectionPending =
     navigation.state === 'loading' &&
     navigation.location.pathname !== location.pathname;
@@ -47,9 +56,19 @@ export default function WorkspaceDocumentRoute({
   ]);
 
   return (
-    <DocumentBrowser
-      data={{ ...workspace, ...loaderData }}
-      selectionPending={selectionPending}
-    />
+    <DocumentLibraryUiProvider runtime={documentLibraryUiRuntime}>
+      <DocumentBrowser
+        data={{
+          documents: workspace.documents,
+          libraryState: workspace.libraryState,
+          rootPath: workspace.status.rootPath,
+          selected: loaderData.selected,
+          selectedPath: loaderData.selectedPath,
+          selectionError: loaderData.selectionError,
+        }}
+        selectionPending={selectionPending}
+        terminal={terminal}
+      />
+    </DocumentLibraryUiProvider>
   );
 }

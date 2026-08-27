@@ -20,14 +20,13 @@ import {
   DialogTitle,
 } from '@locus/ui/components/dialog';
 import {
-  getAssetUrl,
-  getAssetThumbnailUrl,
   getMarkdownAssetName,
   isBrowserViewableAsset,
   isPreviewableImageAsset,
 } from '@locus/document-library/contracts/asset';
 import { cn } from '@locus/ui/utils';
 import type { ImageSize } from '@locus/document-library/contracts/library-types';
+import { useDocumentLibraryUi } from './runtime';
 
 const invalidGalleryMessage =
   '请在 ::gallery 中只放置当前文章的本地图片附件，并为每张图片填写替代文本。';
@@ -237,6 +236,7 @@ function GalleryThumbnail({
   documentPath: string;
   onSelect: () => void;
 }) {
+  const { getAssetUrl } = useDocumentLibraryUi();
   const [failed, setFailed] = useState(false);
 
   return (
@@ -257,7 +257,7 @@ function GalleryThumbnail({
           height={item.height}
           loading="lazy"
           onError={() => setFailed(true)}
-          src={getAssetThumbnailUrl(documentPath, item.name)}
+          src={getAssetUrl(documentPath, item.name, { thumbnail: true })}
           width={item.width}
         />
       )}
@@ -272,6 +272,7 @@ function OriginalAttachmentImage({
   item: AttachmentImageItem;
   documentPath: string;
 }) {
+  const { getAssetUrl } = useDocumentLibraryUi();
   const [naturalSize, setNaturalSize] = useState({ height: 0, width: 0 });
   const [viewportSize, setViewportSize] = useState({ height: 0, width: 0 });
 
@@ -375,6 +376,7 @@ export function InlineAttachmentImage({
   documentPath: string;
   name: string;
 }) {
+  const { getAssetUrl } = useDocumentLibraryUi();
   const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState(false);
   const description = alt?.trim() || name;
@@ -403,7 +405,7 @@ export function InlineAttachmentImage({
               setFailed(true);
               onError?.(event);
             }}
-            src={getAssetThumbnailUrl(documentPath, name)}
+            src={getAssetUrl(documentPath, name, { thumbnail: true })}
           />
         )}
       </Button>
@@ -521,6 +523,7 @@ export function AttachmentList({
   error?: unknown;
   items?: unknown;
 }) {
+  const { getAssetUrl } = useDocumentLibraryUi();
   const items = attachmentItems(itemValue);
   if (typeof error === 'string') {
     return <AttachmentViewError kind="attachments" message={error} />;

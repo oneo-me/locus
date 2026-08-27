@@ -1,17 +1,11 @@
 import {
-  getDocumentIconUrl,
   getMarkdownAssetName,
   isPreviewableImageAsset,
-  resolveMarkdownAssetUrl,
 } from '@locus/document-library/contracts/asset';
+import { documentIconName } from '@locus/document-library/contracts/document-icon';
 import { LinkIcon } from 'lucide-react';
 import { type ComponentProps, useMemo, useState } from 'react';
-import { Link } from 'react-router';
-import {
-  type MarkdownComponents,
-  MarkdownRenderer,
-} from '../../components/markdown/renderer';
-import { CanvasBlock } from '../../components/markdown/canvas';
+import { type MarkdownComponents, MarkdownRenderer } from '@locus/markdown-ui';
 import { cn } from '@locus/ui/utils';
 import {
   AttachmentGallery,
@@ -25,7 +19,7 @@ import {
   type WikiLinkDocument,
 } from './wiki-link';
 import type { MarkdownDocument } from 'comark';
-import type { SerializedMarkdownTree } from '@locus/document-library/contracts/library-api';
+import { useDocumentLibraryUi } from './runtime';
 
 function DocumentCodeBlock({
   children,
@@ -51,6 +45,7 @@ function WikiLink({
   documentsByPath: ReadonlyMap<string, WikiLinkDocument>;
   path?: string;
 }) {
+  const { getAssetUrl, getDocumentHref, Link } = useDocumentLibraryUi();
   const rawPath = typeof path === 'string' ? path : '';
   const resolved = resolveWikiLink(rawPath, documentsByPath);
   if (!resolved) {
@@ -70,18 +65,21 @@ function WikiLink({
   return (
     <Link
       className="document-inline-link"
+      href={getDocumentHref(resolved.articlePath)}
       title={resolved.titlePath}
-      to={resolved.href}
     >
       {hasIcon ? (
         <span aria-hidden="true" data-icon="inline-start">
           <DocumentIcon
             className="size-full text-[0.65em]"
             icon={resolved.icon}
-            imageSrc={getDocumentIconUrl(
-              resolved.documentPath,
-              resolved.iconImageModifiedAt,
-            )}
+            imageSrc={
+              resolved.iconImageModifiedAt
+                ? getAssetUrl(resolved.documentPath, documentIconName, {
+                    version: resolved.iconImageModifiedAt,
+                  })
+                : null
+            }
           />
         </span>
       ) : null}
@@ -99,18 +97,12 @@ function remoteHttpUrl(href: string): URL | null {
   }
 }
 
-function remoteFaviconUrl(url: URL): string {
-  const search = new URLSearchParams({
-    domain_url: url.origin,
-    sz: '32',
-  });
-  return `https://www.google.com/s2/favicons?${search}`;
-}
-
 function RemoteLinkIcon({ url }: { url: URL }) {
+  const { getRemoteFaviconUrl } = useDocumentLibraryUi();
   const [failed, setFailed] = useState(false);
+  const faviconUrl = getRemoteFaviconUrl?.(url);
 
-  if (failed) {
+  if (failed || !faviconUrl) {
     return (
       <span aria-hidden="true" data-icon="inline-start">
         <LinkIcon className="size-full" />
@@ -127,7 +119,7 @@ function RemoteLinkIcon({ url }: { url: URL }) {
         loading="lazy"
         onError={() => setFailed(true)}
         referrerPolicy="no-referrer"
-        src={remoteFaviconUrl(url)}
+        src={faviconUrl}
       />
     </span>
   );
@@ -144,8 +136,14 @@ function MarkdownLink({
   documentPath: string;
   href?: string;
 }) {
+  const { getAssetUrl } = useDocumentLibraryUi();
+  const assetName = href
+    ? getMarkdownAssetName(documentPath, assets, href)
+    : null;
   const resolvedHref = href
-    ? resolveMarkdownAssetUrl(documentPath, assets, href)
+    ? assetName
+      ? getAssetUrl(documentPath, assetName)
+      : href
     : undefined;
   const remoteUrl = resolvedHref ? remoteHttpUrl(resolvedHref) : null;
 
@@ -170,13 +168,24 @@ function DocumentMarkdown({
   documents,
 }: {
   assets: string[];
-  content: SerializedMarkdownTree;
+  content: MarkdownDocument;
   documentPath: string;
   documents: readonly WikiLinkDocument[];
 }) {
+  const { createMarkdownExtensions, getAssetUrl } = useDocumentLibraryUi();
   const documentsByPath = useMemo(
     () => createWikiLinkDocumentMap(documents),
     [documents],
+  );
+  const extensionComponents = useMemo(
+    () =>
+      Object.assign(
+        {},
+        ...(createMarkdownExtensions?.({ assets, documentPath }) ?? []).map(
+          (extension) => extension.components ?? {},
+        ),
+      ),
+    [assets, createMarkdownExtensions, documentPath],
   );
   const components = useMemo<MarkdownComponents>(
     () => ({
@@ -188,13 +197,6 @@ function DocumentMarkdown({
       ),
       attachments: (props: { error?: unknown; items?: unknown }) => (
         <AttachmentList {...props} documentPath={documentPath} />
-      ),
-      canvas: (props: {
-        error?: unknown;
-        height?: unknown;
-        source?: unknown;
-      }) => (
-        <CanvasBlock {...props} assets={assets} documentPath={documentPath} />
       ),
       gallery: (props: { error?: unknown; items?: unknown }) => (
         <AttachmentGallery {...props} documentPath={documentPath} />
@@ -218,24 +220,21 @@ function DocumentMarkdown({
           <img
             {...props}
             alt={alt ?? ''}
-            src={
-              src
-                ? resolveMarkdownAssetUrl(documentPath, assets, src)
-                : undefined
-            }
+            src={src && assetName ? getAssetUrl(documentPath, assetName) : src}
           />
         );
       },
       pre: DocumentCodeBlock,
+      ...extensionComponents,
     }),
-    [assets, documentPath, documentsByPath],
+    [assets, extensionComponents, documentPath, documentsByPath, getAssetUrl],
   );
 
   return (
     <MarkdownRenderer
       className="space-y-5"
       components={components}
-      value={content as MarkdownDocument}
+      value={content}
     />
   );
 }
@@ -247,7 +246,7 @@ export function MarkdownContent({
   documents = [],
 }: {
   assets: string[];
-  content: SerializedMarkdownTree;
+  content: MarkdownDocument;
   documentPath: string;
   documents?: readonly WikiLinkDocument[];
 }) {

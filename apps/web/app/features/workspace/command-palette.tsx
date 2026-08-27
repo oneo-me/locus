@@ -35,12 +35,10 @@ import {
 import { Spinner } from '@locus/ui/components/spinner';
 import { apiGet } from '~/lib/api-client';
 import { useDocumentApi } from '~/lib/document-api-context';
-import {
-  copyDocumentText,
-  formatDocumentReference,
-} from '../document/document-actions';
-import { DocumentIcon } from '../document/icons';
+import { formatDocumentReference } from '@locus/document-library-ui/document-actions';
+import { DocumentIcon } from '@locus/document-library-ui/icons';
 import { useTerminalPanel } from '../terminal/panel';
+import { copyText } from '~/lib/clipboard';
 
 type DocumentAction = 'copy' | 'directory' | 'terminal' | 'vscode';
 
@@ -200,10 +198,7 @@ export function AppCommandPalette({
     setActionError(null);
     try {
       if (action === 'copy') {
-        const copied = await copyDocumentText(
-          formatDocumentReference(currentDocument.directory),
-        );
-        if (!copied) throw new Error('无法写入剪贴板。');
+        await copyText(formatDocumentReference(currentDocument.directory));
       } else if (action === 'terminal') {
         showTerminal();
       } else {

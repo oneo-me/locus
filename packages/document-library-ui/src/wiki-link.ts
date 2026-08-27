@@ -1,8 +1,5 @@
 import { parseWikiLinkArticlePath } from '@locus/document-library/contracts/wiki-link-path';
-import {
-  urlPathToDocumentPath,
-  urlPathToHref,
-} from '@locus/document-library/contracts/library-route';
+import { urlPathToDocumentPath } from '@locus/document-library/contracts/library-route';
 import type { ComarkPlugin, MarkdownItPlugin } from 'comark';
 
 export interface WikiLinkDocument {
@@ -15,7 +12,6 @@ export interface WikiLinkDocument {
 export interface ResolvedWikiLink {
   articlePath: string;
   documentPath: string;
-  href: string;
   icon: string | null;
   iconImageModifiedAt: string | null;
   label: string;
@@ -62,7 +58,6 @@ export function resolveWikiLink(
   return {
     articlePath,
     documentPath,
-    href: urlPathToHref(articlePath),
     icon: document.icon ?? null,
     iconImageModifiedAt: document.iconImageModifiedAt ?? null,
     label: document.title,

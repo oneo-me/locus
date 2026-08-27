@@ -1,10 +1,13 @@
-import { getDocumentIconUrl } from '@locus/document-library/contracts/asset';
+import { documentIconName } from '@locus/document-library/contracts/document-icon';
 import {
-  type LibrarySelectionView,
-  type LibraryWorkspaceView,
-} from '@locus/document-library/contracts/library-api';
-import { documentGraphParticipation } from '@locus/document-library/contracts/library-state';
-import type { DocumentContent } from '@locus/document-library/contracts/library-types';
+  documentGraphParticipation,
+  type LibraryState,
+} from '@locus/document-library/contracts/library-state';
+import type {
+  DocumentContent,
+  DocumentSummary,
+} from '@locus/document-library/contracts/library-types';
+import type { MarkdownDocument } from 'comark';
 import {
   CircleAlertIcon,
   CopyIcon,
@@ -19,7 +22,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Link, useRevalidator } from 'react-router';
 import { Alert, AlertDescription } from '@locus/ui/components/alert';
 import { Button } from '@locus/ui/components/button';
 import {
@@ -29,22 +31,45 @@ import {
   EmptyTitle,
 } from '@locus/ui/components/empty';
 import { cn } from '@locus/ui/utils';
-import { useDocumentApi } from '~/lib/document-api-context';
 import { deriveDocumentThemeHue } from './atmosphere';
 import { MarkdownContent } from './markdown';
 import { DocumentHeaderAtmosphere } from './header-atmosphere';
 import { processDocumentIconFile } from './icon-image';
 import { DocumentIconUpload, DocumentMenu } from './document-menu';
-import { copyDocumentText, formatDocumentReference } from './document-actions';
-import { useTerminalPanel } from '../terminal/panel';
+import { formatDocumentReference } from './document-actions';
+import { useDocumentLibraryUi } from './runtime';
+
+export interface DocumentTerminalControls {
+  open: boolean;
+  toggle: () => Promise<void>;
+}
+
+export type DocumentNavigationItem = Pick<
+  DocumentSummary,
+  'icon' | 'iconImageModifiedAt' | 'path' | 'title'
+>;
+
+export interface DocumentBrowserData {
+  documents: readonly DocumentNavigationItem[];
+  libraryState: LibraryState;
+  rootPath: string;
+  selected:
+    | (Omit<DocumentContent, 'content'> & { content: MarkdownDocument })
+    | null;
+  selectedPath: string | null;
+  selectionError: string | null;
+}
 
 export function DocumentBrowser({
   data,
   selectionPending = false,
+  terminal,
 }: {
-  data: LibraryWorkspaceView & LibrarySelectionView;
+  data: DocumentBrowserData;
   selectionPending?: boolean;
+  terminal?: DocumentTerminalControls;
 }) {
+  const { getDocumentHref, Link } = useDocumentLibraryUi();
   return (
     <>
       <main
@@ -57,7 +82,7 @@ export function DocumentBrowser({
         {data.selectionError ? (
           <MessageState title="无法打开文档">
             <p>{data.selectionError}</p>
-            <Link to="/notes">返回笔记导航</Link>
+            <Link href={getDocumentHref('')}>返回笔记导航</Link>
           </MessageState>
         ) : data.selected ? (
           <DocumentArticle
@@ -68,12 +93,13 @@ export function DocumentBrowser({
               data.libraryState,
               data.selected.path,
             )}
+            terminal={terminal}
           />
         ) : data.selectedPath ? null : data.documents.length === 0 ? (
           <MessageState title="文档库还是空的">
             <p>
-              在 <code>{data.status.rootPath}</code>{' '}
-              下新建文章目录，并在其中加入 <code>index.md</code>
+              在 <code>{data.rootPath}</code> 下新建文章目录，并在其中加入{' '}
+              <code>index.md</code>
               ，页面会自动建立索引。
             </p>
           </MessageState>
@@ -92,13 +118,14 @@ function DocumentArticle({
   document,
   documents,
   graphParticipation,
+  terminal,
 }: {
-  document: NonNullable<LibrarySelectionView['selected']>;
-  documents: LibraryWorkspaceView['documents'];
+  document: NonNullable<DocumentBrowserData['selected']>;
+  documents: DocumentBrowserData['documents'];
   graphParticipation: ReturnType<typeof documentGraphParticipation>;
+  terminal?: DocumentTerminalControls;
 }) {
-  const { updateDocumentIconImage } = useDocumentApi();
-  const { revalidate } = useRevalidator();
+  const { getAssetUrl, updateDocumentIconImage } = useDocumentLibraryUi();
   const [iconPending, setIconPending] = useState(false);
   const [iconError, setIconError] = useState<string | null>(null);
 
@@ -107,11 +134,7 @@ function DocumentArticle({
     setIconError(null);
     try {
       const dataBase64 = await processDocumentIconFile(file);
-      await updateDocumentIconImage({
-        path: document.path,
-        dataBase64,
-      });
-      await revalidate();
+      await updateDocumentIconImage(document.path, dataBase64);
     } catch (error) {
       setIconError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -134,22 +157,25 @@ function DocumentArticle({
           <DocumentActions
             documentPath={document.path}
             referencePath={document.directory}
+            terminal={terminal}
           >
             <DocumentMenu
               archived={document.archived}
               documentPath={document.path}
               graphParticipation={graphParticipation}
-              onGraphParticipationSaved={revalidate}
             />
           </DocumentActions>
         }
         icon={
           <DocumentIconUpload
             icon={document.icon}
-            iconImageSrc={getDocumentIconUrl(
-              document.path,
-              document.iconImageModifiedAt,
-            )}
+            iconImageSrc={
+              document.iconImageModifiedAt
+                ? getAssetUrl(document.path, documentIconName, {
+                    version: document.iconImageModifiedAt,
+                  })
+                : null
+            }
             onUpload={saveIconImage}
             pending={iconPending}
           />
@@ -179,14 +205,15 @@ export function DocumentActions({
   children,
   documentPath,
   referencePath,
+  terminal,
 }: {
   children?: ReactNode;
   documentPath: string;
   referencePath: string;
+  terminal?: DocumentTerminalControls;
 }) {
-  const { openDocument } = useDocumentApi();
-  const { open: terminalOpen, toggle: toggleTerminalPanel } =
-    useTerminalPanel();
+  const { copyReference, openDocument } = useDocumentLibraryUi();
+  const terminalOpen = terminal?.open ?? false;
   const [pendingAction, setPendingAction] = useState<
     'directory' | 'terminal' | 'vscode' | null
   >(null);
@@ -194,15 +221,19 @@ export function DocumentActions({
 
   const copyValue = async (value: string) => {
     setActionStatus(null);
-    const copied = await copyDocumentText(value);
-    setActionStatus(copied ? '已复制文章引用' : '文章引用复制失败');
+    try {
+      await copyReference(value);
+      setActionStatus('已复制文章引用');
+    } catch {
+      setActionStatus('文章引用复制失败');
+    }
   };
 
   const open = async (target: 'directory' | 'vscode') => {
     setPendingAction(target);
     setActionStatus(null);
     try {
-      await openDocument({ path: documentPath, target });
+      await openDocument(documentPath, target);
       setActionStatus(
         target === 'directory' ? '已打开目录' : '已在 VS Code 中打开',
       );
@@ -220,7 +251,7 @@ export function DocumentActions({
     setPendingAction('terminal');
     setActionStatus(null);
     try {
-      await toggleTerminalPanel();
+      await terminal?.toggle();
       if (terminalOpen) setActionStatus('终端会话已关闭');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -273,7 +304,7 @@ export function DocumentActions({
       <Button
         aria-label={terminalOpen ? '关闭文档库终端' : '显示文档库终端'}
         className="document-theme-button"
-        disabled={pendingAction !== null}
+        disabled={!terminal || pendingAction !== null}
         onClick={() => void toggleTerminal()}
         size="icon-sm"
         title={terminalOpen ? '关闭文档库终端' : '显示文档库终端'}

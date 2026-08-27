@@ -1,6 +1,5 @@
 import { EllipsisIcon } from 'lucide-react';
 import { lazy, Suspense, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
 import type { documentGraphParticipation } from '@locus/document-library/contracts/library-state';
 import { Button } from '@locus/ui/components/button';
 import {
@@ -9,8 +8,8 @@ import {
   PopoverTrigger,
 } from '@locus/ui/components/popover';
 import { Separator } from '@locus/ui/components/separator';
-import { useDocumentApi } from '~/lib/document-api-context';
 import { DocumentIcon } from './icons';
+import { useDocumentLibraryUi } from './runtime';
 
 const Switch = lazy(() =>
   import('@locus/ui/components/switch').then((module) => ({
@@ -31,16 +30,13 @@ export function DocumentMenu({
   archived,
   documentPath,
   graphParticipation,
-  onGraphParticipationSaved,
 }: {
   archived: boolean;
   documentPath: string;
   graphParticipation: ReturnType<typeof documentGraphParticipation>;
-  onGraphParticipationSaved?: () => void | Promise<void>;
 }) {
   const { setDocumentArchived, setDocumentGraphParticipation } =
-    useDocumentApi();
-  const navigate = useNavigate();
+    useDocumentLibraryUi();
   const [participates, setParticipates] = useState(
     graphParticipation.configured,
   );
@@ -56,12 +52,11 @@ export function DocumentMenu({
     setGraphPending(true);
     setGraphError(null);
     try {
-      const result = await setDocumentGraphParticipation({
-        path: documentPath,
-        participates: checked,
-      });
-      setParticipates(result.participates);
-      await onGraphParticipationSaved?.();
+      const participates = await setDocumentGraphParticipation(
+        documentPath,
+        checked,
+      );
+      setParticipates(participates);
     } catch (cause) {
       setParticipates(previous);
       setGraphError(cause instanceof Error ? cause.message : String(cause));
@@ -74,8 +69,7 @@ export function DocumentMenu({
     setArchivePending(true);
     setArchiveError(null);
     try {
-      await setDocumentArchived({ path: documentPath, archived: true });
-      await navigate('/notes');
+      await setDocumentArchived(documentPath);
     } catch (cause) {
       setArchiveError(cause instanceof Error ? cause.message : String(cause));
       setArchivePending(false);
