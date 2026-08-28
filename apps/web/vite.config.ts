@@ -4,6 +4,12 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter()],
+  optimizeDeps: {
+    include: [
+      '@base-ui/react > @base-ui/utils > use-sync-external-store/shim',
+      '@base-ui/react > @base-ui/utils > use-sync-external-store/shim/with-selector',
+    ],
+  },
   resolve: {
     tsconfigPaths: true,
   },

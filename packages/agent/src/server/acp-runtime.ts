@@ -12,7 +12,6 @@ import {
   type SessionModeState,
   type SessionNotification,
 } from '@agentclientprotocol/sdk';
-import type { AcpAgentProviderId } from '../contracts/provider.js';
 import type {
   AgentSessionConfig,
   AgentSessionModeState,
@@ -52,11 +51,14 @@ export interface AcpRuntimeHandlers {
 }
 
 export interface AcpRuntimeOptions {
+  args: string[];
   binary: string;
   cwd: string;
+  env?: Record<string, string>;
   handlers: AcpRuntimeHandlers;
-  providerId: AcpAgentProviderId;
+  parameterizedModelPicker?: boolean;
   sessionId: string | null;
+  setModelWithConfig?: boolean;
 }
 
 interface EstablishedSession {
@@ -65,24 +67,11 @@ interface EstablishedSession {
   sessionId: string;
 }
 
-const ACP_LAUNCH: Record<
-  AcpAgentProviderId,
-  { args: string[]; env?: Record<string, string> }
-> = {
-  cursor: { args: ['acp'] },
-  fx: { args: ['acp'] },
-  grok: {
-    args: ['agent', 'stdio'],
-    env: { GROK_OAUTH2_REFERRER: 'locus' },
-  },
-  kimi: { args: ['acp'] },
-};
-
 export class AcpRuntime implements AgentRuntime {
   readonly #child: ChildProcessWithoutNullStreams;
   readonly #closed = deferred<void>();
   readonly #handlers: AcpRuntimeHandlers;
-  readonly #providerId: AcpAgentProviderId;
+  readonly #setModelWithConfig: boolean;
   readonly #permissionResponses = new Map<
     string,
     (response: RequestPermissionResponse) => void
@@ -96,11 +85,10 @@ export class AcpRuntime implements AgentRuntime {
 
   private constructor(options: AcpRuntimeOptions) {
     this.#handlers = options.handlers;
-    this.#providerId = options.providerId;
-    const launch = ACP_LAUNCH[options.providerId];
-    this.#child = spawn(options.binary, launch.args, {
+    this.#setModelWithConfig = options.setModelWithConfig ?? false;
+    this.#child = spawn(options.binary, options.args, {
       cwd: options.cwd,
-      env: { ...process.env, ...launch.env },
+      env: { ...process.env, ...options.env },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     this.#child.stderr.setEncoding('utf8');
@@ -187,7 +175,7 @@ export class AcpRuntime implements AgentRuntime {
     modelId: string,
     configOptions: AgentSessionConfig[],
   ): Promise<AgentSessionConfig[]> {
-    if (this.#providerId === 'cursor' || this.#providerId === 'fx') {
+    if (this.#setModelWithConfig) {
       return this.setConfig(configId, modelId);
     }
     if (!this.#context || !this.#sessionId)
@@ -254,7 +242,7 @@ export class AcpRuntime implements AgentRuntime {
       const initialized = await context.request(methods.agent.initialize, {
         clientCapabilities: {
           terminal: false,
-          ...(options.providerId === 'cursor'
+          ...(options.parameterizedModelPicker
             ? { _meta: { parameterizedModelPicker: true } }
             : {}),
         },

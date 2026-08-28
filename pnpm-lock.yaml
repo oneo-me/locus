@@ -36,6 +36,39 @@ importers:
       '@locus/agent':
         specifier: workspace:*
         version: link:../../packages/agent
+      '@locus/agent-provider-amp':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-amp
+      '@locus/agent-provider-claude':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-claude
+      '@locus/agent-provider-codex':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-codex
+      '@locus/agent-provider-cursor':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-cursor
+      '@locus/agent-provider-deepseek':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-deepseek
+      '@locus/agent-provider-fx':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-fx
+      '@locus/agent-provider-grok':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-grok
+      '@locus/agent-provider-kimi':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-kimi
+      '@locus/agent-provider-ohmypi':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-ohmypi
+      '@locus/agent-provider-opencode':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-opencode
+      '@locus/agent-provider-pi':
+        specifier: workspace:*
+        version: link:../../packages/agent-provider-pi
       '@modelcontextprotocol/server':
         specifier: ^2.0.0
         version: 2.0.0
@@ -94,6 +127,9 @@ importers:
       '@locus/agent':
         specifier: workspace:*
         version: link:../../packages/agent
+      '@locus/agent-ui':
+        specifier: workspace:*
+        version: file:packages/agent-ui(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(katex@0.17.0)(shiki@4.4.2)(supports-color@10.2.2)(typescript@7.0.2)(zod@4.4.3)
       '@locus/canvas-ui':
         specifier: workspace:*
         version: file:packages/canvas-ui(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(katex@0.17.0)(shiki@4.4.2)(supports-color@10.2.2)(typescript@7.0.2)
@@ -177,6 +213,189 @@ importers:
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-amp:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-claude:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-codex:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-cursor:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-deepseek:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-fx:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-grok:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-kimi:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-ohmypi:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-opencode:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-provider-pi:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+
+  packages/agent-ui:
+    dependencies:
+      '@locus/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@locus/markdown-ui':
+        specifier: workspace:*
+        version: link:../markdown-ui
+      '@locus/ui':
+        specifier: workspace:*
+        version: file:packages/ui(@types/react@19.2.18)(typescript@7.0.2)
+      comark:
+        specifier: 0.6.2
+        version: 0.6.2(katex@0.17.0)(shiki@4.4.2)
+      lucide-react:
+        specifier: ^1.33.0
+        version: 1.33.0(react@19.2.8)
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.18
+        version: 19.2.18
       typescript:
         specifier: ~7.0.2
         version: 7.0.2
@@ -907,6 +1126,12 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@locus/agent-ui@file:packages/agent-ui':
+    resolution: {directory: packages/agent-ui, type: directory}
+
+  '@locus/agent@file:packages/agent':
+    resolution: {directory: packages/agent, type: directory}
 
   '@locus/canvas-ui@file:packages/canvas-ui':
     resolution: {directory: packages/canvas-ui, type: directory}
@@ -4282,6 +4507,35 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@locus/agent-ui@file:packages/agent-ui(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(katex@0.17.0)(shiki@4.4.2)(supports-color@10.2.2)(typescript@7.0.2)(zod@4.4.3)':
+    dependencies:
+      '@locus/agent': file:packages/agent(zod@4.4.3)
+      '@locus/markdown-ui': file:packages/markdown-ui(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(katex@0.17.0)(shiki@4.4.2)(supports-color@10.2.2)(typescript@7.0.2)
+      '@locus/ui': file:packages/ui(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(supports-color@10.2.2)(typescript@7.0.2)
+      comark: 0.6.2(katex@0.17.0)(shiki@4.4.2)
+      lucide-react: 1.33.0(react@19.2.8)
+      react: 19.2.8
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - '@date-fns/tz'
+      - '@types/react'
+      - '@types/react-dom'
+      - babel-plugin-macros
+      - beautiful-mermaid
+      - date-fns
+      - katex
+      - rangi
+      - shiki
+      - supports-color
+      - typescript
+      - zod
+
+  '@locus/agent@file:packages/agent(zod@4.4.3)':
+    dependencies:
+      '@agentclientprotocol/sdk': 1.4.0(zod@4.4.3)
+    transitivePeerDependencies:
+      - zod
 
   '@locus/canvas-ui@file:packages/canvas-ui(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(katex@0.17.0)(shiki@4.4.2)(supports-color@10.2.2)(typescript@7.0.2)':
     dependencies:

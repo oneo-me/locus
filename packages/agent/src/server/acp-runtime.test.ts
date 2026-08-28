@@ -21,6 +21,7 @@ void test('connects to an ACP process and streams a prompt response', async () =
       >
     | undefined;
   const runtime = await AcpRuntime.start({
+    args: [executable],
     binary: process.execPath,
     cwd: directory,
     handlers: {
@@ -32,7 +33,6 @@ void test('connects to an ACP process and streams a prompt response', async () =
       onPermission: () => assert.fail('unexpected permission request'),
       onUpdate: (notification) => updates.push(notification),
     },
-    providerId: 'kimi',
     sessionId: null,
   });
   try {

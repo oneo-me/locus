@@ -1,15 +1,78 @@
 import { accessSync, constants, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, join } from 'node:path';
-import {
-  AGENT_PROVIDERS,
-  type AgentProviderDetection,
-  type AgentProviderId,
-} from '../contracts/provider.js';
-import {
-  discoverAgentProviderModels,
-  fallbackAgentProviderModels,
-} from './provider-models.js';
+import type { AgentProviderDetection } from '../contracts/provider.js';
+import type { AgentProviderExtension } from './provider-extension.js';
+import { resolveAgentProviderModels } from './provider-models.js';
+
+export class AgentProviderRegistry {
+  readonly #providers: AgentProviderExtension[];
+  #cachedDetection: AgentProviderDetection | null = null;
+
+  constructor(providers: AgentProviderExtension[]) {
+    const ids = new Set<string>();
+    for (const provider of providers) {
+      if (ids.has(provider.id))
+        throw new Error(`Agent provider 重复：${provider.id}。`);
+      ids.add(provider.id);
+    }
+    this.#providers = [...providers];
+  }
+
+  get(id: string): AgentProviderExtension | null {
+    return this.#providers.find((provider) => provider.id === id) ?? null;
+  }
+
+  findExecutable(id: string): string | null {
+    const provider = this.get(id);
+    return provider
+      ? findExecutable(provider.command, executableSearchDirectories())
+      : null;
+  }
+
+  detect(): AgentProviderDetection {
+    const directories = executableSearchDirectories();
+    const providers = this.#providers.map((provider) => {
+      const path = findExecutable(provider.command, directories);
+      return {
+        command: provider.command,
+        id: provider.id,
+        installed: path !== null,
+        models: provider.fallbackModels.map((model) => ({ ...model })),
+        name: provider.name,
+        path,
+        supportsTasks: Boolean(provider.createRuntime),
+      };
+    });
+    providers.sort(
+      (left, right) => Number(right.installed) - Number(left.installed),
+    );
+    return { checkedAt: new Date().toISOString(), providers };
+  }
+
+  async detectWithModels(
+    refresh = false,
+    modelCacheDirectory?: string,
+  ): Promise<AgentProviderDetection> {
+    if (!refresh && this.#cachedDetection)
+      return structuredClone(this.#cachedDetection);
+    const detection = this.detect();
+    await Promise.all(
+      detection.providers.map(async (probe) => {
+        if (!probe.path) return;
+        const provider = this.get(probe.id);
+        if (!provider) return;
+        probe.models = await resolveAgentProviderModels(
+          provider,
+          probe.path,
+          modelCacheDirectory,
+        );
+      }),
+    );
+    this.#cachedDetection = detection;
+    return structuredClone(detection);
+  }
+}
 
 function executableSearchDirectories(): string[] {
   const home = homedir();
@@ -50,7 +113,7 @@ function userToolDirectories(home: string): string[] {
 }
 
 function systemToolDirectories(): string[] {
-  if (process.platform !== 'win32') {
+  if (process.platform !== 'win32')
     return [
       '/opt/homebrew/bin',
       '/usr/local/bin',
@@ -59,11 +122,9 @@ function systemToolDirectories(): string[] {
       '/usr/sbin',
       '/sbin',
     ];
-  }
   const directories: string[] = [];
-  if (process.env.ProgramFiles) {
+  if (process.env.ProgramFiles)
     directories.push(join(process.env.ProgramFiles, 'nodejs'));
-  }
   if (process.env.SystemRoot) {
     const system32 = join(process.env.SystemRoot, 'System32');
     directories.push(join(system32, 'WindowsPowerShell/v1.0'), system32);
@@ -73,11 +134,11 @@ function systemToolDirectories(): string[] {
 
 function executableNames(command: string): string[] {
   if (process.platform !== 'win32') return [command];
-  const extensions = (process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD')
+  return (process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD')
     .split(';')
     .map((extension) => extension.trim())
-    .filter(Boolean);
-  return extensions.map((extension) => `${command}${extension}`);
+    .filter(Boolean)
+    .map((extension) => `${command}${extension}`);
 }
 
 function findExecutable(command: string, directories: string[]): string | null {
@@ -94,57 +155,4 @@ function findExecutable(command: string, directories: string[]): string | null {
     }
   }
   return null;
-}
-
-export function findAgentProviderExecutable(
-  providerId: AgentProviderId,
-): string | null {
-  const provider = AGENT_PROVIDERS.find(
-    (candidate) => candidate.id === providerId,
-  );
-  return provider
-    ? findExecutable(provider.command, executableSearchDirectories())
-    : null;
-}
-
-export function detectAgentProviders(): AgentProviderDetection {
-  const directories = executableSearchDirectories();
-  const providers = AGENT_PROVIDERS.map((provider) => {
-    const path = findExecutable(provider.command, directories);
-    return {
-      ...provider,
-      installed: path !== null,
-      models: fallbackAgentProviderModels(provider.id),
-      path,
-    };
-  });
-  providers.sort(
-    (left, right) => Number(right.installed) - Number(left.installed),
-  );
-  return {
-    checkedAt: new Date().toISOString(),
-    providers,
-  };
-}
-
-let cachedDetection: AgentProviderDetection | null = null;
-
-export async function detectAgentProvidersWithModels(
-  refresh = false,
-  modelCacheDirectory?: string,
-): Promise<AgentProviderDetection> {
-  if (!refresh && cachedDetection) return structuredClone(cachedDetection);
-  const detection = detectAgentProviders();
-  await Promise.all(
-    detection.providers.map(async (provider) => {
-      if (!provider.path) return;
-      provider.models = await discoverAgentProviderModels(
-        provider.id,
-        provider.path,
-        modelCacheDirectory,
-      );
-    }),
-  );
-  cachedDetection = detection;
-  return structuredClone(detection);
 }

@@ -1,7 +1,4 @@
-import {
-  AGENT_PROVIDERS,
-  type AgentProviderDetection,
-} from '@locus/agent/contracts/provider';
+import type { AgentProviderDetection } from '@locus/agent/contracts/provider';
 import { AgentSettings } from '~/features/settings/agents';
 import { apiGet } from '~/lib/api-client';
 import type { Route } from './+types/settings-agents';
@@ -16,12 +13,7 @@ export async function clientLoader() {
     return {
       detection: {
         checkedAt: null,
-        providers: AGENT_PROVIDERS.map((provider) => ({
-          ...provider,
-          installed: false,
-          models: [],
-          path: null,
-        })),
+        providers: [],
       },
       error: cause instanceof Error ? cause.message : String(cause),
     };

@@ -4,16 +4,15 @@ import type {
   AgentProject,
   AgentWorkspaceEvent,
 } from '@locus/agent/contracts/conversation';
-import {
-  isTaskAgentProviderId,
-  type AgentProviderDetection,
-  type AgentProviderId,
+import type {
+  AgentProviderDetection,
+  AgentProviderId,
 } from '@locus/agent/contracts/provider';
 import { type CSSProperties, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useGlobalSettings } from '~/features/settings/global-settings-provider';
 import { taskApi } from '~/lib/task-api';
-import { AgentConversationView } from './conversation';
+import { AgentConversationView } from '@locus/agent-ui';
 import { TasksSidebar } from './sidebar';
 import { TasksSidebarResizeHandle } from './sidebar-resize-handle';
 
@@ -31,7 +30,7 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
   const availableProviders = initialData.providers.providers.filter(
     (provider) =>
       provider.installed &&
-      isTaskAgentProviderId(provider.id) &&
+      provider.supportsTasks &&
       provider.models.length > 0,
   );
   const preferredProvider = availableProviders.find(
@@ -184,9 +183,7 @@ export function TasksShell({ initialData }: { initialData: TasksInitialData }) {
       }
       const reasoningOption = connected.configOptions.find(
         (option) =>
-          option.type === 'select' &&
-          (option.category === 'thought_level' ||
-            (providerId === 'grok' && option.id === 'mode')),
+          option.type === 'select' && option.category === 'thought_level',
       );
       if (
         reasoningEffort &&

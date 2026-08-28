@@ -9,7 +9,7 @@ import type { AgentProviderDetection } from '@locus/agent/contracts/provider';
 import { Alert, AlertDescription } from '@locus/ui/components/alert';
 import { Button } from '@locus/ui/components/button';
 import { apiGet } from '~/lib/api-client';
-import { AgentProviderIcon } from '~/features/agent/provider-icon';
+import { AgentProviderIcon } from '@locus/agent-ui';
 import { SettingsPage } from './page';
 import { SettingsRow, SettingsSection } from './section';
 

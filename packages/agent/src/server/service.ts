@@ -18,32 +18,18 @@ import {
   agentConversationCanDelete,
   agentConversationTitleFromPrompt,
 } from '../contracts/conversation.js';
-import {
-  TASK_AGENT_PROVIDER_IDS,
-  type AgentProviderId,
-  type TaskAgentProviderId,
-  isTaskAgentProviderId,
-} from '../contracts/provider.js';
-import { AcpRuntime } from './acp-runtime.js';
+import type { AgentProviderId } from '../contracts/provider.js';
 import type {
   AgentRuntime,
   AgentRuntimePermissionRequest,
   NativeAgentRuntimeHandlers,
 } from './agent-runtime.js';
 import { AgentConversationStore } from './conversation-store.js';
-import {
-  detectAgentProviders,
-  findAgentProviderExecutable,
-} from './provider-detection.js';
+import { AgentProviderRegistry } from './provider-detection.js';
 import { normalizeSessionConfig } from './session-config.js';
 import { providerPromptContent } from './prompt-content.js';
-import { readGrokSessionTitle } from './grok-title.js';
 import { NativeTitleRefresh } from './native-title-refresh.js';
-import { discoverAgentProviderModels } from './provider-models.js';
-import { OpenCodeRuntime } from './opencode-runtime.js';
-import { ClaudeRuntime } from './claude-runtime.js';
-import { CodexRuntime } from './codex-runtime.js';
-import { PiRuntime } from './pi-runtime.js';
+import { resolveAgentProviderModels } from './provider-models.js';
 import { selectedReasoningEffort } from './model-config.js';
 
 type AgentEventListener = (event: AgentConversationEvent) => void;
@@ -51,12 +37,14 @@ type AgentEventListener = (event: AgentConversationEvent) => void;
 export class AgentService {
   readonly #dataDirectory: string;
   readonly #listeners = new Set<AgentEventListener>();
+  readonly #providers: AgentProviderRegistry;
   readonly #runtimes = new Map<string, AgentRuntime>();
   readonly #store: AgentConversationStore;
   readonly #titleRefreshes = new Map<string, NativeTitleRefresh>();
 
-  constructor(dataDirectory: string) {
+  constructor(dataDirectory: string, providers: AgentProviderRegistry) {
     this.#dataDirectory = dataDirectory;
+    this.#providers = providers;
     this.#store = new AgentConversationStore(dataDirectory);
   }
 
@@ -231,11 +219,11 @@ export class AgentService {
       throw new Error('Agent 工作时不能更改会话配置。');
     }
     const runtime = await this.#ensureRuntime(conversation);
-    if (
-      conversation.providerId === 'claude' &&
-      option.category === 'thought_level' &&
-      typeof value === 'string'
-    ) {
+    const provider = this.#providers.get(conversation.providerId);
+    if (provider?.restartOnConfigChange?.(option, value)) {
+      if (option.type !== 'select' || typeof value !== 'string') {
+        throw new Error('会话配置值无效。');
+      }
       conversation.configOptions = conversation.configOptions.map(
         (candidate) =>
           candidate.id === option.id && candidate.type === 'select'
@@ -282,11 +270,14 @@ export class AgentService {
     this.#titleRefreshes.clear();
   }
 
-  #startGrokTitleRefresh(conversation: AgentConversation): void {
-    if (!conversation.providerSessionId) return;
+  #startProviderTitleRefresh(conversation: AgentConversation): void {
+    const provider = this.#providers.get(conversation.providerId);
+    if (!conversation.providerSessionId || !provider?.readSessionTitle) return;
     this.#titleRefresh(conversation).start(
       [0, 250, 750, 1_500, 3_000, 5_000, 7_500, 10_000],
-      () => readGrokSessionTitle(conversation.providerSessionId ?? ''),
+      () =>
+        provider.readSessionTitle?.(conversation.providerSessionId ?? '') ??
+        null,
       (title) => this.#applyProviderTitle(conversation, title),
     );
   }
@@ -314,10 +305,11 @@ export class AgentService {
   async #ensureRuntime(conversation: AgentConversation): Promise<AgentRuntime> {
     const existing = this.#runtimes.get(conversation.id);
     if (existing) return existing;
-    if (!isTaskAgentProviderId(conversation.providerId)) {
+    const provider = this.#providers.get(conversation.providerId);
+    if (!provider?.createRuntime) {
       throw new Error('该服务商当前不支持任务会话。');
     }
-    const binary = findAgentProviderExecutable(conversation.providerId);
+    const binary = this.#providers.findExecutable(conversation.providerId);
     if (!binary) throw new Error('服务商 CLI 不可用。');
     conversation.status = 'connecting';
     this.#save(conversation);
@@ -342,7 +334,10 @@ export class AgentService {
       ) => {
         conversation.providerSessionId = sessionId;
         conversation.providerSessionPath = sessionPath;
-        conversation.configOptions = configOptions;
+        conversation.configOptions = this.#normalizeConfigOptions(
+          conversation.providerId,
+          configOptions,
+        );
         conversation.modes = modes;
         conversation.status = 'idle' as const;
         conversation.updatedAt = new Date().toISOString();
@@ -392,77 +387,31 @@ export class AgentService {
         this.#save(conversation);
       },
     };
-    const models = async () =>
-      discoverAgentProviderModels(
-        conversation.providerId,
+    const models = await resolveAgentProviderModels(
+      provider,
+      binary,
+      join(this.#dataDirectory, 'model-cache'),
+    );
+    const runtime = await provider
+      .createRuntime({
         binary,
-        join(this.#dataDirectory, 'model-cache'),
-      );
-    const runtime = await (
-      conversation.providerId === 'opencode'
-        ? models().then((models) =>
-            OpenCodeRuntime.start({
-              binary,
-              cwd: conversation.cwd,
-              handlers: nativeHandlers,
-              models,
-              selectedModel,
-              sessionId: conversation.providerSessionId,
-            }),
-          )
-        : conversation.providerId === 'claude'
-          ? models().then((models) =>
-              ClaudeRuntime.start({
-                binary,
-                cwd: conversation.cwd,
-                handlers: nativeHandlers,
-                models,
-                selectedModel,
-                selectedReasoningEffort: selectedEffort,
-                sessionId: conversation.providerSessionId,
-              }),
-            )
-          : conversation.providerId === 'codex'
-            ? models().then((models) =>
-                CodexRuntime.start({
-                  binary,
-                  cwd: conversation.cwd,
-                  handlers: nativeHandlers,
-                  models,
-                  selectedModel,
-                  selectedReasoningEffort: selectedEffort,
-                  sessionId: conversation.providerSessionId,
-                }),
-              )
-            : conversation.providerId === 'pi'
-              ? models().then((models) =>
-                  PiRuntime.start({
-                    binary,
-                    cwd: conversation.cwd,
-                    handlers: nativeHandlers,
-                    models,
-                    selectedModel,
-                    selectedReasoningEffort: selectedEffort,
-                    sessionPath: conversation.providerSessionPath,
-                  }),
-                )
-              : AcpRuntime.start({
-                  binary,
-                  cwd: conversation.cwd,
-                  handlers: {
-                    ...handlers,
-                    onUpdate: (notification) =>
-                      this.#handleUpdate(conversation, notification),
-                  },
-                  providerId: conversation.providerId,
-                  sessionId: conversation.providerSessionId,
-                })
-    ).catch((error) => {
-      if (conversation.status === 'connecting') {
-        this.#failConversation(conversation, error);
-      }
-      throw error;
-    });
+        conversation,
+        handlers: {
+          ...handlers,
+          native: nativeHandlers,
+          onUpdate: (notification) =>
+            this.#handleUpdate(conversation, notification),
+        },
+        models,
+        selectedModel,
+        selectedReasoningEffort: selectedEffort,
+      })
+      .catch((error) => {
+        if (conversation.status === 'connecting') {
+          this.#failConversation(conversation, error);
+        }
+        throw error;
+      });
     runtimeRef = runtime;
     if (selectedModel) {
       const modelOption = conversation.configOptions.find(
@@ -643,17 +592,22 @@ export class AgentService {
         conversation.modes.currentId = update.currentModeId;
       }
     } else if (update.sessionUpdate === 'config_option_update') {
-      conversation.configOptions = normalizeSessionConfig(update.configOptions);
+      conversation.configOptions = this.#normalizeConfigOptions(
+        conversation.providerId,
+        normalizeSessionConfig(update.configOptions),
+      );
     } else if (update.sessionUpdate === 'available_commands_update') {
       conversation.availableCommands = update.availableCommands.map(
         ({ description, name }) => ({ description, name }),
       );
     } else if (update.sessionUpdate === 'session_info_update') {
       if (update.title !== undefined) {
-        const title = normalizeProviderTitle(
-          conversation.providerId,
-          update.title,
-        );
+        const title =
+          this.#providers
+            .get(conversation.providerId)
+            ?.normalizeTitle?.(update.title) ??
+          update.title?.trim() ??
+          null;
         if (title !== undefined) {
           conversation.autoTitle = title;
           if (title) this.#titleRefreshes.get(conversation.id)?.resolve();
@@ -768,9 +722,8 @@ export class AgentService {
     conversation.activityAt = now;
     conversation.updatedAt = now;
     this.#save(conversation);
-    if (conversation.providerId === 'grok' && stopReason === 'end_turn') {
-      this.#startGrokTitleRefresh(conversation);
-    }
+    if (stopReason === 'end_turn')
+      this.#startProviderTitleRefresh(conversation);
   }
 
   #failConversation(conversation: AgentConversation, error: unknown): void {
@@ -809,36 +762,35 @@ export class AgentService {
     for (const listener of this.#listeners) listener(event);
   }
 
-  #resolveProvider(requested?: AgentProviderId): TaskAgentProviderId {
+  #normalizeConfigOptions(
+    providerId: AgentProviderId,
+    options: AgentConversation['configOptions'],
+  ): AgentConversation['configOptions'] {
+    return (
+      this.#providers.get(providerId)?.normalizeConfigOptions?.(options) ??
+      options
+    );
+  }
+
+  #resolveProvider(requested?: AgentProviderId): AgentProviderId {
     if (requested) {
-      if (!isTaskAgentProviderId(requested)) {
+      const provider = this.#providers.get(requested);
+      if (!provider?.createRuntime) {
         throw new Error('该服务商当前不支持任务会话。');
       }
-      if (!findAgentProviderExecutable(requested)) {
+      if (!this.#providers.findExecutable(requested)) {
         throw new Error('服务商 CLI 不可用。');
       }
       return requested;
     }
-    const installed = new Set(
-      detectAgentProviders()
-        .providers.filter((provider) => provider.installed)
-        .map((provider) => provider.id),
-    );
-    const providerId = TASK_AGENT_PROVIDER_IDS.find((id) => installed.has(id));
+    const providerId = this.#providers
+      .detect()
+      .providers.find(
+        (provider) => provider.installed && provider.supportsTasks,
+      )?.id;
     if (!providerId) throw new Error('没有检测到支持任务会话的服务商。');
     return providerId;
   }
-}
-
-function normalizeProviderTitle(
-  providerId: AgentProviderId,
-  rawTitle: string | null,
-): string | null | undefined {
-  const title = rawTitle?.trim() ?? '';
-  if (providerId === 'opencode' && title.startsWith('New session - ')) {
-    return undefined;
-  }
-  return title || null;
 }
 
 function toolContentText(

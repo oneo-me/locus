@@ -52,7 +52,6 @@ import {
   openLocalDirectory,
   type OpenLocalDirectoryInput,
 } from '~/features/system/open-path.server';
-import { detectAgentProvidersWithModels } from '@locus/agent/server/provider-detection';
 import { getAgentService } from '~/features/agents/service.server';
 import { createAgentEventsResponse } from '~/features/agents/events.server';
 import { ensureDataDirectory } from '~/data-directory.server';
@@ -61,6 +60,7 @@ import {
   getAgentProject,
   listAgentProjects,
 } from '~/features/agents/projects.server';
+import { agentProviders } from '~/features/agents/providers.server';
 
 async function jsonRoute<T>(event: string, operation: () => T | Promise<T>) {
   try {
@@ -195,7 +195,7 @@ export function createApp(staticRoot?: string) {
   app.get('/api/settings', () => jsonRoute('settings.read', getGlobalSettings));
   app.get('/api/agent-providers', (context) =>
     jsonRoute('agent_providers.detect', () =>
-      detectAgentProvidersWithModels(
+      agentProviders.detectWithModels(
         context.req.query('refresh') === '1',
         join(ensureDataDirectory(), 'model-cache'),
       ),
