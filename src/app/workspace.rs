@@ -198,11 +198,15 @@ impl Locus {
             .map(|path| cx.new(|cx| TerminalView::new(path, terminal_configuration.clone(), cx)));
         let mcp_server = McpServerController::new(&preferences);
         let mcp_server_state = mcp_server.state();
+        let archived_notes = library_tree.archived_notes.clone();
+        let archive_load_error = library_tree.error.clone();
         let settings = cx.new(|cx| {
             Settings::new(
                 preferences,
                 load_error,
                 mcp_server_state,
+                archived_notes,
+                archive_load_error,
                 root_focus.clone(),
                 cx,
             )
@@ -216,6 +220,9 @@ impl Locus {
                         this.restart_terminal(cx);
                     }
                     cx.notify();
+                }
+                SettingsEvent::ArchiveRestored => {
+                    this.reload_library_projection(cx);
                 }
                 SettingsEvent::LanguageChanged(language) => {
                     crate::set_app_menus(cx, *language, this.can_reload_current_note());
@@ -486,6 +493,13 @@ impl Locus {
         self.library_watch_task = task;
         self.library_watcher_error = watcher_error;
         self.library_tree = LibraryTree::load(Some(path));
+        self.settings.update(cx, |settings, cx| {
+            settings.set_archive_state(
+                self.library_tree.archived_notes.clone(),
+                self.library_tree.error.clone(),
+                cx,
+            );
+        });
         self.sidebar_order.apply(path, &mut self.library_tree.nodes);
         self.clear_library_selection();
         self.expanded_library_nodes.clear();
@@ -529,6 +543,9 @@ impl Locus {
                 .node(path)
                 .is_some_and(|node| node.document_path.is_some())
         });
+        self.settings.update(cx, |settings, cx| {
+            settings.set_archive_state(tree.archived_notes.clone(), tree.error.clone(), cx);
+        });
         self.library_tree = tree;
 
         let selection_still_valid = selected_path.as_deref().is_some_and(|path| {
@@ -556,6 +573,24 @@ impl Locus {
         }
         self.update_app_menus(cx);
         cx.notify();
+    }
+
+    fn reload_library_projection(&mut self, cx: &mut Context<Self>) {
+        let Some(root) = self.current_library_path(cx).map(Path::to_path_buf) else {
+            return;
+        };
+        cx.spawn(async move |this, cx| {
+            let scan_root = root.clone();
+            let tree = cx
+                .background_spawn(async move { LibraryTree::load(Some(&scan_root)) })
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if this.current_library_path(cx) == Some(root.as_path()) {
+                    this.apply_library_tree(tree, false, cx);
+                }
+            });
+        })
+        .detach();
     }
 
     fn clear_library_selection(&mut self) {

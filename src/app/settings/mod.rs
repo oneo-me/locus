@@ -1,11 +1,13 @@
 use std::path::Path;
 
+mod archive;
 mod controls;
 mod mcp;
 mod pages;
 pub(super) mod text_input;
 
 use crate::config::{DEFAULT_CODE_FONT_FAMILY, DEFAULT_UI_FONT_SIZE};
+use crate::document_library::ArchivedNote;
 use crate::localization::Language;
 use crate::mcp::McpServerState;
 use crate::preferences::{
@@ -44,6 +46,7 @@ const FOCUS_MCP_CLAUDE_COPY: usize = 25;
 const FOCUS_MCP_CURSOR_COPY: usize = 26;
 const FOCUS_MCP_OPENCODE_COPY: usize = 27;
 const FOCUS_MCP_GENERIC_COPY: usize = 28;
+const FOCUS_ARCHIVE_PAGE: usize = 29;
 
 fn font_matches_search(family: &str, normalized_query: &str) -> bool {
     normalized_query.is_empty() || family.to_lowercase().contains(normalized_query)
@@ -53,6 +56,7 @@ fn font_matches_search(family: &str, normalized_query: &str) -> bool {
 enum SettingsPage {
     #[default]
     General,
+    Archive,
     Appearance,
     Terminal,
     Mcp,
@@ -99,6 +103,7 @@ impl Dropdown {
 
 pub enum SettingsEvent {
     Close,
+    ArchiveRestored,
     LanguageChanged(Language),
     LibraryChanged(std::path::PathBuf),
     TerminalLaunchChanged,
@@ -126,6 +131,11 @@ pub struct Settings {
     mcp_port_error: Option<String>,
     mcp_server_state: McpServerState,
     mcp_copied: Option<&'static str>,
+    archived_notes: Vec<ArchivedNote>,
+    archive_action_focus: Vec<FocusHandle>,
+    archive_load_error: Option<String>,
+    archive_action_error: Option<String>,
+    restoring_archive: Option<std::path::PathBuf>,
     error: Option<String>,
 }
 
@@ -136,6 +146,8 @@ impl Settings {
         preferences: Preferences,
         load_error: Option<String>,
         mcp_server_state: McpServerState,
+        archived_notes: Vec<ArchivedNote>,
+        archive_load_error: Option<String>,
         return_focus: FocusHandle,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -149,6 +161,7 @@ impl Settings {
             code_font_names.sort_unstable_by_key(|font| font.to_lowercase());
         }
         let code_font_option_focus = code_font_names.iter().map(|_| cx.focus_handle()).collect();
+        let archive_action_focus = archived_notes.iter().map(|_| cx.focus_handle()).collect();
         let code_font_search_input = cx.new(|cx| {
             text_input::TextInput::new(
                 "code-font-search-input",
@@ -244,6 +257,11 @@ impl Settings {
             mcp_port_error: None,
             mcp_server_state,
             mcp_copied: None,
+            archived_notes,
+            archive_action_focus,
+            archive_load_error,
+            archive_action_error: None,
+            restoring_archive: None,
             error: load_error,
         }
     }
@@ -258,6 +276,35 @@ impl Settings {
 
     pub fn set_mcp_server_state(&mut self, state: McpServerState, cx: &mut Context<Self>) {
         self.mcp_server_state = state;
+        cx.notify();
+    }
+
+    pub fn set_archive_state(
+        &mut self,
+        archived_notes: Vec<ArchivedNote>,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        self.archive_action_error = None;
+        if self.restoring_archive.as_ref().is_some_and(|pending| {
+            archived_notes
+                .iter()
+                .all(|note| &note.document_path != pending)
+        }) {
+            self.restoring_archive = None;
+        }
+        self.archive_action_focus = archived_notes
+            .iter()
+            .map(|note| {
+                self.archived_notes
+                    .iter()
+                    .position(|current| current.path == note.path)
+                    .and_then(|index| self.archive_action_focus.get(index).cloned())
+                    .unwrap_or_else(|| cx.focus_handle())
+            })
+            .collect();
+        self.archived_notes = archived_notes;
+        self.archive_load_error = error;
         cx.notify();
     }
 
@@ -447,6 +494,14 @@ impl Settings {
                         cx,
                     ))
                     .child(self.render_navigation_row(
+                        "settings-archive",
+                        language.text("归档", "Archive"),
+                        Icon::Archive,
+                        SettingsPage::Archive,
+                        FOCUS_ARCHIVE_PAGE,
+                        cx,
+                    ))
+                    .child(self.render_navigation_row(
                         "settings-appearance",
                         language.text("外观", "Appearance"),
                         Icon::Appearance,
@@ -534,12 +589,14 @@ impl Settings {
         let language = self.preferences.language;
         let title = match self.page {
             SettingsPage::General => language.text("通用", "General"),
+            SettingsPage::Archive => language.text("归档", "Archive"),
             SettingsPage::Appearance => language.text("外观", "Appearance"),
             SettingsPage::Terminal => language.text("终端", "Terminal"),
             SettingsPage::Mcp => "MCP",
         };
         let content = match self.page {
             SettingsPage::General => self.render_general(cx),
+            SettingsPage::Archive => self.render_archive(cx),
             SettingsPage::Appearance => self.render_appearance(cx),
             SettingsPage::Terminal => self.render_terminal(cx),
             SettingsPage::Mcp => self.render_mcp(cx),
@@ -674,6 +731,7 @@ mod tests {
             FOCUS_MCP_CURSOR_COPY,
             FOCUS_MCP_OPENCODE_COPY,
             FOCUS_MCP_GENERIC_COPY,
+            FOCUS_ARCHIVE_PAGE,
         ];
         let unique = indices
             .into_iter()

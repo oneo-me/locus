@@ -3,6 +3,7 @@ use gpui::{Hsla, Svg, prelude::*, px, svg};
 #[derive(Clone, Copy)]
 pub enum Icon {
     Appearance,
+    Archive,
     ArrowLeft,
     Check,
     ChevronDown,
@@ -22,6 +23,7 @@ pub enum Icon {
 pub fn icon(icon: Icon, size: f32, color: Hsla) -> Svg {
     let data: &[u8] = match icon {
         Icon::Appearance => include_bytes!("../../assets/icons/appearance.svg"),
+        Icon::Archive => include_bytes!("../../assets/icons/archive.svg"),
         Icon::ArrowLeft => include_bytes!("../../assets/icons/arrow-left.svg"),
         Icon::Check => include_bytes!("../../assets/icons/check.svg"),
         Icon::ChevronDown => include_bytes!("../../assets/icons/chevron-down.svg"),

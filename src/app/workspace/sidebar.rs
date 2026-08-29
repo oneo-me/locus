@@ -69,6 +69,14 @@ impl Locus {
             );
         }
         if self.library_tree.nodes.is_empty() {
+            let message = if self.library_tree.archived_notes.is_empty() {
+                language.text("文档库还是空的。", "The library is empty.")
+            } else {
+                language.text(
+                    "所有笔记均已归档。可在设置的归档中移出。",
+                    "All notes are archived. Remove them from Archive in Settings.",
+                )
+            };
             return div().size_full().child(
                 body.child(
                     div()
@@ -76,7 +84,7 @@ impl Locus {
                         .py(px(4.0))
                         .text_sm()
                         .text_color(theme.text_secondary)
-                        .child(language.text("文档库还是空的。", "The library is empty.")),
+                        .child(message),
                 ),
             );
         }

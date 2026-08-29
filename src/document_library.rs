@@ -5,7 +5,7 @@ mod repository;
 mod scanner;
 mod watcher;
 
-pub use scanner::load_note;
+pub use scanner::{load_note, restore_archived_note};
 pub use watcher::{LibraryWatchEvent, LibraryWatcher};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -30,6 +30,15 @@ pub struct LibraryNode {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArchivedNote {
+    pub path: String,
+    pub document_path: PathBuf,
+    pub title: String,
+    pub icon: Option<String>,
+    pub icon_path: Option<PathBuf>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Attachment {
     pub name: String,
     pub path: PathBuf,
@@ -47,6 +56,7 @@ pub struct ImageSize {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LibraryTree {
     pub nodes: Vec<LibraryNode>,
+    pub archived_notes: Vec<ArchivedNote>,
     pub error: Option<String>,
     pub repository_error: Option<String>,
 }
@@ -67,11 +77,14 @@ impl LibraryTree {
             Ok(changes) => (changes, None),
             Err(error) => (Vec::new(), Some(error)),
         };
-        match scanner::scan_children(root, root, &changes) {
+        let mut archived_notes = Vec::new();
+        match scanner::scan_children(root, root, &changes, false, &mut archived_notes) {
             Ok(mut nodes) => {
                 nodes.sort_by(scanner::compare_nodes);
+                archived_notes.sort_by(|left, right| left.path.cmp(&right.path));
                 Self {
                     nodes,
+                    archived_notes,
                     error: None,
                     repository_error,
                 }
@@ -163,5 +176,57 @@ mod tests {
         let tree = LibraryTree::load(Some(&library.0));
         assert_eq!(tree.node("notes").unwrap().title, "Notes");
         assert!(load_note(&document_path).is_err());
+    }
+
+    #[test]
+    fn lists_explicit_archives_without_exposing_their_descendants() {
+        let library = TestLibrary::new();
+        let parent = library.0.join("parent");
+        let child = parent.join("child");
+        fs::create_dir_all(&child).unwrap();
+        fs::write(
+            parent.join("index.md"),
+            "---\ntitle: Parent\narchived: true\n---\n",
+        )
+        .unwrap();
+        fs::write(
+            child.join("index.md"),
+            "---\ntitle: Child\narchived: true\n---\n",
+        )
+        .unwrap();
+
+        let tree = LibraryTree::load(Some(&library.0));
+
+        assert!(tree.nodes.is_empty());
+        assert_eq!(
+            tree.archived_notes
+                .iter()
+                .map(|note| note.path.as_str())
+                .collect::<Vec<_>>(),
+            ["parent", "parent/child"]
+        );
+    }
+
+    #[test]
+    fn restoring_an_archive_returns_it_to_the_visible_tree() {
+        let library = TestLibrary::new();
+        let note_directory = library.0.join("notes");
+        fs::create_dir(&note_directory).unwrap();
+        let document_path = note_directory.join("index.md");
+        fs::write(
+            &document_path,
+            "---\ntitle: Notes\narchived: true\n---\nBody",
+        )
+        .unwrap();
+
+        restore_archived_note(&document_path).unwrap();
+        let tree = LibraryTree::load(Some(&library.0));
+
+        assert!(tree.archived_notes.is_empty());
+        assert_eq!(tree.node("notes").unwrap().title, "Notes");
+        assert_eq!(
+            fs::read_to_string(document_path).unwrap(),
+            "---\ntitle: Notes\n---\nBody"
+        );
     }
 }
