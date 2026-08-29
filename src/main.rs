@@ -15,15 +15,20 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use app::Locus;
-use config::{WINDOW_HEIGHT, WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH, WINDOW_WIDTH};
+use config::{
+    WINDOW_HEIGHT, WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH, WINDOW_TITLEBAR_HEIGHT, WINDOW_WIDTH,
+};
 use gpui::{
-    App, AppContext, Bounds, KeyBinding, Menu, MenuItem, TitlebarOptions,
+    App, AppContext, Bounds, KeyBinding, Menu, MenuItem, Pixels, TitlebarOptions,
     WindowBackgroundAppearance, WindowBounds, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
 use localization::Language;
 use preferences::Preferences;
 use state::InterfaceState;
+
+const MIN_VISIBLE_TITLEBAR_WIDTH: f32 = 120.0;
+const MIN_VISIBLE_TITLEBAR_HEIGHT: f32 = 24.0;
 
 actions!(
     locus,
@@ -73,7 +78,7 @@ fn main() {
         }
         let language = preferences.language;
 
-        let bounds = Bounds::centered(None, size(px(WINDOW_WIDTH), px(WINDOW_HEIGHT)), cx);
+        let bounds = restored_window_bounds(interface_state.window_bounds, cx);
 
         let window = cx
             .open_window(
@@ -109,6 +114,29 @@ fn main() {
         set_app_menus(cx, language, can_reload_current_note);
         cx.activate(true);
     });
+}
+
+fn restored_window_bounds(saved: Option<Bounds<Pixels>>, cx: &App) -> Bounds<Pixels> {
+    saved
+        .filter(|bounds| {
+            cx.displays()
+                .iter()
+                .any(|display| window_titlebar_is_reachable(*bounds, display.visible_bounds()))
+        })
+        .unwrap_or_else(|| Bounds::centered(None, size(px(WINDOW_WIDTH), px(WINDOW_HEIGHT)), cx))
+}
+
+fn window_titlebar_is_reachable(
+    window_bounds: Bounds<Pixels>,
+    visible_bounds: Bounds<Pixels>,
+) -> bool {
+    let titlebar = Bounds::new(
+        window_bounds.origin,
+        size(window_bounds.size.width, px(WINDOW_TITLEBAR_HEIGHT)),
+    );
+    let visible_titlebar = titlebar.intersect(&visible_bounds);
+    f32::from(visible_titlebar.size.width) >= MIN_VISIBLE_TITLEBAR_WIDTH
+        && f32::from(visible_titlebar.size.height) >= MIN_VISIBLE_TITLEBAR_HEIGHT
 }
 
 pub(crate) fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: bool) {
@@ -150,4 +178,19 @@ pub(crate) fn set_app_menus(cx: &mut App, language: Language, can_reload_current
             CloseWindow,
         )]),
     ]);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saved_window_requires_a_reachable_titlebar() {
+        let display = Bounds::new(point(px(0.0), px(0.0)), size(px(1440.0), px(900.0)));
+        let reachable = Bounds::new(point(px(1320.0), px(-24.0)), size(px(1080.0), px(920.0)));
+        let unreachable = Bounds::new(point(px(1321.0), px(-25.0)), size(px(1080.0), px(920.0)));
+
+        assert!(window_titlebar_is_reachable(reachable, display));
+        assert!(!window_titlebar_is_reachable(unreachable, display));
+    }
 }

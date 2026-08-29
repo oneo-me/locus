@@ -25,3 +25,4 @@ pub const WINDOW_WIDTH: f32 = 1080.0;
 pub const WINDOW_HEIGHT: f32 = 920.0;
 pub const WINDOW_MIN_WIDTH: f32 = 1080.0;
 pub const WINDOW_MIN_HEIGHT: f32 = 920.0;
+pub const WINDOW_TITLEBAR_HEIGHT: f32 = 48.0;

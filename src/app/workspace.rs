@@ -9,14 +9,16 @@ mod sidebar;
 mod window_chrome;
 
 use gpui::{
-    Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Render, ScrollAnchor, ScrollHandle, Stateful, Task, Window, div, prelude::*, px,
-    transparent_black,
+    Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, Pixels, Render, ScrollAnchor, ScrollHandle, Stateful, Task,
+    Window, div, prelude::*, px, transparent_black,
 };
 
 use super::panel_layout::{CONTENT_MIN_WIDTH, PanelFrame, fitted_panel_widths, slide_width};
 use super::settings::{Settings, SettingsEvent};
-use crate::config::{DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH};
+use crate::config::{
+    DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_TITLEBAR_HEIGHT,
+};
 use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use crate::localization::Language;
 use crate::motion::WidthTween;
@@ -33,12 +35,13 @@ use crate::{
     ToggleRightSidebar,
 };
 
-const TITLEBAR_HEIGHT: f32 = 48.0;
+const TITLEBAR_HEIGHT: f32 = WINDOW_TITLEBAR_HEIGHT;
 const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
 const TITLEBAR_CONTROL_INSET: f32 = 11.0;
 const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
 const LIBRARY_EVENT_DEBOUNCE: Duration = Duration::from_millis(180);
+const WINDOW_BOUNDS_SAVE_DEBOUNCE: Duration = Duration::from_millis(100);
 
 struct SelectedNote {
     path: String,
@@ -102,6 +105,8 @@ pub struct Locus {
     fps_frame_count: u32,
     fps_value: u32,
     fps_last_frame: Instant,
+    window_bounds: Option<Bounds<Pixels>>,
+    window_bounds_save_task: Option<Task<()>>,
 }
 
 impl Locus {
@@ -228,6 +233,28 @@ impl Locus {
             }
         })
         .detach();
+        cx.observe_window_bounds(window, |this, window, cx| {
+            this.window_bounds = Some(window.inner_window_bounds().get_bounds());
+            if this.window_bounds_save_task.is_none() {
+                this.window_bounds_save_task = Some(cx.spawn(async move |this, cx| {
+                    cx.background_executor()
+                        .timer(WINDOW_BOUNDS_SAVE_DEBOUNCE)
+                        .await;
+                    this.update(cx, |this, _| {
+                        this.window_bounds_save_task.take();
+                        this.save_interface_state();
+                    })
+                    .ok();
+                }));
+            }
+        })
+        .detach();
+        cx.on_app_quit(|this, _| {
+            this.window_bounds_save_task.take();
+            this.save_interface_state();
+            async {}
+        })
+        .detach();
 
         Self {
             root_focus,
@@ -280,6 +307,8 @@ impl Locus {
             fps_frame_count: 0,
             fps_value: 0,
             fps_last_frame: Instant::now(),
+            window_bounds: interface_state.window_bounds,
+            window_bounds_save_task: None,
         }
     }
 
@@ -588,6 +617,7 @@ impl Locus {
             right_sidebar_visible: self.right_sidebar_visible,
             fps_counter_visible: self.fps_counter_visible,
             selected_library_node: self.selected_library_node.clone(),
+            window_bounds: self.window_bounds,
         }
     }
 
