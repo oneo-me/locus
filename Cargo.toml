@@ -6,3 +6,21 @@ edition = "2024"
 [dependencies]
 gpui = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284", features = ["font-kit", "runtime_shaders"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+    "std",
+    "NSAccessibility",
+    "NSGraphics",
+    "NSColor",
+    "NSView",
+    "NSVisualEffectView",
+    "NSWindow",
+    "NSWorkspace",
+    "objc2-core-graphics",
+    "objc2-quartz-core",
+] }
+objc2-core-graphics = { version = "0.3", default-features = false, features = ["std", "CGColor"] }
+objc2-quartz-core = { version = "0.3", default-features = false, features = ["std", "CALayer", "objc2-core-graphics"] }
+raw-window-handle = "0.6"
