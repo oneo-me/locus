@@ -1,6 +1,4 @@
-# Agent instructions (machine-specific)
+/target
 AGENTS.md
-
-.build*/
 .DS_Store
-.pnpm-store/
+.build/
