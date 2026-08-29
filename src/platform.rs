@@ -1,6 +1,31 @@
 use gpui::Window;
 
 #[cfg(target_os = "macos")]
+pub fn show_about_panel() {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::NSApplication;
+
+    let Some(main_thread) = MainThreadMarker::new() else {
+        return;
+    };
+    NSApplication::sharedApplication(main_thread).orderFrontStandardAboutPanel(None);
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn show_about_panel() {}
+
+#[cfg(debug_assertions)]
+pub fn configure_main_window_close_behavior(window: &Window, cx: &gpui::App) {
+    window.on_window_should_close(cx, |_, cx| {
+        cx.quit();
+        true
+    });
+}
+
+#[cfg(not(debug_assertions))]
+pub fn configure_main_window_close_behavior(_: &Window, _: &gpui::App) {}
+
+#[cfg(target_os = "macos")]
 struct SidebarMaterial {
     tint: objc2::rc::Retained<objc2_app_kit::NSView>,
 }

@@ -7,12 +7,23 @@ mod ui;
 
 use app::Locus;
 use gpui::{
-    App, AppContext, Bounds, KeyBinding, TitlebarOptions, WindowAppearance,
+    App, AppContext, Bounds, KeyBinding, Menu, MenuItem, TitlebarOptions, WindowAppearance,
     WindowBackgroundAppearance, WindowBounds, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
 
-actions!(locus, [OpenSettings, ToggleLeftSidebar, ToggleRightSidebar]);
+actions!(
+    locus,
+    [
+        Quit,
+        About,
+        CloseWindow,
+        OpenSettings,
+        ToggleLeftSidebar,
+        ToggleRightSidebar,
+        ToggleFpsCounter
+    ]
+);
 
 const WINDOW_WIDTH: f32 = 1180.0;
 const WINDOW_HEIGHT: f32 = 760.0;
@@ -23,10 +34,15 @@ fn main() {
     application().run(|cx: &mut App| {
         platform::init_reduce_motion(cx);
         cx.bind_keys([
+            KeyBinding::new("secondary-q", Quit, None),
+            KeyBinding::new("secondary-w", CloseWindow, None),
             KeyBinding::new("secondary-,", OpenSettings, None),
             KeyBinding::new("secondary-b", ToggleLeftSidebar, None),
             KeyBinding::new("secondary-shift-b", ToggleRightSidebar, None),
+            KeyBinding::new("secondary-alt-shift-f", ToggleFpsCounter, None),
         ]);
+        cx.on_action(|_: &About, _| platform::show_about_panel());
+        cx.on_action(|_: &Quit, cx| cx.quit());
 
         let bounds = Bounds::centered(None, size(px(WINDOW_WIDTH), px(WINDOW_HEIGHT)), cx);
 
@@ -48,17 +64,42 @@ fn main() {
                 ..Default::default()
             },
             |window, cx| {
+                platform::configure_main_window_close_behavior(window, cx);
                 let dark = matches!(
                     cx.window_appearance(),
                     WindowAppearance::Dark | WindowAppearance::VibrantDark
                 );
                 platform::configure_sidebar_material(window, dark)
                     .expect("failed to install macOS sidebar material");
-                cx.new(Locus::new)
+                cx.new(|cx| Locus::new(window, cx))
             },
         )
         .expect("failed to open Locus window");
 
+        set_app_menus(cx);
         cx.activate(true);
     });
+}
+
+fn set_app_menus(cx: &mut App) {
+    let mut application_items = Vec::new();
+    #[cfg(target_os = "macos")]
+    application_items.extend([MenuItem::action("关于 Locus", About), MenuItem::separator()]);
+    application_items.extend([
+        MenuItem::action("设置…", OpenSettings),
+        MenuItem::separator(),
+        MenuItem::action("退出 Locus", Quit),
+    ]);
+
+    cx.set_menus(vec![
+        Menu::new("Locus").items(application_items),
+        Menu::new("编辑").disabled(true),
+        Menu::new("显示").items([
+            MenuItem::action("切换左侧栏", ToggleLeftSidebar),
+            MenuItem::action("切换右侧栏", ToggleRightSidebar),
+            MenuItem::separator(),
+            MenuItem::action("显示帧率", ToggleFpsCounter),
+        ]),
+        Menu::new("窗口").items([MenuItem::action("关闭窗口", CloseWindow)]),
+    ]);
 }

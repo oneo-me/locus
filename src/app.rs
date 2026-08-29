@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use gpui::{
     Context, Div, FocusHandle, FontWeight, KeyDownEvent, MouseButton, MouseDownEvent,
     MouseMoveEvent, MouseUpEvent, Render, Role, Stateful, Window, WindowHandle, div, prelude::*,
@@ -8,7 +10,7 @@ use crate::motion::WidthTween;
 use crate::settings::{self, Settings};
 use crate::theme::Theme;
 use crate::ui::{Icon, icon};
-use crate::{OpenSettings, ToggleLeftSidebar, ToggleRightSidebar};
+use crate::{CloseWindow, OpenSettings, ToggleFpsCounter, ToggleLeftSidebar, ToggleRightSidebar};
 
 const TITLEBAR_HEIGHT: f32 = 48.0;
 const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
@@ -56,6 +58,7 @@ impl PanelFrame {
 }
 
 pub struct Locus {
+    root_focus: FocusHandle,
     left_sidebar_visible: bool,
     right_sidebar_visible: bool,
     left_sidebar_width: f32,
@@ -72,11 +75,19 @@ pub struct Locus {
     left_restore_focus: FocusHandle,
     settings_focus: FocusHandle,
     settings_window: Option<WindowHandle<Settings>>,
+    fps_counter_visible: bool,
+    fps_frame_count: u32,
+    fps_value: u32,
+    fps_last_frame: Instant,
 }
 
 impl Locus {
-    pub fn new(cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let root_focus = cx.focus_handle();
+        window.focus(&root_focus, cx);
+
         Self {
+            root_focus,
             left_sidebar_visible: true,
             right_sidebar_visible: true,
             left_sidebar_width: LEFT_SIDEBAR_WIDTH,
@@ -93,6 +104,10 @@ impl Locus {
             left_restore_focus: cx.focus_handle(),
             settings_focus: cx.focus_handle(),
             settings_window: None,
+            fps_counter_visible: false,
+            fps_frame_count: 0,
+            fps_value: 0,
+            fps_last_frame: Instant::now(),
         }
     }
 
@@ -190,6 +205,49 @@ impl Locus {
 
     fn open_settings_action(&mut self, _: &OpenSettings, _: &mut Window, cx: &mut Context<Self>) {
         self.open_settings(cx);
+    }
+
+    fn close_window_action(
+        &mut self,
+        _: &CloseWindow,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        #[cfg(debug_assertions)]
+        {
+            let _ = window;
+            cx.quit();
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            let _ = cx;
+            window.remove_window();
+        }
+    }
+
+    fn toggle_fps_counter_action(
+        &mut self,
+        _: &ToggleFpsCounter,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.fps_counter_visible = !self.fps_counter_visible;
+        self.fps_frame_count = 0;
+        self.fps_value = 0;
+        self.fps_last_frame = Instant::now();
+        cx.notify();
+    }
+
+    fn tick_fps(&mut self, window: &Window) {
+        let now = Instant::now();
+        self.fps_frame_count = self.fps_frame_count.saturating_add(1);
+        let elapsed = now.duration_since(self.fps_last_frame);
+        if elapsed >= Duration::from_secs(1) {
+            self.fps_value = (self.fps_frame_count as f32 / elapsed.as_secs_f32()).round() as u32;
+            self.fps_frame_count = 0;
+            self.fps_last_frame = now;
+        }
+        window.request_animation_frame();
     }
 
     fn window_drag_region(&self, id: &'static str, cx: &mut Context<Self>) -> Stateful<Div> {
@@ -346,9 +404,37 @@ impl Locus {
                 self.window_drag_region("content-center-drag-region", cx)
                     .flex_1(),
             )
+            .when(self.fps_counter_visible, |header| {
+                header.child(self.render_fps_counter(cx))
+            })
             .when(!self.right_sidebar_visible, |header| {
                 header.child(div().w(px(26.0)).h(px(26.0)).flex_none())
             })
+    }
+
+    fn render_fps_counter(&self, cx: &mut Context<Self>) -> Div {
+        let theme = Theme::current(cx);
+
+        div()
+            .h(px(26.0))
+            .flex_none()
+            .px(px(6.0))
+            .flex()
+            .items_center()
+            .gap(px(5.0))
+            .text_xs()
+            .text_color(theme.muted_text)
+            .child(
+                div()
+                    .size(px(6.0))
+                    .rounded_full()
+                    .bg(if self.fps_value > 0 {
+                        theme.focus
+                    } else {
+                        theme.muted_text
+                    }),
+            )
+            .child(format!("{} FPS", self.fps_value))
     }
 
     fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {
@@ -600,10 +686,16 @@ impl Render for Locus {
         if panels.sliding() {
             window.request_animation_frame();
         }
+        if self.fps_counter_visible {
+            self.tick_fps(window);
+        }
 
         div()
             .key_context("Locus")
+            .track_focus(&self.root_focus)
+            .on_action(cx.listener(Self::close_window_action))
             .on_action(cx.listener(Self::open_settings_action))
+            .on_action(cx.listener(Self::toggle_fps_counter_action))
             .on_action(cx.listener(Self::toggle_left_sidebar_action))
             .on_action(cx.listener(Self::toggle_right_sidebar_action))
             .on_mouse_move(cx.listener(Self::resize_panel_mouse_move))

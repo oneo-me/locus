@@ -1,11 +1,14 @@
 use gpui::{
-    App, AppContext, Bounds, Context, Render, TitlebarOptions, Window, WindowBackgroundAppearance,
-    WindowBounds, WindowHandle, WindowOptions, div, prelude::*, px, size,
+    App, AppContext, Bounds, Context, FocusHandle, Render, TitlebarOptions, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowOptions, div, prelude::*, px,
+    size,
 };
 
-use crate::theme::Theme;
+use crate::{CloseWindow, theme::Theme};
 
-pub struct Settings;
+pub struct Settings {
+    focus: FocusHandle,
+}
 
 pub fn open_settings_window(cx: &mut App) -> WindowHandle<Settings> {
     let bounds = Bounds::centered(None, size(px(720.0), px(520.0)), cx);
@@ -22,13 +25,23 @@ pub fn open_settings_window(cx: &mut App) -> WindowHandle<Settings> {
             window_background: WindowBackgroundAppearance::Opaque,
             ..Default::default()
         },
-        |_, cx| cx.new(|_| Settings),
+        |window, cx| {
+            cx.new(|cx| {
+                let focus = cx.focus_handle();
+                window.focus(&focus, cx);
+                Settings { focus }
+            })
+        },
     )
     .expect("failed to open settings window")
 }
 
 impl Render for Settings {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div().size_full().bg(Theme::current(cx).surface)
+        div()
+            .track_focus(&self.focus)
+            .on_action(|_: &CloseWindow, window, _| window.remove_window())
+            .size_full()
+            .bg(Theme::current(cx).surface)
     }
 }
