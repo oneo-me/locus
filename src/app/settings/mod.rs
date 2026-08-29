@@ -5,7 +5,7 @@ mod pages;
 
 use crate::config::DEFAULT_UI_FONT_SIZE;
 use crate::localization::Language;
-use crate::preferences::{FONT_SIZES, Preferences};
+use crate::preferences::{EditorPreference, FONT_SIZES, Preferences};
 use crate::theme::{self, Theme, ThemePreference};
 use crate::ui::{ActivationExt, Icon, icon};
 use gpui::{
@@ -27,6 +27,7 @@ enum SettingsPage {
 #[derive(Clone, Copy)]
 enum Choice {
     Page(SettingsPage),
+    Editor(EditorPreference),
     Theme(ThemePreference),
     Language(Language),
     UiFont(f32),
@@ -35,6 +36,7 @@ enum Choice {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Dropdown {
+    Editor,
     Theme,
     Language,
     UiFont,
@@ -44,10 +46,11 @@ enum Dropdown {
 impl Dropdown {
     fn trigger_focus_index(self) -> usize {
         match self {
-            Self::Theme => 4,
-            Self::Language => 5,
-            Self::UiFont => 6,
-            Self::CodeFont => 7,
+            Self::Editor => 4,
+            Self::Theme => 5,
+            Self::Language => 6,
+            Self::UiFont => 7,
+            Self::CodeFont => 8,
         }
     }
 }
@@ -144,6 +147,12 @@ impl Settings {
                 self.page = page;
                 cx.notify();
                 return;
+            }
+            Choice::Editor(editor) => {
+                if self.preferences.editor == editor {
+                    return;
+                }
+                self.preferences.editor = editor;
             }
             Choice::Theme(preference) => {
                 if self.preferences.theme == preference {

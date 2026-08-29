@@ -1,5 +1,7 @@
 use super::*;
 
+const MENU_FOCUS_START: usize = 12;
+
 impl Settings {
     fn toggle_dropdown(&mut self, dropdown: Dropdown, window: &mut Window, cx: &mut Context<Self>) {
         if self.open_dropdown == Some(dropdown) {
@@ -7,7 +9,7 @@ impl Settings {
             window.focus(&self.controls[dropdown.trigger_focus_index()], cx);
         } else {
             self.open_dropdown = Some(dropdown);
-            window.focus(&self.controls[8], cx);
+            window.focus(&self.controls[MENU_FOCUS_START], cx);
         }
         cx.notify();
     }
@@ -86,7 +88,7 @@ impl Settings {
                         .id(format!("{id}-option-{index}"))
                         .role(Role::Button)
                         .aria_label(item_label)
-                        .track_focus(&self.controls[8 + index])
+                        .track_focus(&self.controls[MENU_FOCUS_START + index])
                         .tab_index(0)
                         .tab_stop(true)
                         .h(px(32.0))

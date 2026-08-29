@@ -13,10 +13,29 @@ use crate::theme::ThemePreference;
 
 pub const FONT_SIZES: [f32; 6] = [14.0, 15.0, 16.0, 17.0, 18.0, 20.0];
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorPreference {
+    System,
+    VisualStudioCode,
+}
+
+impl EditorPreference {
+    pub const ALL: [Self; 2] = [Self::System, Self::VisualStudioCode];
+
+    pub fn label(self, language: Language) -> &'static str {
+        match self {
+            Self::System => language.text("系统默认", "System default"),
+            Self::VisualStudioCode => "VS Code",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Preferences {
     pub library_path: Option<PathBuf>,
+    pub editor: EditorPreference,
     pub theme: ThemePreference,
     pub language: Language,
     pub ui_font_size: f32,
@@ -27,6 +46,7 @@ impl Default for Preferences {
     fn default() -> Self {
         Self {
             library_path: DEFAULT_LIBRARY_PATH.map(PathBuf::from),
+            editor: EditorPreference::System,
             theme: DEFAULT_THEME,
             language: DEFAULT_LANGUAGE,
             ui_font_size: DEFAULT_UI_FONT_SIZE,
@@ -89,6 +109,7 @@ mod tests {
     fn preferences_round_trip() {
         let preferences = Preferences {
             library_path: Some(PathBuf::from("/tmp/笔记")),
+            editor: EditorPreference::VisualStudioCode,
             theme: ThemePreference::Dark,
             language: Language::English,
             ui_font_size: 18.0,
@@ -98,6 +119,7 @@ mod tests {
         let restored: Preferences = serde_json::from_str(&json).unwrap();
 
         assert_eq!(restored.library_path, preferences.library_path);
+        assert_eq!(restored.editor, preferences.editor);
         assert_eq!(restored.theme, preferences.theme);
         assert_eq!(restored.language, preferences.language);
         assert_eq!(restored.ui_font_size, preferences.ui_font_size);

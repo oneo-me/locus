@@ -10,10 +10,12 @@ use gpui::{
     PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, img, linear_color_stop,
     linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
+use std::time::Duration;
 
 const NOTE_MAX_WIDTH: f32 = 832.0;
 const ATMOSPHERE_HEIGHT: f32 = 268.0;
 const SHAPE_HEIGHT: f32 = 208.0;
+const COPY_FEEDBACK_DURATION: Duration = Duration::from_secs(2);
 
 impl Locus {
     pub(super) fn render_note(
@@ -132,6 +134,7 @@ impl Locus {
     ) -> impl IntoElement {
         let reference = format!("locus://{}", node.path);
         let copied = self.copied_library_node.as_deref() == Some(node.path.as_str());
+        let editor = self.settings.read(cx).preferences().editor;
         let language = self.language(cx);
         let (left_padding, right_padding) = note_titlebar_padding(
             content_width,
@@ -154,7 +157,42 @@ impl Locus {
         .on_activation(cx, move |this, _, cx| {
             cx.write_to_clipboard(ClipboardItem::new_string(reference.clone()));
             this.copied_library_node = this.selected_library_node.clone();
+            this.note_copy_generation = this.note_copy_generation.wrapping_add(1);
+            let generation = this.note_copy_generation;
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(COPY_FEEDBACK_DURATION).await;
+                let _ = this.update(cx, |this, cx| {
+                    if this.note_copy_generation == generation {
+                        this.copied_library_node = None;
+                        cx.notify();
+                    }
+                });
+            })
+            .detach();
             cx.notify();
+        });
+        let document_path = node
+            .document_path
+            .clone()
+            .expect("note has a document path");
+        let edit_button = toolbar_icon_button(
+            "edit-note",
+            language.text("编辑笔记", "Edit note"),
+            &self.note_edit_focus,
+            Icon::Edit,
+            theme,
+        )
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .on_activation(cx, move |_, window, cx| {
+            if let Err(error) = crate::platform::open_in_editor(&document_path, editor) {
+                drop(window.prompt(
+                    PromptLevel::Critical,
+                    language.text("无法编辑笔记", "Could not edit note"),
+                    Some(&error),
+                    &[language.text("好", "OK")],
+                    cx,
+                ));
+            }
         });
         let directory = node.directory.clone();
         let open_directory_button = toolbar_icon_button(
@@ -178,6 +216,7 @@ impl Locus {
         });
 
         self.window_drag_region("note-titlebar-region", cx)
+            .occlude()
             .absolute()
             .top_0()
             .left_0()
@@ -224,6 +263,7 @@ impl Locus {
                         header.child(self.render_fps_counter(cx))
                     })
                     .child(copy_button)
+                    .child(edit_button)
                     .child(open_directory_button),
             )
     }

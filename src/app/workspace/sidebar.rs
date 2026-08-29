@@ -215,6 +215,7 @@ impl Locus {
         let selection_changed = self.selected_library_node.as_deref() != Some(path.as_str());
         if selection_changed {
             self.copied_library_node = None;
+            self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
             self.note_scroll_handle
                 .set_offset(gpui::point(gpui::px(0.0), gpui::px(0.0)));
             self.note_scrollbar_state.reset_visibility();

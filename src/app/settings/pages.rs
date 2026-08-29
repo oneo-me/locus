@@ -42,6 +42,16 @@ impl Settings {
             .and_then(Path::to_str)
             .unwrap_or(language.text("未选择", "Not selected"));
         let choose_label = language.text("选择…", "Choose…");
+        let editor_choices = EditorPreference::ALL
+            .into_iter()
+            .map(|value| {
+                (
+                    value.label(language),
+                    value == self.preferences.editor,
+                    Choice::Editor(value),
+                )
+            })
+            .collect();
         let path_control = div()
             .min_w_0()
             .w(px(320.0))
@@ -91,15 +101,35 @@ impl Settings {
                     .on_activation(cx, |this, _, cx| this.choose_library(cx)),
             );
 
-        self.render_setting_row(
-            language.text("文档库路径", "Library path"),
-            language.text(
-                "Markdown 笔记与附件所在的根目录",
-                "Root folder containing Markdown notes and attachments",
-            ),
-            path_control,
-            cx,
-        )
+        div()
+            .flex()
+            .flex_col()
+            .child(self.render_setting_row(
+                language.text("文档库路径", "Library path"),
+                language.text(
+                    "Markdown 笔记与附件所在的根目录",
+                    "Root folder containing Markdown notes and attachments",
+                ),
+                path_control,
+                cx,
+            ))
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(self.render_setting_row(
+                language.text("编辑器", "Editor"),
+                language.text(
+                    "笔记页面的编辑按钮使用此外部编辑器",
+                    "External editor used by the note page edit button",
+                ),
+                self.render_dropdown(
+                    "editor-selector",
+                    self.preferences.editor.label(language),
+                    Dropdown::Editor,
+                    editor_choices,
+                    4,
+                    cx,
+                ),
+                cx,
+            ))
     }
 
     pub(super) fn render_appearance(&self, cx: &mut Context<Self>) -> gpui::Div {
@@ -157,7 +187,7 @@ impl Settings {
                     selected_theme,
                     Dropdown::Theme,
                     theme_choices,
-                    4,
+                    5,
                     cx,
                 ),
                 cx,
@@ -174,7 +204,7 @@ impl Settings {
                     language.label(),
                     Dropdown::Language,
                     language_choices,
-                    5,
+                    6,
                     cx,
                 ),
                 cx,
@@ -191,7 +221,7 @@ impl Settings {
                     font_size_label(self.preferences.ui_font_size),
                     Dropdown::UiFont,
                     ui_font_choices,
-                    6,
+                    7,
                     cx,
                 ),
                 cx,
@@ -205,7 +235,7 @@ impl Settings {
                     font_size_label(self.preferences.code_font_size),
                     Dropdown::CodeFont,
                     code_font_choices,
-                    7,
+                    8,
                     cx,
                 ),
                 cx,

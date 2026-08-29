@@ -89,8 +89,10 @@ pub struct Locus {
     selected_library_scroll_anchor: ScrollAnchor,
     scroll_to_selected_library_node: bool,
     note_copy_focus: FocusHandle,
+    note_edit_focus: FocusHandle,
     note_open_directory_focus: FocusHandle,
     copied_library_node: Option<String>,
+    note_copy_generation: u64,
     note_scroll_handle: ScrollHandle,
     note_scrollbar_state: Rc<ScrollbarState>,
     fps_counter_visible: bool,
@@ -225,8 +227,10 @@ impl Locus {
             selected_library_scroll_anchor,
             scroll_to_selected_library_node,
             note_copy_focus: cx.focus_handle(),
+            note_edit_focus: cx.focus_handle(),
             note_open_directory_focus: cx.focus_handle(),
             copied_library_node: None,
+            note_copy_generation: 0,
             note_scroll_handle: ScrollHandle::new(),
             note_scrollbar_state: ScrollbarState::new(),
             fps_counter_visible: interface_state.fps_counter_visible,
@@ -419,6 +423,7 @@ impl Locus {
         self.selected_note = None;
         self.selected_library_node = None;
         self.copied_library_node = None;
+        self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
         self.note_scroll_handle
             .set_offset(gpui::point(px(0.0), px(0.0)));
         self.note_scrollbar_state.reset_visibility();
