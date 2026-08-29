@@ -1,4 +1,4 @@
-use gpui::{App, Global, Hsla, Window, WindowAppearance, hsla, rgb, transparent_black};
+use gpui::{App, Global, Hsla, Window, WindowAppearance, hsla, rgb};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -12,15 +12,15 @@ pub enum ThemePreference {
 
 #[derive(Clone, Copy)]
 pub struct Theme {
-    pub is_dark: bool,
-    pub sidebar: Hsla,
+    pub window_background: Hsla,
     pub surface: Hsla,
     pub raised: Hsla,
-    pub sidebar_drag_background: Hsla,
     pub border: Hsla,
     pub border_strong: Hsla,
+    pub sidebar_border: Hsla,
     pub text: Hsla,
-    pub muted_text: Hsla,
+    pub text_secondary: Hsla,
+    pub text_tertiary: Hsla,
     pub control_hover: Hsla,
     pub control_active: Hsla,
     pub control_selected: Hsla,
@@ -42,22 +42,22 @@ impl Theme {
 
     fn dark() -> Self {
         Self {
-            is_dark: true,
-            sidebar: if cfg!(target_os = "macos") {
-                transparent_black()
+            window_background: if cfg!(target_os = "macos") {
+                Hsla::from(rgb(0x181818)).opacity(0.92)
             } else {
                 rgb(0x181818).into()
             },
             surface: rgb(0x1a1a1a).into(),
             raised: rgb(0x232323).into(),
-            sidebar_drag_background: rgb(0x181818).into(),
-            border: hsla(0.0, 0.0, 1.0, 0.07),
+            border: hsla(220.0 / 360.0, 0.10, 0.90, 0.07),
             border_strong: hsla(220.0 / 360.0, 0.10, 0.90, 0.14),
+            sidebar_border: hsla(126.93 / 360.0, 0.000_000_1, 0.16077, 1.0),
             text: rgb(0xe2e2e2).into(),
-            muted_text: rgb(0x8b8b8b).into(),
-            control_hover: hsla(220.0 / 360.0, 0.10, 0.90, 0.08),
-            control_active: hsla(220.0 / 360.0, 0.10, 0.90, 0.12),
-            control_selected: hsla(220.0 / 360.0, 0.10, 0.90, 0.09),
+            text_secondary: rgb(0xa3a3a3).into(),
+            text_tertiary: rgb(0x7d7d7d).into(),
+            control_hover: hsla(220.0 / 360.0, 0.10, 0.90, 0.05),
+            control_active: hsla(220.0 / 360.0, 0.10, 0.90, 0.09),
+            control_selected: hsla(0.0, 0.0, 0.941, 0.06),
             focus: rgb(0x3b82f6).into(),
             resize_handle: rgb(0x3b82f6).into(),
             error: rgb(0xe2726a).into(),
@@ -66,22 +66,22 @@ impl Theme {
 
     fn light() -> Self {
         Self {
-            is_dark: false,
-            sidebar: if cfg!(target_os = "macos") {
-                transparent_black()
+            window_background: if cfg!(target_os = "macos") {
+                Hsla::from(rgb(0xf3f3f3)).opacity(0.92)
             } else {
                 rgb(0xf3f3f3).into()
             },
             surface: rgb(0xf6f5f6).into(),
             raised: rgb(0xececec).into(),
-            sidebar_drag_background: rgb(0xf3f3f3).into(),
-            border: hsla(0.0, 0.0, 0.0, 0.08),
+            border: hsla(220.0 / 360.0, 0.10, 0.12, 0.08),
             border_strong: hsla(220.0 / 360.0, 0.10, 0.12, 0.15),
+            sidebar_border: hsla(0.0, 0.0, 0.078, 0.12),
             text: rgb(0x242424).into(),
-            muted_text: rgb(0x737373).into(),
-            control_hover: hsla(0.0, 0.0, 0.0, 0.07),
-            control_active: hsla(0.0, 0.0, 0.0, 0.11),
-            control_selected: hsla(0.0, 0.0, 0.0, 0.07),
+            text_secondary: rgb(0x666666).into(),
+            text_tertiary: rgb(0x858585).into(),
+            control_hover: hsla(220.0 / 360.0, 0.10, 0.12, 0.05),
+            control_active: hsla(220.0 / 360.0, 0.10, 0.12, 0.09),
+            control_selected: hsla(0.0, 0.0, 0.078, 0.06),
             focus: rgb(0x2563eb).into(),
             resize_handle: rgb(0x2563eb).into(),
             error: rgb(0xc64a42).into(),
@@ -120,8 +120,6 @@ pub fn apply_preference(preference: ThemePreference, window: &mut Window, cx: &m
         Theme::light()
     };
     cx.set_global(ActiveTheme(theme));
-    crate::platform::set_sidebar_material_color(theme.is_dark)
-        .expect("failed to update macOS sidebar material color");
     window.refresh();
 }
 

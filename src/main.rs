@@ -2,6 +2,8 @@ mod app;
 mod motion;
 mod platform;
 mod settings;
+mod state;
+mod storage;
 mod theme;
 mod ui;
 
@@ -10,11 +12,12 @@ use std::rc::Rc;
 
 use app::Locus;
 use gpui::{
-    App, AppContext, Bounds, KeyBinding, Menu, MenuItem, TitlebarOptions, WindowAppearance,
+    App, AppContext, Bounds, KeyBinding, Menu, MenuItem, TitlebarOptions,
     WindowBackgroundAppearance, WindowBounds, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
 use settings::{Language, Preferences};
+use state::InterfaceState;
 
 actions!(
     locus,
@@ -60,6 +63,10 @@ fn main() {
         cx.on_action(|_: &About, _| platform::show_about_panel());
         cx.on_action(|_: &Quit, cx| cx.quit());
         let (preferences, load_error) = Preferences::load();
+        let (interface_state, state_load_error) = InterfaceState::load();
+        if let Some(error) = state_load_error {
+            eprintln!("{error}");
+        }
         let language = preferences.language;
 
         let bounds = Bounds::centered(None, size(px(WINDOW_WIDTH), px(WINDOW_HEIGHT)), cx);
@@ -84,13 +91,9 @@ fn main() {
                 },
                 |window, cx| {
                     platform::configure_main_window_close_behavior(window, cx);
-                    let dark = matches!(
-                        cx.window_appearance(),
-                        WindowAppearance::Dark | WindowAppearance::VibrantDark
-                    );
-                    platform::configure_sidebar_material(window, dark)
+                    platform::configure_sidebar_material(window)
                         .expect("failed to install macOS sidebar material");
-                    cx.new(|cx| Locus::new(window, preferences, load_error, cx))
+                    cx.new(|cx| Locus::new(window, preferences, load_error, interface_state, cx))
                 },
             )
             .expect("failed to open Locus window");

@@ -3,15 +3,17 @@ use std::path::{Path, PathBuf};
 
 use gpui::{
     App, Context, EventEmitter, FocusHandle, FontWeight, KeyDownEvent, MouseButton,
-    PathPromptOptions, Render, Role, Stateful, StatefulInteractiveElement, Window, deferred, div,
-    prelude::*, px,
+    PathPromptOptions, Rems, Render, Role, Stateful, StatefulInteractiveElement, Window, deferred,
+    div, prelude::*, px, rems,
 };
 use serde::{Deserialize, Serialize};
 
+use crate::storage::data_directory;
 use crate::theme::{self, Theme, ThemePreference};
 use crate::ui::{Icon, icon};
 
 const FONT_SIZES: [f32; 6] = [14.0, 15.0, 16.0, 17.0, 18.0, 20.0];
+const DEFAULT_UI_FONT_SIZE: f32 = 16.0;
 const SETTINGS_SIDEBAR_WIDTH: f32 = 252.0;
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 720.0;
 
@@ -57,7 +59,7 @@ impl Default for Preferences {
             library_path: None,
             theme: ThemePreference::System,
             language: Language::Chinese,
-            ui_font_size: 16.0,
+            ui_font_size: DEFAULT_UI_FONT_SIZE,
             code_font_size: 14.0,
         }
     }
@@ -106,13 +108,7 @@ impl Preferences {
 }
 
 fn settings_path() -> Result<PathBuf, String> {
-    dirs::home_dir()
-        .map(|home| {
-            home.join(".oneo")
-                .join("locus_native")
-                .join("settings.json")
-        })
-        .ok_or_else(|| "无法确定用户主目录".to_string())
+    data_directory().map(|directory| directory.join("settings.json"))
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -320,7 +316,7 @@ impl Settings {
             .gap(px(6.0))
             .cursor_default()
             .text_sm()
-            .text_color(theme.muted_text)
+            .text_color(theme.text_secondary)
             .focus_visible(|style| style.border_color(theme.focus))
             .hover(|style| style.bg(theme.control_hover))
             .active(|style| style.bg(theme.control_active))
@@ -331,7 +327,7 @@ impl Settings {
                     .whitespace_nowrap()
                     .child(label),
             )
-            .child(icon(Icon::ChevronDown, 10.5, theme.muted_text))
+            .child(icon(Icon::ChevronDown, 10.5, theme.text_tertiary))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
@@ -381,14 +377,14 @@ impl Settings {
                         .text_color(if selected {
                             theme.text
                         } else {
-                            theme.muted_text
+                            theme.text_secondary
                         })
                         .hover(|style| style.bg(theme.control_hover))
                         .active(|style| style.bg(theme.control_active))
                         .focus_visible(|style| style.border_1().border_color(theme.focus))
                         .child(item_label)
                         .child(div().w(px(12.0)).when(selected, |mark| {
-                            mark.child(icon(Icon::Check, 11.0, theme.muted_text))
+                            mark.child(icon(Icon::Check, 11.0, theme.text_tertiary))
                         }))
                         .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
                             if matches!(event.keystroke.key.as_str(), "enter" | "space") {
@@ -437,19 +433,19 @@ impl Settings {
                         .track_focus(&self.controls[0])
                         .tab_index(0)
                         .tab_stop(true)
-                        .h(px(36.0))
+                        .h(px(34.0))
                         .px(px(11.0))
                         .rounded(px(8.0))
                         .flex()
                         .items_center()
                         .cursor_default()
-                        .text_sm()
-                        .text_color(theme.muted_text)
+                        .text_size(scaled_ui_pixels(13.0))
+                        .text_color(theme.text_secondary)
                         .hover(|style| style.bg(theme.control_hover))
                         .active(|style| style.bg(theme.control_active))
                         .focus_visible(|style| style.border_1().border_color(theme.focus))
                         .gap(px(9.0))
-                        .child(icon(Icon::ArrowLeft, 15.0, theme.muted_text))
+                        .child(icon(Icon::ArrowLeft, 15.0, theme.text_tertiary))
                         .child(back_label)
                         .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                             if matches!(event.keystroke.key.as_str(), "enter" | "space") {
@@ -466,7 +462,7 @@ impl Settings {
                     .px(px(12.0))
                     .flex()
                     .flex_col()
-                    .gap(px(4.0))
+                    .gap(px(3.0))
                     .child(self.render_navigation_row(
                         "settings-general",
                         language.text("通用", "General"),
@@ -511,28 +507,23 @@ impl Settings {
             .items_center()
             .gap(px(10.0))
             .cursor_default()
-            .text_sm()
-            .font_weight(if selected {
-                FontWeight::MEDIUM
-            } else {
-                FontWeight::NORMAL
-            })
+            .text_size(scaled_ui_pixels(13.0))
             .text_color(if selected {
                 theme.text
             } else {
-                theme.muted_text
+                theme.text_secondary
             })
             .when(selected, |row| row.bg(theme.control_selected))
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
+            .hover(|style| style.bg(theme.control_selected))
+            .active(|style| style.bg(theme.control_selected))
             .focus_visible(|style| style.border_1().border_color(theme.focus))
             .child(icon(
                 icon_kind,
                 15.0,
                 if selected {
-                    theme.text
+                    theme.text_secondary
                 } else {
-                    theme.muted_text
+                    theme.text_tertiary
                 },
             ))
             .child(label)
@@ -571,7 +562,7 @@ impl Settings {
                         div()
                             .mt(px(4.0))
                             .text_xs()
-                            .text_color(theme.muted_text)
+                            .text_color(theme.text_secondary)
                             .child(description),
                     ),
             )
@@ -602,7 +593,7 @@ impl Settings {
                     .whitespace_nowrap()
                     .text_ellipsis()
                     .text_sm()
-                    .text_color(theme.muted_text)
+                    .text_color(theme.text_secondary)
                     .child(path.to_string()),
             )
             .child(
@@ -622,6 +613,7 @@ impl Settings {
                     .flex()
                     .items_center()
                     .text_sm()
+                    .text_color(theme.text_secondary)
                     .cursor_default()
                     .hover(|style| style.bg(theme.control_hover))
                     .active(|style| style.bg(theme.control_active))
@@ -777,7 +769,7 @@ impl Settings {
             .flex()
             .flex_col()
             .border_l_1()
-            .border_color(theme.border_strong)
+            .border_color(theme.sidebar_border)
             .bg(theme.surface)
             .child(div().h(px(48.0)).flex_none())
             .child(
@@ -832,6 +824,10 @@ fn font_size_label(value: f32) -> &'static str {
     }
 }
 
+fn scaled_ui_pixels(value: f32) -> Rems {
+    rems(value / DEFAULT_UI_FONT_SIZE)
+}
+
 impl Render for Settings {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::current(cx);
@@ -857,7 +853,7 @@ impl Render for Settings {
             )
             .size_full()
             .flex()
-            .bg(theme.sidebar)
+            .bg(theme.surface)
             .text_color(theme.text)
             .font_family(".SystemUIFont")
             .child(self.render_sidebar(cx))

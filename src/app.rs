@@ -8,6 +8,10 @@ use gpui::{
 
 use crate::motion::WidthTween;
 use crate::settings::{Language, Preferences, Settings, SettingsEvent};
+use crate::state::{
+    InterfaceState, LEFT_SIDEBAR_DEFAULT_WIDTH, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH,
+    RIGHT_SIDEBAR_DEFAULT_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH, RIGHT_SIDEBAR_MIN_WIDTH,
+};
 use crate::theme::Theme;
 use crate::ui::{Icon, icon};
 use crate::{CloseWindow, OpenSettings, ToggleFpsCounter, ToggleLeftSidebar, ToggleRightSidebar};
@@ -17,12 +21,6 @@ const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
 const TITLEBAR_CONTROL_INSET: f32 = 11.0;
 const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
-pub(crate) const LEFT_SIDEBAR_WIDTH: f32 = 252.0;
-pub(crate) const RIGHT_SIDEBAR_WIDTH: f32 = 460.0;
-const LEFT_SIDEBAR_MIN_WIDTH: f32 = 180.0;
-const LEFT_SIDEBAR_MAX_WIDTH: f32 = 420.0;
-const RIGHT_SIDEBAR_MIN_WIDTH: f32 = 280.0;
-const RIGHT_SIDEBAR_MAX_WIDTH: f32 = 1000.0;
 const CONTENT_MIN_WIDTH: f32 = 360.0;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -64,7 +62,6 @@ pub struct Locus {
     rendered_right_width: f32,
     left_sidebar_slide: Option<WidthTween>,
     right_sidebar_slide: Option<WidthTween>,
-    applied_material_dark: Option<bool>,
     panel_resize_drag: Option<PanelResizeDrag>,
     header_drag_armed: bool,
     left_toggle_focus: FocusHandle,
@@ -72,7 +69,6 @@ pub struct Locus {
     settings_focus: FocusHandle,
     settings_open: bool,
     settings: Entity<Settings>,
-    settings_material_applied: bool,
     fps_counter_visible: bool,
     fps_frame_count: u32,
     fps_value: u32,
@@ -84,6 +80,7 @@ impl Locus {
         window: &mut Window,
         preferences: Preferences,
         load_error: Option<String>,
+        interface_state: InterfaceState,
         cx: &mut Context<Self>,
     ) -> Self {
         let root_focus = cx.focus_handle();
@@ -116,15 +113,22 @@ impl Locus {
 
         Self {
             root_focus,
-            left_sidebar_visible: true,
-            right_sidebar_visible: true,
-            left_sidebar_width: LEFT_SIDEBAR_WIDTH,
-            right_sidebar_width: RIGHT_SIDEBAR_WIDTH,
-            rendered_left_width: LEFT_SIDEBAR_WIDTH,
-            rendered_right_width: RIGHT_SIDEBAR_WIDTH,
+            left_sidebar_visible: interface_state.left_sidebar_visible,
+            right_sidebar_visible: interface_state.right_sidebar_visible,
+            left_sidebar_width: interface_state.left_sidebar_width,
+            right_sidebar_width: interface_state.right_sidebar_width,
+            rendered_left_width: if interface_state.left_sidebar_visible {
+                interface_state.left_sidebar_width
+            } else {
+                0.0
+            },
+            rendered_right_width: if interface_state.right_sidebar_visible {
+                interface_state.right_sidebar_width
+            } else {
+                0.0
+            },
             left_sidebar_slide: None,
             right_sidebar_slide: None,
-            applied_material_dark: None,
             panel_resize_drag: None,
             header_drag_armed: false,
             left_toggle_focus: cx.focus_handle(),
@@ -132,15 +136,14 @@ impl Locus {
             settings_focus: cx.focus_handle(),
             settings_open: false,
             settings,
-            settings_material_applied: false,
-            fps_counter_visible: false,
+            fps_counter_visible: interface_state.fps_counter_visible,
             fps_frame_count: 0,
             fps_value: 0,
             fps_last_frame: Instant::now(),
         }
     }
 
-    fn settle_panels(&mut self, window: &Window, dark: bool) -> PanelFrame {
+    fn settle_panels(&mut self, window: &Window) -> PanelFrame {
         let (left_content, right_content) = fitted_panel_widths(
             f32::from(window.viewport_size().width),
             self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
@@ -168,12 +171,6 @@ impl Locus {
         self.rendered_left_width = left;
         self.rendered_right_width = right;
 
-        if self.applied_material_dark != Some(dark) {
-            crate::platform::set_sidebar_material_color(dark)
-                .expect("failed to update macOS sidebar material color");
-            self.applied_material_dark = Some(dark);
-        }
-
         PanelFrame {
             left_content,
             right_content,
@@ -197,7 +194,24 @@ impl Locus {
                     (!cx.reduce_motion()).then(|| WidthTween::new(self.rendered_right_width));
             }
         }
+        self.save_interface_state();
         cx.notify();
+    }
+
+    fn interface_state(&self) -> InterfaceState {
+        InterfaceState {
+            left_sidebar_width: self.left_sidebar_width,
+            right_sidebar_width: self.right_sidebar_width,
+            left_sidebar_visible: self.left_sidebar_visible,
+            right_sidebar_visible: self.right_sidebar_visible,
+            fps_counter_visible: self.fps_counter_visible,
+        }
+    }
+
+    fn save_interface_state(&self) {
+        if let Err(error) = self.interface_state().save() {
+            eprintln!("无法保存界面状态：{error}");
+        }
     }
 
     fn toggle_left_sidebar_action(
@@ -224,9 +238,6 @@ impl Locus {
 
     fn open_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.settings_open = true;
-        crate::platform::set_sidebar_material(LEFT_SIDEBAR_WIDTH, Theme::current(cx).is_dark)
-            .expect("failed to size macOS sidebar material for settings");
-        self.settings_material_applied = true;
         self.settings
             .update(cx, |settings, cx| settings.focus(window, cx));
         cx.notify();
@@ -260,6 +271,7 @@ impl Locus {
         self.fps_frame_count = 0;
         self.fps_value = 0;
         self.fps_last_frame = Instant::now();
+        self.save_interface_state();
         cx.notify();
     }
 
@@ -351,7 +363,7 @@ impl Locus {
             .focus_visible(|style| style.border_1().border_color(theme.focus))
             .hover(|style| style.bg(theme.control_hover))
             .active(|style| style.bg(theme.control_active))
-            .child(icon(icon_kind, 14.0, theme.muted_text))
+            .child(icon(icon_kind, 14.0, theme.text_secondary))
             .on_mouse_down(MouseButton::Left, |_, _, cx| {
                 cx.stop_propagation();
             })
@@ -429,7 +441,7 @@ impl Locus {
             .items_center()
             .gap(px(5.0))
             .text_xs()
-            .text_color(theme.muted_text)
+            .text_color(theme.text_tertiary)
             .child(
                 div()
                     .size(px(6.0))
@@ -437,7 +449,7 @@ impl Locus {
                     .bg(if self.fps_value > 0 {
                         theme.focus
                     } else {
-                        theme.muted_text
+                        theme.text_tertiary
                     }),
             )
             .child(format!("{} FPS", self.fps_value))
@@ -482,7 +494,7 @@ impl Locus {
             .focus_visible(|style| style.border_1().border_color(theme.focus))
             .hover(|style| style.bg(theme.control_hover))
             .active(|style| style.bg(theme.control_active))
-            .child(icon(Icon::Settings, 14.0, theme.muted_text))
+            .child(icon(Icon::Settings, 14.0, theme.text_secondary))
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
                     this.open_settings(window, cx);
@@ -498,16 +510,24 @@ impl Locus {
         let theme = Theme::current(cx);
         let active = self.panel_resize_drag.is_some_and(|drag| drag.side == side);
 
-        let (handle, edge) = match side {
-            PanelSide::Left => (
-                div().right(px(-5.0)).w(px(10.0)),
-                div().left(px(5.0)).w(px(1.0)),
-            ),
-            PanelSide::Right => (
-                div().left(px(-7.0)).w(px(8.0)),
-                div().left(px(5.0)).w(px(2.0)),
-            ),
+        let handle = match side {
+            PanelSide::Left => div().right(px(-5.0)).w(px(10.0)),
+            PanelSide::Right => div().left(px(-5.0)).w(px(10.0)),
         };
+        let edge = div()
+            .left(px(5.0))
+            .w(px(1.0))
+            .absolute()
+            .top_0()
+            .h_full()
+            .bg(if active && side == PanelSide::Left {
+                theme.resize_handle
+            } else {
+                transparent_black()
+            })
+            .when(!active && side == PanelSide::Left, |edge| {
+                edge.group_hover("panel-resize-handle", |style| style.bg(theme.resize_handle))
+            });
         handle
             .id(match side {
                 PanelSide::Left => "left-sidebar-resize-handle",
@@ -518,29 +538,19 @@ impl Locus {
             .bottom_0()
             .cursor_col_resize()
             .group("panel-resize-handle")
-            .child(
-                edge.absolute()
-                    .top_0()
-                    .h_full()
-                    .bg(if active {
-                        theme.resize_handle
-                    } else {
-                        transparent_black()
-                    })
-                    .group_hover("panel-resize-handle", |style| style.bg(theme.resize_handle)),
-            )
+            .child(edge)
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                    if event.click_count == 2 {
+                        this.reset_panel_width(side, cx);
+                        cx.stop_propagation();
+                        return;
+                    }
                     let start_width = match side {
                         PanelSide::Left => {
                             this.left_sidebar_slide = None;
-                            let width = this.rendered_left_width;
-                            let dark = Theme::current(cx).is_dark;
-                            crate::platform::set_sidebar_material(width, dark)
-                                .expect("failed to resize macOS sidebar material");
-                            this.applied_material_dark = Some(dark);
-                            width
+                            this.rendered_left_width
                         }
                         PanelSide::Right => {
                             this.right_sidebar_slide = None;
@@ -556,6 +566,22 @@ impl Locus {
                     cx.notify();
                 }),
             )
+    }
+
+    fn reset_panel_width(&mut self, side: PanelSide, cx: &mut Context<Self>) {
+        self.panel_resize_drag = None;
+        match side {
+            PanelSide::Left => {
+                self.left_sidebar_width = LEFT_SIDEBAR_DEFAULT_WIDTH;
+                self.left_sidebar_slide = None;
+            }
+            PanelSide::Right => {
+                self.right_sidebar_width = RIGHT_SIDEBAR_DEFAULT_WIDTH;
+                self.right_sidebar_slide = None;
+            }
+        }
+        self.save_interface_state();
+        cx.notify();
     }
 
     fn resize_panel_mouse_move(
@@ -577,10 +603,6 @@ impl Locus {
                     .max(LEFT_SIDEBAR_MIN_WIDTH);
                 self.left_sidebar_width =
                     (drag.start_width + delta).clamp(LEFT_SIDEBAR_MIN_WIDTH, maximum);
-                let dark = Theme::current(cx).is_dark;
-                crate::platform::set_sidebar_material(self.left_sidebar_width, dark)
-                    .expect("failed to resize macOS sidebar material");
-                self.applied_material_dark = Some(dark);
             }
             PanelSide::Right => {
                 let maximum = RIGHT_SIDEBAR_MAX_WIDTH
@@ -600,6 +622,7 @@ impl Locus {
         cx: &mut Context<Self>,
     ) {
         if event.button == MouseButton::Left && self.panel_resize_drag.take().is_some() {
+            self.save_interface_state();
             cx.notify();
         }
     }
@@ -627,10 +650,6 @@ impl Locus {
                     .text("尚未打开文档库", "No library selected")
                     .to_owned()
             });
-        let is_resizing = self
-            .panel_resize_drag
-            .is_some_and(|drag| drag.side == PanelSide::Left);
-
         div()
             .relative()
             .w(px(width))
@@ -638,11 +657,7 @@ impl Locus {
             .flex_none()
             .flex()
             .flex_col()
-            .bg(if is_resizing {
-                theme.sidebar_drag_background
-            } else {
-                transparent_black()
-            })
+            .bg(transparent_black())
             .child(self.render_left_titlebar(left_control_clearance, cx))
             .child(
                 div()
@@ -650,7 +665,7 @@ impl Locus {
                     .flex_1()
                     .p_4()
                     .text_sm()
-                    .text_color(theme.muted_text)
+                    .text_color(theme.text_secondary)
                     .child(library),
             )
             .child(
@@ -723,12 +738,7 @@ impl Locus {
 impl Render for Locus {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::current(cx);
-        if !self.settings_open && self.settings_material_applied {
-            crate::platform::set_sidebar_material(self.left_sidebar_width, theme.is_dark)
-                .expect("failed to restore macOS sidebar material");
-            self.settings_material_applied = false;
-        }
-        let panels = self.settle_panels(window, theme.is_dark);
+        let panels = self.settle_panels(window);
         let left_toggle_offset = left_toggle_offset(window.is_fullscreen());
         let left_control_clearance =
             left_toggle_offset + TITLEBAR_CONTROL_SIZE + TITLEBAR_CONTROL_GAP;
@@ -811,6 +821,7 @@ impl Render for Locus {
             .size_full()
             .relative()
             .flex()
+            .bg(theme.window_background)
             .font_family(".SystemUIFont")
             .text_color(theme.text)
             .when(self.settings_open, |root| root.child(self.settings.clone()))
