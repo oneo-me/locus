@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -9,14 +10,14 @@ mod window_chrome;
 
 use gpui::{
     Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Render, ScrollAnchor, ScrollHandle, Stateful, Window, div, prelude::*, px,
+    MouseUpEvent, Render, ScrollAnchor, ScrollHandle, Stateful, Task, Window, div, prelude::*, px,
     transparent_black,
 };
 
 use super::panel_layout::{CONTENT_MIN_WIDTH, PanelFrame, fitted_panel_widths, slide_width};
 use super::settings::{Settings, SettingsEvent};
 use crate::config::{DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH};
-use crate::document_library::LibraryTree;
+use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use crate::localization::Language;
 use crate::motion::WidthTween;
 use crate::preferences::Preferences;
@@ -26,13 +27,23 @@ use crate::state::{
 };
 use crate::theme::Theme;
 use crate::ui::{ActivationExt, Icon, ScrollbarState, toolbar_icon_button};
-use crate::{CloseWindow, OpenSettings, ToggleFpsCounter, ToggleLeftSidebar, ToggleRightSidebar};
+use crate::{
+    CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleLeftSidebar,
+    ToggleRightSidebar,
+};
 
 const TITLEBAR_HEIGHT: f32 = 48.0;
 const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
 const TITLEBAR_CONTROL_INSET: f32 = 11.0;
 const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
+const LIBRARY_EVENT_DEBOUNCE: Duration = Duration::from_millis(180);
+
+struct SelectedNote {
+    path: String,
+    content: Option<String>,
+    error: Option<String>,
+}
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum PanelSide {
@@ -65,8 +76,14 @@ pub struct Locus {
     settings_open: bool,
     settings: Entity<Settings>,
     library_tree: LibraryTree,
+    library_watcher: Option<LibraryWatcher>,
+    library_watch_task: Option<Task<()>>,
+    library_watcher_error: Option<String>,
     expanded_library_nodes: HashSet<String>,
     selected_library_node: Option<String>,
+    selected_note: Option<SelectedNote>,
+    note_load_generation: u64,
+    note_load_task: Option<Task<()>>,
     library_scroll_handle: ScrollHandle,
     library_scrollbar_state: Rc<ScrollbarState>,
     selected_library_scroll_anchor: ScrollAnchor,
@@ -94,7 +111,10 @@ impl Locus {
         window.focus(&root_focus, cx);
         crate::theme::apply_preference(preferences.theme, window, cx);
         window.set_rem_size(px(preferences.ui_font_size));
-        let library_tree = LibraryTree::load(preferences.library_path.as_deref());
+        let library_path = preferences.library_path.clone();
+        let (library_watcher, library_watch_task, library_watcher_error) =
+            Self::start_library_watcher(library_path.as_deref(), cx);
+        let library_tree = LibraryTree::load(library_path.as_deref());
         let selected_library_node = interface_state
             .selected_library_node
             .clone()
@@ -115,6 +135,30 @@ impl Locus {
         let selected_library_scroll_anchor =
             ScrollAnchor::for_handle(library_scroll_handle.clone());
         let scroll_to_selected_library_node = selected_library_node.is_some();
+        let note_load_generation = 1;
+        let (selected_note, note_load_task) = selected_library_node
+            .as_deref()
+            .and_then(|path| {
+                library_tree
+                    .node(path)
+                    .and_then(|node| node.document_path.as_ref())
+                    .map(|document_path| {
+                        (
+                            Some(SelectedNote {
+                                path: path.to_owned(),
+                                content: None,
+                                error: None,
+                            }),
+                            Some(Self::spawn_note_load(
+                                path.to_owned(),
+                                document_path.clone(),
+                                note_load_generation,
+                                cx,
+                            )),
+                        )
+                    })
+            })
+            .unwrap_or((None, None));
         let settings = cx.new(|cx| Settings::new(preferences, load_error, root_focus.clone(), cx));
         cx.subscribe(
             &settings,
@@ -124,21 +168,11 @@ impl Locus {
                     cx.notify();
                 }
                 SettingsEvent::LanguageChanged(language) => {
-                    crate::set_app_menus(cx, *language);
+                    crate::set_app_menus(cx, *language, this.can_reload_current_note());
                     cx.notify();
                 }
                 SettingsEvent::LibraryChanged(path) => {
-                    this.library_tree = LibraryTree::load(Some(path));
-                    this.expanded_library_nodes.clear();
-                    this.selected_library_node = None;
-                    this.scroll_to_selected_library_node = false;
-                    this.copied_library_node = None;
-                    this.note_scroll_handle
-                        .set_offset(gpui::point(px(0.0), px(0.0)));
-                    this.note_scrollbar_state.reset_visibility();
-                    this.library_scrollbar_state.reset_visibility();
-                    this.save_interface_state();
-                    cx.notify();
+                    this.change_library(path, cx);
                 }
             },
         )
@@ -178,8 +212,14 @@ impl Locus {
             settings_open: false,
             settings,
             library_tree,
+            library_watcher,
+            library_watch_task,
+            library_watcher_error,
             expanded_library_nodes,
             selected_library_node,
+            selected_note,
+            note_load_generation,
+            note_load_task,
             library_scroll_handle,
             library_scrollbar_state,
             selected_library_scroll_anchor,
@@ -194,6 +234,237 @@ impl Locus {
             fps_value: 0,
             fps_last_frame: Instant::now(),
         }
+    }
+
+    fn start_library_watcher(
+        root: Option<&Path>,
+        cx: &mut Context<Self>,
+    ) -> (Option<LibraryWatcher>, Option<Task<()>>, Option<String>) {
+        let Some(root) = root else {
+            return (None, None, None);
+        };
+        let root = root.to_path_buf();
+        let (sender, receiver) = async_channel::unbounded();
+        let watcher = match LibraryWatcher::start(&root, move |event| {
+            let _ = sender.try_send(event);
+        }) {
+            Ok(watcher) => watcher,
+            Err(error) => return (None, None, Some(error)),
+        };
+        let task_root = root.clone();
+        let task = cx.spawn(async move |this, cx| {
+            while let Ok(event) = receiver.recv().await {
+                let mut changed_paths = HashSet::new();
+                let mut rescan_all = false;
+                let mut watcher_error = None;
+                merge_library_watch_event(
+                    event,
+                    &mut changed_paths,
+                    &mut rescan_all,
+                    &mut watcher_error,
+                );
+                cx.background_executor().timer(LIBRARY_EVENT_DEBOUNCE).await;
+                while let Ok(event) = receiver.try_recv() {
+                    merge_library_watch_event(
+                        event,
+                        &mut changed_paths,
+                        &mut rescan_all,
+                        &mut watcher_error,
+                    );
+                }
+
+                if !rescan_all && changed_paths.is_empty() {
+                    let _ = this.update(cx, |this, cx| {
+                        if this.current_library_path(cx) == Some(task_root.as_path()) {
+                            this.library_watcher_error = watcher_error;
+                            cx.notify();
+                        }
+                    });
+                    continue;
+                }
+
+                let scan_root = task_root.clone();
+                let tree = cx
+                    .background_spawn(async move { LibraryTree::load(Some(&scan_root)) })
+                    .await;
+                let _ = this.update(cx, |this, cx| {
+                    if this.current_library_path(cx) != Some(task_root.as_path()) {
+                        return;
+                    }
+                    if let Some(error) = tree.error.clone() {
+                        this.library_watcher_error = Some(error);
+                        cx.notify();
+                        return;
+                    }
+                    this.library_watcher_error = watcher_error;
+                    let reload_selected_note = this
+                        .selected_library_node
+                        .as_deref()
+                        .and_then(|path| this.library_tree.node(path))
+                        .and_then(|node| node.document_path.as_deref())
+                        .is_some_and(|document_path| {
+                            event_affects_document(
+                                task_root.as_path(),
+                                document_path,
+                                &changed_paths,
+                                rescan_all,
+                            )
+                        });
+                    this.apply_library_tree(tree, reload_selected_note, cx);
+                });
+            }
+        });
+        (Some(watcher), Some(task), None)
+    }
+
+    fn spawn_note_load(
+        path: String,
+        document_path: std::path::PathBuf,
+        generation: u64,
+        cx: &mut Context<Self>,
+    ) -> Task<()> {
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_spawn(async move {
+                    load_note(&document_path).map_err(|error| error.to_string())
+                })
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if this.note_load_generation != generation
+                    || this.selected_library_node.as_deref() != Some(path.as_str())
+                {
+                    return;
+                }
+                let Some(note) = this.selected_note.as_mut().filter(|note| note.path == path)
+                else {
+                    return;
+                };
+                match result {
+                    Ok(content) => {
+                        note.content = Some(content);
+                        note.error = None;
+                    }
+                    Err(error) => note.error = Some(error),
+                }
+                cx.notify();
+            });
+        })
+    }
+
+    fn current_library_path<'a>(&self, cx: &'a Context<Self>) -> Option<&'a Path> {
+        self.settings.read(cx).preferences().library_path.as_deref()
+    }
+
+    fn change_library(&mut self, path: &Path, cx: &mut Context<Self>) {
+        self.library_watch_task = None;
+        self.library_watcher = None;
+        let (watcher, task, watcher_error) = Self::start_library_watcher(Some(path), cx);
+        self.library_watcher = watcher;
+        self.library_watch_task = task;
+        self.library_watcher_error = watcher_error;
+        self.library_tree = LibraryTree::load(Some(path));
+        self.clear_library_selection();
+        self.expanded_library_nodes.clear();
+        self.scroll_to_selected_library_node = false;
+        self.library_scrollbar_state.reset_visibility();
+        self.save_interface_state();
+        self.update_app_menus(cx);
+        cx.notify();
+    }
+
+    fn apply_library_tree(
+        &mut self,
+        tree: LibraryTree,
+        reload_selected_note: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let selected_path = self.selected_library_node.clone();
+        let selected_was_document = selected_path.as_deref().is_some_and(|path| {
+            self.library_tree
+                .node(path)
+                .is_some_and(|node| node.document_path.is_some())
+        });
+        self.library_tree = tree;
+
+        let selection_still_valid = selected_path.as_deref().is_some_and(|path| {
+            self.library_tree
+                .node(path)
+                .is_some_and(|node| !selected_was_document || node.document_path.is_some())
+        });
+        if selection_still_valid {
+            if let Some(path) = selected_path.as_deref() {
+                let (has_children, is_document) = self
+                    .library_tree
+                    .node(path)
+                    .map(|node| (!node.children.is_empty(), node.document_path.is_some()))
+                    .unwrap_or_default();
+                self.expanded_library_nodes =
+                    sidebar::expanded_paths_for_selection(path, has_children);
+                if is_document && (!selected_was_document || reload_selected_note) {
+                    self.begin_selected_note_load(cx);
+                }
+            }
+        } else if selected_path.is_some() {
+            self.clear_library_selection();
+            self.expanded_library_nodes.clear();
+            self.save_interface_state();
+        }
+        self.update_app_menus(cx);
+        cx.notify();
+    }
+
+    fn clear_library_selection(&mut self) {
+        self.note_load_generation = self.note_load_generation.wrapping_add(1);
+        self.note_load_task = None;
+        self.selected_note = None;
+        self.selected_library_node = None;
+        self.copied_library_node = None;
+        self.note_scroll_handle
+            .set_offset(gpui::point(px(0.0), px(0.0)));
+        self.note_scrollbar_state.reset_visibility();
+    }
+
+    fn begin_selected_note_load(&mut self, cx: &mut Context<Self>) {
+        let Some((path, document_path)) = self.selected_library_node.as_deref().and_then(|path| {
+            self.library_tree
+                .node(path)
+                .and_then(|node| node.document_path.clone())
+                .map(|document_path| (path.to_owned(), document_path))
+        }) else {
+            self.note_load_generation = self.note_load_generation.wrapping_add(1);
+            self.note_load_task = None;
+            self.selected_note = None;
+            return;
+        };
+
+        let previous_content = self
+            .selected_note
+            .as_ref()
+            .filter(|note| note.path == path)
+            .and_then(|note| note.content.clone());
+        self.note_load_generation = self.note_load_generation.wrapping_add(1);
+        let generation = self.note_load_generation;
+        self.selected_note = Some(SelectedNote {
+            path: path.clone(),
+            content: previous_content,
+            error: None,
+        });
+        self.note_load_task = Some(Self::spawn_note_load(path, document_path, generation, cx));
+        cx.notify();
+    }
+
+    pub(crate) fn can_reload_current_note(&self) -> bool {
+        self.selected_library_node.as_deref().is_some_and(|path| {
+            self.library_tree
+                .node(path)
+                .is_some_and(|node| node.document_path.is_some())
+        })
+    }
+
+    fn update_app_menus(&self, cx: &mut Context<Self>) {
+        let language = self.language(cx);
+        let can_reload_current_note = self.can_reload_current_note();
+        crate::set_app_menus(cx, language, can_reload_current_note);
     }
 
     fn settle_panels(&mut self, window: &Window) -> PanelFrame {
@@ -313,6 +584,15 @@ impl Locus {
         cx: &mut Context<Self>,
     ) {
         crate::platform::close_main_window(window, cx);
+    }
+
+    fn reload_current_note_action(
+        &mut self,
+        _: &ReloadCurrentNote,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.begin_selected_note_load(cx);
     }
 
     fn toggle_fps_counter_action(
@@ -511,7 +791,7 @@ impl Locus {
             .selected_library_node
             .as_deref()
             .and_then(|path| self.library_tree.node(path))
-            .filter(|node| node.content.is_some());
+            .filter(|node| node.document_path.is_some());
 
         div()
             .relative()
@@ -522,7 +802,13 @@ impl Locus {
             .flex_col()
             .bg(theme.surface)
             .when_some(selected_note, |content, node| {
-                content.child(self.render_note(node, left_control_clearance, content_width, cx))
+                content.child(self.render_note(
+                    node,
+                    self.selected_note.as_ref(),
+                    left_control_clearance,
+                    content_width,
+                    cx,
+                ))
             })
             .when(selected_note.is_none(), |content| {
                 content
@@ -653,6 +939,7 @@ impl Render for Locus {
             .track_focus(&self.root_focus)
             .on_action(cx.listener(Self::close_window_action))
             .on_action(cx.listener(Self::open_settings_action))
+            .on_action(cx.listener(Self::reload_current_note_action))
             .on_action(cx.listener(Self::toggle_fps_counter_action))
             .on_action(cx.listener(Self::toggle_left_sidebar_action))
             .on_action(cx.listener(Self::toggle_right_sidebar_action))
@@ -667,6 +954,43 @@ impl Render for Locus {
             .when(self.settings_open, |root| root.child(self.settings.clone()))
             .when(!self.settings_open, |root| root.child(workspace))
     }
+}
+
+fn merge_library_watch_event(
+    event: LibraryWatchEvent,
+    changed_paths: &mut HashSet<PathBuf>,
+    rescan_all: &mut bool,
+    error: &mut Option<String>,
+) {
+    match event {
+        LibraryWatchEvent::Changed {
+            paths,
+            rescan_all: event_rescan_all,
+        } => {
+            changed_paths.extend(paths);
+            *rescan_all |= event_rescan_all;
+        }
+        LibraryWatchEvent::Error(next_error) => *error = Some(next_error),
+    }
+}
+
+fn event_affects_document(
+    library_root: &Path,
+    document_path: &Path,
+    changed_paths: &HashSet<PathBuf>,
+    rescan_all: bool,
+) -> bool {
+    if rescan_all {
+        return true;
+    }
+    let Ok(relative_document_path) = document_path.strip_prefix(library_root) else {
+        return false;
+    };
+    changed_paths.iter().any(|changed_path| {
+        changed_path.as_os_str().is_empty()
+            || changed_path == relative_document_path
+            || relative_document_path.starts_with(changed_path)
+    })
 }
 
 fn left_toggle_offset(fullscreen: bool) -> f32 {
@@ -684,5 +1008,72 @@ mod tests {
     #[test]
     fn fullscreen_left_toggle_uses_the_window_inset() {
         assert_eq!(left_toggle_offset(true), TITLEBAR_CONTROL_INSET);
+    }
+
+    #[test]
+    fn note_events_match_the_document_or_its_parent() {
+        let root = Path::new("/library");
+        let document = Path::new("/library/notes/index.md");
+
+        assert!(event_affects_document(
+            root,
+            document,
+            &HashSet::from([PathBuf::from("notes/index.md")]),
+            false
+        ));
+        assert!(event_affects_document(
+            root,
+            document,
+            &HashSet::from([PathBuf::from("notes")]),
+            false
+        ));
+        assert!(!event_affects_document(
+            root,
+            document,
+            &HashSet::from([PathBuf::from("notes/image.png")]),
+            false
+        ));
+        assert!(!event_affects_document(
+            root,
+            document,
+            &HashSet::from([PathBuf::from(".git/index")]),
+            false
+        ));
+        assert!(event_affects_document(
+            root,
+            document,
+            &HashSet::new(),
+            true
+        ));
+    }
+
+    #[test]
+    fn watcher_events_merge_paths_and_full_rescan_state() {
+        let mut paths = HashSet::new();
+        let mut rescan_all = false;
+        let mut error = None;
+
+        merge_library_watch_event(
+            LibraryWatchEvent::Changed {
+                paths: vec![PathBuf::from("notes/index.md")],
+                rescan_all: false,
+            },
+            &mut paths,
+            &mut rescan_all,
+            &mut error,
+        );
+        merge_library_watch_event(
+            LibraryWatchEvent::Changed {
+                paths: Vec::new(),
+                rescan_all: true,
+            },
+            &mut paths,
+            &mut rescan_all,
+            &mut error,
+        );
+
+        assert_eq!(paths, HashSet::from([PathBuf::from("notes/index.md")]));
+        assert!(rescan_all);
+        assert_eq!(error, None);
     }
 }

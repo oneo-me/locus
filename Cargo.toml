@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-channel = "2.5"
 dirs = "6"
 gpui = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284", features = ["font-kit", "runtime_shaders"] }
 image = "0.25"
+notify = "8.2"
 pulldown-cmark = "0.13"
 regex = "1"
 serde = { version = "1", features = ["derive"] }

@@ -1,13 +1,12 @@
-use std::collections::HashSet;
-use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::SystemTime;
 
-use image::{ImageDecoder, ImageReader, metadata::Orientation};
+mod repository;
+mod scanner;
+mod watcher;
 
-const DOCUMENT_FILE: &str = "index.md";
-const DOCUMENT_ICON_FILE: &str = "icon.png";
+pub use scanner::load_note;
+pub use watcher::{LibraryWatchEvent, LibraryWatcher};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ChangeStatus {
@@ -19,11 +18,11 @@ pub enum ChangeStatus {
 pub struct LibraryNode {
     pub path: String,
     pub directory: PathBuf,
+    pub document_path: Option<PathBuf>,
     pub title: String,
     pub icon: Option<String>,
     pub icon_path: Option<PathBuf>,
     pub summary: Option<String>,
-    pub content: Option<String>,
     pub attachments: Vec<Attachment>,
     pub change: Option<ChangeStatus>,
     pub descendant_change: Option<ChangeStatus>,
@@ -52,30 +51,6 @@ pub struct LibraryTree {
     pub repository_error: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct RepositoryChange {
-    status: ChangeStatus,
-    path: String,
-    previous_path: Option<String>,
-}
-
-#[derive(Default)]
-struct DocumentMetadata {
-    title: Option<String>,
-    icon: Option<String>,
-    summary: Option<String>,
-    archived: bool,
-}
-
-#[derive(Default, serde::Deserialize)]
-#[serde(default)]
-struct RawDocumentMetadata {
-    title: Option<serde_json::Value>,
-    icon: Option<serde_json::Value>,
-    summary: Option<serde_json::Value>,
-    archived: bool,
-}
-
 impl LibraryTree {
     pub fn load(root: Option<&Path>) -> Self {
         let Some(root) = root else {
@@ -88,13 +63,13 @@ impl LibraryTree {
             };
         }
 
-        let (changes, repository_error) = match read_repository_changes(root) {
+        let (changes, repository_error) = match repository::read_changes(root) {
             Ok(changes) => (changes, None),
             Err(error) => (Vec::new(), Some(error)),
         };
-        match scan_children(root, root, &changes) {
+        match scanner::scan_children(root, root, &changes) {
             Ok(mut nodes) => {
-                nodes.sort_by(compare_nodes);
+                nodes.sort_by(scanner::compare_nodes);
                 Self {
                     nodes,
                     error: None,
@@ -114,81 +89,6 @@ impl LibraryTree {
     }
 }
 
-fn scan_children(
-    root: &Path,
-    directory: &Path,
-    changes: &[RepositoryChange],
-) -> Result<Vec<LibraryNode>, std::io::Error> {
-    let mut nodes = Vec::new();
-    for entry in fs::read_dir(directory)? {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        if !file_type.is_dir()
-            || file_type.is_symlink()
-            || name.starts_with('.')
-            || name == "node_modules"
-        {
-            continue;
-        }
-
-        let path = entry.path();
-        let document_path = path.join(DOCUMENT_FILE);
-        let has_document = document_path.is_file();
-        let document = has_document
-            .then(|| fs::read_to_string(&document_path))
-            .transpose()?;
-        let metadata = if let Some(document) = &document {
-            parse_document_metadata(document)
-        } else {
-            DocumentMetadata::default()
-        };
-        if metadata.archived {
-            continue;
-        }
-
-        let mut children = scan_children(root, &path, changes)?;
-        children.sort_by(compare_nodes);
-        if !has_document && children.is_empty() {
-            continue;
-        }
-
-        let relative_directory = relative_path(root, &path);
-        let document_relative_path = format!("{relative_directory}/{DOCUMENT_FILE}");
-        let change = has_document
-            .then(|| document_change(&document_relative_path, &relative_directory, changes))
-            .flatten();
-        let descendant_change = combined_descendant_change(&children);
-        let attachments = if has_document {
-            read_attachments(&path)?
-        } else {
-            Vec::new()
-        };
-        let icon_path = path.join(DOCUMENT_ICON_FILE);
-        let icon_path = icon_path
-            .symlink_metadata()
-            .ok()
-            .filter(|metadata| metadata.is_file() && !metadata.file_type().is_symlink())
-            .map(|_| icon_path);
-
-        nodes.push(LibraryNode {
-            path: relative_directory,
-            directory: path,
-            title: metadata.title.unwrap_or_else(|| name.into_owned()),
-            icon: metadata.icon,
-            icon_path,
-            summary: metadata.summary,
-            content: document.as_deref().map(document_body).map(str::to_owned),
-            attachments,
-            change,
-            descendant_change,
-            children,
-        });
-    }
-    Ok(nodes)
-}
-
 fn find_node<'a>(nodes: &'a [LibraryNode], path: &str) -> Option<&'a LibraryNode> {
     for node in nodes {
         if node.path == path {
@@ -201,299 +101,67 @@ fn find_node<'a>(nodes: &'a [LibraryNode], path: &str) -> Option<&'a LibraryNode
     None
 }
 
-fn compare_nodes(left: &LibraryNode, right: &LibraryNode) -> std::cmp::Ordering {
-    left.children
-        .is_empty()
-        .cmp(&right.children.is_empty())
-        .then_with(|| left.path.cmp(&right.path))
-}
-
-fn relative_path(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .unwrap_or(path)
-        .components()
-        .map(|component| component.as_os_str().to_string_lossy())
-        .collect::<Vec<_>>()
-        .join("/")
-}
-
-fn read_attachments(directory: &Path) -> Result<Vec<Attachment>, std::io::Error> {
-    let mut attachments = Vec::new();
-    for entry in fs::read_dir(directory)? {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        if file_type.is_file()
-            && !file_type.is_symlink()
-            && !name.starts_with('.')
-            && name != DOCUMENT_FILE
-            && !name.eq_ignore_ascii_case(DOCUMENT_ICON_FILE)
-        {
-            let path = entry.path();
-            let metadata = entry.metadata()?;
-            attachments.push(Attachment {
-                name: name.into_owned(),
-                image_size: image_size(&path),
-                path,
-                modified: metadata.modified().ok(),
-                byte_len: metadata.len(),
-            });
-        }
-    }
-    attachments.sort_by(|left, right| left.name.cmp(&right.name));
-    Ok(attachments)
-}
-
-fn image_size(path: &Path) -> Option<ImageSize> {
-    let reader = ImageReader::open(path).ok()?.with_guessed_format().ok()?;
-    let mut decoder = reader.into_decoder().ok()?;
-    let (mut width, mut height) = decoder.dimensions();
-    if matches!(
-        decoder.orientation().ok()?,
-        Orientation::Rotate90
-            | Orientation::Rotate270
-            | Orientation::Rotate90FlipH
-            | Orientation::Rotate270FlipH
-    ) {
-        std::mem::swap(&mut width, &mut height);
-    }
-    (width > 0 && height > 0).then_some(ImageSize { width, height })
-}
-
-fn parse_document_metadata(content: &str) -> DocumentMetadata {
-    let normalized = content.strip_prefix('\u{feff}').unwrap_or(content);
-    let Some((frontmatter, _)) = frontmatter_parts(normalized) else {
-        return DocumentMetadata::default();
-    };
-    let Ok(raw) = serde_saphyr::from_str::<RawDocumentMetadata>(frontmatter) else {
-        return DocumentMetadata::default();
-    };
-    DocumentMetadata {
-        title: optional_string(raw.title),
-        icon: optional_string(raw.icon),
-        summary: optional_string(raw.summary),
-        archived: raw.archived,
-    }
-}
-
-fn document_body(content: &str) -> &str {
-    let normalized = content.strip_prefix('\u{feff}').unwrap_or(content);
-    frontmatter_parts(normalized).map_or(normalized, |(_, body)| body)
-}
-
-fn frontmatter_parts(content: &str) -> Option<(&str, &str)> {
-    let rest = content
-        .strip_prefix("---\r\n")
-        .or_else(|| content.strip_prefix("---\n"))?;
-    if let Some(end) = rest.find("\n---\r\n") {
-        return Some((&rest[..end], &rest[end + 6..]));
-    }
-    if let Some(end) = rest.find("\n---\n") {
-        return Some((&rest[..end], &rest[end + 5..]));
-    }
-    rest.strip_suffix("\n---")
-        .map(|frontmatter| (frontmatter, ""))
-}
-
-fn optional_string(value: Option<serde_json::Value>) -> Option<String> {
-    let value = match value? {
-        serde_json::Value::String(value) => value,
-        serde_json::Value::Bool(value) => value.to_string(),
-        serde_json::Value::Number(value) => value.to_string(),
-        _ => return None,
-    };
-    let value = value.trim();
-    if value.is_empty() {
-        None
-    } else {
-        Some(value.to_owned())
-    }
-}
-
-fn read_repository_changes(root: &Path) -> Result<Vec<RepositoryChange>, String> {
-    let top_level = run_git(root, &["rev-parse", "--show-toplevel"])?;
-    let repository_root = PathBuf::from(String::from_utf8_lossy(&top_level).trim().to_owned());
-    let repository_root = repository_root
-        .canonicalize()
-        .map_err(|_| "文档库目录不是 Git 仓库。".to_owned())?;
-    let root = root
-        .canonicalize()
-        .map_err(|_| "文档库目录不存在或无法访问。".to_owned())?;
-    if repository_root != root {
-        return Err("文档库目录必须是 Git 仓库根目录。".to_owned());
-    }
-
-    let output = run_git(
-        &root,
-        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
-    )?;
-    Ok(parse_repository_changes(&output))
-}
-
-fn run_git(root: &Path, arguments: &[&str]) -> Result<Vec<u8>, String> {
-    let output = Command::new("git")
-        .arg("-c")
-        .arg(format!("safe.directory={}", root.display()))
-        .arg("-C")
-        .arg(root)
-        .args(arguments)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .env("LC_ALL", "C")
-        .output()
-        .map_err(|error| format!("Git 不可用：{error}"))?;
-    if output.status.success() {
-        return Ok(output.stdout);
-    }
-    let detail = String::from_utf8_lossy(&output.stderr).trim().to_owned();
-    Err(if detail.is_empty() {
-        "文档库目录不是 Git 仓库。".to_owned()
-    } else {
-        format!("无法读取 Git 状态：{detail}")
-    })
-}
-
-fn parse_repository_changes(output: &[u8]) -> Vec<RepositoryChange> {
-    let fields = output
-        .split(|byte| *byte == 0)
-        .filter(|field| !field.is_empty())
-        .collect::<Vec<_>>();
-    let mut changes = Vec::new();
-    let mut index = 0;
-    while index < fields.len() {
-        let field = fields[index];
-        if field.len() < 4 {
-            index += 1;
-            continue;
-        }
-        let index_status = field[0];
-        let worktree_status = field[1];
-        let renamed = matches!(index_status, b'R' | b'C') || matches!(worktree_status, b'R' | b'C');
-        let previous_path = if renamed {
-            index += 1;
-            fields
-                .get(index)
-                .map(|path| String::from_utf8_lossy(path).into_owned())
-        } else {
-            None
-        };
-        let added = index_status == b'A'
-            || worktree_status == b'A'
-            || (index_status == b'?' && worktree_status == b'?');
-        changes.push(RepositoryChange {
-            status: if added {
-                ChangeStatus::Added
-            } else {
-                ChangeStatus::Modified
-            },
-            path: String::from_utf8_lossy(&field[3..]).into_owned(),
-            previous_path,
-        });
-        index += 1;
-    }
-    changes
-}
-
-fn document_change(
-    document_path: &str,
-    directory: &str,
-    changes: &[RepositoryChange],
-) -> Option<ChangeStatus> {
-    let mut status = None;
-    for change in changes {
-        let paths = [Some(change.path.as_str()), change.previous_path.as_deref()];
-        let changes_document = paths
-            .into_iter()
-            .flatten()
-            .any(|path| path == document_path);
-        let changes_attachment = paths
-            .into_iter()
-            .flatten()
-            .any(|path| parent_path(path) == directory);
-        if !changes_document && !changes_attachment {
-            continue;
-        }
-        let next = if changes_document && change.status == ChangeStatus::Added {
-            ChangeStatus::Added
-        } else {
-            ChangeStatus::Modified
-        };
-        if next == ChangeStatus::Added {
-            return Some(next);
-        }
-        status = Some(next);
-    }
-    status
-}
-
-fn parent_path(path: &str) -> &str {
-    path.rsplit_once('/').map_or("", |(parent, _)| parent)
-}
-
-fn combined_descendant_change(children: &[LibraryNode]) -> Option<ChangeStatus> {
-    let statuses = children
-        .iter()
-        .flat_map(|child| [child.change, child.descendant_change])
-        .flatten()
-        .collect::<HashSet<_>>();
-    if statuses.contains(&ChangeStatus::Added) {
-        Some(ChangeStatus::Added)
-    } else if statuses.contains(&ChangeStatus::Modified) {
-        Some(ChangeStatus::Modified)
-    } else {
-        None
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
     use super::*;
 
-    #[test]
-    fn reads_sidebar_metadata_from_frontmatter() {
-        let metadata = parse_document_metadata(
-            "---\ntitle: 'Locus: Notes'\nicon: 🧭\narchived: true\n---\nBody",
-        );
-        assert_eq!(metadata.title.as_deref(), Some("Locus: Notes"));
-        assert_eq!(metadata.icon.as_deref(), Some("🧭"));
-        assert!(metadata.archived);
+    static NEXT_TEST_DIRECTORY: AtomicU64 = AtomicU64::new(0);
+
+    struct TestLibrary(PathBuf);
+
+    impl TestLibrary {
+        fn new() -> Self {
+            let id = NEXT_TEST_DIRECTORY.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "locus-document-library-{}-{id}",
+                std::process::id()
+            ));
+            fs::create_dir(&path).unwrap();
+            Self(path)
+        }
+    }
+
+    impl Drop for TestLibrary {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
     }
 
     #[test]
-    fn reads_summary_and_separates_markdown_body() {
-        let document = "---\ntitle: Notes\nsummary: A short summary.\n---\n# Heading\n\nBody";
-        let metadata = parse_document_metadata(document);
-        assert_eq!(metadata.summary.as_deref(), Some("A short summary."));
-        assert_eq!(document_body(document), "# Heading\n\nBody");
-        assert_eq!(document_body("---\ntitle: Notes\n---"), "");
+    fn loads_metadata_into_the_tree_and_note_content_on_demand() {
+        let library = TestLibrary::new();
+        let note_directory = library.0.join("notes");
+        fs::create_dir(&note_directory).unwrap();
+        let document_path = note_directory.join("index.md");
+        fs::write(
+            &document_path,
+            "---\ntitle: Notes\nsummary: Metadata only.\n---\n# Body",
+        )
+        .unwrap();
+
+        let tree = LibraryTree::load(Some(&library.0));
+        let node = tree.node("notes").unwrap();
+        assert_eq!(node.title, "Notes");
+        assert_eq!(node.summary.as_deref(), Some("Metadata only."));
+        assert_eq!(node.document_path.as_deref(), Some(document_path.as_path()));
+        assert_eq!(load_note(&document_path).unwrap(), "# Body");
     }
 
     #[test]
-    fn parses_added_and_modified_git_changes() {
-        let changes =
-            parse_repository_changes(b"?? projects/new/index.md\0 M projects/old/file.png\0");
-        assert_eq!(changes.len(), 2);
-        assert_eq!(changes[0].status, ChangeStatus::Added);
-        assert_eq!(changes[1].status, ChangeStatus::Modified);
-    }
+    fn metadata_scan_does_not_read_the_document_body() {
+        let library = TestLibrary::new();
+        let note_directory = library.0.join("notes");
+        fs::create_dir(&note_directory).unwrap();
+        let document_path = note_directory.join("index.md");
+        let mut document = b"---\ntitle: Notes\n---\n".to_vec();
+        document.push(0xff);
+        fs::write(&document_path, document).unwrap();
 
-    #[test]
-    fn added_document_wins_over_attachment_changes() {
-        let changes = vec![
-            RepositoryChange {
-                status: ChangeStatus::Modified,
-                path: "notes/asset.png".to_owned(),
-                previous_path: None,
-            },
-            RepositoryChange {
-                status: ChangeStatus::Added,
-                path: "notes/index.md".to_owned(),
-                previous_path: None,
-            },
-        ];
-        assert_eq!(
-            document_change("notes/index.md", "notes", &changes),
-            Some(ChangeStatus::Added)
-        );
+        let tree = LibraryTree::load(Some(&library.0));
+        assert_eq!(tree.node("notes").unwrap().title, "Notes");
+        assert!(load_note(&document_path).is_err());
     }
 }

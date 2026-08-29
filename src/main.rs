@@ -31,6 +31,7 @@ actions!(
         About,
         CloseWindow,
         OpenSettings,
+        ReloadCurrentNote,
         ToggleLeftSidebar,
         ToggleRightSidebar,
         ToggleFpsCounter
@@ -56,6 +57,7 @@ fn main() {
             KeyBinding::new("secondary-q", Quit, None),
             KeyBinding::new("secondary-w", CloseWindow, None),
             KeyBinding::new("secondary-,", OpenSettings, None),
+            KeyBinding::new("secondary-r", ReloadCurrentNote, None),
             KeyBinding::new("secondary-b", ToggleLeftSidebar, None),
             KeyBinding::new("secondary-shift-b", ToggleRightSidebar, None),
             KeyBinding::new("secondary-alt-shift-f", ToggleFpsCounter, None),
@@ -99,12 +101,15 @@ fn main() {
             .expect("failed to open Locus window");
         *main_window.borrow_mut() = Some(window);
 
-        set_app_menus(cx, language);
+        let can_reload_current_note = window
+            .update(cx, |locus, _, _| locus.can_reload_current_note())
+            .unwrap_or(false);
+        set_app_menus(cx, language, can_reload_current_note);
         cx.activate(true);
     });
 }
 
-pub(crate) fn set_app_menus(cx: &mut App, language: Language) {
+pub(crate) fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: bool) {
     let mut application_items = Vec::new();
     #[cfg(target_os = "macos")]
     application_items.extend([
@@ -121,6 +126,12 @@ pub(crate) fn set_app_menus(cx: &mut App, language: Language) {
         Menu::new("Locus").items(application_items),
         Menu::new(language.text("编辑", "Edit")).disabled(true),
         Menu::new(language.text("显示", "View")).items([
+            MenuItem::action(
+                language.text("重新载入当前笔记", "Reload Current Note"),
+                ReloadCurrentNote,
+            )
+            .disabled(!can_reload_current_note),
+            MenuItem::separator(),
             MenuItem::action(
                 language.text("切换左侧栏", "Toggle Left Sidebar"),
                 ToggleLeftSidebar,

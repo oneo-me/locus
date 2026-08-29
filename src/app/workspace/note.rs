@@ -1,7 +1,7 @@
-use super::Locus;
 use super::note_atmosphere::{
     AtmosphereBackdrop, AtmosphereShape, NoteAtmosphere, Pattern, derive_note_atmosphere,
 };
+use super::{Locus, SelectedNote};
 use crate::document_library::LibraryNode;
 use crate::theme::Theme;
 use crate::ui::{ActivationExt, Icon, Markdown, toolbar_icon_button, vertical_scrollbar};
@@ -19,6 +19,7 @@ impl Locus {
     pub(super) fn render_note(
         &self,
         node: &LibraryNode,
+        selected_note: Option<&SelectedNote>,
         left_control_clearance: f32,
         content_width: f32,
         cx: &mut gpui::Context<Self>,
@@ -31,6 +32,7 @@ impl Locus {
         let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark);
         let titlebar =
             self.render_note_titlebar(node, left_control_clearance, content_width, theme, cx);
+        let selected_note = selected_note.filter(|note| note.path == node.path);
 
         let mut article = div()
             .mx_auto()
@@ -60,7 +62,26 @@ impl Locus {
                     .child(summary.clone()),
             );
         }
-        if let Some(content) = node.content.as_ref().filter(|content| !content.is_empty()) {
+        if let Some(error) = selected_note.and_then(|note| note.error.as_deref()) {
+            article = article.child(
+                div()
+                    .rounded(px(8.0))
+                    .border_1()
+                    .border_color(theme.error.opacity(0.35))
+                    .px(px(12.0))
+                    .py(px(9.0))
+                    .text_sm()
+                    .text_color(theme.error)
+                    .child(format!(
+                        "{}：{error}",
+                        language.text("无法读取笔记", "Could not read note")
+                    )),
+            );
+        }
+        if let Some(content) = selected_note
+            .and_then(|note| note.content.as_ref())
+            .filter(|content| !content.is_empty())
+        {
             article = article.child(
                 Markdown::new(
                     content,

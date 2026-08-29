@@ -67,6 +67,24 @@ impl Locus {
                 ),
             );
         }
+        if let Some(error) = &self.library_watcher_error {
+            body = body.child(
+                div()
+                    .mx(px(4.0))
+                    .mb(px(8.0))
+                    .px(px(9.0))
+                    .py(px(7.0))
+                    .rounded(px(6.0))
+                    .border_1()
+                    .border_color(theme.error.opacity(0.35))
+                    .text_xs()
+                    .text_color(theme.error)
+                    .child(format!(
+                        "{}：{error}",
+                        language.text("文件观察不可用", "File watching unavailable")
+                    )),
+            );
+        }
 
         for node in &self.library_tree.nodes {
             body = body.child(self.render_library_node(node, 0, cx));
@@ -173,7 +191,7 @@ impl Locus {
                     }),
             )
             .on_click(cx.listener(move |this, _, _, cx| {
-                this.select_library_node(path.clone(), has_children);
+                this.select_library_node(path.clone(), has_children, cx);
                 cx.stop_propagation();
                 cx.notify();
             }));
@@ -188,8 +206,14 @@ impl Locus {
         branch
     }
 
-    fn select_library_node(&mut self, path: String, has_children: bool) {
-        if self.selected_library_node.as_deref() != Some(path.as_str()) {
+    fn select_library_node(
+        &mut self,
+        path: String,
+        has_children: bool,
+        cx: &mut gpui::Context<Self>,
+    ) {
+        let selection_changed = self.selected_library_node.as_deref() != Some(path.as_str());
+        if selection_changed {
             self.copied_library_node = None;
             self.note_scroll_handle
                 .set_offset(gpui::point(gpui::px(0.0), gpui::px(0.0)));
@@ -198,6 +222,10 @@ impl Locus {
         self.selected_library_node = Some(path.clone());
         self.expanded_library_nodes = expanded_paths_for_selection(&path, has_children);
         self.save_interface_state();
+        if selection_changed {
+            self.begin_selected_note_load(cx);
+            self.update_app_menus(cx);
+        }
     }
 }
 
