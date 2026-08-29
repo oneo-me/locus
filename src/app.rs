@@ -14,6 +14,9 @@ use crate::{CloseWindow, OpenSettings, ToggleFpsCounter, ToggleLeftSidebar, Togg
 
 const TITLEBAR_HEIGHT: f32 = 48.0;
 const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
+const TITLEBAR_CONTROL_INSET: f32 = 11.0;
+const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
+const TITLEBAR_CONTROL_GAP: f32 = 8.0;
 pub(crate) const LEFT_SIDEBAR_WIDTH: f32 = 252.0;
 pub(crate) const RIGHT_SIDEBAR_WIDTH: f32 = 460.0;
 const LEFT_SIDEBAR_MIN_WIDTH: f32 = 180.0;
@@ -26,12 +29,6 @@ const CONTENT_MIN_WIDTH: f32 = 360.0;
 enum PanelSide {
     Left,
     Right,
-}
-
-#[derive(Clone, Copy)]
-enum ToggleLocation {
-    Panel,
-    Content,
 }
 
 #[derive(Clone, Copy)]
@@ -72,7 +69,6 @@ pub struct Locus {
     header_drag_armed: bool,
     left_toggle_focus: FocusHandle,
     right_toggle_focus: FocusHandle,
-    left_restore_focus: FocusHandle,
     settings_focus: FocusHandle,
     settings_window: Option<WindowHandle<Settings>>,
     fps_counter_visible: bool,
@@ -101,7 +97,6 @@ impl Locus {
             header_drag_armed: false,
             left_toggle_focus: cx.focus_handle(),
             right_toggle_focus: cx.focus_handle(),
-            left_restore_focus: cx.focus_handle(),
             settings_focus: cx.focus_handle(),
             settings_window: None,
             fps_counter_visible: false,
@@ -273,27 +268,20 @@ impl Locus {
             }))
     }
 
-    fn render_panel_toggle(
-        &self,
-        side: PanelSide,
-        location: ToggleLocation,
-        cx: &mut Context<Self>,
-    ) -> Stateful<Div> {
+    fn render_panel_toggle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::current(cx);
-        let (focus, id, label, icon_kind) = match (side, location) {
-            (PanelSide::Left, ToggleLocation::Panel) => (
+        let (focus, id, label, icon_kind) = match side {
+            PanelSide::Left => (
                 &self.left_toggle_focus,
-                "hide-left-sidebar",
-                "隐藏左侧栏",
+                "toggle-left-sidebar",
+                if self.left_sidebar_visible {
+                    "隐藏左侧栏"
+                } else {
+                    "显示左侧栏"
+                },
                 Icon::PanelLeft,
             ),
-            (PanelSide::Left, ToggleLocation::Content) => (
-                &self.left_restore_focus,
-                "show-left-sidebar",
-                "显示左侧栏",
-                Icon::PanelLeft,
-            ),
-            (PanelSide::Right, _) => (
+            PanelSide::Right => (
                 &self.right_toggle_focus,
                 "toggle-right-sidebar",
                 if self.right_sidebar_visible {
@@ -312,8 +300,8 @@ impl Locus {
             .track_focus(focus)
             .tab_index(0)
             .tab_stop(true)
-            .w(px(26.0))
-            .h(px(26.0))
+            .w(px(TITLEBAR_CONTROL_SIZE))
+            .h(px(TITLEBAR_CONTROL_SIZE))
             .flex_none()
             .rounded(px(6.0))
             .flex()
@@ -339,48 +327,35 @@ impl Locus {
             }))
     }
 
-    fn render_left_titlebar(&self, cx: &mut Context<Self>) -> Div {
+    fn render_left_titlebar(&self, left_control_clearance: f32, cx: &mut Context<Self>) -> Div {
         div()
             .h(px(TITLEBAR_HEIGHT))
             .flex_none()
             .flex()
             .items_center()
             .child(
-                self.window_drag_region("left-traffic-light-region", cx)
-                    .w(px(TRAFFIC_LIGHT_CLEARANCE))
+                self.window_drag_region("left-control-clearance-region", cx)
+                    .w(px(left_control_clearance))
                     .flex_none(),
             )
-            .child(self.render_panel_toggle(PanelSide::Left, ToggleLocation::Panel, cx))
             .child(
                 self.window_drag_region("left-title-region", cx)
-                    .ml(px(8.0))
                     .min_w_0()
                     .flex_1(),
             )
     }
 
-    fn render_content_titlebar(&self, cx: &mut Context<Self>) -> Div {
+    fn render_content_titlebar(&self, left_control_clearance: f32, cx: &mut Context<Self>) -> Div {
         div()
             .h(px(TITLEBAR_HEIGHT))
             .flex_none()
             .flex()
             .items_center()
             .gap(px(8.0))
-            .pl(if self.left_sidebar_visible {
-                px(14.0 + (TRAFFIC_LIGHT_CLEARANCE - self.rendered_left_width).max(0.0))
-            } else {
-                px(0.0)
-            })
+            .pl(px(
+                (left_control_clearance - self.rendered_left_width).max(14.0)
+            ))
             .pr(px(14.0))
-            .when(!self.left_sidebar_visible, |header| {
-                header
-                    .child(
-                        self.window_drag_region("content-traffic-light-region", cx)
-                            .w(px(TRAFFIC_LIGHT_CLEARANCE - 8.0))
-                            .flex_none(),
-                    )
-                    .child(self.render_panel_toggle(PanelSide::Left, ToggleLocation::Content, cx))
-            })
             .child(
                 self.window_drag_region("content-title-region", cx)
                     .min_w_0()
@@ -399,7 +374,7 @@ impl Locus {
                 header.child(self.render_fps_counter(cx))
             })
             .when(!self.right_sidebar_visible, |header| {
-                header.child(div().w(px(26.0)).h(px(26.0)).flex_none())
+                header.child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
             })
     }
 
@@ -441,7 +416,7 @@ impl Locus {
                     .min_w_0()
                     .flex_1(),
             )
-            .child(div().w(px(26.0)).h(px(26.0)).flex_none())
+            .child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
     }
 
     fn render_settings_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
@@ -455,8 +430,8 @@ impl Locus {
             .track_focus(&self.settings_focus)
             .tab_index(0)
             .tab_stop(true)
-            .w(px(26.0))
-            .h(px(26.0))
+            .w(px(TITLEBAR_CONTROL_SIZE))
+            .h(px(TITLEBAR_CONTROL_SIZE))
             .flex_none()
             .rounded(px(6.0))
             .flex()
@@ -588,7 +563,13 @@ impl Locus {
         }
     }
 
-    fn render_left_sidebar(&self, width: f32, show_resize: bool, cx: &mut Context<Self>) -> Div {
+    fn render_left_sidebar(
+        &self,
+        width: f32,
+        show_resize: bool,
+        left_control_clearance: f32,
+        cx: &mut Context<Self>,
+    ) -> Div {
         let theme = Theme::current(cx);
         let is_resizing = self
             .panel_resize_drag
@@ -606,7 +587,7 @@ impl Locus {
             } else {
                 transparent_black()
             })
-            .child(self.render_left_titlebar(cx))
+            .child(self.render_left_titlebar(left_control_clearance, cx))
             .child(
                 div()
                     .min_h_0()
@@ -630,7 +611,12 @@ impl Locus {
             })
     }
 
-    fn render_content(&self, left_border: bool, cx: &mut Context<Self>) -> Div {
+    fn render_content(
+        &self,
+        left_border: bool,
+        left_control_clearance: f32,
+        cx: &mut Context<Self>,
+    ) -> Div {
         let theme = Theme::current(cx);
 
         div()
@@ -640,12 +626,20 @@ impl Locus {
             .flex_1()
             .flex()
             .flex_col()
-            .when(left_border, |content| {
-                content.border_l_1().border_color(theme.border)
-            })
             .bg(theme.surface)
-            .child(self.render_content_titlebar(cx))
+            .child(self.render_content_titlebar(left_control_clearance, cx))
             .child(div().min_h_0().flex_1())
+            .when(left_border, |content| {
+                content.child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .bottom_0()
+                        .left_0()
+                        .w(px(1.0))
+                        .bg(theme.border),
+                )
+            })
     }
 
     fn render_right_sidebar(&self, width: f32, show_resize: bool, cx: &mut Context<Self>) -> Div {
@@ -674,6 +668,9 @@ impl Render for Locus {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::current(cx);
         let panels = self.settle_panels(window, theme.is_dark);
+        let left_toggle_offset = left_toggle_offset(window.is_fullscreen());
+        let left_control_clearance =
+            left_toggle_offset + TITLEBAR_CONTROL_SIZE + TITLEBAR_CONTROL_GAP;
         if panels.sliding() {
             window.request_animation_frame();
         }
@@ -706,11 +703,12 @@ impl Render for Locus {
                         .child(self.render_left_sidebar(
                             panels.left_content,
                             self.left_sidebar_visible && !panels.left_sliding,
+                            left_control_clearance,
                             cx,
                         )),
                 )
             })
-            .child(self.render_content(panels.left > 0.0, cx))
+            .child(self.render_content(panels.left > 0.0, left_control_clearance, cx))
             .when(panels.right > 0.0, |root| {
                 root.child(
                     div()
@@ -738,10 +736,25 @@ impl Render for Locus {
             .child(
                 div()
                     .absolute()
-                    .top(px((TITLEBAR_HEIGHT - 26.0) / 2.0))
-                    .right(px((TITLEBAR_HEIGHT - 26.0) / 2.0))
-                    .child(self.render_panel_toggle(PanelSide::Right, ToggleLocation::Panel, cx)),
+                    .top(px(TITLEBAR_CONTROL_INSET))
+                    .left(px(left_toggle_offset))
+                    .child(self.render_panel_toggle(PanelSide::Left, cx)),
             )
+            .child(
+                div()
+                    .absolute()
+                    .top(px(TITLEBAR_CONTROL_INSET))
+                    .right(px(TITLEBAR_CONTROL_INSET))
+                    .child(self.render_panel_toggle(PanelSide::Right, cx)),
+            )
+    }
+}
+
+fn left_toggle_offset(fullscreen: bool) -> f32 {
+    if cfg!(target_os = "macos") && !fullscreen {
+        TRAFFIC_LIGHT_CLEARANCE
+    } else {
+        TITLEBAR_CONTROL_INSET
     }
 }
 
@@ -821,5 +834,10 @@ mod tests {
             fitted_panel_widths(880.0, false, true, 420.0, 480.0),
             (0.0, 480.0)
         );
+    }
+
+    #[test]
+    fn fullscreen_left_toggle_uses_the_window_inset() {
+        assert_eq!(left_toggle_offset(true), TITLEBAR_CONTROL_INSET);
     }
 }
