@@ -249,6 +249,10 @@ mod tests {
         let transport =
             StreamableHttpClientTransport::from_uri(format!("http://127.0.0.1:{port}/mcp"));
         let client = ().serve(transport).await.unwrap();
+        assert_eq!(
+            client.peer_info().unwrap().protocol_version,
+            rmcp::model::ProtocolVersion::V_2025_11_25
+        );
         let tools = client.list_all_tools().await.unwrap();
         let names = tools
             .iter()

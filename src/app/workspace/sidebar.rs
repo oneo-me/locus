@@ -264,6 +264,7 @@ impl Locus {
         has_children: bool,
         cx: &mut gpui::Context<Self>,
     ) {
+        let could_reload_current_note = self.can_reload_current_note();
         let selection_changed = self.selected_library_node.as_deref() != Some(path.as_str());
         if selection_changed {
             self.copied_library_node = None;
@@ -277,7 +278,7 @@ impl Locus {
         self.save_interface_state();
         if selection_changed {
             self.begin_selected_note_load(cx);
-            self.update_app_menus(cx);
+            self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         }
     }
 }

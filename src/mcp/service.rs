@@ -225,15 +225,12 @@ impl ServerHandler for LocusMcp {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("locus", env!("CARGO_PKG_VERSION")))
-            .with_protocol_version(ProtocolVersion::V_2026_07_28)
+            .with_protocol_version(ProtocolVersion::V_2025_11_25)
             .with_instructions(MCP_INSTRUCTIONS)
     }
 
     fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]> {
-        Cow::Owned(vec![
-            ProtocolVersion::V_2026_07_28,
-            ProtocolVersion::V_2025_11_25,
-        ])
+        Cow::Owned(vec![ProtocolVersion::V_2025_11_25])
     }
 }
 

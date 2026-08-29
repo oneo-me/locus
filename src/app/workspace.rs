@@ -486,6 +486,7 @@ impl Locus {
     }
 
     fn change_library(&mut self, path: &Path, cx: &mut Context<Self>) {
+        let could_reload_current_note = self.can_reload_current_note();
         self.library_watch_task = None;
         self.library_watcher = None;
         let (watcher, task, watcher_error) = Self::start_library_watcher(Some(path), cx);
@@ -506,7 +507,7 @@ impl Locus {
         self.scroll_to_selected_library_node = false;
         self.library_scrollbar_state.reset_visibility();
         self.save_interface_state();
-        self.update_app_menus(cx);
+        self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
     }
 
@@ -534,6 +535,7 @@ impl Locus {
         reload_selected_note: bool,
         cx: &mut Context<Self>,
     ) {
+        let could_reload_current_note = self.can_reload_current_note();
         if let Some(path) = self.current_library_path(cx).map(Path::to_path_buf) {
             self.sidebar_order.apply(&path, &mut tree.nodes);
         }
@@ -571,7 +573,7 @@ impl Locus {
             self.expanded_library_nodes.clear();
             self.save_interface_state();
         }
-        self.update_app_menus(cx);
+        self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
     }
 
@@ -642,10 +644,16 @@ impl Locus {
         })
     }
 
-    fn update_app_menus(&self, cx: &mut Context<Self>) {
-        let language = self.language(cx);
+    fn update_app_menus_if_reload_state_changed(
+        &self,
+        could_reload_current_note: bool,
+        cx: &mut Context<Self>,
+    ) {
         let can_reload_current_note = self.can_reload_current_note();
-        crate::set_app_menus(cx, language, can_reload_current_note);
+        if can_reload_current_note != could_reload_current_note {
+            let language = self.language(cx);
+            crate::set_app_menus(cx, language, can_reload_current_note);
+        }
     }
 
     fn settle_panels(&mut self, window: &Window) -> PanelFrame {

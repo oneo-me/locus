@@ -38,6 +38,7 @@ fn run_git(root: &Path, arguments: &[&str]) -> Result<Vec<u8>, String> {
         .arg(root)
         .args(arguments)
         .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_OPTIONAL_LOCKS", "0")
         .env("LC_ALL", "C")
         .output()
         .map_err(|error| format!("Git 不可用：{error}"))?;
