@@ -25,8 +25,9 @@ use crate::state::{
     InterfaceState, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH,
     RIGHT_SIDEBAR_MIN_WIDTH,
 };
+use crate::terminal::{TerminalConfiguration, TerminalView};
 use crate::theme::Theme;
-use crate::ui::{ActivationExt, Icon, ScrollbarState, toolbar_icon_button};
+use crate::ui::{ActivationExt, Icon, ScrollbarState, icon, toolbar_icon_button};
 use crate::{
     CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleLeftSidebar,
     ToggleRightSidebar,
@@ -75,6 +76,8 @@ pub struct Locus {
     settings_focus: FocusHandle,
     settings_open: bool,
     settings: Entity<Settings>,
+    terminal: Option<Entity<TerminalView>>,
+    terminal_needs_restart: bool,
     library_tree: LibraryTree,
     library_watcher: Option<LibraryWatcher>,
     library_watch_task: Option<Task<()>>,
@@ -161,20 +164,58 @@ impl Locus {
                     })
             })
             .unwrap_or((None, None));
+        let terminal_configuration = TerminalConfiguration::from_preferences(&preferences);
+        let terminal = library_path
+            .clone()
+            .map(|path| cx.new(|cx| TerminalView::new(path, terminal_configuration.clone(), cx)));
         let settings = cx.new(|cx| Settings::new(preferences, load_error, root_focus.clone(), cx));
         cx.subscribe(
             &settings,
             |this, _, event: &SettingsEvent, cx| match event {
                 SettingsEvent::Close => {
                     this.settings_open = false;
+                    if this.terminal_needs_restart {
+                        this.restart_terminal(cx);
+                    }
                     cx.notify();
                 }
                 SettingsEvent::LanguageChanged(language) => {
                     crate::set_app_menus(cx, *language, this.can_reload_current_note());
+                    if let Some(terminal) = &this.terminal {
+                        terminal.update(cx, |terminal, cx| {
+                            terminal.set_language(*language, cx);
+                        });
+                    }
                     cx.notify();
                 }
                 SettingsEvent::LibraryChanged(path) => {
                     this.change_library(path, cx);
+                    this.restart_terminal(cx);
+                }
+                SettingsEvent::TerminalLaunchChanged => {
+                    this.terminal_needs_restart = true;
+                }
+                SettingsEvent::TerminalColorSchemeChanged(color_scheme) => {
+                    if let Some(terminal) = &this.terminal {
+                        terminal.update(cx, |terminal, cx| {
+                            terminal.set_color_scheme(*color_scheme, cx);
+                        });
+                    }
+                }
+                SettingsEvent::TerminalCursorStyleChanged(cursor_style) => {
+                    if let Some(terminal) = &this.terminal {
+                        terminal.update(cx, |terminal, cx| {
+                            terminal.set_cursor_style(*cursor_style, cx);
+                        });
+                    }
+                }
+                SettingsEvent::CodeFontChanged(family, size) => {
+                    if let Some(terminal) = &this.terminal {
+                        terminal.update(cx, |terminal, cx| {
+                            terminal.set_code_font(family.clone(), *size, cx);
+                        });
+                    }
+                    cx.notify();
                 }
             },
         )
@@ -213,6 +254,8 @@ impl Locus {
             settings_focus: cx.focus_handle(),
             settings_open: false,
             settings,
+            terminal,
+            terminal_needs_restart: false,
             library_tree,
             library_watcher,
             library_watch_task,
@@ -373,6 +416,16 @@ impl Locus {
         self.library_scrollbar_state.reset_visibility();
         self.save_interface_state();
         self.update_app_menus(cx);
+        cx.notify();
+    }
+
+    fn restart_terminal(&mut self, cx: &mut Context<Self>) {
+        let preferences = self.settings.read(cx).preferences().clone();
+        self.terminal = preferences.library_path.clone().map(|path| {
+            let configuration = TerminalConfiguration::from_preferences(&preferences);
+            cx.new(|cx| TerminalView::new(path, configuration, cx))
+        });
+        self.terminal_needs_restart = false;
         cx.notify();
     }
 
@@ -835,6 +888,7 @@ impl Locus {
 
     fn render_right_sidebar(&self, width: f32, show_resize: bool, cx: &mut Context<Self>) -> Div {
         let theme = Theme::current(cx);
+        let language = self.language(cx);
 
         div()
             .relative()
@@ -848,7 +902,24 @@ impl Locus {
             .border_color(theme.border_strong)
             .bg(theme.surface)
             .child(self.render_right_titlebar(cx))
-            .child(div().min_h_0().flex_1())
+            .child(
+                div()
+                    .min_h_0()
+                    .flex_1()
+                    .when_some(self.terminal.clone(), |body, terminal| body.child(terminal))
+                    .when(self.terminal.is_none(), |body| {
+                        body.flex()
+                            .items_center()
+                            .justify_center()
+                            .px(px(24.0))
+                            .text_sm()
+                            .text_color(theme.text_secondary)
+                            .child(language.text(
+                                "请先在设置中选择文档库",
+                                "Choose a library in Settings first",
+                            ))
+                    }),
+            )
             .when(show_resize, |panel| {
                 panel.child(self.render_panel_resize_handle(PanelSide::Right, cx))
             })
@@ -863,6 +934,14 @@ impl Render for Locus {
         let left_control_clearance =
             left_toggle_offset + TITLEBAR_CONTROL_SIZE + TITLEBAR_CONTROL_GAP;
         let content_width = f32::from(window.viewport_size().width) - panels.left - panels.right;
+        if let Some(terminal) = &self.terminal {
+            terminal.update(cx, |terminal, _| {
+                terminal.set_available_size(
+                    panels.right_content,
+                    (f32::from(window.viewport_size().height) - TITLEBAR_HEIGHT).max(120.0),
+                );
+            });
+        }
         if panels.sliding() {
             window.request_animation_frame();
         }

@@ -29,6 +29,7 @@ impl Locus {
         let theme = Theme::current(cx);
         let preferences = self.settings.read(cx).preferences();
         let markdown_text_size = preferences.ui_font_size;
+        let markdown_code_font_family = preferences.resolved_code_font_family().to_owned();
         let markdown_code_text_size = preferences.code_font_size;
         let language = preferences.language;
         let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark);
@@ -90,6 +91,7 @@ impl Locus {
                     &node.directory,
                     theme,
                     markdown_text_size,
+                    &markdown_code_font_family,
                     markdown_code_text_size,
                 )
                 .with_attachment_views(&node.attachments, language)

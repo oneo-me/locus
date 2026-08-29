@@ -4,14 +4,57 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 use crate::config::{
-    DEFAULT_CODE_FONT_SIZE, DEFAULT_LANGUAGE, DEFAULT_LIBRARY_PATH, DEFAULT_THEME,
-    DEFAULT_UI_FONT_SIZE, SETTINGS_FILE,
+    DEFAULT_CODE_FONT_FAMILY, DEFAULT_CODE_FONT_SIZE, DEFAULT_LANGUAGE, DEFAULT_LIBRARY_PATH,
+    DEFAULT_TERMINAL_COMMAND, DEFAULT_TERMINAL_SHELL, DEFAULT_THEME, DEFAULT_UI_FONT_SIZE,
+    SETTINGS_FILE,
 };
 use crate::localization::Language;
 use crate::storage::data_directory;
 use crate::theme::ThemePreference;
 
 pub const FONT_SIZES: [f32; 6] = [14.0, 15.0, 16.0, 17.0, 18.0, 20.0];
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TerminalColorScheme {
+    #[default]
+    Auto,
+    Light,
+    Dark,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TerminalCursorStyle {
+    #[default]
+    Block,
+    Underline,
+    Bar,
+}
+
+impl TerminalCursorStyle {
+    pub const ALL: [Self; 3] = [Self::Block, Self::Underline, Self::Bar];
+
+    pub fn label(self, language: Language) -> &'static str {
+        match self {
+            Self::Block => language.text("块状", "Block"),
+            Self::Underline => language.text("下划线", "Underline"),
+            Self::Bar => language.text("竖线", "Bar"),
+        }
+    }
+}
+
+impl TerminalColorScheme {
+    pub const ALL: [Self; 3] = [Self::Auto, Self::Light, Self::Dark];
+
+    pub fn label(self, language: Language) -> &'static str {
+        match self {
+            Self::Auto => language.text("自动", "Auto"),
+            Self::Light => language.text("亮色", "Light"),
+            Self::Dark => language.text("暗色", "Dark"),
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -39,7 +82,12 @@ pub struct Preferences {
     pub theme: ThemePreference,
     pub language: Language,
     pub ui_font_size: f32,
+    pub code_font_family: String,
     pub code_font_size: f32,
+    pub terminal_shell: String,
+    pub terminal_command: String,
+    pub terminal_color_scheme: TerminalColorScheme,
+    pub terminal_cursor_style: TerminalCursorStyle,
 }
 
 impl Default for Preferences {
@@ -50,7 +98,12 @@ impl Default for Preferences {
             theme: DEFAULT_THEME,
             language: DEFAULT_LANGUAGE,
             ui_font_size: DEFAULT_UI_FONT_SIZE,
+            code_font_family: DEFAULT_CODE_FONT_FAMILY.to_owned(),
             code_font_size: DEFAULT_CODE_FONT_SIZE,
+            terminal_shell: DEFAULT_TERMINAL_SHELL.to_owned(),
+            terminal_command: DEFAULT_TERMINAL_COMMAND.to_owned(),
+            terminal_color_scheme: TerminalColorScheme::Auto,
+            terminal_cursor_style: TerminalCursorStyle::Block,
         }
     }
 }
@@ -94,6 +147,19 @@ impl Preferences {
         if !FONT_SIZES.contains(&self.code_font_size) {
             self.code_font_size = defaults.code_font_size;
         }
+        self.code_font_family = self.code_font_family.trim().to_owned();
+        if self.code_font_family.is_empty() {
+            self.code_font_family = defaults.code_font_family;
+        }
+    }
+
+    pub fn resolved_code_font_family(&self) -> &str {
+        let family = self.code_font_family.trim();
+        if family.is_empty() {
+            DEFAULT_CODE_FONT_FAMILY
+        } else {
+            family
+        }
     }
 }
 
@@ -113,7 +179,12 @@ mod tests {
             theme: ThemePreference::Dark,
             language: Language::English,
             ui_font_size: 18.0,
+            code_font_family: "JetBrains Mono".to_owned(),
             code_font_size: 15.0,
+            terminal_shell: "/bin/zsh".to_owned(),
+            terminal_command: "git status".to_owned(),
+            terminal_color_scheme: TerminalColorScheme::Dark,
+            terminal_cursor_style: TerminalCursorStyle::Bar,
         };
         let json = serde_json::to_string(&preferences).unwrap();
         let restored: Preferences = serde_json::from_str(&json).unwrap();
@@ -123,13 +194,25 @@ mod tests {
         assert_eq!(restored.theme, preferences.theme);
         assert_eq!(restored.language, preferences.language);
         assert_eq!(restored.ui_font_size, preferences.ui_font_size);
+        assert_eq!(restored.code_font_family, preferences.code_font_family);
         assert_eq!(restored.code_font_size, preferences.code_font_size);
+        assert_eq!(restored.terminal_shell, preferences.terminal_shell);
+        assert_eq!(restored.terminal_command, preferences.terminal_command);
+        assert_eq!(
+            restored.terminal_color_scheme,
+            preferences.terminal_color_scheme
+        );
+        assert_eq!(
+            restored.terminal_cursor_style,
+            preferences.terminal_cursor_style
+        );
     }
 
     #[test]
     fn unsupported_font_sizes_return_to_defaults() {
         let mut preferences = Preferences {
             ui_font_size: f32::NAN,
+            code_font_family: "  ".to_owned(),
             code_font_size: 99.0,
             ..Preferences::default()
         };
@@ -137,6 +220,7 @@ mod tests {
         preferences.normalize();
 
         assert_eq!(preferences.ui_font_size, DEFAULT_UI_FONT_SIZE);
+        assert_eq!(preferences.code_font_family, DEFAULT_CODE_FONT_FAMILY);
         assert_eq!(preferences.code_font_size, DEFAULT_CODE_FONT_SIZE);
     }
 }

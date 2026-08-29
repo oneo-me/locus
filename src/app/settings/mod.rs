@@ -2,26 +2,47 @@ use std::path::Path;
 
 mod controls;
 mod pages;
+pub(super) mod text_input;
 
-use crate::config::DEFAULT_UI_FONT_SIZE;
+use crate::config::{DEFAULT_CODE_FONT_FAMILY, DEFAULT_UI_FONT_SIZE};
 use crate::localization::Language;
-use crate::preferences::{EditorPreference, FONT_SIZES, Preferences};
+use crate::preferences::{
+    EditorPreference, FONT_SIZES, Preferences, TerminalColorScheme, TerminalCursorStyle,
+};
 use crate::theme::{self, Theme, ThemePreference};
 use crate::ui::{ActivationExt, Icon, icon};
 use gpui::{
-    App, Context, EventEmitter, FocusHandle, FontWeight, KeyDownEvent, MouseButton,
-    PathPromptOptions, Rems, Render, Role, Stateful, StatefulInteractiveElement, Window, deferred,
-    div, prelude::*, px, rems,
+    App, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight, KeyDownEvent,
+    MouseButton, PathPromptOptions, Rems, Render, Role, Stateful, StatefulInteractiveElement,
+    Window, deferred, div, prelude::*, px, rems,
 };
 
 const SETTINGS_SIDEBAR_WIDTH: f32 = 252.0;
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 720.0;
+const FOCUS_BACK: usize = 0;
+const FOCUS_GENERAL_PAGE: usize = 1;
+const FOCUS_APPEARANCE_PAGE: usize = 2;
+const FOCUS_TERMINAL_PAGE: usize = 3;
+const FOCUS_LIBRARY_PICKER: usize = 4;
+const FOCUS_EDITOR: usize = 5;
+const FOCUS_THEME: usize = 6;
+const FOCUS_LANGUAGE: usize = 7;
+const FOCUS_UI_FONT: usize = 8;
+const FOCUS_CODE_FONT: usize = 9;
+const FOCUS_CODE_FONT_FAMILY: usize = 10;
+const FOCUS_TERMINAL_COLOR_SCHEME: usize = 11;
+const FOCUS_TERMINAL_CURSOR_STYLE: usize = 12;
+
+fn font_matches_search(family: &str, normalized_query: &str) -> bool {
+    normalized_query.is_empty() || family.to_lowercase().contains(normalized_query)
+}
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 enum SettingsPage {
     #[default]
     General,
     Appearance,
+    Terminal,
 }
 
 #[derive(Clone, Copy)]
@@ -32,6 +53,8 @@ enum Choice {
     Language(Language),
     UiFont(f32),
     CodeFont(f32),
+    TerminalColorScheme(TerminalColorScheme),
+    TerminalCursorStyle(TerminalCursorStyle),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -41,16 +64,22 @@ enum Dropdown {
     Language,
     UiFont,
     CodeFont,
+    CodeFontFamily,
+    TerminalColorScheme,
+    TerminalCursorStyle,
 }
 
 impl Dropdown {
     fn trigger_focus_index(self) -> usize {
         match self {
-            Self::Editor => 4,
-            Self::Theme => 5,
-            Self::Language => 6,
-            Self::UiFont => 7,
-            Self::CodeFont => 8,
+            Self::Editor => FOCUS_EDITOR,
+            Self::Theme => FOCUS_THEME,
+            Self::Language => FOCUS_LANGUAGE,
+            Self::UiFont => FOCUS_UI_FONT,
+            Self::CodeFont => FOCUS_CODE_FONT,
+            Self::CodeFontFamily => FOCUS_CODE_FONT_FAMILY,
+            Self::TerminalColorScheme => FOCUS_TERMINAL_COLOR_SCHEME,
+            Self::TerminalCursorStyle => FOCUS_TERMINAL_CURSOR_STYLE,
         }
     }
 }
@@ -59,6 +88,10 @@ pub enum SettingsEvent {
     Close,
     LanguageChanged(Language),
     LibraryChanged(std::path::PathBuf),
+    TerminalLaunchChanged,
+    TerminalColorSchemeChanged(TerminalColorScheme),
+    TerminalCursorStyleChanged(TerminalCursorStyle),
+    CodeFontChanged(String, f32),
 }
 
 pub struct Settings {
@@ -68,6 +101,12 @@ pub struct Settings {
     page: SettingsPage,
     open_dropdown: Option<Dropdown>,
     preferences: Preferences,
+    code_font_names: Vec<String>,
+    code_font_option_focus: Vec<FocusHandle>,
+    code_font_search: String,
+    code_font_search_input: Entity<text_input::TextInput>,
+    terminal_shell_input: Entity<text_input::TextInput>,
+    terminal_command_input: Entity<text_input::TextInput>,
     error: Option<String>,
 }
 
@@ -80,6 +119,72 @@ impl Settings {
         return_focus: FocusHandle,
         cx: &mut Context<Self>,
     ) -> Self {
+        let language = preferences.language;
+        let mut code_font_names = cx.text_system().all_font_names();
+        if !code_font_names
+            .iter()
+            .any(|font| font == DEFAULT_CODE_FONT_FAMILY)
+        {
+            code_font_names.push(DEFAULT_CODE_FONT_FAMILY.to_owned());
+            code_font_names.sort_unstable_by_key(|font| font.to_lowercase());
+        }
+        let code_font_option_focus = code_font_names.iter().map(|_| cx.focus_handle()).collect();
+        let code_font_search_input = cx.new(|cx| {
+            text_input::TextInput::new(
+                "code-font-search-input",
+                String::new(),
+                language.text("搜索字体", "Search fonts"),
+                language.text("搜索字体", "Search fonts"),
+                cx,
+            )
+        });
+        let terminal_shell_input = cx.new(|cx| {
+            text_input::TextInput::new(
+                "terminal-shell-input",
+                preferences.terminal_shell.clone(),
+                language.text("启动 Shell", "Launch shell"),
+                language.text("使用系统登录 Shell", "Use system login shell"),
+                cx,
+            )
+        });
+        let terminal_command_input = cx.new(|cx| {
+            text_input::TextInput::new(
+                "terminal-command-input",
+                preferences.terminal_command.clone(),
+                language.text("默认命令", "Default command"),
+                language.text("不执行默认命令", "No default command"),
+                cx,
+            )
+        });
+        cx.subscribe(
+            &code_font_search_input,
+            |this, _, event: &text_input::TextInputEvent, cx| {
+                let text_input::TextInputEvent::Changed(value) = event;
+                this.code_font_search = value.clone();
+                cx.notify();
+            },
+        )
+        .detach();
+        cx.subscribe(
+            &terminal_shell_input,
+            |this, _, event: &text_input::TextInputEvent, cx| {
+                let text_input::TextInputEvent::Changed(value) = event;
+                this.preferences.terminal_shell = value.clone();
+                this.persist();
+                cx.emit(SettingsEvent::TerminalLaunchChanged);
+            },
+        )
+        .detach();
+        cx.subscribe(
+            &terminal_command_input,
+            |this, _, event: &text_input::TextInputEvent, cx| {
+                let text_input::TextInputEvent::Changed(value) = event;
+                this.preferences.terminal_command = value.clone();
+                this.persist();
+                cx.emit(SettingsEvent::TerminalLaunchChanged);
+            },
+        )
+        .detach();
         Self {
             focus: cx.focus_handle(),
             return_focus,
@@ -87,6 +192,12 @@ impl Settings {
             page: SettingsPage::General,
             open_dropdown: None,
             preferences,
+            code_font_names,
+            code_font_option_focus,
+            code_font_search: String::new(),
+            code_font_search_input,
+            terminal_shell_input,
+            terminal_command_input,
             error: load_error,
         }
     }
@@ -166,6 +277,22 @@ impl Settings {
                     return;
                 }
                 self.preferences.language = language;
+                self.code_font_search_input.update(cx, |input, cx| {
+                    input.set_label(language.text("搜索字体", "Search fonts"), cx);
+                    input.set_placeholder(language.text("搜索字体", "Search fonts"), cx);
+                });
+                self.terminal_shell_input.update(cx, |input, cx| {
+                    input.set_label(language.text("启动 Shell", "Launch shell"), cx);
+                    input.set_placeholder(
+                        language.text("使用系统登录 Shell", "Use system login shell"),
+                        cx,
+                    );
+                });
+                self.terminal_command_input.update(cx, |input, cx| {
+                    input.set_label(language.text("默认命令", "Default command"), cx);
+                    input
+                        .set_placeholder(language.text("不执行默认命令", "No default command"), cx);
+                });
                 cx.emit(SettingsEvent::LanguageChanged(language));
             }
             Choice::UiFont(size) => {
@@ -181,6 +308,24 @@ impl Settings {
                     return;
                 }
                 self.preferences.code_font_size = size;
+                cx.emit(SettingsEvent::CodeFontChanged(
+                    self.preferences.resolved_code_font_family().to_owned(),
+                    size,
+                ));
+            }
+            Choice::TerminalColorScheme(color_scheme) => {
+                if self.preferences.terminal_color_scheme == color_scheme {
+                    return;
+                }
+                self.preferences.terminal_color_scheme = color_scheme;
+                cx.emit(SettingsEvent::TerminalColorSchemeChanged(color_scheme));
+            }
+            Choice::TerminalCursorStyle(cursor_style) => {
+                if self.preferences.terminal_cursor_style == cursor_style {
+                    return;
+                }
+                self.preferences.terminal_cursor_style = cursor_style;
+                cx.emit(SettingsEvent::TerminalCursorStyleChanged(cursor_style));
             }
         }
         self.persist();
@@ -205,7 +350,7 @@ impl Settings {
                         .id("settings-back")
                         .role(Role::Button)
                         .aria_label(back_label)
-                        .track_focus(&self.controls[0])
+                        .track_focus(&self.controls[FOCUS_BACK])
                         .tab_index(0)
                         .tab_stop(true)
                         .h(px(34.0))
@@ -243,7 +388,7 @@ impl Settings {
                         language.text("通用", "General"),
                         Icon::Settings,
                         SettingsPage::General,
-                        1,
+                        FOCUS_GENERAL_PAGE,
                         cx,
                     ))
                     .child(self.render_navigation_row(
@@ -251,7 +396,15 @@ impl Settings {
                         language.text("外观", "Appearance"),
                         Icon::Appearance,
                         SettingsPage::Appearance,
-                        2,
+                        FOCUS_APPEARANCE_PAGE,
+                        cx,
+                    ))
+                    .child(self.render_navigation_row(
+                        "settings-terminal",
+                        language.text("终端", "Terminal"),
+                        Icon::Terminal,
+                        SettingsPage::Terminal,
+                        FOCUS_TERMINAL_PAGE,
                         cx,
                     )),
             )
@@ -319,10 +472,12 @@ impl Settings {
         let title = match self.page {
             SettingsPage::General => language.text("通用", "General"),
             SettingsPage::Appearance => language.text("外观", "Appearance"),
+            SettingsPage::Terminal => language.text("终端", "Terminal"),
         };
         let content = match self.page {
             SettingsPage::General => self.render_general(cx),
             SettingsPage::Appearance => self.render_appearance(cx),
+            SettingsPage::Terminal => self.render_terminal(cx),
         };
 
         div()
@@ -421,5 +576,41 @@ impl Render for Settings {
             .font_family(".SystemUIFont")
             .child(self.render_sidebar(cx))
             .child(self.render_content(cx))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn persistent_setting_controls_have_distinct_focus_handles() {
+        let indices = [
+            FOCUS_BACK,
+            FOCUS_GENERAL_PAGE,
+            FOCUS_APPEARANCE_PAGE,
+            FOCUS_TERMINAL_PAGE,
+            FOCUS_LIBRARY_PICKER,
+            FOCUS_EDITOR,
+            FOCUS_THEME,
+            FOCUS_LANGUAGE,
+            FOCUS_UI_FONT,
+            FOCUS_CODE_FONT,
+            FOCUS_CODE_FONT_FAMILY,
+            FOCUS_TERMINAL_COLOR_SCHEME,
+            FOCUS_TERMINAL_CURSOR_STYLE,
+        ];
+        let unique = indices
+            .into_iter()
+            .collect::<std::collections::HashSet<_>>();
+
+        assert_eq!(unique.len(), indices.len());
+    }
+
+    #[test]
+    fn font_search_is_case_insensitive_and_matches_substrings() {
+        assert!(font_matches_search("JetBrains Mono", "brains"));
+        assert!(font_matches_search("SF Mono", "sf mono"));
+        assert!(!font_matches_search("Menlo", "serif"));
     }
 }

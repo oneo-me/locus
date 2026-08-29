@@ -17,13 +17,13 @@ use crate::localization::Language;
 use crate::theme::Theme;
 
 const SANS_FAMILY: &str = ".SystemUIFont";
-const MONO_FAMILY: &str = "monospace";
 
 pub struct Markdown<'a> {
     source: &'a str,
     base_directory: &'a Path,
     theme: Theme,
     text_size: f32,
+    code_font_family: &'a str,
     code_text_size: f32,
     attachments: &'a [Attachment],
     language: Language,
@@ -35,6 +35,7 @@ impl<'a> Markdown<'a> {
         base_directory: &'a Path,
         theme: Theme,
         text_size: f32,
+        code_font_family: &'a str,
         code_text_size: f32,
     ) -> Self {
         Self {
@@ -42,6 +43,7 @@ impl<'a> Markdown<'a> {
             base_directory,
             theme,
             text_size,
+            code_font_family,
             code_text_size,
             attachments: &[],
             language: Language::Chinese,
@@ -64,6 +66,7 @@ impl<'a> Markdown<'a> {
             base_directory: self.base_directory,
             theme: self.theme,
             text_size: self.text_size,
+            code_font_family: self.code_font_family,
             code_text_size: self.code_text_size,
             attachments: self.attachments,
             language: self.language,
@@ -89,6 +92,7 @@ struct RenderContext<'a> {
     base_directory: &'a Path,
     theme: Theme,
     text_size: f32,
+    code_font_family: &'a str,
     code_text_size: f32,
     attachments: &'a [Attachment],
     language: Language,
@@ -200,7 +204,7 @@ impl RenderContext<'_> {
             text.push_str(&run.text);
             let end = text.len();
             let mut run_font = font(if run.style.code {
-                MONO_FAMILY
+                self.code_font_family
             } else {
                 SANS_FAMILY
             });
@@ -452,7 +456,7 @@ impl RenderContext<'_> {
                     .min_w_0()
                     .px(px(10.0))
                     .py(px(8.0))
-                    .font_family(MONO_FAMILY)
+                    .font_family(self.code_font_family)
                     .text_size(px(self.code_text_size))
                     .line_height(px((self.code_text_size * 1.5).round()))
                     .text_color(self.theme.text_secondary)

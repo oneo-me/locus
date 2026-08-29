@@ -7,6 +7,7 @@ mod platform;
 mod preferences;
 mod state;
 mod storage;
+mod terminal;
 mod theme;
 mod ui;
 
@@ -53,6 +54,7 @@ fn main() {
 
     platform_application.run(move |cx: &mut App| {
         platform::init_reduce_motion(cx);
+        app::bind_keys(cx);
         cx.bind_keys([
             KeyBinding::new("secondary-q", Quit, None),
             KeyBinding::new("secondary-w", CloseWindow, None),

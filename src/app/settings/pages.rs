@@ -80,7 +80,7 @@ impl Settings {
                     .id("choose-library")
                     .role(Role::Button)
                     .aria_label(choose_label)
-                    .track_focus(&self.controls[3])
+                    .track_focus(&self.controls[FOCUS_LIBRARY_PICKER])
                     .tab_index(0)
                     .tab_stop(true)
                     .h_full()
@@ -125,7 +125,7 @@ impl Settings {
                     self.preferences.editor.label(language),
                     Dropdown::Editor,
                     editor_choices,
-                    4,
+                    FOCUS_EDITOR,
                     cx,
                 ),
                 cx,
@@ -187,7 +187,7 @@ impl Settings {
                     selected_theme,
                     Dropdown::Theme,
                     theme_choices,
-                    5,
+                    FOCUS_THEME,
                     cx,
                 ),
                 cx,
@@ -204,7 +204,7 @@ impl Settings {
                     language.label(),
                     Dropdown::Language,
                     language_choices,
-                    6,
+                    FOCUS_LANGUAGE,
                     cx,
                 ),
                 cx,
@@ -221,21 +221,116 @@ impl Settings {
                     font_size_label(self.preferences.ui_font_size),
                     Dropdown::UiFont,
                     ui_font_choices,
-                    7,
+                    FOCUS_UI_FONT,
                     cx,
                 ),
                 cx,
             ))
             .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
+                language.text("代码字体", "Code font"),
+                language.text(
+                    "用于代码内容和终端的字体",
+                    "Font used for code content and the terminal",
+                ),
+                self.render_code_font_picker(cx),
+                cx,
+            ))
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(self.render_setting_row(
                 language.text("代码字号", "Code font size"),
-                language.text("用于代码内容的文字大小", "Font size used for code content"),
+                language.text(
+                    "用于代码内容和终端的文字大小",
+                    "Font size used for code content and the terminal",
+                ),
                 self.render_dropdown(
                     "code-font-size-selector",
                     font_size_label(self.preferences.code_font_size),
                     Dropdown::CodeFont,
                     code_font_choices,
-                    8,
+                    FOCUS_CODE_FONT,
+                    cx,
+                ),
+                cx,
+            ))
+    }
+
+    pub(super) fn render_terminal(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let theme = Theme::current(cx);
+        let language = self.preferences.language;
+        let color_choices = TerminalColorScheme::ALL
+            .into_iter()
+            .map(|value| {
+                (
+                    value.label(language),
+                    value == self.preferences.terminal_color_scheme,
+                    Choice::TerminalColorScheme(value),
+                )
+            })
+            .collect();
+        let cursor_choices = TerminalCursorStyle::ALL
+            .into_iter()
+            .map(|value| {
+                (
+                    value.label(language),
+                    value == self.preferences.terminal_cursor_style,
+                    Choice::TerminalCursorStyle(value),
+                )
+            })
+            .collect();
+
+        div()
+            .flex()
+            .flex_col()
+            .child(self.render_setting_row(
+                language.text("启动 Shell", "Launch shell"),
+                language.text(
+                    "留空时使用系统登录 Shell",
+                    "Uses the system login shell when empty",
+                ),
+                self.terminal_shell_input.clone(),
+                cx,
+            ))
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(self.render_setting_row(
+                language.text("默认命令", "Default command"),
+                language.text(
+                    "每次启动终端后执行，留空则直接进入 Shell",
+                    "Runs after each terminal starts; leave empty for the shell prompt",
+                ),
+                self.terminal_command_input.clone(),
+                cx,
+            ))
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(self.render_setting_row(
+                language.text("配色", "Color scheme"),
+                language.text(
+                    "自动跟随 Locus 的当前明暗外观",
+                    "Auto follows the current Locus appearance",
+                ),
+                self.render_dropdown(
+                    "terminal-color-scheme-selector",
+                    self.preferences.terminal_color_scheme.label(language),
+                    Dropdown::TerminalColorScheme,
+                    color_choices,
+                    FOCUS_TERMINAL_COLOR_SCHEME,
+                    cx,
+                ),
+                cx,
+            ))
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(self.render_setting_row(
+                language.text("光标样式", "Cursor style"),
+                language.text(
+                    "作为终端程序未指定光标时的默认样式",
+                    "Default used when a terminal program does not set the cursor",
+                ),
+                self.render_dropdown(
+                    "terminal-cursor-style-selector",
+                    self.preferences.terminal_cursor_style.label(language),
+                    Dropdown::TerminalCursorStyle,
+                    cursor_choices,
+                    FOCUS_TERMINAL_CURSOR_STYLE,
                     cx,
                 ),
                 cx,

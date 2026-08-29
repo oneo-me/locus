@@ -160,6 +160,8 @@ impl Locus {
     }
 
     pub(super) fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {
+        let theme = Theme::current(cx);
+        let label = self.language(cx).text("终端", "Terminal");
         div()
             .h(px(TITLEBAR_HEIGHT))
             .flex_none()
@@ -170,7 +172,36 @@ impl Locus {
             .child(
                 self.window_drag_region("right-title-region", cx)
                     .min_w_0()
-                    .flex_1(),
+                    .flex_1()
+                    .flex()
+                    .items_center()
+                    .child(
+                        div()
+                            .id("terminal-tab")
+                            .role(gpui::Role::Tab)
+                            .aria_selected(true)
+                            .aria_label(label)
+                            .h(px(28.0))
+                            .min_w(px(100.0))
+                            .max_w(px(176.0))
+                            .px(px(8.0))
+                            .rounded(px(6.0))
+                            .bg(theme.control_selected)
+                            .flex()
+                            .items_center()
+                            .gap(px(6.0))
+                            .child(icon(Icon::Terminal, 13.0, theme.text_secondary))
+                            .text_size(px(12.5))
+                            .font_weight(FontWeight::MEDIUM)
+                            .child(
+                                div()
+                                    .min_w_0()
+                                    .flex_1()
+                                    .truncate()
+                                    .text_color(theme.text)
+                                    .child(label),
+                            ),
+                    ),
             )
             .child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
     }
