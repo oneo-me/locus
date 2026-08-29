@@ -15,6 +15,7 @@ pub enum ChangeStatus {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LibraryNode {
     pub path: String,
+    pub directory: PathBuf,
     pub title: String,
     pub icon: Option<String>,
     pub icon_path: Option<PathBuf>,
@@ -155,6 +156,7 @@ fn scan_children(
 
         nodes.push(LibraryNode {
             path: relative_directory,
+            directory: path,
             title: metadata.title.unwrap_or_else(|| name.into_owned()),
             icon: metadata.icon,
             icon_path,

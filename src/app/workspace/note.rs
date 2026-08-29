@@ -1,6 +1,6 @@
 use gpui::{
     AnyElement, BorderStyle, Bounds, ClipboardItem, Div, FontWeight, MouseButton, ObjectFit,
-    PathBuilder, Pixels, ScrollHandle, Window, canvas, div, img, linear_color_stop,
+    PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, img, linear_color_stop,
     linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
 
@@ -129,6 +129,26 @@ impl Locus {
             this.copied_library_node = this.selected_library_node.clone();
             cx.notify();
         });
+        let directory = node.directory.clone();
+        let open_directory_button = toolbar_icon_button(
+            "open-note-directory",
+            language.text("打开目录", "Open directory"),
+            &self.note_open_directory_focus,
+            Icon::FolderOpen,
+            theme,
+        )
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .on_activation(cx, move |_, window, cx| {
+            if let Err(error) = crate::platform::open_directory(&directory) {
+                drop(window.prompt(
+                    PromptLevel::Critical,
+                    language.text("无法打开目录", "Could not open directory"),
+                    Some(&error),
+                    &[language.text("好", "OK")],
+                    cx,
+                ));
+            }
+        });
 
         self.window_drag_region("note-titlebar-region", cx)
             .absolute()
@@ -175,7 +195,8 @@ impl Locus {
                     .when(self.fps_counter_visible, |header| {
                         header.child(self.render_fps_counter(cx))
                     })
-                    .child(copy_button),
+                    .child(copy_button)
+                    .child(open_directory_button),
             )
     }
 }
