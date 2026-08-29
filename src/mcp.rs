@@ -1,4 +1,6 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, UdpSocket};
+use std::ffi::CStr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
+use std::ptr;
 use std::thread::{self, JoinHandle};
 
 mod service;
@@ -16,9 +18,19 @@ const MCP_PATH: &str = "/mcp";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum McpServerState {
-    Stopped,
+    Stopped { endpoint: String },
     Running { endpoint: String },
-    Failed { message: String },
+    Failed { endpoint: String, message: String },
+}
+
+impl McpServerState {
+    pub fn endpoint(&self) -> &str {
+        match self {
+            Self::Stopped { endpoint }
+            | Self::Running { endpoint }
+            | Self::Failed { endpoint, .. } => endpoint,
+        }
+    }
 }
 
 pub struct McpServerController {
@@ -32,7 +44,9 @@ impl McpServerController {
         let mut controller = Self {
             cancellation: None,
             thread: None,
-            state: McpServerState::Stopped,
+            state: McpServerState::Stopped {
+                endpoint: mcp_endpoint(preferences.mcp_local_network, preferences.mcp_port),
+            },
         };
         controller.apply(preferences);
         controller
@@ -40,14 +54,15 @@ impl McpServerController {
 
     pub fn apply(&mut self, preferences: &Preferences) -> McpServerState {
         self.stop();
+        let endpoint = mcp_endpoint(preferences.mcp_local_network, preferences.mcp_port);
         if !preferences.mcp_enabled {
-            self.state = McpServerState::Stopped;
+            self.state = McpServerState::Stopped { endpoint };
             return self.state.clone();
         }
 
         self.state = match self.start(preferences) {
             Ok(endpoint) => McpServerState::Running { endpoint },
-            Err(message) => McpServerState::Failed { message },
+            Err(message) => McpServerState::Failed { endpoint, message },
         };
         self.state.clone()
     }
@@ -155,11 +170,66 @@ fn bind_address(local_network: bool, port: u16) -> SocketAddr {
     SocketAddr::new(ip, port)
 }
 
-fn local_network_ip() -> Option<IpAddr> {
-    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)).ok()?;
-    socket.connect((Ipv4Addr::new(192, 0, 2, 1), 80)).ok()?;
-    let address = socket.local_addr().ok()?.ip();
-    (!address.is_loopback() && !address.is_unspecified()).then_some(address)
+fn local_network_ip() -> Option<Ipv4Addr> {
+    preferred_local_ipv4(interface_ipv4_addresses())
+}
+
+fn interface_ipv4_addresses() -> Vec<(String, Ipv4Addr)> {
+    let mut head: *mut libc::ifaddrs = ptr::null_mut();
+    if unsafe { libc::getifaddrs(&mut head) } != 0 {
+        return Vec::new();
+    }
+
+    let mut addresses = Vec::new();
+    let mut current = head;
+    while !current.is_null() {
+        let interface = unsafe { &*current };
+        let is_up = interface.ifa_flags & libc::IFF_UP as u32 != 0;
+        let is_loopback = interface.ifa_flags & libc::IFF_LOOPBACK as u32 != 0;
+        if is_up && !is_loopback && !interface.ifa_addr.is_null() {
+            let address = unsafe { &*interface.ifa_addr };
+            if address.sa_family as i32 == libc::AF_INET {
+                let name = unsafe { CStr::from_ptr(interface.ifa_name) }
+                    .to_string_lossy()
+                    .into_owned();
+                let address = unsafe { &*(interface.ifa_addr as *const libc::sockaddr_in) };
+                addresses.push((name, Ipv4Addr::from(u32::from_be(address.sin_addr.s_addr))));
+            }
+        }
+        current = interface.ifa_next;
+    }
+    unsafe { libc::freeifaddrs(head) };
+    addresses
+}
+
+fn preferred_local_ipv4(
+    addresses: impl IntoIterator<Item = (String, Ipv4Addr)>,
+) -> Option<Ipv4Addr> {
+    addresses
+        .into_iter()
+        .filter(|(_, address)| is_real_local_address(*address))
+        .max_by_key(|(name, address)| interface_priority(name, *address))
+        .map(|(_, address)| address)
+}
+
+fn is_real_local_address(address: Ipv4Addr) -> bool {
+    let [first, second, ..] = address.octets();
+    !address.is_loopback()
+        && !address.is_unspecified()
+        && !address.is_link_local()
+        && !address.is_broadcast()
+        && !(first == 198 && (18..=19).contains(&second))
+}
+
+fn interface_priority(name: &str, address: Ipv4Addr) -> (bool, bool, bool) {
+    let physical = name.starts_with("en") || name.starts_with("eth") || name.starts_with("wl");
+    let virtual_interface = name.starts_with("utun")
+        || name.starts_with("tun")
+        || name.starts_with("tap")
+        || name.starts_with("bridge")
+        || name.starts_with("awdl")
+        || name.starts_with("llw");
+    (physical, address.is_private(), !virtual_interface)
 }
 
 fn allowed_hosts(local_network: bool) -> Vec<String> {
@@ -221,6 +291,17 @@ mod tests {
         );
         assert_eq!(mcp_endpoint(false, 3001), "http://127.0.0.1:3001/mcp");
         assert!(mcp_endpoint(true, 3001).ends_with(":3001/mcp"));
+    }
+
+    #[test]
+    fn local_address_prefers_physical_interface_over_surge_tunnel() {
+        let address = preferred_local_ipv4([
+            ("utun4".to_owned(), Ipv4Addr::new(198, 18, 0, 1)),
+            ("bridge100".to_owned(), Ipv4Addr::new(192, 168, 64, 1)),
+            ("en0".to_owned(), Ipv4Addr::new(192, 168, 1, 24)),
+        ]);
+
+        assert_eq!(address, Some(Ipv4Addr::new(192, 168, 1, 24)));
     }
 
     #[tokio::test]

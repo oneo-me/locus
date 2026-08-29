@@ -220,17 +220,14 @@ impl Settings {
     pub(super) fn render_mcp(&self, cx: &mut Context<Self>) -> gpui::Div {
         let theme = Theme::current(cx);
         let language = self.preferences.language;
-        let endpoint = crate::mcp::mcp_endpoint(
-            self.preferences.mcp_local_network,
-            self.preferences.mcp_port,
-        );
+        let endpoint = self.mcp_server_state.endpoint().to_owned();
         let endpoint_copy = endpoint.clone();
         let status = match &self.mcp_server_state {
-            McpServerState::Stopped => language.text("已停止", "Stopped").to_owned(),
+            McpServerState::Stopped { .. } => language.text("已停止", "Stopped").to_owned(),
             McpServerState::Running { endpoint } => {
                 format!("{} · {endpoint}", language.text("运行中", "Running"))
             }
-            McpServerState::Failed { message } => format!(
+            McpServerState::Failed { message, .. } => format!(
                 "{}：{message}",
                 language.text("启动失败", "Failed to start")
             ),

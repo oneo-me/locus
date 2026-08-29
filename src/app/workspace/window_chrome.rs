@@ -1,4 +1,5 @@
 use super::*;
+use crate::mcp::McpServerState;
 
 impl Locus {
     pub(super) fn window_drag_region(
@@ -216,7 +217,87 @@ impl Locus {
             Icon::Settings,
             theme,
         )
+        .size(px(28.0))
         .aria_keyshortcuts("Meta+,")
         .on_activation(cx, |this, window, cx| this.open_settings(window, cx))
+    }
+
+    pub(super) fn render_mcp_endpoint(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+        let theme = Theme::current(cx);
+        let language = self.language(cx);
+        let state = self.mcp_server.state();
+        let (status, color) = match &state {
+            McpServerState::Stopped { .. } => {
+                (language.text("已停止", "Stopped"), theme.text_tertiary)
+            }
+            McpServerState::Running { .. } => (language.text("运行中", "Running"), theme.success),
+            McpServerState::Failed { .. } => {
+                (language.text("启动失败", "Failed to start"), theme.error)
+            }
+        };
+        let endpoint = state.endpoint().to_owned();
+        let display = if self.mcp_endpoint_copied {
+            language.text("已复制", "Copied").to_owned()
+        } else {
+            endpoint.clone()
+        };
+        let label = if self.mcp_endpoint_copied {
+            format!(
+                "{status} · {}",
+                language.text("MCP 地址已复制", "MCP URL copied")
+            )
+        } else {
+            format!(
+                "{status} · {}: {endpoint}",
+                language.text("复制 MCP 地址", "Copy MCP URL")
+            )
+        };
+
+        div()
+            .id("copy-mcp-endpoint")
+            .role(Role::Button)
+            .aria_label(label)
+            .track_focus(&self.mcp_endpoint_focus)
+            .tab_index(0)
+            .tab_stop(true)
+            .min_w_0()
+            .flex_1()
+            .h(px(28.0))
+            .rounded(px(6.0))
+            .flex()
+            .items_center()
+            .gap(px(5.0))
+            .px(px(5.0))
+            .text_xs()
+            .cursor_default()
+            .focus_visible(|style| style.border_1().border_color(theme.focus))
+            .hover(|style| style.bg(theme.control_hover))
+            .active(|style| style.bg(theme.control_active))
+            .child(div().size(px(6.0)).flex_none().rounded_full().bg(color))
+            .child(
+                div()
+                    .min_w_0()
+                    .truncate()
+                    .text_color(theme.text_tertiary)
+                    .child(display),
+            )
+            .on_activation(cx, move |this, _, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(endpoint.clone()));
+                this.mcp_endpoint_copied = true;
+                this.mcp_endpoint_copy_generation =
+                    this.mcp_endpoint_copy_generation.wrapping_add(1);
+                let generation = this.mcp_endpoint_copy_generation;
+                cx.spawn(async move |this, cx| {
+                    cx.background_executor().timer(COPY_FEEDBACK_DURATION).await;
+                    let _ = this.update(cx, |this, cx| {
+                        if this.mcp_endpoint_copy_generation == generation {
+                            this.mcp_endpoint_copied = false;
+                            cx.notify();
+                        }
+                    });
+                })
+                .detach();
+                cx.notify();
+            })
     }
 }

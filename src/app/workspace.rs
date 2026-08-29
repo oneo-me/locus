@@ -10,9 +10,9 @@ mod sidebar;
 mod window_chrome;
 
 use gpui::{
-    AnyElement, Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, Pixels, Render, ScrollAnchor, ScrollHandle, Stateful,
-    StyleRefinement, Task, Window, div, prelude::*, px, transparent_black,
+    AnyElement, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Render, Role, ScrollAnchor, ScrollHandle,
+    Stateful, StyleRefinement, Task, Window, div, prelude::*, px, transparent_black,
 };
 
 use self::pane::LocusPane;
@@ -44,6 +44,7 @@ const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
 const TITLEBAR_CONTROL_INSET: f32 = 11.0;
 const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
+const COPY_FEEDBACK_DURATION: Duration = Duration::from_secs(2);
 const LIBRARY_EVENT_DEBOUNCE: Duration = Duration::from_millis(180);
 const WINDOW_BOUNDS_SAVE_DEBOUNCE: Duration = Duration::from_millis(100);
 
@@ -80,6 +81,7 @@ pub struct Locus {
     header_drag_armed: bool,
     left_toggle_focus: FocusHandle,
     right_toggle_focus: FocusHandle,
+    mcp_endpoint_focus: FocusHandle,
     settings_focus: FocusHandle,
     settings_open: bool,
     settings: Entity<Settings>,
@@ -111,6 +113,8 @@ pub struct Locus {
     note_open_directory_focus: FocusHandle,
     copied_library_node: Option<String>,
     note_copy_generation: u64,
+    mcp_endpoint_copied: bool,
+    mcp_endpoint_copy_generation: u64,
     note_scroll_handle: ScrollHandle,
     note_scrollbar_state: Rc<ScrollbarState>,
     fps_counter_visible: bool,
@@ -353,6 +357,9 @@ impl Locus {
             note_open_directory_focus: cx.focus_handle(),
             copied_library_node: None,
             note_copy_generation: 0,
+            mcp_endpoint_focus: cx.focus_handle(),
+            mcp_endpoint_copied: false,
+            mcp_endpoint_copy_generation: 0,
             note_scroll_handle: ScrollHandle::new(),
             note_scrollbar_state: ScrollbarState::new(),
             fps_counter_visible: interface_state.fps_counter_visible,
@@ -967,7 +974,9 @@ impl Locus {
                     .flex_none()
                     .flex()
                     .items_center()
+                    .gap(px(8.0))
                     .px(px(10.0))
+                    .child(self.render_mcp_endpoint(cx))
                     .child(self.render_settings_button(cx)),
             )
             .when(show_resize, |panel| {

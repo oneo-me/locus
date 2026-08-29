@@ -10,12 +10,9 @@ use gpui::{
     PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, img, linear_color_stop,
     linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
-use std::time::Duration;
-
 const NOTE_MAX_WIDTH: f32 = 832.0;
 const ATMOSPHERE_HEIGHT: f32 = 268.0;
 const SHAPE_HEIGHT: f32 = 208.0;
-const COPY_FEEDBACK_DURATION: Duration = Duration::from_secs(2);
 
 impl Locus {
     pub(super) fn render_note(
@@ -162,7 +159,9 @@ impl Locus {
             this.note_copy_generation = this.note_copy_generation.wrapping_add(1);
             let generation = this.note_copy_generation;
             cx.spawn(async move |this, cx| {
-                cx.background_executor().timer(COPY_FEEDBACK_DURATION).await;
+                cx.background_executor()
+                    .timer(super::COPY_FEEDBACK_DURATION)
+                    .await;
                 let _ = this.update(cx, |this, cx| {
                     if this.note_copy_generation == generation {
                         this.copied_library_node = None;
