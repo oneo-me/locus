@@ -501,6 +501,7 @@ impl Locus {
         &self,
         left_border: bool,
         left_control_clearance: f32,
+        content_width: f32,
         cx: &mut Context<Self>,
     ) -> Div {
         let theme = Theme::current(cx);
@@ -519,7 +520,7 @@ impl Locus {
             .flex_col()
             .bg(theme.surface)
             .when_some(selected_note, |content, node| {
-                content.child(self.render_note(node, left_control_clearance, cx))
+                content.child(self.render_note(node, left_control_clearance, content_width, cx))
             })
             .when(selected_note.is_none(), |content| {
                 content
@@ -568,6 +569,7 @@ impl Render for Locus {
         let left_toggle_offset = left_toggle_offset(window.is_fullscreen());
         let left_control_clearance =
             left_toggle_offset + TITLEBAR_CONTROL_SIZE + TITLEBAR_CONTROL_GAP;
+        let content_width = f32::from(window.viewport_size().width) - panels.left - panels.right;
         if panels.sliding() {
             window.request_animation_frame();
         }
@@ -599,7 +601,12 @@ impl Render for Locus {
                         )),
                 )
             })
-            .child(self.render_content(panels.left > 0.0, left_control_clearance, cx))
+            .child(self.render_content(
+                panels.left > 0.0,
+                left_control_clearance,
+                content_width,
+                cx,
+            ))
             .when(panels.right > 0.0, |root| {
                 root.child(
                     div()

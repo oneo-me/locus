@@ -136,7 +136,11 @@ fn arm_fade_wake(state: &Rc<ScrollbarState>, view: EntityId, delay: Duration, cx
     .detach();
 }
 
-pub fn vertical_scrollbar(handle: &ScrollHandle, state: &Rc<ScrollbarState>) -> impl IntoElement {
+pub fn vertical_scrollbar(
+    handle: &ScrollHandle,
+    state: &Rc<ScrollbarState>,
+    top_inset: f32,
+) -> impl IntoElement {
     let handle = handle.clone();
     let state = state.clone();
     canvas(
@@ -289,7 +293,7 @@ pub fn vertical_scrollbar(handle: &ScrollHandle, state: &Rc<ScrollbarState>) -> 
         },
     )
     .absolute()
-    .top(px(TRACK_VERTICAL_INSET))
+    .top(px(TRACK_VERTICAL_INSET + top_inset))
     .bottom(px(TRACK_VERTICAL_INSET))
     .right_0()
     .w(px(TRACK_WIDTH))

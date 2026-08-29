@@ -1,7 +1,7 @@
 use gpui::{
-    AnyElement, BorderStyle, Bounds, ClipboardItem, Div, FontWeight, ObjectFit, PathBuilder,
-    Pixels, ScrollHandle, Window, canvas, div, img, linear_color_stop, linear_gradient, point,
-    prelude::*, px, quad, transparent_black,
+    AnyElement, BorderStyle, Bounds, ClipboardItem, Div, FontWeight, MouseButton, ObjectFit,
+    PathBuilder, Pixels, ScrollHandle, Window, canvas, div, img, linear_color_stop,
+    linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
 
 use super::Locus;
@@ -21,11 +21,13 @@ impl Locus {
         &self,
         node: &LibraryNode,
         left_control_clearance: f32,
+        content_width: f32,
         cx: &mut gpui::Context<Self>,
     ) -> Div {
         let theme = Theme::current(cx);
         let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark);
-        let titlebar = self.render_note_titlebar(node, left_control_clearance, theme, cx);
+        let titlebar =
+            self.render_note_titlebar(node, left_control_clearance, content_width, theme, cx);
 
         let mut article = div()
             .mx_auto()
@@ -49,7 +51,7 @@ impl Locus {
                     .overflow_hidden()
                     .bg(atmosphere.panel)
                     .px(px(14.0))
-                    .py(px(11.0))
+                    .py(px(8.0))
                     .text_sm()
                     .line_height(px(21.0))
                     .child(summary.clone()),
@@ -73,17 +75,23 @@ impl Locus {
             .min_h_0()
             .overflow_y_scroll()
             .track_scroll(&self.note_scroll_handle)
-            .child(article);
+            .child(
+                div()
+                    .relative()
+                    .w_full()
+                    .child(atmosphere_background(atmosphere))
+                    .child(article),
+            );
         div()
             .relative()
             .size_full()
             .overflow_hidden()
-            .child(atmosphere_background(atmosphere))
             .child(scroll)
             .child(titlebar)
             .child(vertical_scrollbar(
                 &self.note_scroll_handle,
                 &self.note_scrollbar_state,
+                super::TITLEBAR_HEIGHT,
             ))
     }
 
@@ -91,17 +99,19 @@ impl Locus {
         &self,
         node: &LibraryNode,
         left_control_clearance: f32,
+        content_width: f32,
         theme: Theme,
         cx: &mut gpui::Context<Self>,
-    ) -> Div {
+    ) -> impl IntoElement {
         let reference = format!("locus://{}", node.path);
         let copied = self.copied_library_node.as_deref() == Some(node.path.as_str());
         let language = self.language(cx);
-        let right_padding = if self.right_sidebar_visible {
-            16.0
-        } else {
-            super::TITLEBAR_CONTROL_INSET
-        };
+        let (left_padding, right_padding) = note_titlebar_padding(
+            content_width,
+            self.rendered_left_width,
+            self.rendered_right_width,
+            left_control_clearance,
+        );
         let copy_button = toolbar_icon_button(
             "copy-note-reference",
             if copied {
@@ -113,13 +123,14 @@ impl Locus {
             if copied { Icon::Check } else { Icon::Copy },
             theme,
         )
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_activation(cx, move |this, _, cx| {
             cx.write_to_clipboard(ClipboardItem::new_string(reference.clone()));
             this.copied_library_node = this.selected_library_node.clone();
             cx.notify();
         });
 
-        div()
+        self.window_drag_region("note-titlebar-region", cx)
             .absolute()
             .top_0()
             .left_0()
@@ -140,12 +151,10 @@ impl Locus {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .pl(px(
-                        (left_control_clearance - self.rendered_left_width).max(16.0)
-                    ))
+                    .pl(px(left_padding))
                     .pr(px(right_padding))
                     .child(
-                        self.window_drag_region("note-title-region", cx)
+                        div()
                             .min_w_0()
                             .flex_1()
                             .flex()
@@ -166,12 +175,23 @@ impl Locus {
                     .when(self.fps_counter_visible, |header| {
                         header.child(self.render_fps_counter(cx))
                     })
-                    .child(copy_button)
-                    .when(!self.right_sidebar_visible, |header| {
-                        header.child(div().size(px(super::TITLEBAR_CONTROL_SIZE)).flex_none())
-                    }),
+                    .child(copy_button),
             )
     }
+}
+
+fn note_titlebar_padding(
+    content_width: f32,
+    left_sidebar_width: f32,
+    right_sidebar_width: f32,
+    left_control_clearance: f32,
+) -> (f32, f32) {
+    let centered_gutter = ((content_width - NOTE_MAX_WIDTH) / 2.0).max(0.0);
+    let left = (left_control_clearance - left_sidebar_width - centered_gutter).max(16.0);
+    let right_control_clearance =
+        super::TITLEBAR_CONTROL_INSET + super::TITLEBAR_CONTROL_SIZE + super::TITLEBAR_CONTROL_GAP;
+    let right = (right_control_clearance - right_sidebar_width - centered_gutter).max(16.0);
+    (left, right)
 }
 
 fn note_titlebar_background(handle: ScrollHandle, color: gpui::Hsla) -> impl IntoElement {
@@ -582,4 +602,23 @@ fn emoji_icon(value: String) -> AnyElement {
         .line_height(px(22.0))
         .child(value)
         .into_any_element()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wide_note_titlebar_stays_aligned_when_sidebars_are_hidden() {
+        assert_eq!(note_titlebar_padding(1200.0, 0.0, 0.0, 120.0), (16.0, 16.0));
+    }
+
+    #[test]
+    fn narrow_note_titlebar_only_avoids_controls_that_overlap_content() {
+        assert_eq!(note_titlebar_padding(700.0, 0.0, 0.0, 120.0), (120.0, 45.0));
+        assert_eq!(
+            note_titlebar_padding(700.0, 250.0, 250.0, 120.0),
+            (16.0, 16.0)
+        );
+    }
 }

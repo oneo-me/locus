@@ -78,6 +78,7 @@ impl Locus {
             .child(vertical_scrollbar(
                 &self.library_scroll_handle,
                 &self.library_scrollbar_state,
+                0.0,
             ))
     }
 

@@ -235,9 +235,9 @@ pub(super) fn derive_note_atmosphere(title: &str, dark: bool) -> NoteAtmosphere 
         ),
         panel: color(
             hue,
-            if dark { 34. } else { 40. },
-            if dark { 28. } else { 94. },
-            if dark { 0.42 } else { 0.48 },
+            if dark { 34. } else { 42. },
+            if dark { 28. } else { 90. },
+            if dark { 0.42 } else { 0.58 },
         ),
         backdrop: derive_backdrop(seed, hue, dark),
         shapes: derive_shapes(seed, hue, dark),
@@ -247,7 +247,7 @@ pub(super) fn derive_note_atmosphere(title: &str, dark: bool) -> NoteAtmosphere 
 fn derive_backdrop(seed: u32, hue: f64, dark: bool) -> AtmosphereBackdrop {
     let local = mix(seed, 0xbd01);
     let opacity = round(
-        (if dark { 0.055 } else { 0.038 }) + unit(mix(local, 2)) * 0.035,
+        (if dark { 0.035 } else { 0.06 }) + unit(mix(local, 2)) * if dark { 0.025 } else { 0.04 },
         3,
     );
     let stroke = tone(hue, dark, false, mix(local, 3) % 16).opacity(opacity as f32);
@@ -509,8 +509,9 @@ fn round(value: f64, digits: i32) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
-    fn atmosphere_is_stable_and_uses_legacy_ranges() {
+    fn atmosphere_is_stable() {
         let first = derive_note_atmosphere("Locus", false);
         let repeated = derive_note_atmosphere("Locus", false);
         assert_eq!(first.wash, repeated.wash);
@@ -521,5 +522,25 @@ mod tests {
         );
         assert_eq!(first.shapes.len(), 4);
         assert!(matches!(first.backdrop, AtmosphereBackdrop::Waves { .. }));
+    }
+
+    #[test]
+    fn theme_contrast_keeps_light_details_stronger_than_dark_texture() {
+        let light = derive_note_atmosphere("Locus", false);
+        let dark = derive_note_atmosphere("Locus", true);
+        assert!(light.panel.a > dark.panel.a);
+        assert!(backdrop_alpha(&light.backdrop) > backdrop_alpha(&dark.backdrop));
+    }
+
+    fn backdrop_alpha(backdrop: &AtmosphereBackdrop) -> f32 {
+        match backdrop {
+            AtmosphereBackdrop::None => 0.0,
+            AtmosphereBackdrop::Grid(pattern)
+            | AtmosphereBackdrop::Lines(pattern)
+            | AtmosphereBackdrop::Diagonal(pattern)
+            | AtmosphereBackdrop::Diamonds(pattern) => pattern.color.a,
+            AtmosphereBackdrop::Dots { color, .. } => color.a,
+            AtmosphereBackdrop::Waves { pattern, .. } => pattern.color.a,
+        }
     }
 }
