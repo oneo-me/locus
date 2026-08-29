@@ -7,7 +7,6 @@ use crate::localization::Language;
 #[derive(Clone)]
 pub(super) struct GalleryItem {
     pub attachment: Attachment,
-    pub alt: String,
 }
 
 pub(super) fn gallery_items(
@@ -45,7 +44,6 @@ pub(super) fn gallery_items(
         }
         items.push(GalleryItem {
             attachment: attachment.clone(),
-            alt,
         });
     }
     if items.is_empty() {

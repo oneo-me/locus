@@ -1,18 +1,14 @@
-use gpui::{
-    AnyElement, BorderStyle, Bounds, ClipboardItem, Div, FontWeight, MouseButton, ObjectFit,
-    PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, img, linear_color_stop,
-    linear_gradient, point, prelude::*, px, quad, transparent_black,
-};
-use std::rc::Rc;
-
 use super::Locus;
 use super::note_atmosphere::{
     AtmosphereBackdrop, AtmosphereShape, NoteAtmosphere, Pattern, derive_note_atmosphere,
 };
 use crate::document_library::LibraryNode;
 use crate::theme::Theme;
-use crate::ui::{
-    ActivationExt, Icon, Markdown, OpenImageHandler, toolbar_icon_button, vertical_scrollbar,
+use crate::ui::{ActivationExt, Icon, Markdown, toolbar_icon_button, vertical_scrollbar};
+use gpui::{
+    AnyElement, BorderStyle, Bounds, ClipboardItem, Div, FontWeight, MouseButton, ObjectFit,
+    PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, img, linear_color_stop,
+    linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
 
 const NOTE_MAX_WIDTH: f32 = 832.0;
@@ -32,7 +28,6 @@ impl Locus {
         let markdown_text_size = preferences.ui_font_size;
         let markdown_code_text_size = preferences.code_font_size;
         let language = preferences.language;
-        let weak = cx.weak_entity();
         let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark);
         let titlebar =
             self.render_note_titlebar(node, left_control_clearance, content_width, theme, cx);
@@ -66,12 +61,6 @@ impl Locus {
             );
         }
         if let Some(content) = node.content.as_ref().filter(|content| !content.is_empty()) {
-            let open_image: OpenImageHandler = Rc::new(move |attachment, alt, window, cx| {
-                let path = attachment.path.clone();
-                let _ = weak.update(cx, |this, cx| {
-                    this.open_note_image_preview(path, alt, window, cx);
-                });
-            });
             article = article.child(
                 Markdown::new(
                     content,
@@ -80,7 +69,7 @@ impl Locus {
                     markdown_text_size,
                     markdown_code_text_size,
                 )
-                .with_attachment_views(&node.attachments, language, open_image)
+                .with_attachment_views(&node.attachments, language)
                 .render(),
             );
         }

@@ -16,8 +16,6 @@ use crate::document_library::Attachment;
 use crate::localization::Language;
 use crate::theme::Theme;
 
-pub use attachment_views::OpenImageHandler;
-
 const SANS_FAMILY: &str = ".SystemUIFont";
 const MONO_FAMILY: &str = "monospace";
 
@@ -29,7 +27,6 @@ pub struct Markdown<'a> {
     code_text_size: f32,
     attachments: &'a [Attachment],
     language: Language,
-    open_image: Option<OpenImageHandler>,
 }
 
 impl<'a> Markdown<'a> {
@@ -48,7 +45,6 @@ impl<'a> Markdown<'a> {
             code_text_size,
             attachments: &[],
             language: Language::Chinese,
-            open_image: None,
         }
     }
 
@@ -56,11 +52,9 @@ impl<'a> Markdown<'a> {
         mut self,
         attachments: &'a [Attachment],
         language: Language,
-        open_image: OpenImageHandler,
     ) -> Self {
         self.attachments = attachments;
         self.language = language;
-        self.open_image = Some(open_image);
         self
     }
 
@@ -73,7 +67,6 @@ impl<'a> Markdown<'a> {
             code_text_size: self.code_text_size,
             attachments: self.attachments,
             language: self.language,
-            open_image: self.open_image,
             next_text_id: 0,
         };
         let children = blocks
@@ -99,7 +92,6 @@ struct RenderContext<'a> {
     code_text_size: f32,
     attachments: &'a [Attachment],
     language: Language,
-    open_image: Option<OpenImageHandler>,
     next_text_id: usize,
 }
 
@@ -369,10 +361,7 @@ impl RenderContext<'_> {
                 .flex_col()
                 .gap(px(4.0))
                 .child(attachment_views::render_thumbnail_image(
-                    attachment,
-                    alt,
-                    self.theme,
-                    self.open_image.as_ref(),
+                    attachment, self.theme,
                 ))
                 .when(!alt.trim().is_empty(), |element| {
                     element.child(
@@ -400,7 +389,7 @@ impl RenderContext<'_> {
                 image
                     .max_w(relative(1.0))
                     .max_h(px(420.0))
-                    .rounded(px(6.0))
+                    .rounded(px(10.0))
                     .object_fit(ObjectFit::ScaleDown),
             )
             .when(!alt.trim().is_empty(), |element| {
@@ -423,7 +412,6 @@ impl RenderContext<'_> {
                     self.attachments,
                     self.theme,
                     self.language,
-                    self.open_image.as_ref(),
                 );
             }
             Some("attachments") => {

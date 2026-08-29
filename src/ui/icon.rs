@@ -14,7 +14,6 @@ pub enum Icon {
     PanelLeft,
     PanelRight,
     Settings,
-    X,
 }
 
 pub fn icon(icon: Icon, size: f32, color: Hsla) -> Svg {
@@ -31,7 +30,6 @@ pub fn icon(icon: Icon, size: f32, color: Hsla) -> Svg {
         Icon::PanelLeft => include_bytes!("../../assets/icons/panel-left.svg"),
         Icon::PanelRight => include_bytes!("../../assets/icons/panel-right.svg"),
         Icon::Settings => include_bytes!("../../assets/icons/settings.svg"),
-        Icon::X => include_bytes!("../../assets/icons/x.svg"),
     };
 
     svg()

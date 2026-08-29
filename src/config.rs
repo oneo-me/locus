@@ -4,6 +4,7 @@ use crate::theme::ThemePreference;
 pub const DATA_DIRECTORY: &str = ".oneo/locus_native";
 pub const SETTINGS_FILE: &str = "settings.json";
 pub const INTERFACE_STATE_FILE: &str = "state.json";
+pub const THUMBNAIL_CACHE_DIRECTORY: &str = "thumbnails";
 
 pub const DEFAULT_LIBRARY_PATH: Option<&str> = None;
 pub const DEFAULT_THEME: ThemePreference = ThemePreference::System;

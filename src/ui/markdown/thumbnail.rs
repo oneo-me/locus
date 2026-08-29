@@ -1,17 +1,27 @@
+use std::fs;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, UNIX_EPOCH};
 
 use gpui::{
     Animation, AnimationExt, AnyElement, App, Asset, ImageCacheError, ObjectFit, RenderImage,
     SharedString, StyledImage, Transformation, Window, div, img, percentage, prelude::*, px,
 };
-use image::{DynamicImage, GenericImageView, ImageDecoder, ImageReader, metadata::Orientation};
+use image::{
+    DynamicImage, GenericImageView, ImageDecoder, ImageFormat, ImageReader, metadata::Orientation,
+};
 
+use crate::config::THUMBNAIL_CACHE_DIRECTORY;
 use crate::document_library::Attachment;
+use crate::storage::data_directory;
 use crate::theme::Theme;
 use crate::ui::{Icon, icon};
 
 const THUMBNAIL_MAX_SIZE: u32 = 640;
+const THUMBNAIL_CACHE_VERSION: u8 = 1;
+const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
+const FNV_PRIME: u64 = 0x100000001b3;
 
 #[derive(Clone, Eq, Hash, PartialEq)]
 struct ThumbnailSource {
@@ -42,11 +52,16 @@ impl Asset for ThumbnailLoader {
         _: &mut App,
     ) -> impl Future<Output = Self::Output> + Send + 'static {
         async move {
+            if let Some(image) = read_cached_thumbnail(&source) {
+                return Ok(render_image(image));
+            }
             let reader = ImageReader::open(&source.path)?.with_guessed_format()?;
             let mut decoder = reader.into_decoder()?;
             let orientation = decoder.orientation()?;
             let image = DynamicImage::from_decoder(decoder)?;
-            Ok(render_thumbnail(image, orientation))
+            let image = prepare_thumbnail(image, orientation);
+            let _ = write_cached_thumbnail(&source, &image);
+            Ok(render_image(image))
         }
     }
 }
@@ -78,19 +93,114 @@ pub fn inline_thumbnail(attachment: &Attachment, theme: Theme) -> AnyElement {
         .into_any_element()
 }
 
-fn render_thumbnail(mut image: DynamicImage, orientation: Orientation) -> Arc<RenderImage> {
+fn prepare_thumbnail(mut image: DynamicImage, orientation: Orientation) -> DynamicImage {
     image.apply_orientation(orientation);
     let (width, height) = image.dimensions();
-    let mut pixels = if width > THUMBNAIL_MAX_SIZE || height > THUMBNAIL_MAX_SIZE {
+    if width > THUMBNAIL_MAX_SIZE || height > THUMBNAIL_MAX_SIZE {
         image.thumbnail(THUMBNAIL_MAX_SIZE, THUMBNAIL_MAX_SIZE)
     } else {
         image
     }
-    .into_rgba8();
+}
+
+fn render_image(image: DynamicImage) -> Arc<RenderImage> {
+    let mut pixels = image.into_rgba8();
     for pixel in pixels.as_mut().as_chunks_mut::<4>().0 {
         pixel.swap(0, 2);
     }
     Arc::new(RenderImage::new(vec![image::Frame::new(pixels)]))
+}
+
+fn read_cached_thumbnail(source: &ThumbnailSource) -> Option<DynamicImage> {
+    let path = thumbnail_cache_path(source).ok()?.0;
+    let image = ImageReader::open(&path)
+        .ok()
+        .and_then(|reader| reader.with_guessed_format().ok())
+        .and_then(|reader| reader.into_decoder().ok())
+        .and_then(|decoder| DynamicImage::from_decoder(decoder).ok());
+    if image.is_none() {
+        let _ = fs::remove_file(path);
+    }
+    image
+}
+
+fn write_cached_thumbnail(source: &ThumbnailSource, image: &DynamicImage) -> Result<(), String> {
+    let (path, prefix) = thumbnail_cache_path(source)?;
+    let directory = path
+        .parent()
+        .ok_or_else(|| "缩略图缓存路径无效".to_owned())?;
+    fs::create_dir_all(directory).map_err(|error| error.to_string())?;
+    let temporary = path.with_extension(format!("{}.tmp", std::process::id()));
+    let write_result = (|| {
+        let file = fs::File::create(&temporary).map_err(|error| error.to_string())?;
+        let mut writer = BufWriter::new(file);
+        image
+            .write_to(&mut writer, ImageFormat::Png)
+            .map_err(|error| error.to_string())?;
+        writer.flush().map_err(|error| error.to_string())
+    })();
+    if let Err(error) = write_result {
+        let _ = fs::remove_file(&temporary);
+        return Err(error);
+    }
+    if let Err(error) = fs::rename(&temporary, &path) {
+        let _ = fs::remove_file(&temporary);
+        if !path.is_file() {
+            return Err(error.to_string());
+        }
+    }
+    remove_stale_thumbnails(directory, &prefix, &path);
+    Ok(())
+}
+
+fn thumbnail_cache_path(source: &ThumbnailSource) -> Result<(PathBuf, String), String> {
+    let path_hash = stable_hash(source.path.to_string_lossy().as_bytes());
+    let mut state = Vec::with_capacity(25);
+    state.extend_from_slice(&source.byte_len.to_le_bytes());
+    match source
+        .modified
+        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+    {
+        Some(modified) => {
+            state.extend_from_slice(&modified.as_secs().to_le_bytes());
+            state.extend_from_slice(&modified.subsec_nanos().to_le_bytes());
+        }
+        None => state.extend_from_slice(&[0; 12]),
+    }
+    state.extend_from_slice(&THUMBNAIL_MAX_SIZE.to_le_bytes());
+    state.push(THUMBNAIL_CACHE_VERSION);
+    let state_hash = stable_hash(&state);
+    let prefix = format!("v{THUMBNAIL_CACHE_VERSION}-{path_hash:016x}-");
+    let file_name = format!("{prefix}{state_hash:016x}.png");
+    Ok((
+        data_directory()?
+            .join(THUMBNAIL_CACHE_DIRECTORY)
+            .join(file_name),
+        prefix,
+    ))
+}
+
+fn stable_hash(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(FNV_OFFSET_BASIS, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
+    })
+}
+
+fn remove_stale_thumbnails(directory: &Path, prefix: &str, current: &Path) {
+    let Ok(entries) = fs::read_dir(directory) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path != current
+            && entry
+                .file_name()
+                .to_str()
+                .is_some_and(|name| name.starts_with(prefix) && name.ends_with(".png"))
+        {
+            let _ = fs::remove_file(path);
+        }
+    }
 }
 
 fn loading_view(id: SharedString, theme: Theme) -> AnyElement {
@@ -135,15 +245,36 @@ mod tests {
 
     #[test]
     fn generation_preserves_ratio_without_enlarging() {
-        let thumbnail = render_thumbnail(
+        let thumbnail = render_image(prepare_thumbnail(
             DynamicImage::new_rgba8(1280, 640),
             Orientation::NoTransforms,
-        );
+        ));
         let size = thumbnail.size(0);
         assert_eq!((size.width.0, size.height.0), (640, 320));
 
-        let small = render_thumbnail(DynamicImage::new_rgba8(120, 80), Orientation::NoTransforms);
+        let small = render_image(prepare_thumbnail(
+            DynamicImage::new_rgba8(120, 80),
+            Orientation::NoTransforms,
+        ));
         let size = small.size(0);
         assert_eq!((size.width.0, size.height.0), (120, 80));
+    }
+
+    #[test]
+    fn cache_name_changes_with_source_state() {
+        let source = ThumbnailSource {
+            path: PathBuf::from("/notes/example/image.jpg"),
+            modified: Some(UNIX_EPOCH + Duration::from_secs(10)),
+            byte_len: 100,
+        };
+        let changed = ThumbnailSource {
+            byte_len: 101,
+            ..source.clone()
+        };
+
+        let first = thumbnail_cache_path(&source).unwrap().0;
+        let second = thumbnail_cache_path(&changed).unwrap().0;
+        assert_ne!(first, second);
+        assert_eq!(first.parent(), second.parent());
     }
 }

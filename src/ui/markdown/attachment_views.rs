@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::rc::Rc;
 
 use gpui::{
     AnyElement, App, KeyDownEvent, MouseButton, PromptLevel, SharedString, Window, div, prelude::*,
@@ -15,14 +14,11 @@ use crate::ui::{Icon, icon};
 
 const GALLERY_ROW_HEIGHT: f32 = 180.0;
 
-pub type OpenImageHandler = Rc<dyn Fn(&Attachment, String, &mut Window, &mut App)>;
-
 pub fn render_gallery(
     source: &str,
     attachments: &[Attachment],
     theme: Theme,
     language: Language,
-    open_image: Option<&OpenImageHandler>,
 ) -> AnyElement {
     let items = match extension_syntax::gallery_items(source, attachments, language) {
         Ok(items) => items,
@@ -44,15 +40,11 @@ pub fn render_gallery(
                 .expect("validated gallery image size");
             let ratio = size.width as f32 / size.height as f32;
             let attachment = item.attachment.clone();
-            let alt = item.alt.clone();
-            let click_open_image = open_image.cloned();
-            let keyboard_open_image = open_image.cloned();
             div()
                 .id(SharedString::from(format!(
                     "gallery-item-{index}-{}",
                     attachment.name
                 )))
-                .tab_index(0)
                 .h(px(GALLERY_ROW_HEIGHT))
                 .min_w(px(120.0))
                 .max_w_full()
@@ -60,31 +52,9 @@ pub fn render_gallery(
                 .flex_grow(ratio.clamp(0.6, 2.0))
                 .flex_shrink_1()
                 .overflow_hidden()
-                .rounded(px(8.0))
+                .rounded(px(10.0))
                 .bg(theme.raised)
-                .cursor_default()
-                .focus_visible(|style| style.border_1().border_color(theme.focus))
                 .child(thumbnail::gallery_thumbnail(&attachment, index, theme))
-                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click({
-                    let attachment = attachment.clone();
-                    let alt = alt.clone();
-                    move |_, window, cx| {
-                        if let Some(open_image) = &click_open_image {
-                            open_image(&attachment, alt.clone(), window, cx);
-                        }
-                    }
-                })
-                .on_key_down(move |event: &KeyDownEvent, window, cx| {
-                    if !event.keystroke.modifiers.modified()
-                        && matches!(event.keystroke.key.as_str(), "enter" | "space")
-                    {
-                        if let Some(open_image) = &keyboard_open_image {
-                            open_image(&attachment, alt.clone(), window, cx);
-                        }
-                        cx.stop_propagation();
-                    }
-                })
                 .into_any_element()
         })
         .collect::<Vec<_>>();
@@ -179,45 +149,16 @@ pub fn render_attachments(
         .into_any_element()
 }
 
-pub fn render_thumbnail_image(
-    attachment: &Attachment,
-    alt: &str,
-    theme: Theme,
-    open_image: Option<&OpenImageHandler>,
-) -> AnyElement {
-    let clicked = attachment.clone();
-    let keyboard = attachment.clone();
-    let click_alt = alt.to_owned();
-    let keyboard_alt = click_alt.clone();
-    let click_handler = open_image.cloned();
-    let keyboard_handler = open_image.cloned();
+pub fn render_thumbnail_image(attachment: &Attachment, theme: Theme) -> AnyElement {
     div()
         .id(SharedString::from(format!(
             "inline-image-{}",
             attachment.name
         )))
-        .tab_index(0)
         .max_w_full()
         .overflow_hidden()
-        .rounded(px(6.0))
-        .cursor_default()
-        .focus_visible(|style| style.border_1().border_color(theme.focus))
+        .rounded(px(10.0))
         .child(thumbnail::inline_thumbnail(attachment, theme))
-        .on_click(move |_, window, cx| {
-            if let Some(handler) = &click_handler {
-                handler(&clicked, click_alt.clone(), window, cx);
-            }
-        })
-        .on_key_down(move |event: &KeyDownEvent, window, cx| {
-            if !event.keystroke.modifiers.modified()
-                && matches!(event.keystroke.key.as_str(), "enter" | "space")
-            {
-                if let Some(handler) = &keyboard_handler {
-                    handler(&keyboard, keyboard_alt.clone(), window, cx);
-                }
-                cx.stop_propagation();
-            }
-        })
         .into_any_element()
 }
 
