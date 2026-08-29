@@ -951,7 +951,16 @@ impl Render for Locus {
             .bg(theme.window_background)
             .font_family(".SystemUIFont")
             .text_color(theme.text)
-            .when(self.settings_open, |root| root.child(self.settings.clone()))
+            .when(self.settings_open, |root| {
+                root.child(self.settings.clone()).child(
+                    self.window_drag_region("settings-titlebar-region", cx)
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .right_0()
+                        .h(px(TITLEBAR_HEIGHT)),
+                )
+            })
             .when(!self.settings_open, |root| root.child(workspace))
     }
 }

@@ -6,7 +6,7 @@ use crate::document_library::LibraryNode;
 use crate::theme::Theme;
 use crate::ui::{ActivationExt, Icon, Markdown, toolbar_icon_button, vertical_scrollbar};
 use gpui::{
-    AnyElement, BorderStyle, Bounds, ClipboardItem, Div, FontWeight, MouseButton, ObjectFit,
+    AnyElement, BorderStyle, Bounds, ClipboardItem, Div, Edges, FontWeight, MouseButton, ObjectFit,
     PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, img, linear_color_stop,
     linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
@@ -188,6 +188,7 @@ impl Locus {
             .child(note_titlebar_background(
                 self.note_scroll_handle.clone(),
                 theme.surface,
+                theme.border,
             ))
             .child(
                 div()
@@ -242,7 +243,11 @@ fn note_titlebar_padding(
     (left, right)
 }
 
-fn note_titlebar_background(handle: ScrollHandle, color: gpui::Hsla) -> impl IntoElement {
+fn note_titlebar_background(
+    handle: ScrollHandle,
+    color: gpui::Hsla,
+    border_color: gpui::Hsla,
+) -> impl IntoElement {
     canvas(
         |_, _, _| (),
         move |bounds, _, window, _| {
@@ -251,8 +256,11 @@ fn note_titlebar_background(handle: ScrollHandle, color: gpui::Hsla) -> impl Int
                     bounds,
                     Pixels::ZERO,
                     color,
-                    Pixels::ZERO,
-                    transparent_black(),
+                    Edges {
+                        bottom: px(1.0),
+                        ..Default::default()
+                    },
+                    border_color,
                     BorderStyle::default(),
                 ));
             }
