@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -23,6 +23,7 @@ use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, lo
 use crate::localization::Language;
 use crate::motion::WidthTween;
 use crate::preferences::Preferences;
+use crate::sidebar_order::SidebarOrderState;
 use crate::state::{
     InterfaceState, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH,
     RIGHT_SIDEBAR_MIN_WIDTH,
@@ -85,6 +86,10 @@ pub struct Locus {
     library_watcher: Option<LibraryWatcher>,
     library_watch_task: Option<Task<()>>,
     library_watcher_error: Option<String>,
+    sidebar_order: SidebarOrderState,
+    dragged_library_node: Option<String>,
+    library_reorder_offsets: HashMap<String, f32>,
+    library_reorder_generation: u64,
     expanded_library_nodes: HashSet<String>,
     selected_library_node: Option<String>,
     selected_note: Option<SelectedNote>,
@@ -124,7 +129,14 @@ impl Locus {
         let library_path = preferences.library_path.clone();
         let (library_watcher, library_watch_task, library_watcher_error) =
             Self::start_library_watcher(library_path.as_deref(), cx);
-        let library_tree = LibraryTree::load(library_path.as_deref());
+        let (sidebar_order, sidebar_order_error) = SidebarOrderState::load();
+        if let Some(error) = sidebar_order_error {
+            eprintln!("{error}");
+        }
+        let mut library_tree = LibraryTree::load(library_path.as_deref());
+        if let Some(path) = library_path.as_deref() {
+            sidebar_order.apply(path, &mut library_tree.nodes);
+        }
         let selected_library_node = interface_state
             .selected_library_node
             .clone()
@@ -287,6 +299,10 @@ impl Locus {
             library_watcher,
             library_watch_task,
             library_watcher_error,
+            sidebar_order,
+            dragged_library_node: None,
+            library_reorder_offsets: HashMap::new(),
+            library_reorder_generation: 0,
             expanded_library_nodes,
             selected_library_node,
             selected_note,
@@ -439,6 +455,7 @@ impl Locus {
         self.library_watch_task = task;
         self.library_watcher_error = watcher_error;
         self.library_tree = LibraryTree::load(Some(path));
+        self.sidebar_order.apply(path, &mut self.library_tree.nodes);
         self.clear_library_selection();
         self.expanded_library_nodes.clear();
         self.scroll_to_selected_library_node = false;
@@ -460,10 +477,13 @@ impl Locus {
 
     fn apply_library_tree(
         &mut self,
-        tree: LibraryTree,
+        mut tree: LibraryTree,
         reload_selected_note: bool,
         cx: &mut Context<Self>,
     ) {
+        if let Some(path) = self.current_library_path(cx).map(Path::to_path_buf) {
+            self.sidebar_order.apply(&path, &mut tree.nodes);
+        }
         let selected_path = self.selected_library_node.clone();
         let selected_was_document = selected_path.as_deref().is_some_and(|path| {
             self.library_tree
@@ -824,8 +844,15 @@ impl Locus {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if event.button == MouseButton::Left && self.panel_resize_drag.take().is_some() {
+        if event.button != MouseButton::Left {
+            return;
+        }
+        let panel_resized = self.panel_resize_drag.take().is_some();
+        let library_drag_ended = self.dragged_library_node.take().is_some();
+        if panel_resized {
             self.save_interface_state();
+        }
+        if panel_resized || library_drag_ended {
             cx.notify();
         }
     }

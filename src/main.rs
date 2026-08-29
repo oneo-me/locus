@@ -5,6 +5,7 @@ mod localization;
 mod motion;
 mod platform;
 mod preferences;
+mod sidebar_order;
 mod state;
 mod storage;
 mod terminal;
