@@ -42,3 +42,14 @@ objc2-app-kit = { version = "0.3", default-features = false, features = [
     "NSWorkspace",
 ] }
 raw-window-handle = "0.6"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

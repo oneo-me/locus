@@ -4,6 +4,7 @@ mod parser;
 mod thumbnail;
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use gpui::{
     AnyElement, FontStyle, FontWeight, InteractiveText, ObjectFit, SharedString,
@@ -18,8 +19,25 @@ use crate::theme::Theme;
 
 const SANS_FAMILY: &str = ".SystemUIFont";
 
+#[derive(Clone)]
+pub struct MarkdownDocument {
+    blocks: Arc<[Block]>,
+}
+
+impl MarkdownDocument {
+    pub fn parse(source: &str) -> Self {
+        Self {
+            blocks: parser::parse(source).into(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.blocks.is_empty()
+    }
+}
+
 pub struct Markdown<'a> {
-    source: &'a str,
+    document: &'a MarkdownDocument,
     base_directory: &'a Path,
     theme: Theme,
     text_size: f32,
@@ -31,7 +49,7 @@ pub struct Markdown<'a> {
 
 impl<'a> Markdown<'a> {
     pub fn new(
-        source: &'a str,
+        document: &'a MarkdownDocument,
         base_directory: &'a Path,
         theme: Theme,
         text_size: f32,
@@ -39,7 +57,7 @@ impl<'a> Markdown<'a> {
         code_text_size: f32,
     ) -> Self {
         Self {
-            source,
+            document,
             base_directory,
             theme,
             text_size,
@@ -61,7 +79,6 @@ impl<'a> Markdown<'a> {
     }
 
     pub fn render(self) -> AnyElement {
-        let blocks = parser::parse(self.source);
         let mut context = RenderContext {
             base_directory: self.base_directory,
             theme: self.theme,
@@ -72,7 +89,9 @@ impl<'a> Markdown<'a> {
             language: self.language,
             next_text_id: 0,
         };
-        let children = blocks
+        let children = self
+            .document
+            .blocks
             .iter()
             .map(|block| context.render_block(block))
             .collect::<Vec<_>>();

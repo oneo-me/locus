@@ -5,15 +5,17 @@ use std::time::{Duration, Instant};
 
 mod note;
 mod note_atmosphere;
+mod pane;
 mod sidebar;
 mod window_chrome;
 
 use gpui::{
-    Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, Pixels, Render, ScrollAnchor, ScrollHandle, Stateful, Task,
-    Window, div, prelude::*, px, transparent_black,
+    AnyElement, Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, Pixels, Render, ScrollAnchor, ScrollHandle, Stateful,
+    StyleRefinement, Task, Window, div, prelude::*, px, transparent_black,
 };
 
+use self::pane::LocusPane;
 use super::panel_layout::{CONTENT_MIN_WIDTH, PanelFrame, fitted_panel_widths, slide_width};
 use super::settings::{Settings, SettingsEvent};
 use crate::config::{
@@ -31,7 +33,7 @@ use crate::state::{
 };
 use crate::terminal::{TerminalConfiguration, TerminalView};
 use crate::theme::Theme;
-use crate::ui::{ActivationExt, Icon, ScrollbarState, icon, toolbar_icon_button};
+use crate::ui::{ActivationExt, Icon, MarkdownDocument, ScrollbarState, icon, toolbar_icon_button};
 use crate::{
     CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleLeftSidebar,
     ToggleRightSidebar,
@@ -47,7 +49,7 @@ const WINDOW_BOUNDS_SAVE_DEBOUNCE: Duration = Duration::from_millis(100);
 
 struct SelectedNote {
     path: String,
-    content: Option<String>,
+    document: Option<MarkdownDocument>,
     error: Option<String>,
 }
 
@@ -81,6 +83,9 @@ pub struct Locus {
     settings_focus: FocusHandle,
     settings_open: bool,
     settings: Entity<Settings>,
+    left_pane: Entity<LocusPane>,
+    content_pane: Entity<LocusPane>,
+    right_pane: Entity<LocusPane>,
     mcp_server: McpServerController,
     terminal: Option<Entity<TerminalView>>,
     terminal_needs_restart: bool,
@@ -125,6 +130,10 @@ impl Locus {
         cx: &mut Context<Self>,
     ) -> Self {
         let root_focus = cx.focus_handle();
+        let locus = cx.entity();
+        let left_pane = LocusPane::new(&locus, Locus::left_pane_content, cx);
+        let content_pane = LocusPane::new(&locus, Locus::content_pane_content, cx);
+        let right_pane = LocusPane::new(&locus, Locus::right_pane_content, cx);
         window.focus(&root_focus, cx);
         crate::theme::apply_preference(preferences.theme, window, cx);
         window.set_rem_size(px(preferences.ui_font_size));
@@ -170,7 +179,7 @@ impl Locus {
                         (
                             Some(SelectedNote {
                                 path: path.to_owned(),
-                                content: None,
+                                document: None,
                                 error: None,
                             }),
                             Some(Self::spawn_note_load(
@@ -309,6 +318,9 @@ impl Locus {
             settings_focus: cx.focus_handle(),
             settings_open: false,
             settings,
+            left_pane,
+            content_pane,
+            right_pane,
             mcp_server,
             terminal,
             terminal_needs_restart: false,
@@ -435,7 +447,9 @@ impl Locus {
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_spawn(async move {
-                    load_note(&document_path).map_err(|error| error.to_string())
+                    load_note(&document_path)
+                        .map(|content| MarkdownDocument::parse(&content))
+                        .map_err(|error| error.to_string())
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
@@ -449,8 +463,8 @@ impl Locus {
                     return;
                 };
                 match result {
-                    Ok(content) => {
-                        note.content = Some(content);
+                    Ok(document) => {
+                        note.document = Some(document);
                         note.error = None;
                     }
                     Err(error) => note.error = Some(error),
@@ -569,16 +583,16 @@ impl Locus {
             return;
         };
 
-        let previous_content = self
+        let previous_document = self
             .selected_note
             .as_ref()
             .filter(|note| note.path == path)
-            .and_then(|note| note.content.clone());
+            .and_then(|note| note.document.clone());
         self.note_load_generation = self.note_load_generation.wrapping_add(1);
         let generation = self.note_load_generation;
         self.selected_note = Some(SelectedNote {
             path: path.clone(),
-            content: previous_content,
+            document: previous_document,
             error: None,
         });
         self.note_load_task = Some(Self::spawn_note_load(path, document_path, generation, cx));
@@ -742,16 +756,19 @@ impl Locus {
         cx.notify();
     }
 
-    fn tick_fps(&mut self, window: &Window) {
+    fn tick_fps(&mut self, window: &Window) -> bool {
         let now = Instant::now();
         self.fps_frame_count = self.fps_frame_count.saturating_add(1);
         let elapsed = now.duration_since(self.fps_last_frame);
+        let mut changed = false;
         if elapsed >= Duration::from_secs(1) {
             self.fps_value = (self.fps_frame_count as f32 / elapsed.as_secs_f32()).round() as u32;
             self.fps_frame_count = 0;
             self.fps_last_frame = now;
+            changed = true;
         }
         window.request_animation_frame();
+        changed
     }
 
     fn render_panel_resize_handle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
@@ -772,9 +789,6 @@ impl Locus {
                 theme.resize_handle
             } else {
                 transparent_black()
-            })
-            .when(!active && side == PanelSide::Left, |edge| {
-                edge.group_hover("panel-resize-handle", |style| style.bg(theme.resize_handle))
             });
         handle
             .id(match side {
@@ -785,7 +799,6 @@ impl Locus {
             .top_0()
             .bottom_0()
             .cursor_col_resize()
-            .group("panel-resize-handle")
             .child(edge)
             .on_mouse_down(
                 MouseButton::Left,
@@ -936,8 +949,7 @@ impl Locus {
         div()
             .relative()
             .min_w_0()
-            .h_full()
-            .flex_1()
+            .size_full()
             .flex()
             .flex_col()
             .bg(theme.surface)
@@ -1006,16 +1018,67 @@ impl Locus {
                 panel.child(self.render_panel_resize_handle(PanelSide::Right, cx))
             })
     }
+
+    fn left_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let (left_content, _) = fitted_panel_widths(
+            f32::from(window.viewport_size().width),
+            self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
+            self.right_sidebar_visible || self.right_sidebar_slide.is_some(),
+            self.left_sidebar_width,
+            self.right_sidebar_width,
+        );
+        let left_control_clearance = left_toggle_offset(window.is_fullscreen())
+            + TITLEBAR_CONTROL_SIZE
+            + TITLEBAR_CONTROL_GAP;
+        self.render_left_sidebar(
+            left_content,
+            self.left_sidebar_visible && self.left_sidebar_slide.is_none(),
+            left_control_clearance,
+            cx,
+        )
+        .into_any_element()
+    }
+
+    fn content_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let left_control_clearance = left_toggle_offset(window.is_fullscreen())
+            + TITLEBAR_CONTROL_SIZE
+            + TITLEBAR_CONTROL_GAP;
+        let content_width = f32::from(window.viewport_size().width)
+            - self.rendered_left_width
+            - self.rendered_right_width;
+        self.render_content(
+            self.rendered_left_width > 0.0,
+            left_control_clearance,
+            content_width,
+            cx,
+        )
+        .into_any_element()
+    }
+
+    fn right_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let (_, right_content) = fitted_panel_widths(
+            f32::from(window.viewport_size().width),
+            self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
+            self.right_sidebar_visible || self.right_sidebar_slide.is_some(),
+            self.left_sidebar_width,
+            self.right_sidebar_width,
+        );
+        self.render_right_sidebar(
+            right_content,
+            self.right_sidebar_visible && self.right_sidebar_slide.is_none(),
+            cx,
+        )
+        .into_any_element()
+    }
 }
 
 impl Render for Locus {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::current(cx);
+        let left_was_sliding = self.left_sidebar_slide.is_some();
+        let right_was_sliding = self.right_sidebar_slide.is_some();
         let panels = self.settle_panels(window);
         let left_toggle_offset = left_toggle_offset(window.is_fullscreen());
-        let left_control_clearance =
-            left_toggle_offset + TITLEBAR_CONTROL_SIZE + TITLEBAR_CONTROL_GAP;
-        let content_width = f32::from(window.viewport_size().width) - panels.left - panels.right;
         if let Some(terminal) = &self.terminal {
             terminal.update(cx, |terminal, _| {
                 terminal.set_available_size(
@@ -1027,8 +1090,14 @@ impl Render for Locus {
         if panels.sliding() {
             window.request_animation_frame();
         }
-        if self.fps_counter_visible {
-            self.tick_fps(window);
+        if left_was_sliding && !panels.left_sliding {
+            self.left_pane.update(cx, |_, cx| cx.notify());
+        }
+        if right_was_sliding && !panels.right_sliding {
+            self.right_pane.update(cx, |_, cx| cx.notify());
+        }
+        if self.fps_counter_visible && !self.settings_open && self.tick_fps(window) {
+            self.content_pane.update(cx, |_, cx| cx.notify());
         }
         if panels.left > 0.0 && self.scroll_to_selected_library_node {
             self.selected_library_scroll_anchor.scroll_to(window, cx);
@@ -1047,20 +1116,21 @@ impl Render for Locus {
                         .flex_none()
                         .w(px(panels.left))
                         .when(panels.left_sliding, |panel| panel.overflow_hidden())
-                        .child(self.render_left_sidebar(
-                            panels.left_content,
-                            self.left_sidebar_visible && !panels.left_sliding,
-                            left_control_clearance,
-                            cx,
-                        )),
+                        .child(
+                            self.left_pane.clone().cached(
+                                StyleRefinement::default()
+                                    .w(px(panels.left_content))
+                                    .h_full()
+                                    .flex_none(),
+                            ),
+                        ),
                 )
             })
-            .child(self.render_content(
-                panels.left > 0.0,
-                left_control_clearance,
-                content_width,
-                cx,
-            ))
+            .child(
+                self.content_pane
+                    .clone()
+                    .cached(StyleRefinement::default().flex_1().min_w(px(0.0)).h_full()),
+            )
             .when(panels.right > 0.0, |root| {
                 root.child(
                     div()
@@ -1077,11 +1147,11 @@ impl Render for Locus {
                                 .right_0()
                                 .h_full()
                                 .w(px(panels.right_content))
-                                .child(self.render_right_sidebar(
-                                    panels.right_content,
-                                    self.right_sidebar_visible && !panels.right_sliding,
-                                    cx,
-                                )),
+                                .child(
+                                    self.right_pane
+                                        .clone()
+                                        .cached(StyleRefinement::default().size_full()),
+                                ),
                         ),
                 )
             })
@@ -1118,7 +1188,12 @@ impl Render for Locus {
             .font_family(".SystemUIFont")
             .text_color(theme.text)
             .when(self.settings_open, |root| {
-                root.child(self.settings.clone()).child(
+                root.child(
+                    self.settings
+                        .clone()
+                        .cached(StyleRefinement::default().size_full()),
+                )
+                .child(
                     self.window_drag_region("settings-titlebar-region", cx)
                         .absolute()
                         .top_0()

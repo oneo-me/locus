@@ -81,13 +81,13 @@ impl Locus {
                     )),
             );
         }
-        if let Some(content) = selected_note
-            .and_then(|note| note.content.as_ref())
-            .filter(|content| !content.is_empty())
+        if let Some(document) = selected_note
+            .and_then(|note| note.document.as_ref())
+            .filter(|document| !document.is_empty())
         {
             article = article.child(
                 Markdown::new(
-                    content,
+                    document,
                     &node.directory,
                     theme,
                     markdown_text_size,
