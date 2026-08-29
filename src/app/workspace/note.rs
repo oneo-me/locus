@@ -10,7 +10,7 @@ use super::note_atmosphere::{
 };
 use crate::document_library::LibraryNode;
 use crate::theme::Theme;
-use crate::ui::{ActivationExt, Icon, toolbar_icon_button, vertical_scrollbar};
+use crate::ui::{ActivationExt, Icon, Markdown, toolbar_icon_button, vertical_scrollbar};
 
 const NOTE_MAX_WIDTH: f32 = 832.0;
 const ATMOSPHERE_HEIGHT: f32 = 268.0;
@@ -25,6 +25,9 @@ impl Locus {
         cx: &mut gpui::Context<Self>,
     ) -> Div {
         let theme = Theme::current(cx);
+        let preferences = self.settings.read(cx).preferences();
+        let markdown_text_size = preferences.ui_font_size;
+        let markdown_code_text_size = preferences.code_font_size;
         let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark);
         let titlebar =
             self.render_note_titlebar(node, left_control_clearance, content_width, theme, cx);
@@ -59,12 +62,14 @@ impl Locus {
         }
         if let Some(content) = node.content.as_ref().filter(|content| !content.is_empty()) {
             article = article.child(
-                div()
-                    .w_full()
-                    .text_sm()
-                    .line_height(px(22.0))
-                    .whitespace_normal()
-                    .child(content.clone()),
+                Markdown::new(
+                    content,
+                    &node.directory,
+                    theme,
+                    markdown_text_size,
+                    markdown_code_text_size,
+                )
+                .render(),
             );
         }
 
