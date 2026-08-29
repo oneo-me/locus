@@ -6,7 +6,15 @@ Markdown 文档树始终是知识内容的唯一事实来源。Locus 不自行�
 
 ## 实现
 
-Locus 的当前实现目标是使用 Rust 和 GPUI 构建原生桌面应用。仓库根目录目前没有可运行的应用，不提供启动或构建命令。
+Locus 使用 Rust 和 GPUI 构建原生桌面应用。当前基础应用会打开一个 800 × 600 的原生窗口。
+
+运行应用：
+
+```bash
+cargo run
+```
+
+构建前需要安装最新版稳定 Rust、Xcode 和 Xcode Command Line Tools。
 
 `old_react/` 保留 React Router SPA、Hono 服务端和 TypeScript workspace 组成的旧版实现及其独立工程配置，不代表原生应用的架构。
 
