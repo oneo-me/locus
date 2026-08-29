@@ -7,12 +7,12 @@ import type {
   AgentProviderModel,
   AgentProviderModelOption,
 } from '../contracts/provider.js';
-import type { AgentProviderExtension } from './provider-extension.js';
+import type { AgentProvider } from '../providers/protocol.js';
 
 const execute = promisify(execFile);
 
 export async function resolveAgentProviderModels(
-  provider: AgentProviderExtension,
+  provider: AgentProvider,
   path: string,
   cacheDirectory?: string,
 ): Promise<AgentProviderModel[]> {

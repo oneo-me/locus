@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import type { NativeAgentRuntimeHandlers } from '@locus/agent/server/agent-runtime';
-import { ClaudeRuntime } from '@locus/agent-provider-claude';
-import { CodexRuntime } from '@locus/agent-provider-codex';
-import { PiRuntime } from '@locus/agent-provider-pi';
+import { ClaudeRuntime } from '@locus/agent/providers/claude';
+import { CodexRuntime } from '@locus/agent/providers/codex';
+import { PiRuntime } from '@locus/agent/providers/pi';
 
 void test('drives Claude stream-json across a turn', async () => {
   const harness = runtimeHarness('claude');

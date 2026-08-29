@@ -3,7 +3,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import type { AgentProviderExtension } from './provider-extension.js';
+import type { AgentProvider } from '../providers/protocol.js';
 import {
   parseAgentModelLines,
   readAgentModelCommandOutput,
@@ -14,7 +14,7 @@ void test('keeps the last successful provider model catalog', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'locus-model-cache-'));
   const executable = join(directory, 'test-agent');
   const cache = join(directory, 'model-cache');
-  const provider: AgentProviderExtension = {
+  const provider: AgentProvider = {
     command: 'test-agent',
     discoverModels: async (binary) =>
       parseAgentModelLines(await readAgentModelCommandOutput(binary, [])),

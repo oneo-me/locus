@@ -2,14 +2,14 @@ import { accessSync, constants, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import type { AgentProviderDetection } from '../contracts/provider.js';
-import type { AgentProviderExtension } from './provider-extension.js';
+import type { AgentProvider } from '../providers/protocol.js';
 import { resolveAgentProviderModels } from './provider-models.js';
 
 export class AgentProviderRegistry {
-  readonly #providers: AgentProviderExtension[];
+  readonly #providers: AgentProvider[];
   #cachedDetection: AgentProviderDetection | null = null;
 
-  constructor(providers: AgentProviderExtension[]) {
+  constructor(providers: AgentProvider[]) {
     const ids = new Set<string>();
     for (const provider of providers) {
       if (ids.has(provider.id))
@@ -19,7 +19,7 @@ export class AgentProviderRegistry {
     this.#providers = [...providers];
   }
 
-  get(id: string): AgentProviderExtension | null {
+  get(id: string): AgentProvider | null {
     return this.#providers.find((provider) => provider.id === id) ?? null;
   }
 
