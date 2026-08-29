@@ -1,106 +1,33 @@
 # Locus
 
-Locus 是本地优先的私有知识与 Agent 工作台。它把本地 Markdown 文档工作区与现成 Agent runtime 的会话控制放进同一个产品，让知识阅读、任务发起、执行观察和结果审阅形成连续流程。
+Locus 是本地优先的私有知识与 Agent 工作台。它让用户和 Agent 围绕同一套本地 Markdown 文件工作，使知识阅读、任务发起、执行观察和结果审阅形成连续流程。
 
-Locus 不自行实现 Agent loop、模型调用或工具系统。Agent 的提示词、上下文、工具、权限、认证与执行由各自 runtime 负责；Locus 负责工作区、文档体验、会话控制、协议适配与统一展示。
+Markdown 文档树始终是知识内容的唯一事实来源。Locus 不自行实现 Agent loop、模型调用或通用工具系统；提示词、上下文、工具、权限、认证与执行由各 Agent runtime 负责。
 
-## 当前状态
+## 实现
 
-仓库当前提供可运行的文档工作区基线，包括层级 Markdown 浏览、文章与附件阅读、知识图谱、Git 变更视图、本机设置、文件事件更新和 MCP 文档发现。
+Locus 的当前实现目标是使用 Rust 和 GPUI 构建原生桌面应用。仓库根目录目前没有可运行的应用，不提供启动或构建命令。
 
-项目已经拆分为 React Router SPA、Hono 后端、共享 UI 和文档库 Core 四个包。文档、设置与工作区属于产品自身功能，直接由 SPA 维护。Agent 会话与 Agent runtime 适配尚未实现。
+`old_react/` 保留 React Router SPA、Hono 服务端和 TypeScript workspace 组成的旧版实现及其独立工程配置，不代表原生应用的架构。
 
-## 产品方向
+## 旧版 React 实现
 
-- 文档工作区：浏览、搜索和阅读层级化 Markdown，查看附件、关系与本地变更。
-- Agent 会话：从工作区发起和继续任务，统一展示文本、推理、工具活动、权限请求与运行状态。
-- Agent 适配：连接现成 Agent CLI 或 server，把不同协议归一为稳定的控制命令与事件。
-- 知识协作：Agent 通过自身文件工具访问工作区，文档变化回到同一 Markdown 事实来源。
-- 本地持久化：文档、会话、设置与派生数据按职责保存在用户自己的设备或私有环境中。
+`old_react/` 包含旧版的完整代码：
 
-## 技术方向
+- `apps/web`：React Router SPA。
+- `apps/server`：Hono 服务端、MCP、本机文件与 Agent runtime 边界。
+- `packages/*`：文档库、Markdown、画布、Agent 和共享界面模块。
 
-- 前端：React + React Router Framework Mode SPA。
-- 界面：Tailwind CSS v4 与 shadcn/ui；共享组件、主题 Tokens 和样式由独立 UI 包维护。
-- 后端：Hono，负责领域 API、本地文件系统、Agent runtime 和持久化能力。
-- 工程组织：pnpm workspace monorepo；应用位于 `apps/*`，领域与界面包位于 `packages/*`。
-- 代码质量：Oxlint、Oxfmt 和 TypeScript。
-
-当前包包括 `@locus/web`、`@locus/server`、`@locus/ui` 和 `@locus/document-library`。`@locus/agent-core` 与 `@locus/agent-ui` 会在 Agent 能力进入实现时建立。
-
-## 本地运行
-
-### 环境要求
-
-- Node.js 22 或更高版本
-- pnpm 11.20 或更高版本
-- Git；文档库使用 Git LFS 时还需要 Git LFS
-
-### 安装与启动
+如需运行旧版，请在该目录安装依赖并启动开发服务：
 
 ```bash
+cd old_react
 pnpm install
 pnpm dev
 ```
 
-首次打开 Locus 时，在设置界面填写文档库的绝对路径。路径保存到本机设置后，文档工作区才会启动。
+旧版要求 Node.js 22、pnpm 11.20 或更高版本。它通过 `link:../../../../shellweb/packages/shellweb` 使用同级 Shellweb 仓库；需要联调终端时，Shellweb 也必须位于对应路径。
 
-前端开发服务器默认运行在 <http://localhost:3000>，并把 `/api` 与 `/mcp` 请求转发到 <http://localhost:3001> 的 Hono 后端。
+## 项目文档
 
-### 联调 Shellweb
-
-Locus 通过 `link:../../../shellweb/packages/shellweb` 使用同级 Shellweb 仓库。持续开发时分别运行 Shellweb Core 编译监听和 Locus 开发服务：
-
-```bash
-# 终端一
-pnpm dev:shellweb
-
-# 终端二
-pnpm dev
-```
-
-Shellweb Core 的 `dist` 更新后，Locus 会继续使用链接包，无需发布或重新安装。生产构建会把 Shellweb 代码打入服务端与前端产物，并单独携带 `node-pty` 运行依赖，因此 `.build` 不依赖相邻的 Shellweb 仓库。
-
-### 文档库结构
-
-文档库由包含 `index.md` 的文章目录组成：
-
-```text
-my-library/
-└── welcome/
-    └── index.md
-```
-
-```markdown
----
-title: 欢迎
-tags: [示例]
----
-
-# 欢迎
-```
-
-Markdown 文件是内容的唯一事实来源；索引和 Git 状态均为可重新派生的视图。
-
-## 常用命令
-
-```bash
-pnpm dev
-pnpm build
-pnpm run deploy
-pnpm typecheck
-pnpm check
-pnpm format
-```
-
-`pnpm build` 会在项目根目录生成可独立运行的 `.build`：其中包含编译后的 Hono 服务与 SPA、生产依赖、独立 `package.json` 和 `pnpm-lock.yaml`。候选服务通过启动与路由检查后才会替换原产物，构建失败时原产物保持不变。构建过程记录在 `.build/build.log`。
-
-`pnpm run deploy` 会完成构建并在后台启动正式服务。正式服务默认使用端口 `3001`，也可以传入一个端口参数：
-
-```bash
-pnpm run deploy 4000
-```
-
-Hono 在指定端口同源提供前端、API 与 MCP，运行输出记录在 `.build/runtime.log`，进程信息记录在 `.build/server.json`。重复部署时会自动结束上一个由部署命令启动的进程；如果目标端口被其他进程占用，命令会展示 PID 与启动命令，并且只在输入 `y` 后结束该进程并继续部署。
-
-项目的产品、设计、架构和包边界以 `locus://projects/locus` 下的 Locus 笔记为准。
+产品定义、设计语义、架构和模块边界以 `locus://projects/locus` 下的项目笔记为准。

@@ -21,7 +21,7 @@
     "@locus/document-library-ui": "workspace:*",
     "@locus/markdown-ui": "workspace:*",
     "@locus/ui": "workspace:*",
-    "@shellweb/core": "link:../../../shellweb/packages/shellweb",
+    "@shellweb/core": "link:../../../../shellweb/packages/shellweb",
     "comark": "0.6.2",
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",

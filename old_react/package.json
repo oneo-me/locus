@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --parallel --filter @locus/server --filter @locus/web dev",
-    "dev:shellweb": "pnpm --dir ../shellweb --filter @shellweb/core dev",
+    "dev:shellweb": "pnpm --dir ../../shellweb --filter @shellweb/core dev",
     "dev:server": "pnpm --filter @locus/server dev",
     "dev:web": "pnpm --filter @locus/web dev",
     "build": "tsx scripts/build.ts",

@@ -59,8 +59,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/document-library
       '@shellweb/core':
-        specifier: link:../../../shellweb/packages/shellweb
-        version: link:../../../shellweb/packages/shellweb
+        specifier: link:../../../../shellweb/packages/shellweb
+        version: link:../../../../shellweb/packages/shellweb
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0
@@ -113,8 +113,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@shellweb/core':
-        specifier: link:../../../shellweb/packages/shellweb
-        version: link:../../../shellweb/packages/shellweb
+        specifier: link:../../../../shellweb/packages/shellweb
+        version: link:../../../../shellweb/packages/shellweb
       comark:
         specifier: 0.6.2
         version: 0.6.2(katex@0.17.0)(shiki@4.4.2)
