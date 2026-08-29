@@ -12,6 +12,7 @@ use crate::theme::Theme;
 
 const TRACK_WIDTH: f32 = 11.0;
 const TRACK_INSET: f32 = 2.0;
+const TRACK_VERTICAL_INSET: f32 = 4.0;
 const THUMB_WIDTH: f32 = 7.0;
 const MIN_THUMB_HEIGHT: f32 = 28.0;
 const HOLD_DURATION: Duration = Duration::from_millis(900);
@@ -288,9 +289,9 @@ pub fn vertical_scrollbar(handle: &ScrollHandle, state: &Rc<ScrollbarState>) -> 
         },
     )
     .absolute()
-    .top_0()
+    .top(px(TRACK_VERTICAL_INSET))
+    .bottom(px(TRACK_VERTICAL_INSET))
     .right_0()
-    .h_full()
     .w(px(TRACK_WIDTH))
 }
 

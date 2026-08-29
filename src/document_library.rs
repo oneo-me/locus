@@ -18,6 +18,8 @@ pub struct LibraryNode {
     pub title: String,
     pub icon: Option<String>,
     pub icon_path: Option<PathBuf>,
+    pub summary: Option<String>,
+    pub content: Option<String>,
     pub attachment_count: usize,
     pub change: Option<ChangeStatus>,
     pub descendant_change: Option<ChangeStatus>,
@@ -42,6 +44,7 @@ struct RepositoryChange {
 struct DocumentMetadata {
     title: Option<String>,
     icon: Option<String>,
+    summary: Option<String>,
     archived: bool,
 }
 
@@ -50,6 +53,7 @@ struct DocumentMetadata {
 struct RawDocumentMetadata {
     title: Option<serde_json::Value>,
     icon: Option<serde_json::Value>,
+    summary: Option<serde_json::Value>,
     archived: bool,
 }
 
@@ -113,8 +117,11 @@ fn scan_children(
         let path = entry.path();
         let document_path = path.join(DOCUMENT_FILE);
         let has_document = document_path.is_file();
-        let metadata = if has_document {
-            parse_document_metadata(&fs::read_to_string(&document_path)?)
+        let document = has_document
+            .then(|| fs::read_to_string(&document_path))
+            .transpose()?;
+        let metadata = if let Some(document) = &document {
+            parse_document_metadata(document)
         } else {
             DocumentMetadata::default()
         };
@@ -151,6 +158,8 @@ fn scan_children(
             title: metadata.title.unwrap_or_else(|| name.into_owned()),
             icon: metadata.icon,
             icon_path,
+            summary: metadata.summary,
+            content: document.as_deref().map(document_body).map(str::to_owned),
             attachment_count,
             change,
             descendant_change,
@@ -209,7 +218,7 @@ fn count_attachments(directory: &Path) -> Result<usize, std::io::Error> {
 
 fn parse_document_metadata(content: &str) -> DocumentMetadata {
     let normalized = content.strip_prefix('\u{feff}').unwrap_or(content);
-    let Some(frontmatter) = frontmatter(normalized) else {
+    let Some((frontmatter, _)) = frontmatter_parts(normalized) else {
         return DocumentMetadata::default();
     };
     let Ok(raw) = serde_saphyr::from_str::<RawDocumentMetadata>(frontmatter) else {
@@ -218,19 +227,28 @@ fn parse_document_metadata(content: &str) -> DocumentMetadata {
     DocumentMetadata {
         title: optional_string(raw.title),
         icon: optional_string(raw.icon),
+        summary: optional_string(raw.summary),
         archived: raw.archived,
     }
 }
 
-fn frontmatter(content: &str) -> Option<&str> {
-    let content = content
+fn document_body(content: &str) -> &str {
+    let normalized = content.strip_prefix('\u{feff}').unwrap_or(content);
+    frontmatter_parts(normalized).map_or(normalized, |(_, body)| body)
+}
+
+fn frontmatter_parts(content: &str) -> Option<(&str, &str)> {
+    let rest = content
         .strip_prefix("---\r\n")
         .or_else(|| content.strip_prefix("---\n"))?;
-    let end = content
-        .find("\n---\r\n")
-        .or_else(|| content.find("\n---\n"))
-        .or_else(|| content.strip_suffix("\n---").map(str::len))?;
-    Some(&content[..end])
+    if let Some(end) = rest.find("\n---\r\n") {
+        return Some((&rest[..end], &rest[end + 6..]));
+    }
+    if let Some(end) = rest.find("\n---\n") {
+        return Some((&rest[..end], &rest[end + 5..]));
+    }
+    rest.strip_suffix("\n---")
+        .map(|frontmatter| (frontmatter, ""))
 }
 
 fn optional_string(value: Option<serde_json::Value>) -> Option<String> {
@@ -394,6 +412,15 @@ mod tests {
         assert_eq!(metadata.title.as_deref(), Some("Locus: Notes"));
         assert_eq!(metadata.icon.as_deref(), Some("🧭"));
         assert!(metadata.archived);
+    }
+
+    #[test]
+    fn reads_summary_and_separates_markdown_body() {
+        let document = "---\ntitle: Notes\nsummary: A short summary.\n---\n# Heading\n\nBody";
+        let metadata = parse_document_metadata(document);
+        assert_eq!(metadata.summary.as_deref(), Some("A short summary."));
+        assert_eq!(document_body(document), "# Heading\n\nBody");
+        assert_eq!(document_body("---\ntitle: Notes\n---"), "");
     }
 
     #[test]

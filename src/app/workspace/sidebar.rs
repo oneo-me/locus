@@ -68,8 +68,7 @@ impl Locus {
             );
         }
 
-        let nodes = self.library_tree.nodes.clone();
-        for node in &nodes {
+        for node in &self.library_tree.nodes {
             body = body.child(self.render_library_node(node, 0, cx));
         }
         div()
@@ -189,6 +188,12 @@ impl Locus {
     }
 
     fn select_library_node(&mut self, path: String, has_children: bool) {
+        if self.selected_library_node.as_deref() != Some(path.as_str()) {
+            self.copied_library_node = None;
+            self.note_scroll_handle
+                .set_offset(gpui::point(gpui::px(0.0), gpui::px(0.0)));
+            self.note_scrollbar_state.reset_visibility();
+        }
         self.selected_library_node = Some(path.clone());
         self.expanded_library_nodes = expanded_paths_for_selection(&path, has_children);
         self.save_interface_state();

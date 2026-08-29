@@ -2,6 +2,8 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+mod note;
+mod note_atmosphere;
 mod sidebar;
 mod window_chrome;
 
@@ -69,6 +71,10 @@ pub struct Locus {
     library_scrollbar_state: Rc<ScrollbarState>,
     selected_library_scroll_anchor: ScrollAnchor,
     scroll_to_selected_library_node: bool,
+    note_copy_focus: FocusHandle,
+    copied_library_node: Option<String>,
+    note_scroll_handle: ScrollHandle,
+    note_scrollbar_state: Rc<ScrollbarState>,
     fps_counter_visible: bool,
     fps_frame_count: u32,
     fps_value: u32,
@@ -125,6 +131,10 @@ impl Locus {
                     this.expanded_library_nodes.clear();
                     this.selected_library_node = None;
                     this.scroll_to_selected_library_node = false;
+                    this.copied_library_node = None;
+                    this.note_scroll_handle
+                        .set_offset(gpui::point(px(0.0), px(0.0)));
+                    this.note_scrollbar_state.reset_visibility();
                     this.library_scrollbar_state.reset_visibility();
                     this.save_interface_state();
                     cx.notify();
@@ -173,6 +183,10 @@ impl Locus {
             library_scrollbar_state,
             selected_library_scroll_anchor,
             scroll_to_selected_library_node,
+            note_copy_focus: cx.focus_handle(),
+            copied_library_node: None,
+            note_scroll_handle: ScrollHandle::new(),
+            note_scrollbar_state: ScrollbarState::new(),
             fps_counter_visible: interface_state.fps_counter_visible,
             fps_frame_count: 0,
             fps_value: 0,
@@ -490,6 +504,11 @@ impl Locus {
         cx: &mut Context<Self>,
     ) -> Div {
         let theme = Theme::current(cx);
+        let selected_note = self
+            .selected_library_node
+            .as_deref()
+            .and_then(|path| self.library_tree.node(path))
+            .filter(|node| node.content.is_some());
 
         div()
             .relative()
@@ -499,8 +518,14 @@ impl Locus {
             .flex()
             .flex_col()
             .bg(theme.surface)
-            .child(self.render_content_titlebar(left_control_clearance, cx))
-            .child(div().min_h_0().flex_1())
+            .when_some(selected_note, |content, node| {
+                content.child(self.render_note(node, left_control_clearance, cx))
+            })
+            .when(selected_note.is_none(), |content| {
+                content
+                    .child(self.render_content_titlebar(left_control_clearance, cx))
+                    .child(div().min_h_0().flex_1())
+            })
             .when(left_border, |content| {
                 content.child(
                     div()

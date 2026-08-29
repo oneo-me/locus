@@ -11,6 +11,7 @@ pub enum ThemePreference {
 
 #[derive(Clone, Copy)]
 pub struct Theme {
+    pub is_dark: bool,
     pub window_background: Hsla,
     pub surface: Hsla,
     pub raised: Hsla,
@@ -43,6 +44,7 @@ impl Theme {
 
     fn dark() -> Self {
         Self {
+            is_dark: true,
             window_background: if cfg!(target_os = "macos") {
                 Hsla::from(rgb(0x181818)).opacity(0.92)
             } else {
@@ -69,6 +71,7 @@ impl Theme {
 
     fn light() -> Self {
         Self {
+            is_dark: false,
             window_background: if cfg!(target_os = "macos") {
                 Hsla::from(rgb(0xf3f3f3)).opacity(0.92)
             } else {

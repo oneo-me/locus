@@ -1,7 +1,11 @@
 use super::*;
 
 impl Locus {
-    fn window_drag_region(&self, id: &'static str, cx: &mut Context<Self>) -> Stateful<Div> {
+    pub(super) fn window_drag_region(
+        &self,
+        id: &'static str,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
         div()
             .id(id)
             .h_full()
@@ -107,7 +111,17 @@ impl Locus {
                     .items_center()
                     .text_sm()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child(self.language(cx).text("未选择笔记", "No note selected")),
+                    .child(
+                        self.selected_library_node
+                            .as_deref()
+                            .and_then(|path| self.library_tree.node(path))
+                            .map(|node| node.title.clone())
+                            .unwrap_or_else(|| {
+                                self.language(cx)
+                                    .text("未选择笔记", "No note selected")
+                                    .to_owned()
+                            }),
+                    ),
             )
             .child(
                 self.window_drag_region("content-center-drag-region", cx)
@@ -121,7 +135,7 @@ impl Locus {
             })
     }
 
-    fn render_fps_counter(&self, cx: &mut Context<Self>) -> Div {
+    pub(super) fn render_fps_counter(&self, cx: &mut Context<Self>) -> Div {
         let theme = Theme::current(cx);
         div()
             .h(px(26.0))
