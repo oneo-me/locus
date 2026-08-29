@@ -1,7 +1,5 @@
 use super::*;
 
-const MENU_FOCUS_START: usize = 16;
-
 impl Settings {
     fn toggle_dropdown(&mut self, dropdown: Dropdown, window: &mut Window, cx: &mut Context<Self>) {
         if self.open_dropdown == Some(dropdown) {
@@ -9,31 +7,52 @@ impl Settings {
             window.focus(&self.controls[dropdown.trigger_focus_index()], cx);
         } else {
             self.open_dropdown = Some(dropdown);
-            if dropdown == Dropdown::CodeFontFamily {
-                self.code_font_search.clear();
-                self.code_font_search_input
+            if matches!(
+                dropdown,
+                Dropdown::UiFontFamily | Dropdown::CodeFontFamily | Dropdown::TerminalFontFamily
+            ) {
+                self.font_search.clear();
+                self.font_search_input
                     .update(cx, |input, cx| input.set_value("", cx));
-                window.focus(&self.code_font_search_input.focus_handle(cx), cx);
+                window.focus(&self.font_search_input.focus_handle(cx), cx);
             } else {
-                window.focus(&self.controls[MENU_FOCUS_START], cx);
+                window.focus(&self.controls[FOCUS_MENU_START], cx);
             }
         }
         cx.notify();
     }
 
-    fn choose_code_font(&mut self, family: String, window: &mut Window, cx: &mut Context<Self>) {
+    fn choose_font(
+        &mut self,
+        kind: FontKind,
+        family: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.open_dropdown = None;
-        window.focus(&self.controls[FOCUS_CODE_FONT_FAMILY], cx);
-        if self.preferences.code_font_family == family {
+        window.focus(&self.controls[kind.focus_index()], cx);
+        if kind.selected(&self.preferences) == family {
             cx.notify();
             return;
         }
-        self.preferences.code_font_family = family.clone();
+        match kind {
+            FontKind::Ui => {
+                self.preferences.ui_font_family = family;
+                cx.emit(SettingsEvent::UiFontChanged);
+            }
+            FontKind::Code => {
+                self.preferences.code_font_family = family;
+                cx.emit(SettingsEvent::CodeFontChanged);
+            }
+            FontKind::Terminal => {
+                self.preferences.terminal_font_family = family.clone();
+                cx.emit(SettingsEvent::TerminalFontChanged(
+                    family,
+                    self.preferences.terminal_font_size,
+                ));
+            }
+        }
         self.persist();
-        cx.emit(SettingsEvent::CodeFontChanged(
-            family,
-            self.preferences.code_font_size,
-        ));
         cx.notify();
     }
 
@@ -111,7 +130,7 @@ impl Settings {
                         .id(format!("{id}-option-{index}"))
                         .role(Role::Button)
                         .aria_label(item_label)
-                        .track_focus(&self.controls[MENU_FOCUS_START + index])
+                        .track_focus(&self.controls[FOCUS_MENU_START + index])
                         .tab_index(0)
                         .tab_stop(true)
                         .h(px(32.0))
@@ -154,25 +173,31 @@ impl Settings {
             })
     }
 
-    pub(super) fn render_code_font_picker(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
+    pub(super) fn render_font_picker(
+        &self,
+        kind: FontKind,
+        cx: &mut Context<Self>,
+    ) -> Stateful<gpui::Div> {
         let theme = Theme::current(cx);
         let language = self.preferences.language;
-        let open = self.open_dropdown == Some(Dropdown::CodeFontFamily);
-        let selected = self.preferences.resolved_code_font_family().to_owned();
-        let query = self.code_font_search.trim().to_lowercase();
+        let dropdown = kind.dropdown();
+        let id = kind.id();
+        let open = self.open_dropdown == Some(dropdown);
+        let selected = kind.selected(&self.preferences).to_owned();
+        let query = self.font_search.trim().to_lowercase();
         let matches = self
-            .code_font_names
+            .font_names
             .iter()
             .enumerate()
             .filter(|(_, family)| font_matches_search(family, &query))
             .collect::<Vec<_>>();
         let has_matches = !matches.is_empty();
         let trigger = div()
-            .id("code-font-family-selector-trigger")
+            .id(format!("{id}-trigger"))
             .role(Role::ComboBox)
-            .aria_label(language.text("代码字体", "Code font"))
+            .aria_label(kind.label(language))
             .aria_value(selected.clone())
-            .track_focus(&self.controls[FOCUS_CODE_FONT_FAMILY])
+            .track_focus(&self.controls[kind.focus_index()])
             .tab_index(0)
             .tab_stop(true)
             .w_full()
@@ -206,13 +231,13 @@ impl Settings {
             )
             .child(icon(Icon::ChevronDown, 10.5, theme.text_tertiary))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .on_activation(cx, |this, window, cx| {
-                this.toggle_dropdown(Dropdown::CodeFontFamily, window, cx)
+            .on_activation(cx, move |this, window, cx| {
+                this.toggle_dropdown(dropdown, window, cx)
             });
 
         let options = matches.into_iter().fold(
             div()
-                .id("code-font-options")
+                .id(format!("{id}-options"))
                 .role(Role::List)
                 .max_h(px(300.0))
                 .overflow_y_scroll()
@@ -221,14 +246,14 @@ impl Settings {
                 .flex_col(),
             |options, (index, family)| {
                 let family = family.clone();
-                let is_selected = family == self.preferences.resolved_code_font_family();
+                let is_selected = family == kind.selected(&self.preferences);
                 options.child(
                     div()
-                        .id(format!("code-font-option-{index}"))
+                        .id(format!("{id}-option-{index}"))
                         .role(Role::ListBoxOption)
                         .aria_label(family.clone())
                         .aria_selected(is_selected)
-                        .track_focus(&self.code_font_option_focus[index])
+                        .track_focus(&self.font_option_focus[index])
                         .tab_index(0)
                         .tab_stop(true)
                         .h(px(34.0))
@@ -261,13 +286,13 @@ impl Settings {
                         }))
                         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                         .on_activation(cx, move |this, window, cx| {
-                            this.choose_code_font(family.clone(), window, cx)
+                            this.choose_font(kind, family.clone(), window, cx)
                         }),
                 )
             },
         );
         let menu = div()
-            .id("code-font-family-selector-menu")
+            .id(format!("{id}-menu"))
             .absolute()
             .top(px(36.0))
             .right_0()
@@ -281,9 +306,9 @@ impl Settings {
             .flex()
             .flex_col()
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .child(div().p(px(4.0)).child(self.code_font_search_input.clone()))
+            .child(div().p(px(4.0)).child(self.font_search_input.clone()))
             .child(div().mx(px(4.0)).h(px(1.0)).bg(theme.border))
-            .when(self.code_font_names.is_empty(), |menu| {
+            .when(self.font_names.is_empty(), |menu| {
                 menu.child(
                     div()
                         .px(px(12.0))
@@ -294,7 +319,7 @@ impl Settings {
                 )
             })
             .when(
-                !self.code_font_names.is_empty() && !query.is_empty() && !has_matches,
+                !self.font_names.is_empty() && !query.is_empty() && !has_matches,
                 |menu| {
                     menu.child(
                         div()
@@ -309,7 +334,7 @@ impl Settings {
             .child(options);
 
         div()
-            .id("code-font-family-selector")
+            .id(id)
             .relative()
             .w(px(328.0))
             .flex()

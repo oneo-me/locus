@@ -155,7 +155,7 @@ impl Settings {
                 (
                     font_size_label(value),
                     value == self.preferences.ui_font_size,
-                    Choice::UiFont(value),
+                    Choice::UiFontSize(value),
                 )
             })
             .collect();
@@ -165,7 +165,7 @@ impl Settings {
                 (
                     font_size_label(value),
                     value == self.preferences.code_font_size,
-                    Choice::CodeFont(value),
+                    Choice::CodeFontSize(value),
                 )
             })
             .collect();
@@ -213,17 +213,27 @@ impl Settings {
             ))
             .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
-                language.text("界面字号", "Interface font size"),
+                language.text("软件字体", "Interface font"),
                 language.text(
-                    "调整整个窗口的界面文字大小",
-                    "Adjusts interface text throughout the window",
+                    "用于界面与笔记正文的字体",
+                    "Font used by the interface and note text",
+                ),
+                self.render_font_picker(FontKind::Ui, cx),
+                cx,
+            ))
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(self.render_setting_row(
+                language.text("软件字号", "Interface font size"),
+                language.text(
+                    "调整界面与笔记正文的文字大小",
+                    "Text size used by the interface and note text",
                 ),
                 self.render_dropdown(
                     "ui-font-size-selector",
                     font_size_label(self.preferences.ui_font_size),
-                    Dropdown::UiFont,
+                    Dropdown::UiFontSize,
                     ui_font_choices,
-                    FOCUS_UI_FONT,
+                    FOCUS_UI_FONT_SIZE,
                     cx,
                 ),
                 cx,
@@ -232,25 +242,25 @@ impl Settings {
             .child(self.render_setting_row(
                 language.text("代码字体", "Code font"),
                 language.text(
-                    "用于代码内容和终端的字体",
-                    "Font used for code content and the terminal",
+                    "用于笔记和设置中的代码内容",
+                    "Font used for code in notes and settings",
                 ),
-                self.render_code_font_picker(cx),
+                self.render_font_picker(FontKind::Code, cx),
                 cx,
             ))
             .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("代码字号", "Code font size"),
                 language.text(
-                    "用于代码内容和终端的文字大小",
-                    "Font size used for code content and the terminal",
+                    "用于笔记和设置中的代码内容",
+                    "Text size used for code in notes and settings",
                 ),
                 self.render_dropdown(
                     "code-font-size-selector",
                     font_size_label(self.preferences.code_font_size),
-                    Dropdown::CodeFont,
+                    Dropdown::CodeFontSize,
                     code_font_choices,
-                    FOCUS_CODE_FONT,
+                    FOCUS_CODE_FONT_SIZE,
                     cx,
                 ),
                 cx,
@@ -260,6 +270,16 @@ impl Settings {
     pub(super) fn render_terminal(&self, cx: &mut Context<Self>) -> gpui::Div {
         let theme = Theme::current(cx);
         let language = self.preferences.language;
+        let font_size_choices = FONT_SIZES
+            .into_iter()
+            .map(|value| {
+                (
+                    font_size_label(value),
+                    value == self.preferences.terminal_font_size,
+                    Choice::TerminalFontSize(value),
+                )
+            })
+            .collect();
         let color_choices = TerminalColorScheme::ALL
             .into_iter()
             .map(|value| {
@@ -284,6 +304,33 @@ impl Settings {
         div()
             .flex()
             .flex_col()
+            .child(self.render_setting_row(
+                language.text("终端字体", "Terminal font"),
+                language.text(
+                    "用于右侧终端会话的字体",
+                    "Font used by the terminal in the right sidebar",
+                ),
+                self.render_font_picker(FontKind::Terminal, cx),
+                cx,
+            ))
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(self.render_setting_row(
+                language.text("终端字号", "Terminal font size"),
+                language.text(
+                    "用于右侧终端会话的文字大小",
+                    "Text size used by the terminal in the right sidebar",
+                ),
+                self.render_dropdown(
+                    "terminal-font-size-selector",
+                    font_size_label(self.preferences.terminal_font_size),
+                    Dropdown::TerminalFontSize,
+                    font_size_choices,
+                    FOCUS_TERMINAL_FONT_SIZE,
+                    cx,
+                ),
+                cx,
+            ))
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("启动 Shell", "Launch shell"),
                 language.text(

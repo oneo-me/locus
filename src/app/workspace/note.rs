@@ -27,6 +27,7 @@ impl Locus {
     ) -> Div {
         let theme = Theme::current(cx);
         let preferences = self.settings.read(cx).preferences();
+        let markdown_text_font_family = preferences.resolved_ui_font_family().to_owned();
         let markdown_text_size = preferences.ui_font_size;
         let markdown_code_font_family = preferences.resolved_code_font_family().to_owned();
         let markdown_code_text_size = preferences.code_font_size;
@@ -89,6 +90,7 @@ impl Locus {
                     document,
                     &node.directory,
                     theme,
+                    &markdown_text_font_family,
                     markdown_text_size,
                     &markdown_code_font_family,
                     markdown_code_text_size,

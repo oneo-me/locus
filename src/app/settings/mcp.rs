@@ -182,8 +182,8 @@ impl Settings {
                     .overflow_x_scroll()
                     .restrict_scroll_to_axis()
                     .whitespace_nowrap()
-                    .text_xs()
-                    .line_height(px(19.0))
+                    .text_size(px(self.preferences.code_font_size))
+                    .line_height(px((self.preferences.code_font_size * 1.5).round()))
                     .font_family(self.preferences.resolved_code_font_family().to_owned())
                     .text_color(theme.text_secondary)
                     .child(code),

@@ -166,6 +166,8 @@ impl Locus {
         div()
             .h(px(TITLEBAR_HEIGHT))
             .flex_none()
+            .border_b_1()
+            .border_color(theme.border)
             .flex()
             .items_center()
             .pl(px(10.0))

@@ -17,8 +17,6 @@ use crate::document_library::Attachment;
 use crate::localization::Language;
 use crate::theme::Theme;
 
-const SANS_FAMILY: &str = ".SystemUIFont";
-
 #[derive(Clone)]
 pub struct MarkdownDocument {
     blocks: Arc<[Block]>,
@@ -40,6 +38,7 @@ pub struct Markdown<'a> {
     document: &'a MarkdownDocument,
     base_directory: &'a Path,
     theme: Theme,
+    text_font_family: &'a str,
     text_size: f32,
     code_font_family: &'a str,
     code_text_size: f32,
@@ -52,6 +51,7 @@ impl<'a> Markdown<'a> {
         document: &'a MarkdownDocument,
         base_directory: &'a Path,
         theme: Theme,
+        text_font_family: &'a str,
         text_size: f32,
         code_font_family: &'a str,
         code_text_size: f32,
@@ -60,6 +60,7 @@ impl<'a> Markdown<'a> {
             document,
             base_directory,
             theme,
+            text_font_family,
             text_size,
             code_font_family,
             code_text_size,
@@ -82,6 +83,7 @@ impl<'a> Markdown<'a> {
         let mut context = RenderContext {
             base_directory: self.base_directory,
             theme: self.theme,
+            text_font_family: self.text_font_family,
             text_size: self.text_size,
             code_font_family: self.code_font_family,
             code_text_size: self.code_text_size,
@@ -110,6 +112,7 @@ impl<'a> Markdown<'a> {
 struct RenderContext<'a> {
     base_directory: &'a Path,
     theme: Theme,
+    text_font_family: &'a str,
     text_size: f32,
     code_font_family: &'a str,
     code_text_size: f32,
@@ -225,7 +228,7 @@ impl RenderContext<'_> {
             let mut run_font = font(if run.style.code {
                 self.code_font_family
             } else {
-                SANS_FAMILY
+                self.text_font_family
             });
             run_font.weight = if run.style.bold && base_weight < FontWeight::SEMIBOLD {
                 FontWeight::SEMIBOLD

@@ -6,7 +6,10 @@ mod mcp;
 mod pages;
 pub(super) mod text_input;
 
-use crate::config::{DEFAULT_CODE_FONT_FAMILY, DEFAULT_UI_FONT_SIZE};
+use crate::config::{
+    DEFAULT_CODE_FONT_FAMILY, DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY,
+    DEFAULT_UI_FONT_SIZE,
+};
 use crate::document_library::ArchivedNote;
 use crate::localization::Language;
 use crate::mcp::McpServerState;
@@ -31,22 +34,26 @@ const FOCUS_LIBRARY_PICKER: usize = 4;
 const FOCUS_EDITOR: usize = 5;
 const FOCUS_THEME: usize = 6;
 const FOCUS_LANGUAGE: usize = 7;
-const FOCUS_UI_FONT: usize = 8;
-const FOCUS_CODE_FONT: usize = 9;
+const FOCUS_UI_FONT_FAMILY: usize = 8;
+const FOCUS_UI_FONT_SIZE: usize = 9;
 const FOCUS_CODE_FONT_FAMILY: usize = 10;
-const FOCUS_TERMINAL_COLOR_SCHEME: usize = 11;
-const FOCUS_TERMINAL_CURSOR_STYLE: usize = 12;
-const FOCUS_MCP_PAGE: usize = 13;
-const FOCUS_MCP_ENABLED: usize = 14;
-const FOCUS_MCP_LOCAL_NETWORK: usize = 15;
-const FOCUS_MCP_PORT_APPLY: usize = 22;
-const FOCUS_MCP_ENDPOINT_COPY: usize = 23;
-const FOCUS_MCP_CODEX_COPY: usize = 24;
-const FOCUS_MCP_CLAUDE_COPY: usize = 25;
-const FOCUS_MCP_CURSOR_COPY: usize = 26;
-const FOCUS_MCP_OPENCODE_COPY: usize = 27;
-const FOCUS_MCP_GENERIC_COPY: usize = 28;
-const FOCUS_ARCHIVE_PAGE: usize = 29;
+const FOCUS_CODE_FONT_SIZE: usize = 11;
+const FOCUS_TERMINAL_FONT_FAMILY: usize = 12;
+const FOCUS_TERMINAL_FONT_SIZE: usize = 13;
+const FOCUS_TERMINAL_COLOR_SCHEME: usize = 14;
+const FOCUS_TERMINAL_CURSOR_STYLE: usize = 15;
+const FOCUS_MCP_PAGE: usize = 16;
+const FOCUS_MCP_ENABLED: usize = 17;
+const FOCUS_MCP_LOCAL_NETWORK: usize = 18;
+const FOCUS_ARCHIVE_PAGE: usize = 19;
+const FOCUS_MENU_START: usize = 20;
+const FOCUS_MCP_PORT_APPLY: usize = 27;
+const FOCUS_MCP_ENDPOINT_COPY: usize = 28;
+const FOCUS_MCP_CODEX_COPY: usize = 29;
+const FOCUS_MCP_CLAUDE_COPY: usize = 30;
+const FOCUS_MCP_CURSOR_COPY: usize = 31;
+const FOCUS_MCP_OPENCODE_COPY: usize = 32;
+const FOCUS_MCP_GENERIC_COPY: usize = 33;
 
 fn font_matches_search(family: &str, normalized_query: &str) -> bool {
     normalized_query.is_empty() || family.to_lowercase().contains(normalized_query)
@@ -68,8 +75,9 @@ enum Choice {
     Editor(EditorPreference),
     Theme(ThemePreference),
     Language(Language),
-    UiFont(f32),
-    CodeFont(f32),
+    UiFontSize(f32),
+    CodeFontSize(f32),
+    TerminalFontSize(f32),
     TerminalColorScheme(TerminalColorScheme),
     TerminalCursorStyle(TerminalCursorStyle),
 }
@@ -79,9 +87,12 @@ enum Dropdown {
     Editor,
     Theme,
     Language,
-    UiFont,
-    CodeFont,
+    UiFontFamily,
+    UiFontSize,
     CodeFontFamily,
+    CodeFontSize,
+    TerminalFontFamily,
+    TerminalFontSize,
     TerminalColorScheme,
     TerminalCursorStyle,
 }
@@ -92,11 +103,59 @@ impl Dropdown {
             Self::Editor => FOCUS_EDITOR,
             Self::Theme => FOCUS_THEME,
             Self::Language => FOCUS_LANGUAGE,
-            Self::UiFont => FOCUS_UI_FONT,
-            Self::CodeFont => FOCUS_CODE_FONT,
+            Self::UiFontFamily => FOCUS_UI_FONT_FAMILY,
+            Self::UiFontSize => FOCUS_UI_FONT_SIZE,
             Self::CodeFontFamily => FOCUS_CODE_FONT_FAMILY,
+            Self::CodeFontSize => FOCUS_CODE_FONT_SIZE,
+            Self::TerminalFontFamily => FOCUS_TERMINAL_FONT_FAMILY,
+            Self::TerminalFontSize => FOCUS_TERMINAL_FONT_SIZE,
             Self::TerminalColorScheme => FOCUS_TERMINAL_COLOR_SCHEME,
             Self::TerminalCursorStyle => FOCUS_TERMINAL_CURSOR_STYLE,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum FontKind {
+    Ui,
+    Code,
+    Terminal,
+}
+
+impl FontKind {
+    fn dropdown(self) -> Dropdown {
+        match self {
+            Self::Ui => Dropdown::UiFontFamily,
+            Self::Code => Dropdown::CodeFontFamily,
+            Self::Terminal => Dropdown::TerminalFontFamily,
+        }
+    }
+
+    fn focus_index(self) -> usize {
+        self.dropdown().trigger_focus_index()
+    }
+
+    fn id(self) -> &'static str {
+        match self {
+            Self::Ui => "ui-font-family-selector",
+            Self::Code => "code-font-family-selector",
+            Self::Terminal => "terminal-font-family-selector",
+        }
+    }
+
+    fn label(self, language: Language) -> &'static str {
+        match self {
+            Self::Ui => language.text("软件字体", "Interface font"),
+            Self::Code => language.text("代码字体", "Code font"),
+            Self::Terminal => language.text("终端字体", "Terminal font"),
+        }
+    }
+
+    fn selected(self, preferences: &Preferences) -> &str {
+        match self {
+            Self::Ui => preferences.resolved_ui_font_family(),
+            Self::Code => preferences.resolved_code_font_family(),
+            Self::Terminal => preferences.resolved_terminal_font_family(),
         }
     }
 }
@@ -109,7 +168,9 @@ pub enum SettingsEvent {
     TerminalLaunchChanged,
     TerminalColorSchemeChanged(TerminalColorScheme),
     TerminalCursorStyleChanged(TerminalCursorStyle),
-    CodeFontChanged(String, f32),
+    UiFontChanged,
+    CodeFontChanged,
+    TerminalFontChanged(String, f32),
     McpConfigurationChanged,
 }
 
@@ -120,10 +181,10 @@ pub struct Settings {
     page: SettingsPage,
     open_dropdown: Option<Dropdown>,
     preferences: Preferences,
-    code_font_names: Vec<String>,
-    code_font_option_focus: Vec<FocusHandle>,
-    code_font_search: String,
-    code_font_search_input: Entity<text_input::TextInput>,
+    font_names: Vec<String>,
+    font_option_focus: Vec<FocusHandle>,
+    font_search: String,
+    font_search_input: Entity<text_input::TextInput>,
     terminal_shell_input: Entity<text_input::TextInput>,
     terminal_command_input: Entity<text_input::TextInput>,
     mcp_port_input: Entity<text_input::TextInput>,
@@ -152,19 +213,25 @@ impl Settings {
         cx: &mut Context<Self>,
     ) -> Self {
         let language = preferences.language;
-        let mut code_font_names = cx.text_system().all_font_names();
-        if !code_font_names
-            .iter()
-            .any(|font| font == DEFAULT_CODE_FONT_FAMILY)
-        {
-            code_font_names.push(DEFAULT_CODE_FONT_FAMILY.to_owned());
-            code_font_names.sort_unstable_by_key(|font| font.to_lowercase());
+        let mut font_names = cx.text_system().all_font_names();
+        for family in [
+            DEFAULT_UI_FONT_FAMILY,
+            DEFAULT_CODE_FONT_FAMILY,
+            DEFAULT_TERMINAL_FONT_FAMILY,
+            preferences.resolved_ui_font_family(),
+            preferences.resolved_code_font_family(),
+            preferences.resolved_terminal_font_family(),
+        ] {
+            if !font_names.iter().any(|font| font == family) {
+                font_names.push(family.to_owned());
+            }
         }
-        let code_font_option_focus = code_font_names.iter().map(|_| cx.focus_handle()).collect();
+        font_names.sort_unstable_by_key(|font| font.to_lowercase());
+        let font_option_focus = font_names.iter().map(|_| cx.focus_handle()).collect();
         let archive_action_focus = archived_notes.iter().map(|_| cx.focus_handle()).collect();
-        let code_font_search_input = cx.new(|cx| {
+        let font_search_input = cx.new(|cx| {
             text_input::TextInput::new(
-                "code-font-search-input",
+                "font-search-input",
                 String::new(),
                 language.text("搜索字体", "Search fonts"),
                 language.text("搜索字体", "Search fonts"),
@@ -201,10 +268,10 @@ impl Settings {
             .with_width(px(164.0))
         });
         cx.subscribe(
-            &code_font_search_input,
+            &font_search_input,
             |this, _, event: &text_input::TextInputEvent, cx| {
                 let text_input::TextInputEvent::Changed(value) = event;
-                this.code_font_search = value.clone();
+                this.font_search = value.clone();
                 cx.notify();
             },
         )
@@ -242,14 +309,14 @@ impl Settings {
         Self {
             focus: cx.focus_handle(),
             return_focus,
-            controls: (0..32).map(|_| cx.focus_handle()).collect(),
+            controls: (0..36).map(|_| cx.focus_handle()).collect(),
             page: SettingsPage::General,
             open_dropdown: None,
             preferences,
-            code_font_names,
-            code_font_option_focus,
-            code_font_search: String::new(),
-            code_font_search_input,
+            font_names,
+            font_option_focus,
+            font_search: String::new(),
+            font_search_input,
             terminal_shell_input,
             terminal_command_input,
             mcp_port_input,
@@ -375,7 +442,7 @@ impl Settings {
                     return;
                 }
                 self.preferences.language = language;
-                self.code_font_search_input.update(cx, |input, cx| {
+                self.font_search_input.update(cx, |input, cx| {
                     input.set_label(language.text("搜索字体", "Search fonts"), cx);
                     input.set_placeholder(language.text("搜索字体", "Search fonts"), cx);
                 });
@@ -397,21 +464,29 @@ impl Settings {
                 });
                 cx.emit(SettingsEvent::LanguageChanged(language));
             }
-            Choice::UiFont(size) => {
+            Choice::UiFontSize(size) => {
                 if self.preferences.ui_font_size == size {
                     return;
                 }
                 self.preferences.ui_font_size = size;
                 window.set_rem_size(px(size));
                 window.refresh();
+                cx.emit(SettingsEvent::UiFontChanged);
             }
-            Choice::CodeFont(size) => {
+            Choice::CodeFontSize(size) => {
                 if self.preferences.code_font_size == size {
                     return;
                 }
                 self.preferences.code_font_size = size;
-                cx.emit(SettingsEvent::CodeFontChanged(
-                    self.preferences.resolved_code_font_family().to_owned(),
+                cx.emit(SettingsEvent::CodeFontChanged);
+            }
+            Choice::TerminalFontSize(size) => {
+                if self.preferences.terminal_font_size == size {
+                    return;
+                }
+                self.preferences.terminal_font_size = size;
+                cx.emit(SettingsEvent::TerminalFontChanged(
+                    self.preferences.resolved_terminal_font_family().to_owned(),
                     size,
                 ));
             }
@@ -655,12 +730,14 @@ impl Settings {
 
 fn font_size_label(value: f32) -> &'static str {
     match value as u32 {
+        12 => "12",
         14 => "14",
         15 => "15",
         16 => "16",
         17 => "17",
         18 => "18",
-        _ => "20",
+        20 => "20",
+        _ => unreachable!("unsupported font size"),
     }
 }
 
@@ -695,7 +772,7 @@ impl Render for Settings {
             .flex()
             .bg(theme.surface)
             .text_color(theme.text)
-            .font_family(".SystemUIFont")
+            .font_family(self.preferences.resolved_ui_font_family().to_owned())
             .child(self.render_sidebar(cx))
             .child(self.render_content(cx))
     }
@@ -706,8 +783,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn persistent_setting_controls_have_distinct_focus_handles() {
-        let indices = [
+    fn setting_control_focus_ranges_do_not_overlap() {
+        let persistent_indices = [
             FOCUS_BACK,
             FOCUS_GENERAL_PAGE,
             FOCUS_APPEARANCE_PAGE,
@@ -716,9 +793,12 @@ mod tests {
             FOCUS_EDITOR,
             FOCUS_THEME,
             FOCUS_LANGUAGE,
-            FOCUS_UI_FONT,
-            FOCUS_CODE_FONT,
+            FOCUS_UI_FONT_FAMILY,
+            FOCUS_UI_FONT_SIZE,
             FOCUS_CODE_FONT_FAMILY,
+            FOCUS_CODE_FONT_SIZE,
+            FOCUS_TERMINAL_FONT_FAMILY,
+            FOCUS_TERMINAL_FONT_SIZE,
             FOCUS_TERMINAL_COLOR_SCHEME,
             FOCUS_TERMINAL_CURSOR_STYLE,
             FOCUS_MCP_PAGE,
@@ -733,11 +813,14 @@ mod tests {
             FOCUS_MCP_GENERIC_COPY,
             FOCUS_ARCHIVE_PAGE,
         ];
-        let unique = indices
-            .into_iter()
-            .collect::<std::collections::HashSet<_>>();
+        let mut unique = std::collections::HashSet::new();
 
-        assert_eq!(unique.len(), indices.len());
+        for index in persistent_indices {
+            assert!(unique.insert(index));
+        }
+        for index in FOCUS_MENU_START..FOCUS_MENU_START + FONT_SIZES.len() {
+            assert!(unique.insert(index));
+        }
     }
 
     #[test]
@@ -745,5 +828,13 @@ mod tests {
         assert!(font_matches_search("JetBrains Mono", "brains"));
         assert!(font_matches_search("SF Mono", "sf mono"));
         assert!(!font_matches_search("Menlo", "serif"));
+    }
+
+    #[test]
+    fn every_supported_font_size_has_its_own_label() {
+        assert_eq!(
+            FONT_SIZES.map(font_size_label),
+            ["12", "14", "15", "16", "17", "18", "20"]
+        );
     }
 }

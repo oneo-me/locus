@@ -265,13 +265,15 @@ impl Locus {
                         });
                     }
                 }
-                SettingsEvent::CodeFontChanged(family, size) => {
+                SettingsEvent::UiFontChanged | SettingsEvent::CodeFontChanged => {
+                    cx.notify();
+                }
+                SettingsEvent::TerminalFontChanged(family, size) => {
                     if let Some(terminal) = &this.terminal {
                         terminal.update(cx, |terminal, cx| {
-                            terminal.set_code_font(family.clone(), *size, cx);
+                            terminal.set_font(family.clone(), *size, cx);
                         });
                     }
-                    cx.notify();
                 }
                 SettingsEvent::McpConfigurationChanged => {
                     this.restart_mcp_server(cx);
@@ -1139,6 +1141,12 @@ impl Locus {
 impl Render for Locus {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::current(cx);
+        let ui_font_family = self
+            .settings
+            .read(cx)
+            .preferences()
+            .resolved_ui_font_family()
+            .to_owned();
         let left_was_sliding = self.left_sidebar_slide.is_some();
         let right_was_sliding = self.right_sidebar_slide.is_some();
         let panels = self.settle_panels(window);
@@ -1249,7 +1257,7 @@ impl Render for Locus {
             .relative()
             .flex()
             .bg(theme.window_background)
-            .font_family(".SystemUIFont")
+            .font_family(ui_font_family)
             .text_color(theme.text)
             .when(self.settings_open, |root| {
                 root.child(

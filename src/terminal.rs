@@ -73,8 +73,8 @@ pub struct TerminalConfiguration {
     startup_command: String,
     color_scheme: TerminalColorScheme,
     cursor_style: TerminalCursorStyle,
-    code_font_family: SharedString,
-    code_font_size: f32,
+    font_family: SharedString,
+    font_size: f32,
     language: Language,
 }
 
@@ -85,8 +85,11 @@ impl TerminalConfiguration {
             startup_command: preferences.terminal_command.clone(),
             color_scheme: preferences.terminal_color_scheme,
             cursor_style: preferences.terminal_cursor_style,
-            code_font_family: preferences.resolved_code_font_family().to_owned().into(),
-            code_font_size: preferences.code_font_size,
+            font_family: preferences
+                .resolved_terminal_font_family()
+                .to_owned()
+                .into(),
+            font_size: preferences.terminal_font_size,
             language: preferences.language,
         }
     }
@@ -185,7 +188,7 @@ impl TerminalSession {
     ) -> Result<Self, String> {
         let columns = columns.max(MIN_COLUMNS);
         let rows = rows.max(MIN_ROWS);
-        let cell_height = terminal_cell_height(configuration.code_font_size);
+        let cell_height = terminal_cell_height(configuration.font_size);
         let window_size = WindowSize {
             num_lines: rows.min(u16::MAX as usize) as u16,
             num_cols: columns.min(u16::MAX as usize) as u16,
@@ -596,14 +599,9 @@ impl TerminalView {
         cx.notify();
     }
 
-    pub fn set_code_font(
-        &mut self,
-        family: impl Into<SharedString>,
-        size: f32,
-        cx: &mut Context<Self>,
-    ) {
-        self.configuration.code_font_family = family.into();
-        self.configuration.code_font_size = size;
+    pub fn set_font(&mut self, family: impl Into<SharedString>, size: f32, cx: &mut Context<Self>) {
+        self.configuration.font_family = family.into();
+        self.configuration.font_size = size;
         self.measured_cell_width = None;
         if let Some(session) = &self.session {
             session.dirty.store(true, Ordering::Release);
@@ -641,7 +639,7 @@ impl TerminalView {
             return None;
         }
         let cell_width = self.measured_cell_width.unwrap_or(CELL_WIDTH_FALLBACK);
-        let cell_height = terminal_cell_height(self.configuration.code_font_size);
+        let cell_height = terminal_cell_height(self.configuration.font_size);
         Some(Bounds::new(
             point(
                 bounds.left() + px(column as f32 * cell_width),
@@ -727,7 +725,7 @@ impl TerminalView {
         let columns = session.grid_size.0;
         let rows = session.grid_size.1;
         let cell_width = self.measured_cell_width.unwrap_or(CELL_WIDTH_FALLBACK);
-        let cell_height = terminal_cell_height(self.configuration.code_font_size);
+        let cell_height = terminal_cell_height(self.configuration.font_size);
         let x = f32::from(position.x - bounds.origin.x).clamp(0.0, columns as f32 * cell_width);
         let y = f32::from(position.y - bounds.origin.y).clamp(0.0, rows as f32 * cell_height);
         let column = ((x / cell_width).floor() as usize).min(columns - 1);
@@ -806,7 +804,7 @@ impl TerminalView {
         };
         let delta = match event.delta {
             ScrollDelta::Pixels(delta) => {
-                f32::from(delta.y) / terminal_cell_height(self.configuration.code_font_size)
+                f32::from(delta.y) / terminal_cell_height(self.configuration.font_size)
             }
             ScrollDelta::Lines(delta) => delta.y,
         };
@@ -951,8 +949,8 @@ impl Focusable for TerminalView {
 impl Render for TerminalView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = TerminalPalette::resolve(self.configuration.color_scheme, Theme::current(cx));
-        let terminal_font = font(self.configuration.code_font_family.clone());
-        let font_size = self.configuration.code_font_size;
+        let terminal_font = font(self.configuration.font_family.clone());
+        let font_size = self.configuration.font_size;
         let cell_height = terminal_cell_height(font_size);
         let cell_width = *self.measured_cell_width.get_or_insert_with(|| {
             let text_system = cx.text_system();
@@ -1083,7 +1081,7 @@ impl Render for TerminalView {
                         .top(px(row as f32 * cell_height))
                         .h(px(cell_height))
                         .bg(palette.background)
-                        .font_family(self.configuration.code_font_family.clone())
+                        .font_family(self.configuration.font_family.clone())
                         .text_size(px(font_size))
                         .line_height(px(cell_height))
                         .text_color(palette.foreground)
@@ -1102,7 +1100,7 @@ impl Render for TerminalView {
             screen = screen.child(
                 div()
                     .p(px(12.0))
-                    .font_family(self.configuration.code_font_family.clone())
+                    .font_family(self.configuration.font_family.clone())
                     .text_size(px(font_size))
                     .line_height(px(cell_height))
                     .text_color(if self.error.is_some() {
@@ -1655,8 +1653,8 @@ mod tests {
             startup_command: "pwd; exit".to_owned(),
             color_scheme: TerminalColorScheme::Auto,
             cursor_style: TerminalCursorStyle::Block,
-            code_font_family: "monospace".into(),
-            code_font_size: 14.0,
+            font_family: "monospace".into(),
+            font_size: 14.0,
             language: Language::English,
         };
         let working_directory = std::fs::canonicalize("/tmp").unwrap();
