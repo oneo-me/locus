@@ -1,5 +1,6 @@
 mod app;
 mod config;
+mod document_library;
 mod localization;
 mod motion;
 mod platform;

@@ -1,15 +1,20 @@
+use std::collections::HashSet;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+mod sidebar;
 mod window_chrome;
 
 use gpui::{
     Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Render, Stateful, Window, div, prelude::*, px, transparent_black,
+    MouseUpEvent, Render, ScrollAnchor, ScrollHandle, Stateful, Window, div, prelude::*, px,
+    transparent_black,
 };
 
 use super::panel_layout::{CONTENT_MIN_WIDTH, PanelFrame, fitted_panel_widths, slide_width};
 use super::settings::{Settings, SettingsEvent};
 use crate::config::{DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH};
+use crate::document_library::LibraryTree;
 use crate::localization::Language;
 use crate::motion::WidthTween;
 use crate::preferences::Preferences;
@@ -18,7 +23,7 @@ use crate::state::{
     RIGHT_SIDEBAR_MIN_WIDTH,
 };
 use crate::theme::Theme;
-use crate::ui::{ActivationExt, Icon, toolbar_icon_button};
+use crate::ui::{ActivationExt, Icon, ScrollbarState, toolbar_icon_button};
 use crate::{CloseWindow, OpenSettings, ToggleFpsCounter, ToggleLeftSidebar, ToggleRightSidebar};
 
 const TITLEBAR_HEIGHT: f32 = 48.0;
@@ -57,6 +62,13 @@ pub struct Locus {
     settings_focus: FocusHandle,
     settings_open: bool,
     settings: Entity<Settings>,
+    library_tree: LibraryTree,
+    expanded_library_nodes: HashSet<String>,
+    selected_library_node: Option<String>,
+    library_scroll_handle: ScrollHandle,
+    library_scrollbar_state: Rc<ScrollbarState>,
+    selected_library_scroll_anchor: ScrollAnchor,
+    scroll_to_selected_library_node: bool,
     fps_counter_visible: bool,
     fps_frame_count: u32,
     fps_value: u32,
@@ -75,6 +87,27 @@ impl Locus {
         window.focus(&root_focus, cx);
         crate::theme::apply_preference(preferences.theme, window, cx);
         window.set_rem_size(px(preferences.ui_font_size));
+        let library_tree = LibraryTree::load(preferences.library_path.as_deref());
+        let selected_library_node = interface_state
+            .selected_library_node
+            .clone()
+            .filter(|path| library_tree.node(path).is_some());
+        let expanded_library_nodes = selected_library_node
+            .as_deref()
+            .map(|path| {
+                sidebar::expanded_paths_for_selection(
+                    path,
+                    library_tree
+                        .node(path)
+                        .is_some_and(|node| !node.children.is_empty()),
+                )
+            })
+            .unwrap_or_default();
+        let library_scroll_handle = ScrollHandle::new();
+        let library_scrollbar_state = ScrollbarState::new();
+        let selected_library_scroll_anchor =
+            ScrollAnchor::for_handle(library_scroll_handle.clone());
+        let scroll_to_selected_library_node = selected_library_node.is_some();
         let settings = cx.new(|cx| Settings::new(preferences, load_error, root_focus.clone(), cx));
         cx.subscribe(
             &settings,
@@ -85,6 +118,15 @@ impl Locus {
                 }
                 SettingsEvent::LanguageChanged(language) => {
                     crate::set_app_menus(cx, *language);
+                    cx.notify();
+                }
+                SettingsEvent::LibraryChanged(path) => {
+                    this.library_tree = LibraryTree::load(Some(path));
+                    this.expanded_library_nodes.clear();
+                    this.selected_library_node = None;
+                    this.scroll_to_selected_library_node = false;
+                    this.library_scrollbar_state.reset_visibility();
+                    this.save_interface_state();
                     cx.notify();
                 }
             },
@@ -124,6 +166,13 @@ impl Locus {
             settings_focus: cx.focus_handle(),
             settings_open: false,
             settings,
+            library_tree,
+            expanded_library_nodes,
+            selected_library_node,
+            library_scroll_handle,
+            library_scrollbar_state,
+            selected_library_scroll_anchor,
+            scroll_to_selected_library_node,
             fps_counter_visible: interface_state.fps_counter_visible,
             fps_frame_count: 0,
             fps_value: 0,
@@ -193,6 +242,7 @@ impl Locus {
             left_sidebar_visible: self.left_sidebar_visible,
             right_sidebar_visible: self.right_sidebar_visible,
             fps_counter_visible: self.fps_counter_visible,
+            selected_library_node: self.selected_library_node.clone(),
         }
     }
 
@@ -403,22 +453,7 @@ impl Locus {
         left_control_clearance: f32,
         cx: &mut Context<Self>,
     ) -> Div {
-        let theme = Theme::current(cx);
         let language = self.language(cx);
-        let library = self
-            .settings
-            .read(cx)
-            .preferences()
-            .library_path
-            .as_deref()
-            .and_then(|path| path.file_name())
-            .and_then(|name| name.to_str())
-            .map(str::to_owned)
-            .unwrap_or_else(|| {
-                language
-                    .text("尚未打开文档库", "No library selected")
-                    .to_owned()
-            });
         div()
             .relative()
             .w(px(width))
@@ -432,10 +467,7 @@ impl Locus {
                 div()
                     .min_h_0()
                     .flex_1()
-                    .p_4()
-                    .text_sm()
-                    .text_color(theme.text_secondary)
-                    .child(library),
+                    .child(self.render_library_sidebar(language, cx)),
             )
             .child(
                 div()
@@ -516,6 +548,11 @@ impl Render for Locus {
         }
         if self.fps_counter_visible {
             self.tick_fps(window);
+        }
+        if panels.left > 0.0 && self.scroll_to_selected_library_node {
+            self.selected_library_scroll_anchor.scroll_to(window, cx);
+            self.library_scrollbar_state.reset_visibility();
+            self.scroll_to_selected_library_node = false;
         }
 
         let workspace = div()

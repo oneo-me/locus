@@ -26,6 +26,8 @@ pub struct Theme {
     pub focus: Hsla,
     pub resize_handle: Hsla,
     pub error: Hsla,
+    pub success: Hsla,
+    pub warning: Hsla,
 }
 
 impl Theme {
@@ -60,6 +62,8 @@ impl Theme {
             focus: rgb(0x3b82f6).into(),
             resize_handle: rgb(0x3b82f6).into(),
             error: rgb(0xe2726a).into(),
+            success: rgb(0x58a66a).into(),
+            warning: rgb(0xd29b3d).into(),
         }
     }
 
@@ -84,6 +88,8 @@ impl Theme {
             focus: rgb(0x2563eb).into(),
             resize_handle: rgb(0x2563eb).into(),
             error: rgb(0xc64a42).into(),
+            success: rgb(0x27823f).into(),
+            warning: rgb(0xa66a10).into(),
         }
     }
 }

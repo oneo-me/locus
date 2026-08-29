@@ -55,6 +55,7 @@ impl Dropdown {
 pub enum SettingsEvent {
     Close,
     LanguageChanged(Language),
+    LibraryChanged(std::path::PathBuf),
 }
 
 pub struct Settings {
@@ -123,8 +124,9 @@ impl Settings {
                 && let Some(path) = paths.into_iter().next()
             {
                 let _ = this.update(cx, |this, cx| {
-                    this.preferences.library_path = Some(path);
+                    this.preferences.library_path = Some(path.clone());
                     this.persist();
+                    cx.emit(SettingsEvent::LibraryChanged(path));
                     cx.notify();
                 });
             }

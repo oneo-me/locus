@@ -20,6 +20,7 @@ pub struct InterfaceState {
     pub left_sidebar_visible: bool,
     pub right_sidebar_visible: bool,
     pub fps_counter_visible: bool,
+    pub selected_library_node: Option<String>,
 }
 
 impl Default for InterfaceState {
@@ -30,6 +31,7 @@ impl Default for InterfaceState {
             left_sidebar_visible: DEFAULT_LEFT_SIDEBAR_VISIBLE,
             right_sidebar_visible: DEFAULT_RIGHT_SIDEBAR_VISIBLE,
             fps_counter_visible: DEFAULT_FPS_COUNTER_VISIBLE,
+            selected_library_node: None,
         }
     }
 }
@@ -80,6 +82,16 @@ impl InterfaceState {
         self.right_sidebar_width = self
             .right_sidebar_width
             .clamp(RIGHT_SIDEBAR_MIN_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH);
+        self.selected_library_node = self.selected_library_node.take().and_then(|path| {
+            let path = path.trim();
+            let valid = !path.is_empty()
+                && !path.starts_with('/')
+                && !path.contains('\\')
+                && path
+                    .split('/')
+                    .all(|segment| !segment.is_empty() && segment != "." && segment != "..");
+            valid.then(|| path.to_owned())
+        });
     }
 }
 
@@ -99,6 +111,7 @@ mod tests {
             left_sidebar_visible: false,
             right_sidebar_visible: true,
             fps_counter_visible: true,
+            selected_library_node: Some("projects/locus".to_owned()),
         };
 
         let json = serde_json::to_string(&state).unwrap();
@@ -112,6 +125,7 @@ mod tests {
         let mut state = InterfaceState {
             left_sidebar_width: f32::NAN,
             right_sidebar_width: 1200.0,
+            selected_library_node: Some("../outside".to_owned()),
             ..InterfaceState::default()
         };
 
@@ -119,5 +133,6 @@ mod tests {
 
         assert_eq!(state.left_sidebar_width, DEFAULT_LEFT_SIDEBAR_WIDTH);
         assert_eq!(state.right_sidebar_width, RIGHT_SIDEBAR_MAX_WIDTH);
+        assert_eq!(state.selected_library_node, None);
     }
 }
