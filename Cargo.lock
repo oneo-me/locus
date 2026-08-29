@@ -2827,6 +2827,7 @@ dependencies = [
 name = "locus"
 version = "0.1.0"
 dependencies = [
+ "dirs",
  "gpui",
  "gpui_platform",
  "objc2 0.6.4",
@@ -2834,6 +2835,8 @@ dependencies = [
  "objc2-core-graphics",
  "objc2-quartz-core 0.3.2",
  "raw-window-handle",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

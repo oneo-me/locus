@@ -14,6 +14,7 @@ use gpui::{
     WindowBackgroundAppearance, WindowBounds, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
+use settings::{Language, Preferences};
 
 actions!(
     locus,
@@ -58,6 +59,8 @@ fn main() {
         ]);
         cx.on_action(|_: &About, _| platform::show_about_panel());
         cx.on_action(|_: &Quit, cx| cx.quit());
+        let (preferences, load_error) = Preferences::load();
+        let language = preferences.language;
 
         let bounds = Bounds::centered(None, size(px(WINDOW_WIDTH), px(WINDOW_HEIGHT)), cx);
 
@@ -87,36 +90,48 @@ fn main() {
                     );
                     platform::configure_sidebar_material(window, dark)
                         .expect("failed to install macOS sidebar material");
-                    cx.new(|cx| Locus::new(window, cx))
+                    cx.new(|cx| Locus::new(window, preferences, load_error, cx))
                 },
             )
             .expect("failed to open Locus window");
         *main_window.borrow_mut() = Some(window);
 
-        set_app_menus(cx);
+        set_app_menus(cx, language);
         cx.activate(true);
     });
 }
 
-fn set_app_menus(cx: &mut App) {
+pub(crate) fn set_app_menus(cx: &mut App, language: Language) {
     let mut application_items = Vec::new();
     #[cfg(target_os = "macos")]
-    application_items.extend([MenuItem::action("关于 Locus", About), MenuItem::separator()]);
     application_items.extend([
-        MenuItem::action("设置…", OpenSettings),
+        MenuItem::action(language.text("关于 Locus", "About Locus"), About),
         MenuItem::separator(),
-        MenuItem::action("退出 Locus", Quit),
+    ]);
+    application_items.extend([
+        MenuItem::action(language.text("设置…", "Settings…"), OpenSettings),
+        MenuItem::separator(),
+        MenuItem::action(language.text("退出 Locus", "Quit Locus"), Quit),
     ]);
 
     cx.set_menus(vec![
         Menu::new("Locus").items(application_items),
-        Menu::new("编辑").disabled(true),
-        Menu::new("显示").items([
-            MenuItem::action("切换左侧栏", ToggleLeftSidebar),
-            MenuItem::action("切换右侧栏", ToggleRightSidebar),
+        Menu::new(language.text("编辑", "Edit")).disabled(true),
+        Menu::new(language.text("显示", "View")).items([
+            MenuItem::action(
+                language.text("切换左侧栏", "Toggle Left Sidebar"),
+                ToggleLeftSidebar,
+            ),
+            MenuItem::action(
+                language.text("切换右侧栏", "Toggle Right Sidebar"),
+                ToggleRightSidebar,
+            ),
             MenuItem::separator(),
-            MenuItem::action("显示帧率", ToggleFpsCounter),
+            MenuItem::action(language.text("显示帧率", "Show FPS"), ToggleFpsCounter),
         ]),
-        Menu::new("窗口").items([MenuItem::action("关闭窗口", CloseWindow)]),
+        Menu::new(language.text("窗口", "Window")).items([MenuItem::action(
+            language.text("关闭窗口", "Close Window"),
+            CloseWindow,
+        )]),
     ]);
 }

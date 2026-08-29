@@ -1,13 +1,13 @@
 use std::time::{Duration, Instant};
 
 use gpui::{
-    Context, Div, FocusHandle, FontWeight, KeyDownEvent, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, Render, Role, Stateful, Window, WindowHandle, div, prelude::*,
-    px, transparent_black,
+    Context, Div, Entity, FocusHandle, FontWeight, KeyDownEvent, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, Render, Role, Stateful, Window, div, prelude::*, px,
+    transparent_black,
 };
 
 use crate::motion::WidthTween;
-use crate::settings::{self, Settings};
+use crate::settings::{Language, Preferences, Settings, SettingsEvent};
 use crate::theme::Theme;
 use crate::ui::{Icon, icon};
 use crate::{CloseWindow, OpenSettings, ToggleFpsCounter, ToggleLeftSidebar, ToggleRightSidebar};
@@ -70,7 +70,9 @@ pub struct Locus {
     left_toggle_focus: FocusHandle,
     right_toggle_focus: FocusHandle,
     settings_focus: FocusHandle,
-    settings_window: Option<WindowHandle<Settings>>,
+    settings_open: bool,
+    settings: Entity<Settings>,
+    settings_material_applied: bool,
     fps_counter_visible: bool,
     fps_frame_count: u32,
     fps_value: u32,
@@ -78,9 +80,39 @@ pub struct Locus {
 }
 
 impl Locus {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        window: &mut Window,
+        preferences: Preferences,
+        load_error: Option<String>,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let root_focus = cx.focus_handle();
         window.focus(&root_focus, cx);
+        crate::theme::apply_preference(preferences.theme, window, cx);
+        window.set_rem_size(px(preferences.ui_font_size));
+        let settings = cx.new(|cx| Settings::new(preferences, load_error, root_focus.clone(), cx));
+        cx.subscribe(
+            &settings,
+            |this, _, event: &SettingsEvent, cx| match event {
+                SettingsEvent::Close => {
+                    this.settings_open = false;
+                    cx.notify();
+                }
+                SettingsEvent::LanguageChanged(language) => {
+                    crate::set_app_menus(cx, *language);
+                    cx.notify();
+                }
+            },
+        )
+        .detach();
+        cx.observe_window_appearance(window, |this, window, cx| {
+            let preference = this.settings.read(cx).preferences().theme;
+            if preference == crate::theme::ThemePreference::System {
+                crate::theme::apply_preference(preference, window, cx);
+                cx.notify();
+            }
+        })
+        .detach();
 
         Self {
             root_focus,
@@ -98,7 +130,9 @@ impl Locus {
             left_toggle_focus: cx.focus_handle(),
             right_toggle_focus: cx.focus_handle(),
             settings_focus: cx.focus_handle(),
-            settings_window: None,
+            settings_open: false,
+            settings,
+            settings_material_applied: false,
             fps_counter_visible: false,
             fps_frame_count: 0,
             fps_value: 0,
@@ -184,22 +218,27 @@ impl Locus {
         self.toggle_panel(PanelSide::Right, cx);
     }
 
-    fn open_settings(&mut self, cx: &mut Context<Self>) {
-        if let Some(window) = self.settings_window
-            && window
-                .update(cx, |_, window, _| window.activate_window())
-                .is_ok()
-        {
-            cx.activate(true);
-            return;
-        }
-
-        self.settings_window = Some(settings::open_settings_window(cx));
-        cx.activate(true);
+    fn language(&self, cx: &Context<Self>) -> Language {
+        self.settings.read(cx).preferences().language
     }
 
-    fn open_settings_action(&mut self, _: &OpenSettings, _: &mut Window, cx: &mut Context<Self>) {
-        self.open_settings(cx);
+    fn open_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.settings_open = true;
+        crate::platform::set_sidebar_material(LEFT_SIDEBAR_WIDTH, Theme::current(cx).is_dark)
+            .expect("failed to size macOS sidebar material for settings");
+        self.settings_material_applied = true;
+        self.settings
+            .update(cx, |settings, cx| settings.focus(window, cx));
+        cx.notify();
+    }
+
+    fn open_settings_action(
+        &mut self,
+        _: &OpenSettings,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.open_settings(window, cx);
     }
 
     fn close_window_action(
@@ -270,14 +309,15 @@ impl Locus {
 
     fn render_panel_toggle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::current(cx);
+        let language = self.language(cx);
         let (focus, id, label, icon_kind) = match side {
             PanelSide::Left => (
                 &self.left_toggle_focus,
                 "toggle-left-sidebar",
                 if self.left_sidebar_visible {
-                    "隐藏左侧栏"
+                    language.text("隐藏左侧栏", "Hide left sidebar")
                 } else {
-                    "显示左侧栏"
+                    language.text("显示左侧栏", "Show left sidebar")
                 },
                 Icon::PanelLeft,
             ),
@@ -285,9 +325,9 @@ impl Locus {
                 &self.right_toggle_focus,
                 "toggle-right-sidebar",
                 if self.right_sidebar_visible {
-                    "隐藏右侧栏"
+                    language.text("隐藏右侧栏", "Hide right sidebar")
                 } else {
-                    "显示右侧栏"
+                    language.text("显示右侧栏", "Show right sidebar")
                 },
                 Icon::PanelRight,
             ),
@@ -364,7 +404,7 @@ impl Locus {
                     .items_center()
                     .text_sm()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child("未选择笔记"),
+                    .child(self.language(cx).text("未选择笔记", "No note selected")),
             )
             .child(
                 self.window_drag_region("content-center-drag-region", cx)
@@ -421,11 +461,12 @@ impl Locus {
 
     fn render_settings_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::current(cx);
+        let label = self.language(cx).text("设置", "Settings");
 
         div()
             .id("open-settings")
             .role(Role::Button)
-            .aria_label("设置")
+            .aria_label(label)
             .aria_keyshortcuts("Meta+,")
             .track_focus(&self.settings_focus)
             .tab_index(0)
@@ -442,14 +483,14 @@ impl Locus {
             .hover(|style| style.bg(theme.control_hover))
             .active(|style| style.bg(theme.control_active))
             .child(icon(Icon::Settings, 14.0, theme.muted_text))
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                    this.open_settings(cx);
+                    this.open_settings(window, cx);
                     cx.stop_propagation();
                 }
             }))
-            .on_click(cx.listener(|this, _, _, cx| {
-                this.open_settings(cx);
+            .on_click(cx.listener(|this, _, window, cx| {
+                this.open_settings(window, cx);
             }))
     }
 
@@ -571,6 +612,21 @@ impl Locus {
         cx: &mut Context<Self>,
     ) -> Div {
         let theme = Theme::current(cx);
+        let language = self.language(cx);
+        let library = self
+            .settings
+            .read(cx)
+            .preferences()
+            .library_path
+            .as_deref()
+            .and_then(|path| path.file_name())
+            .and_then(|name| name.to_str())
+            .map(str::to_owned)
+            .unwrap_or_else(|| {
+                language
+                    .text("尚未打开文档库", "No library selected")
+                    .to_owned()
+            });
         let is_resizing = self
             .panel_resize_drag
             .is_some_and(|drag| drag.side == PanelSide::Left);
@@ -595,7 +651,7 @@ impl Locus {
                     .p_4()
                     .text_sm()
                     .text_color(theme.muted_text)
-                    .child("尚未打开文档库"),
+                    .child(library),
             )
             .child(
                 div()
@@ -667,6 +723,11 @@ impl Locus {
 impl Render for Locus {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::current(cx);
+        if !self.settings_open && self.settings_material_applied {
+            crate::platform::set_sidebar_material(self.left_sidebar_width, theme.is_dark)
+                .expect("failed to restore macOS sidebar material");
+            self.settings_material_applied = false;
+        }
         let panels = self.settle_panels(window, theme.is_dark);
         let left_toggle_offset = left_toggle_offset(window.is_fullscreen());
         let left_control_clearance =
@@ -678,21 +739,10 @@ impl Render for Locus {
             self.tick_fps(window);
         }
 
-        div()
-            .key_context("Locus")
-            .track_focus(&self.root_focus)
-            .on_action(cx.listener(Self::close_window_action))
-            .on_action(cx.listener(Self::open_settings_action))
-            .on_action(cx.listener(Self::toggle_fps_counter_action))
-            .on_action(cx.listener(Self::toggle_left_sidebar_action))
-            .on_action(cx.listener(Self::toggle_right_sidebar_action))
-            .on_mouse_move(cx.listener(Self::resize_panel_mouse_move))
-            .capture_any_mouse_up(cx.listener(Self::finish_panel_resize))
+        let workspace = div()
             .size_full()
             .relative()
             .flex()
-            .font_family(".SystemUIFont")
-            .text_color(theme.text)
             .when(panels.left > 0.0, |root| {
                 root.child(
                     div()
@@ -746,7 +796,25 @@ impl Render for Locus {
                     .top(px(TITLEBAR_CONTROL_INSET))
                     .right(px(TITLEBAR_CONTROL_INSET))
                     .child(self.render_panel_toggle(PanelSide::Right, cx)),
-            )
+            );
+
+        div()
+            .key_context("Locus")
+            .track_focus(&self.root_focus)
+            .on_action(cx.listener(Self::close_window_action))
+            .on_action(cx.listener(Self::open_settings_action))
+            .on_action(cx.listener(Self::toggle_fps_counter_action))
+            .on_action(cx.listener(Self::toggle_left_sidebar_action))
+            .on_action(cx.listener(Self::toggle_right_sidebar_action))
+            .on_mouse_move(cx.listener(Self::resize_panel_mouse_move))
+            .capture_any_mouse_up(cx.listener(Self::finish_panel_resize))
+            .size_full()
+            .relative()
+            .flex()
+            .font_family(".SystemUIFont")
+            .text_color(theme.text)
+            .when(self.settings_open, |root| root.child(self.settings.clone()))
+            .when(!self.settings_open, |root| root.child(workspace))
     }
 }
 

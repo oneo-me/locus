@@ -4,14 +4,18 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+dirs = "6"
 gpui = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284", features = ["font-kit", "runtime_shaders"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = [
     "std",
     "NSAccessibility",
+    "NSAppearance",
     "NSApplication",
     "NSGraphics",
     "NSColor",
