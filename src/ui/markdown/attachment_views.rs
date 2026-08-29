@@ -1,0 +1,304 @@
+use std::path::Path;
+use std::rc::Rc;
+
+use gpui::{
+    AnyElement, App, KeyDownEvent, MouseButton, PromptLevel, SharedString, Window, div, prelude::*,
+    px,
+};
+
+use super::extension_syntax;
+use super::thumbnail;
+use crate::document_library::Attachment;
+use crate::localization::Language;
+use crate::theme::Theme;
+use crate::ui::{Icon, icon};
+
+const GALLERY_ROW_HEIGHT: f32 = 180.0;
+
+pub type OpenImageHandler = Rc<dyn Fn(&Attachment, String, &mut Window, &mut App)>;
+
+pub fn render_gallery(
+    source: &str,
+    attachments: &[Attachment],
+    theme: Theme,
+    language: Language,
+    open_image: Option<&OpenImageHandler>,
+) -> AnyElement {
+    let items = match extension_syntax::gallery_items(source, attachments, language) {
+        Ok(items) => items,
+        Err(error) => {
+            return extension_error(
+                language.text("无法显示图库", "Could not show gallery"),
+                error,
+                theme,
+            );
+        }
+    };
+    let children = items
+        .into_iter()
+        .enumerate()
+        .map(|(index, item)| {
+            let size = item
+                .attachment
+                .image_size
+                .expect("validated gallery image size");
+            let ratio = size.width as f32 / size.height as f32;
+            let attachment = item.attachment.clone();
+            let alt = item.alt.clone();
+            let click_open_image = open_image.cloned();
+            let keyboard_open_image = open_image.cloned();
+            div()
+                .id(SharedString::from(format!(
+                    "gallery-item-{index}-{}",
+                    attachment.name
+                )))
+                .tab_index(0)
+                .h(px(GALLERY_ROW_HEIGHT))
+                .min_w(px(120.0))
+                .max_w_full()
+                .flex_basis(px((ratio * GALLERY_ROW_HEIGHT).clamp(120.0, 360.0)))
+                .flex_grow(ratio.clamp(0.6, 2.0))
+                .flex_shrink_1()
+                .overflow_hidden()
+                .rounded(px(8.0))
+                .bg(theme.raised)
+                .cursor_default()
+                .focus_visible(|style| style.border_1().border_color(theme.focus))
+                .child(thumbnail::gallery_thumbnail(&attachment, index, theme))
+                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .on_click({
+                    let attachment = attachment.clone();
+                    let alt = alt.clone();
+                    move |_, window, cx| {
+                        if let Some(open_image) = &click_open_image {
+                            open_image(&attachment, alt.clone(), window, cx);
+                        }
+                    }
+                })
+                .on_key_down(move |event: &KeyDownEvent, window, cx| {
+                    if !event.keystroke.modifiers.modified()
+                        && matches!(event.keystroke.key.as_str(), "enter" | "space")
+                    {
+                        if let Some(open_image) = &keyboard_open_image {
+                            open_image(&attachment, alt.clone(), window, cx);
+                        }
+                        cx.stop_propagation();
+                    }
+                })
+                .into_any_element()
+        })
+        .collect::<Vec<_>>();
+
+    div()
+        .w_full()
+        .min_w_0()
+        .flex()
+        .flex_wrap()
+        .gap(px(8.0))
+        .children(children)
+        .child(div().h_0().flex_basis(px(0.0)).flex_grow(999_999.0))
+        .into_any_element()
+}
+
+pub fn render_attachments(
+    source: &str,
+    attachments: &[Attachment],
+    theme: Theme,
+    language: Language,
+) -> AnyElement {
+    let items = match extension_syntax::attachment_items(source, attachments, language) {
+        Ok(items) => items,
+        Err(error) => {
+            return extension_error(
+                language.text("无法显示附件", "Could not show attachments"),
+                error,
+                theme,
+            );
+        }
+    };
+    let last = items.len().saturating_sub(1);
+    let rows = items
+        .into_iter()
+        .enumerate()
+        .map(|(index, attachment)| {
+            let path = attachment.path.clone();
+            let keyboard_path = path.clone();
+            div()
+                .id(SharedString::from(format!(
+                    "attachment-{index}-{}",
+                    attachment.name
+                )))
+                .tab_index(0)
+                .w_full()
+                .min_w_0()
+                .px(px(12.0))
+                .py(px(10.0))
+                .flex()
+                .items_center()
+                .gap(px(9.0))
+                .cursor_default()
+                .when(index < last, |row| {
+                    row.border_b_1().border_color(theme.border)
+                })
+                .focus_visible(|style| style.bg(theme.control_active))
+                .hover(|style| style.bg(theme.control_hover))
+                .active(|style| style.bg(theme.control_active))
+                .child(icon(Icon::File, 15.0, theme.text_tertiary))
+                .child(
+                    attachment_name(attachment.name)
+                        .text_size(px(14.0))
+                        .line_height(px(20.0)),
+                )
+                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .on_click(move |_, window, cx| {
+                    open_attachment(&path, language, window, cx);
+                })
+                .on_key_down(move |event: &KeyDownEvent, window, cx| {
+                    if !event.keystroke.modifiers.modified()
+                        && matches!(event.keystroke.key.as_str(), "enter" | "space")
+                    {
+                        open_attachment(&keyboard_path, language, window, cx);
+                        cx.stop_propagation();
+                    }
+                })
+                .into_any_element()
+        })
+        .collect::<Vec<_>>();
+
+    div()
+        .w_full()
+        .min_w_0()
+        .overflow_hidden()
+        .rounded(px(8.0))
+        .border_1()
+        .border_color(theme.border_strong)
+        .bg(theme.surface)
+        .flex()
+        .flex_col()
+        .children(rows)
+        .into_any_element()
+}
+
+pub fn render_thumbnail_image(
+    attachment: &Attachment,
+    alt: &str,
+    theme: Theme,
+    open_image: Option<&OpenImageHandler>,
+) -> AnyElement {
+    let clicked = attachment.clone();
+    let keyboard = attachment.clone();
+    let click_alt = alt.to_owned();
+    let keyboard_alt = click_alt.clone();
+    let click_handler = open_image.cloned();
+    let keyboard_handler = open_image.cloned();
+    div()
+        .id(SharedString::from(format!(
+            "inline-image-{}",
+            attachment.name
+        )))
+        .tab_index(0)
+        .max_w_full()
+        .overflow_hidden()
+        .rounded(px(6.0))
+        .cursor_default()
+        .focus_visible(|style| style.border_1().border_color(theme.focus))
+        .child(thumbnail::inline_thumbnail(attachment, theme))
+        .on_click(move |_, window, cx| {
+            if let Some(handler) = &click_handler {
+                handler(&clicked, click_alt.clone(), window, cx);
+            }
+        })
+        .on_key_down(move |event: &KeyDownEvent, window, cx| {
+            if !event.keystroke.modifiers.modified()
+                && matches!(event.keystroke.key.as_str(), "enter" | "space")
+            {
+                if let Some(handler) = &keyboard_handler {
+                    handler(&keyboard, keyboard_alt.clone(), window, cx);
+                }
+                cx.stop_propagation();
+            }
+        })
+        .into_any_element()
+}
+
+fn attachment_name(name: String) -> gpui::Div {
+    let (start, end) = split_filename(&name);
+    if end.is_empty() {
+        return div().min_w_0().flex_1().truncate().child(start);
+    }
+    div()
+        .min_w_0()
+        .flex_1()
+        .flex()
+        .child(div().min_w(px(28.0)).truncate().child(start))
+        .child(div().flex_none().child(end))
+}
+
+fn split_filename(value: &str) -> (String, String) {
+    let characters = value.chars().collect::<Vec<_>>();
+    if characters.len() <= 20 {
+        return (value.to_owned(), String::new());
+    }
+    let tail_length = 12.min(8.max((characters.len() as f32 * 0.35).floor() as usize));
+    (
+        characters[..characters.len() - tail_length]
+            .iter()
+            .collect(),
+        characters[characters.len() - tail_length..]
+            .iter()
+            .collect(),
+    )
+}
+
+fn open_attachment(path: &Path, language: Language, window: &mut Window, cx: &mut App) {
+    if let Err(error) = crate::platform::open_path(path) {
+        drop(window.prompt(
+            PromptLevel::Critical,
+            language.text("无法打开附件", "Could not open attachment"),
+            Some(&error),
+            &[language.text("好", "OK")],
+            cx,
+        ));
+    }
+}
+
+fn extension_error(title: &str, message: String, theme: Theme) -> AnyElement {
+    div()
+        .w_full()
+        .min_w_0()
+        .rounded(px(8.0))
+        .border_1()
+        .border_color(theme.error.opacity(0.35))
+        .bg(theme.error.opacity(0.08))
+        .px(px(12.0))
+        .py(px(10.0))
+        .flex()
+        .flex_col()
+        .gap(px(3.0))
+        .text_size(px(13.0))
+        .line_height(px(19.0))
+        .child(
+            div()
+                .font_weight(gpui::FontWeight::SEMIBOLD)
+                .child(title.to_owned()),
+        )
+        .child(div().text_color(theme.text_secondary).child(message))
+        .into_any_element()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn long_attachment_names_preserve_the_extension_and_tail() {
+        assert_eq!(
+            split_filename("a-very-long-report-name.pdf"),
+            ("a-very-long-report".to_owned(), "-name.pdf".to_owned())
+        );
+        assert_eq!(
+            split_filename("report.pdf"),
+            ("report.pdf".to_owned(), String::new())
+        );
+    }
+}

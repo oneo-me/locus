@@ -7,10 +7,14 @@ pub enum Icon {
     Check,
     ChevronDown,
     Copy,
+    File,
     FolderOpen,
+    ImageOff,
+    Loader,
     PanelLeft,
     PanelRight,
     Settings,
+    X,
 }
 
 pub fn icon(icon: Icon, size: f32, color: Hsla) -> Svg {
@@ -20,10 +24,14 @@ pub fn icon(icon: Icon, size: f32, color: Hsla) -> Svg {
         Icon::Check => include_bytes!("../../assets/icons/check.svg"),
         Icon::ChevronDown => include_bytes!("../../assets/icons/chevron-down.svg"),
         Icon::Copy => include_bytes!("../../assets/icons/copy.svg"),
+        Icon::File => include_bytes!("../../assets/icons/file.svg"),
         Icon::FolderOpen => include_bytes!("../../assets/icons/folder-open.svg"),
+        Icon::ImageOff => include_bytes!("../../assets/icons/image-off.svg"),
+        Icon::Loader => include_bytes!("../../assets/icons/loader.svg"),
         Icon::PanelLeft => include_bytes!("../../assets/icons/panel-left.svg"),
         Icon::PanelRight => include_bytes!("../../assets/icons/panel-right.svg"),
         Icon::Settings => include_bytes!("../../assets/icons/settings.svg"),
+        Icon::X => include_bytes!("../../assets/icons/x.svg"),
     };
 
     svg()

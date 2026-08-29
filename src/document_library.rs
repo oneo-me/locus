@@ -2,6 +2,9 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::SystemTime;
+
+use image::{ImageDecoder, ImageReader, metadata::Orientation};
 
 const DOCUMENT_FILE: &str = "index.md";
 const DOCUMENT_ICON_FILE: &str = "icon.png";
@@ -21,10 +24,25 @@ pub struct LibraryNode {
     pub icon_path: Option<PathBuf>,
     pub summary: Option<String>,
     pub content: Option<String>,
-    pub attachment_count: usize,
+    pub attachments: Vec<Attachment>,
     pub change: Option<ChangeStatus>,
     pub descendant_change: Option<ChangeStatus>,
     pub children: Vec<LibraryNode>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Attachment {
+    pub name: String,
+    pub path: PathBuf,
+    pub modified: Option<SystemTime>,
+    pub byte_len: u64,
+    pub image_size: Option<ImageSize>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ImageSize {
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -142,10 +160,10 @@ fn scan_children(
             .then(|| document_change(&document_relative_path, &relative_directory, changes))
             .flatten();
         let descendant_change = combined_descendant_change(&children);
-        let attachment_count = if has_document {
-            count_attachments(&path)?
+        let attachments = if has_document {
+            read_attachments(&path)?
         } else {
-            0
+            Vec::new()
         };
         let icon_path = path.join(DOCUMENT_ICON_FILE);
         let icon_path = icon_path
@@ -162,7 +180,7 @@ fn scan_children(
             icon_path,
             summary: metadata.summary,
             content: document.as_deref().map(document_body).map(str::to_owned),
-            attachment_count,
+            attachments,
             change,
             descendant_change,
             children,
@@ -199,8 +217,8 @@ fn relative_path(root: &Path, path: &Path) -> String {
         .join("/")
 }
 
-fn count_attachments(directory: &Path) -> Result<usize, std::io::Error> {
-    let mut count = 0;
+fn read_attachments(directory: &Path) -> Result<Vec<Attachment>, std::io::Error> {
+    let mut attachments = Vec::new();
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
         let file_type = entry.file_type()?;
@@ -212,10 +230,35 @@ fn count_attachments(directory: &Path) -> Result<usize, std::io::Error> {
             && name != DOCUMENT_FILE
             && !name.eq_ignore_ascii_case(DOCUMENT_ICON_FILE)
         {
-            count += 1;
+            let path = entry.path();
+            let metadata = entry.metadata()?;
+            attachments.push(Attachment {
+                name: name.into_owned(),
+                image_size: image_size(&path),
+                path,
+                modified: metadata.modified().ok(),
+                byte_len: metadata.len(),
+            });
         }
     }
-    Ok(count)
+    attachments.sort_by(|left, right| left.name.cmp(&right.name));
+    Ok(attachments)
+}
+
+fn image_size(path: &Path) -> Option<ImageSize> {
+    let reader = ImageReader::open(path).ok()?.with_guessed_format().ok()?;
+    let mut decoder = reader.into_decoder().ok()?;
+    let (mut width, mut height) = decoder.dimensions();
+    if matches!(
+        decoder.orientation().ok()?,
+        Orientation::Rotate90
+            | Orientation::Rotate270
+            | Orientation::Rotate90FlipH
+            | Orientation::Rotate270FlipH
+    ) {
+        std::mem::swap(&mut width, &mut height);
+    }
+    (width > 0 && height > 0).then_some(ImageSize { width, height })
 }
 
 fn parse_document_metadata(content: &str) -> DocumentMetadata {

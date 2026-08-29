@@ -1,4 +1,7 @@
+mod attachment_views;
+mod extension_syntax;
 mod parser;
+mod thumbnail;
 
 use std::path::{Path, PathBuf};
 
@@ -9,7 +12,11 @@ use gpui::{
 };
 
 use self::parser::{Block, InlineRun, ListItem, TableAlign};
+use crate::document_library::Attachment;
+use crate::localization::Language;
 use crate::theme::Theme;
+
+pub use attachment_views::OpenImageHandler;
 
 const SANS_FAMILY: &str = ".SystemUIFont";
 const MONO_FAMILY: &str = "monospace";
@@ -20,6 +27,9 @@ pub struct Markdown<'a> {
     theme: Theme,
     text_size: f32,
     code_text_size: f32,
+    attachments: &'a [Attachment],
+    language: Language,
+    open_image: Option<OpenImageHandler>,
 }
 
 impl<'a> Markdown<'a> {
@@ -36,7 +46,22 @@ impl<'a> Markdown<'a> {
             theme,
             text_size,
             code_text_size,
+            attachments: &[],
+            language: Language::Chinese,
+            open_image: None,
         }
+    }
+
+    pub fn with_attachment_views(
+        mut self,
+        attachments: &'a [Attachment],
+        language: Language,
+        open_image: OpenImageHandler,
+    ) -> Self {
+        self.attachments = attachments;
+        self.language = language;
+        self.open_image = Some(open_image);
+        self
     }
 
     pub fn render(self) -> AnyElement {
@@ -46,6 +71,9 @@ impl<'a> Markdown<'a> {
             theme: self.theme,
             text_size: self.text_size,
             code_text_size: self.code_text_size,
+            attachments: self.attachments,
+            language: self.language,
+            open_image: self.open_image,
             next_text_id: 0,
         };
         let children = blocks
@@ -69,6 +97,9 @@ struct RenderContext<'a> {
     theme: Theme,
     text_size: f32,
     code_text_size: f32,
+    attachments: &'a [Attachment],
+    language: Language,
+    open_image: Option<OpenImageHandler>,
     next_text_id: usize,
 }
 
@@ -330,6 +361,30 @@ impl RenderContext<'_> {
     }
 
     fn render_image(&self, url: &str, alt: &str) -> AnyElement {
+        if let Some(attachment) = extension_syntax::find_image_attachment(self.attachments, url) {
+            return div()
+                .w_full()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .gap(px(4.0))
+                .child(attachment_views::render_thumbnail_image(
+                    attachment,
+                    alt,
+                    self.theme,
+                    self.open_image.as_ref(),
+                ))
+                .when(!alt.trim().is_empty(), |element| {
+                    element.child(
+                        div()
+                            .text_size(px((self.text_size - 2.0).max(12.0)))
+                            .line_height(px((self.text_size * 1.35).round()))
+                            .text_color(self.theme.text_tertiary)
+                            .child(SharedString::from(alt.to_owned())),
+                    )
+                })
+                .into_any_element();
+        }
         let image = if url.contains("://") && !url.starts_with("file://") {
             img(url.to_owned())
         } else {
@@ -361,6 +416,26 @@ impl RenderContext<'_> {
     }
 
     fn render_code_block(&self, language: &Option<String>, code: &str) -> AnyElement {
+        match language.as_deref() {
+            Some("gallery") => {
+                return attachment_views::render_gallery(
+                    code,
+                    self.attachments,
+                    self.theme,
+                    self.language,
+                    self.open_image.as_ref(),
+                );
+            }
+            Some("attachments") => {
+                return attachment_views::render_attachments(
+                    code,
+                    self.attachments,
+                    self.theme,
+                    self.language,
+                );
+            }
+            _ => {}
+        }
         div()
             .w_full()
             .min_w_0()

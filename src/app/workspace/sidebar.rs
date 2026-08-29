@@ -159,13 +159,13 @@ impl Locus {
                             .font_weight(FontWeight::NORMAL)
                             .child(node.title.clone()),
                     )
-                    .when(node.attachment_count > 0, |row| {
+                    .when(!node.attachments.is_empty(), |row| {
                         row.child(
                             div()
                                 .flex_none()
                                 .text_xs()
                                 .text_color(theme.text_tertiary)
-                                .child(node.attachment_count.to_string()),
+                                .child(node.attachments.len().to_string()),
                         )
                     })
                     .when_some(node.change.or(node.descendant_change), |row, status| {

@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 mod note;
 mod note_atmosphere;
+mod note_preview;
 mod sidebar;
 mod window_chrome;
 
@@ -76,6 +77,8 @@ pub struct Locus {
     copied_library_node: Option<String>,
     note_scroll_handle: ScrollHandle,
     note_scrollbar_state: Rc<ScrollbarState>,
+    note_image_preview: Option<note_preview::NoteImagePreview>,
+    note_image_preview_generation: u64,
     fps_counter_visible: bool,
     fps_frame_count: u32,
     fps_value: u32,
@@ -189,6 +192,8 @@ impl Locus {
             copied_library_node: None,
             note_scroll_handle: ScrollHandle::new(),
             note_scrollbar_state: ScrollbarState::new(),
+            note_image_preview: None,
+            note_image_preview_generation: 0,
             fps_counter_visible: interface_state.fps_counter_visible,
             fps_frame_count: 0,
             fps_value: 0,
@@ -666,6 +671,9 @@ impl Render for Locus {
             .text_color(theme.text)
             .when(self.settings_open, |root| root.child(self.settings.clone()))
             .when(!self.settings_open, |root| root.child(workspace))
+            .when_some(self.render_note_image_preview(cx), |root, preview| {
+                root.child(preview)
+            })
     }
 }
 

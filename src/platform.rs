@@ -25,6 +25,29 @@ pub fn open_directory(path: &Path) -> Result<(), String> {
     }
 }
 
+pub fn open_path(path: &Path) -> Result<(), String> {
+    if !path.is_file() {
+        return Err("文件不存在或无法访问。".to_owned());
+    }
+
+    #[cfg(target_os = "macos")]
+    let mut command = Command::new("open");
+    #[cfg(target_os = "windows")]
+    let mut command = Command::new("explorer.exe");
+    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+    let mut command = Command::new("xdg-open");
+
+    let status = command
+        .arg(path)
+        .status()
+        .map_err(|error| format!("无法打开文件：{error}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("打开文件的进程退出，状态码：{status}"))
+    }
+}
+
 #[cfg(target_os = "macos")]
 pub fn show_about_panel() {
     use objc2::MainThreadMarker;
