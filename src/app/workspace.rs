@@ -1,19 +1,24 @@
 use std::time::{Duration, Instant};
 
+mod window_chrome;
+
 use gpui::{
-    Context, Div, Entity, FocusHandle, FontWeight, KeyDownEvent, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, Render, Role, Stateful, Window, div, prelude::*, px,
-    transparent_black,
+    Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, Render, Stateful, Window, div, prelude::*, px, transparent_black,
 };
 
+use super::panel_layout::{CONTENT_MIN_WIDTH, PanelFrame, fitted_panel_widths, slide_width};
+use super::settings::{Settings, SettingsEvent};
+use crate::config::{DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH};
+use crate::localization::Language;
 use crate::motion::WidthTween;
-use crate::settings::{Language, Preferences, Settings, SettingsEvent};
+use crate::preferences::Preferences;
 use crate::state::{
-    InterfaceState, LEFT_SIDEBAR_DEFAULT_WIDTH, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH,
-    RIGHT_SIDEBAR_DEFAULT_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH, RIGHT_SIDEBAR_MIN_WIDTH,
+    InterfaceState, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH,
+    RIGHT_SIDEBAR_MIN_WIDTH,
 };
 use crate::theme::Theme;
-use crate::ui::{Icon, icon};
+use crate::ui::{ActivationExt, Icon, toolbar_icon_button};
 use crate::{CloseWindow, OpenSettings, ToggleFpsCounter, ToggleLeftSidebar, ToggleRightSidebar};
 
 const TITLEBAR_HEIGHT: f32 = 48.0;
@@ -21,7 +26,6 @@ const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
 const TITLEBAR_CONTROL_INSET: f32 = 11.0;
 const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
-const CONTENT_MIN_WIDTH: f32 = 360.0;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum PanelSide {
@@ -34,22 +38,6 @@ struct PanelResizeDrag {
     side: PanelSide,
     start_mouse_x: f32,
     start_width: f32,
-}
-
-#[derive(Clone, Copy)]
-struct PanelFrame {
-    left_content: f32,
-    right_content: f32,
-    left: f32,
-    right: f32,
-    left_sliding: bool,
-    right_sliding: bool,
-}
-
-impl PanelFrame {
-    fn sliding(self) -> bool {
-        self.left_sliding || self.right_sliding
-    }
 }
 
 pub struct Locus {
@@ -287,225 +275,6 @@ impl Locus {
         window.request_animation_frame();
     }
 
-    fn window_drag_region(&self, id: &'static str, cx: &mut Context<Self>) -> Stateful<Div> {
-        div()
-            .id(id)
-            .h_full()
-            .on_click(|event, window, _| {
-                if event.click_count() == 2 {
-                    window.titlebar_double_click();
-                }
-            })
-            .on_mouse_down_out(cx.listener(|this, _, _, _| {
-                this.header_drag_armed = false;
-            }))
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|this, _, _, _| {
-                    this.header_drag_armed = true;
-                }),
-            )
-            .on_mouse_up(
-                MouseButton::Left,
-                cx.listener(|this, _, _, _| {
-                    this.header_drag_armed = false;
-                }),
-            )
-            .on_mouse_move(cx.listener(|this, _, window, _| {
-                if this.header_drag_armed {
-                    this.header_drag_armed = false;
-                    window.start_window_move();
-                }
-            }))
-    }
-
-    fn render_panel_toggle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
-        let theme = Theme::current(cx);
-        let language = self.language(cx);
-        let (focus, id, label, icon_kind) = match side {
-            PanelSide::Left => (
-                &self.left_toggle_focus,
-                "toggle-left-sidebar",
-                if self.left_sidebar_visible {
-                    language.text("隐藏左侧栏", "Hide left sidebar")
-                } else {
-                    language.text("显示左侧栏", "Show left sidebar")
-                },
-                Icon::PanelLeft,
-            ),
-            PanelSide::Right => (
-                &self.right_toggle_focus,
-                "toggle-right-sidebar",
-                if self.right_sidebar_visible {
-                    language.text("隐藏右侧栏", "Hide right sidebar")
-                } else {
-                    language.text("显示右侧栏", "Show right sidebar")
-                },
-                Icon::PanelRight,
-            ),
-        };
-
-        div()
-            .id(id)
-            .role(Role::Button)
-            .aria_label(label)
-            .track_focus(focus)
-            .tab_index(0)
-            .tab_stop(true)
-            .w(px(TITLEBAR_CONTROL_SIZE))
-            .h(px(TITLEBAR_CONTROL_SIZE))
-            .flex_none()
-            .rounded(px(6.0))
-            .flex()
-            .items_center()
-            .justify_center()
-            .cursor_default()
-            .focus_visible(|style| style.border_1().border_color(theme.focus))
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
-            .child(icon(icon_kind, 14.0, theme.text_secondary))
-            .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                cx.stop_propagation();
-            })
-            .on_key_down(cx.listener(move |this, event: &KeyDownEvent, _, cx| {
-                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                    this.toggle_panel(side, cx);
-                    cx.stop_propagation();
-                }
-            }))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                this.toggle_panel(side, cx);
-                cx.stop_propagation();
-            }))
-    }
-
-    fn render_left_titlebar(&self, left_control_clearance: f32, cx: &mut Context<Self>) -> Div {
-        div()
-            .h(px(TITLEBAR_HEIGHT))
-            .flex_none()
-            .flex()
-            .items_center()
-            .child(
-                self.window_drag_region("left-control-clearance-region", cx)
-                    .w(px(left_control_clearance))
-                    .flex_none(),
-            )
-            .child(
-                self.window_drag_region("left-title-region", cx)
-                    .min_w_0()
-                    .flex_1(),
-            )
-    }
-
-    fn render_content_titlebar(&self, left_control_clearance: f32, cx: &mut Context<Self>) -> Div {
-        div()
-            .h(px(TITLEBAR_HEIGHT))
-            .flex_none()
-            .flex()
-            .items_center()
-            .gap(px(8.0))
-            .pl(px(
-                (left_control_clearance - self.rendered_left_width).max(14.0)
-            ))
-            .pr(px(14.0))
-            .child(
-                self.window_drag_region("content-title-region", cx)
-                    .min_w_0()
-                    .flex_shrink(1.0)
-                    .flex()
-                    .items_center()
-                    .text_sm()
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .child(self.language(cx).text("未选择笔记", "No note selected")),
-            )
-            .child(
-                self.window_drag_region("content-center-drag-region", cx)
-                    .flex_1(),
-            )
-            .when(self.fps_counter_visible, |header| {
-                header.child(self.render_fps_counter(cx))
-            })
-            .when(!self.right_sidebar_visible, |header| {
-                header.child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
-            })
-    }
-
-    fn render_fps_counter(&self, cx: &mut Context<Self>) -> Div {
-        let theme = Theme::current(cx);
-
-        div()
-            .h(px(26.0))
-            .flex_none()
-            .px(px(6.0))
-            .flex()
-            .items_center()
-            .gap(px(5.0))
-            .text_xs()
-            .text_color(theme.text_tertiary)
-            .child(
-                div()
-                    .size(px(6.0))
-                    .rounded_full()
-                    .bg(if self.fps_value > 0 {
-                        theme.focus
-                    } else {
-                        theme.text_tertiary
-                    }),
-            )
-            .child(format!("{} FPS", self.fps_value))
-    }
-
-    fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {
-        div()
-            .h(px(TITLEBAR_HEIGHT))
-            .flex_none()
-            .flex()
-            .items_center()
-            .pl(px(10.0))
-            .pr(px(14.0))
-            .child(
-                self.window_drag_region("right-title-region", cx)
-                    .min_w_0()
-                    .flex_1(),
-            )
-            .child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
-    }
-
-    fn render_settings_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
-        let theme = Theme::current(cx);
-        let label = self.language(cx).text("设置", "Settings");
-
-        div()
-            .id("open-settings")
-            .role(Role::Button)
-            .aria_label(label)
-            .aria_keyshortcuts("Meta+,")
-            .track_focus(&self.settings_focus)
-            .tab_index(0)
-            .tab_stop(true)
-            .w(px(TITLEBAR_CONTROL_SIZE))
-            .h(px(TITLEBAR_CONTROL_SIZE))
-            .flex_none()
-            .rounded(px(6.0))
-            .flex()
-            .items_center()
-            .justify_center()
-            .cursor_default()
-            .focus_visible(|style| style.border_1().border_color(theme.focus))
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
-            .child(icon(Icon::Settings, 14.0, theme.text_secondary))
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
-                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                    this.open_settings(window, cx);
-                    cx.stop_propagation();
-                }
-            }))
-            .on_click(cx.listener(|this, _, window, cx| {
-                this.open_settings(window, cx);
-            }))
-    }
-
     fn render_panel_resize_handle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::current(cx);
         let active = self.panel_resize_drag.is_some_and(|drag| drag.side == side);
@@ -572,11 +341,11 @@ impl Locus {
         self.panel_resize_drag = None;
         match side {
             PanelSide::Left => {
-                self.left_sidebar_width = LEFT_SIDEBAR_DEFAULT_WIDTH;
+                self.left_sidebar_width = DEFAULT_LEFT_SIDEBAR_WIDTH;
                 self.left_sidebar_slide = None;
             }
             PanelSide::Right => {
-                self.right_sidebar_width = RIGHT_SIDEBAR_DEFAULT_WIDTH;
+                self.right_sidebar_width = DEFAULT_RIGHT_SIDEBAR_WIDTH;
                 self.right_sidebar_slide = None;
             }
         }
@@ -837,83 +606,9 @@ fn left_toggle_offset(fullscreen: bool) -> f32 {
     }
 }
 
-fn slide_width(slide: &mut Option<WidthTween>, target: f32) -> f32 {
-    match slide.and_then(|slide| slide.width_toward(target)) {
-        Some(width) => width,
-        None => {
-            *slide = None;
-            target
-        }
-    }
-}
-
-fn fitted_panel_widths(
-    viewport_width: f32,
-    left_visible: bool,
-    right_visible: bool,
-    preferred_left: f32,
-    preferred_right: f32,
-) -> (f32, f32) {
-    let left_min = if left_visible {
-        LEFT_SIDEBAR_MIN_WIDTH
-    } else {
-        0.0
-    };
-    let right_min = if right_visible {
-        RIGHT_SIDEBAR_MIN_WIDTH
-    } else {
-        0.0
-    };
-    let mut left = if left_visible {
-        preferred_left.clamp(LEFT_SIDEBAR_MIN_WIDTH, LEFT_SIDEBAR_MAX_WIDTH)
-    } else {
-        0.0
-    };
-    let mut right = if right_visible {
-        preferred_right.clamp(RIGHT_SIDEBAR_MIN_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH)
-    } else {
-        0.0
-    };
-
-    let available = (viewport_width - CONTENT_MIN_WIDTH).max(0.0);
-    let mut overflow = (left + right - available).max(0.0);
-    let right_reduction = overflow.min((right - right_min).max(0.0));
-    right -= right_reduction;
-    overflow -= right_reduction;
-    let left_reduction = overflow.min((left - left_min).max(0.0));
-    left -= left_reduction;
-    overflow -= left_reduction;
-
-    if overflow > 0.0 {
-        let right_reduction = overflow.min(right);
-        right -= right_reduction;
-        overflow -= right_reduction;
-        left = (left - overflow).max(0.0);
-    }
-
-    (left, right)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn panel_widths_preserve_the_content_minimum() {
-        let (left, right) = fitted_panel_widths(880.0, true, true, 420.0, 480.0);
-
-        assert_eq!(left, 240.0);
-        assert_eq!(right, 280.0);
-        assert_eq!(880.0 - left - right, CONTENT_MIN_WIDTH);
-    }
-
-    #[test]
-    fn hidden_panels_do_not_consume_width() {
-        assert_eq!(
-            fitted_panel_widths(880.0, false, true, 420.0, 480.0),
-            (0.0, 480.0)
-        );
-    }
 
     #[test]
     fn fullscreen_left_toggle_uses_the_window_inset() {

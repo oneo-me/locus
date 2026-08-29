@@ -1,10 +1,9 @@
 use gpui::{App, Global, Hsla, Window, WindowAppearance, hsla, rgb};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ThemePreference {
-    #[default]
     System,
     Light,
     Dark,

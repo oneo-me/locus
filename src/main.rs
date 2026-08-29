@@ -1,7 +1,9 @@
 mod app;
+mod config;
+mod localization;
 mod motion;
 mod platform;
-mod settings;
+mod preferences;
 mod state;
 mod storage;
 mod theme;
@@ -11,12 +13,14 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use app::Locus;
+use config::{WINDOW_HEIGHT, WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH, WINDOW_WIDTH};
 use gpui::{
     App, AppContext, Bounds, KeyBinding, Menu, MenuItem, TitlebarOptions,
     WindowBackgroundAppearance, WindowBounds, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
-use settings::{Language, Preferences};
+use localization::Language;
+use preferences::Preferences;
 use state::InterfaceState;
 
 actions!(
@@ -31,11 +35,6 @@ actions!(
         ToggleFpsCounter
     ]
 );
-
-const WINDOW_WIDTH: f32 = 1180.0;
-const WINDOW_HEIGHT: f32 = 760.0;
-const WINDOW_MIN_WIDTH: f32 = 880.0;
-const WINDOW_MIN_HEIGHT: f32 = 560.0;
 
 fn main() {
     let main_window: Rc<RefCell<Option<gpui::WindowHandle<Locus>>>> = Rc::new(RefCell::new(None));

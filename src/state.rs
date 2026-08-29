@@ -2,10 +2,12 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 
+use crate::config::{
+    DEFAULT_FPS_COUNTER_VISIBLE, DEFAULT_LEFT_SIDEBAR_VISIBLE, DEFAULT_LEFT_SIDEBAR_WIDTH,
+    DEFAULT_RIGHT_SIDEBAR_VISIBLE, DEFAULT_RIGHT_SIDEBAR_WIDTH, INTERFACE_STATE_FILE,
+};
 use crate::storage::data_directory;
 
-pub const LEFT_SIDEBAR_DEFAULT_WIDTH: f32 = 252.0;
-pub const RIGHT_SIDEBAR_DEFAULT_WIDTH: f32 = 460.0;
 pub const LEFT_SIDEBAR_MIN_WIDTH: f32 = 180.0;
 pub const LEFT_SIDEBAR_MAX_WIDTH: f32 = 420.0;
 pub const RIGHT_SIDEBAR_MIN_WIDTH: f32 = 280.0;
@@ -23,11 +25,11 @@ pub struct InterfaceState {
 impl Default for InterfaceState {
     fn default() -> Self {
         Self {
-            left_sidebar_width: LEFT_SIDEBAR_DEFAULT_WIDTH,
-            right_sidebar_width: RIGHT_SIDEBAR_DEFAULT_WIDTH,
-            left_sidebar_visible: true,
-            right_sidebar_visible: true,
-            fps_counter_visible: false,
+            left_sidebar_width: DEFAULT_LEFT_SIDEBAR_WIDTH,
+            right_sidebar_width: DEFAULT_RIGHT_SIDEBAR_WIDTH,
+            left_sidebar_visible: DEFAULT_LEFT_SIDEBAR_VISIBLE,
+            right_sidebar_visible: DEFAULT_RIGHT_SIDEBAR_VISIBLE,
+            fps_counter_visible: DEFAULT_FPS_COUNTER_VISIBLE,
         }
     }
 }
@@ -67,10 +69,10 @@ impl InterfaceState {
 
     fn normalize(&mut self) {
         if !self.left_sidebar_width.is_finite() {
-            self.left_sidebar_width = LEFT_SIDEBAR_DEFAULT_WIDTH;
+            self.left_sidebar_width = DEFAULT_LEFT_SIDEBAR_WIDTH;
         }
         if !self.right_sidebar_width.is_finite() {
-            self.right_sidebar_width = RIGHT_SIDEBAR_DEFAULT_WIDTH;
+            self.right_sidebar_width = DEFAULT_RIGHT_SIDEBAR_WIDTH;
         }
         self.left_sidebar_width = self
             .left_sidebar_width
@@ -82,7 +84,7 @@ impl InterfaceState {
 }
 
 fn state_path() -> Result<std::path::PathBuf, String> {
-    data_directory().map(|directory| directory.join("state.json"))
+    data_directory().map(|directory| directory.join(INTERFACE_STATE_FILE))
 }
 
 #[cfg(test)]
@@ -115,7 +117,7 @@ mod tests {
 
         state.normalize();
 
-        assert_eq!(state.left_sidebar_width, LEFT_SIDEBAR_DEFAULT_WIDTH);
+        assert_eq!(state.left_sidebar_width, DEFAULT_LEFT_SIDEBAR_WIDTH);
         assert_eq!(state.right_sidebar_width, RIGHT_SIDEBAR_MAX_WIDTH);
     }
 }
