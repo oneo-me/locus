@@ -1,7 +1,8 @@
-use gpui::{AnyElement, ObjectFit, StyledImage, img};
+use gpui::{AnyElement, ObjectFit, StyledImage};
 
 use super::*;
 use crate::document_library::restore_archived_note;
+use crate::ui::document_icon_image;
 
 impl Settings {
     fn restore_archive(&mut self, note: ArchivedNote, cx: &mut Context<Self>) {
@@ -192,9 +193,9 @@ impl Settings {
 }
 
 fn archive_note_icon(note: &ArchivedNote, theme: Theme) -> AnyElement {
-    if let Some(path) = &note.icon_path {
+    if let Some(image) = &note.icon_image {
         let fallback = note.icon.clone();
-        return img(path.clone())
+        return document_icon_image(image)
             .size(px(16.0))
             .flex_none()
             .rounded(px(3.0))

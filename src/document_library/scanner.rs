@@ -1,17 +1,15 @@
 use std::collections::HashSet;
-use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use image::{ImageDecoder, ImageReader, metadata::Orientation};
 
 use super::repository::{RepositoryChange, document_change};
-use super::{ArchivedNote, Attachment, ChangeStatus, ImageSize, LibraryNode};
+use super::{ArchivedNote, Attachment, ChangeStatus, DocumentIcon, ImageSize, LibraryNode};
 
 const DOCUMENT_FILE: &str = "index.md";
 const DOCUMENT_ICON_FILE: &str = "icon.png";
-static NEXT_TEMPORARY_FILE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Default)]
 struct DocumentMetadata {
@@ -63,14 +61,14 @@ pub(super) fn scan_children(
         };
         let relative_directory = relative_path(root, &path);
         let title = metadata.title.unwrap_or_else(|| name.into_owned());
-        let icon_path = regular_icon_path(&path);
+        let icon_image = regular_icon(&path);
         if metadata.archived {
             archived_notes.push(ArchivedNote {
                 path: relative_directory.clone(),
                 document_path: document_path.clone(),
                 title: title.clone(),
                 icon: metadata.icon.clone(),
-                icon_path: icon_path.clone(),
+                icon_image: icon_image.clone(),
             });
         }
 
@@ -100,7 +98,7 @@ pub(super) fn scan_children(
             document_path: has_document.then_some(document_path),
             title,
             icon: metadata.icon,
-            icon_path,
+            icon_image,
             summary: metadata.summary,
             attachments,
             change,
@@ -122,20 +120,6 @@ pub fn load_note(path: &Path) -> Result<String, std::io::Error> {
     fs::read_to_string(path).map(|content| document_body(&content).to_owned())
 }
 
-pub fn restore_archived_note(path: &Path) -> Result<(), String> {
-    let file_type = path
-        .symlink_metadata()
-        .map_err(|error| error.to_string())?
-        .file_type();
-    if !file_type.is_file() || file_type.is_symlink() {
-        return Err("笔记文件不存在或无法安全访问。".to_owned());
-    }
-
-    let content = fs::read_to_string(path).map_err(|error| error.to_string())?;
-    let restored = remove_archived_metadata(&content)?;
-    write_atomically(path, restored.as_bytes())
-}
-
 fn relative_path(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
         .unwrap_or(path)
@@ -145,12 +129,17 @@ fn relative_path(root: &Path, path: &Path) -> String {
         .join("/")
 }
 
-fn regular_icon_path(directory: &Path) -> Option<std::path::PathBuf> {
+fn regular_icon(directory: &Path) -> Option<DocumentIcon> {
     let path = directory.join(DOCUMENT_ICON_FILE);
-    path.symlink_metadata()
-        .ok()
-        .filter(|metadata| metadata.is_file() && !metadata.file_type().is_symlink())
-        .map(|_| path)
+    let metadata = path.symlink_metadata().ok()?;
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return None;
+    }
+    Some(DocumentIcon {
+        path,
+        modified: metadata.modified().ok(),
+        byte_len: metadata.len(),
+    })
 }
 
 fn read_attachments(directory: &Path) -> Result<Vec<Attachment>, std::io::Error> {
@@ -254,92 +243,6 @@ fn frontmatter_parts(content: &str) -> Option<(&str, &str)> {
         .map(|frontmatter| (frontmatter, ""))
 }
 
-fn remove_archived_metadata(content: &str) -> Result<String, String> {
-    let (bom, normalized) = content
-        .strip_prefix('\u{feff}')
-        .map_or(("", content), |content| ("\u{feff}", content));
-    let (opening, line_ending) = if normalized.starts_with("---\r\n") {
-        ("---\r\n", "\r\n")
-    } else if normalized.starts_with("---\n") {
-        ("---\n", "\n")
-    } else {
-        return Err("笔记缺少有效的 YAML frontmatter。".to_owned());
-    };
-    let rest = &normalized[opening.len()..];
-    let closing = format!("{line_ending}---");
-    let Some(frontmatter_end) = rest.find(&closing) else {
-        return Err("笔记缺少有效的 YAML frontmatter。".to_owned());
-    };
-    let frontmatter = &rest[..frontmatter_end];
-    if !parse_frontmatter_metadata(frontmatter).archived {
-        return Err("笔记当前没有归档。".to_owned());
-    }
-
-    let mut removed = false;
-    let remaining = frontmatter
-        .split(line_ending)
-        .filter(|line| {
-            if is_archived_metadata_line(line) {
-                removed = true;
-                false
-            } else {
-                true
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(line_ending);
-    if !removed || parse_frontmatter_metadata(&remaining).archived {
-        return Err("无法安全移除归档字段。".to_owned());
-    }
-
-    Ok(format!(
-        "{bom}{opening}{remaining}{}",
-        &rest[frontmatter_end..]
-    ))
-}
-
-fn is_archived_metadata_line(line: &str) -> bool {
-    if line.starts_with(char::is_whitespace) {
-        return false;
-    }
-    let Some((key, _)) = line.split_once(':') else {
-        return false;
-    };
-    matches!(key.trim_end(), "archived" | "'archived'" | "\"archived\"")
-}
-
-fn write_atomically(path: &Path, content: &[u8]) -> Result<(), String> {
-    let directory = path.parent().ok_or_else(|| "笔记路径无效。".to_owned())?;
-    let file_name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .ok_or_else(|| "笔记路径无效。".to_owned())?;
-    let temporary = directory.join(format!(
-        ".{file_name}.{}.{}.tmp",
-        std::process::id(),
-        NEXT_TEMPORARY_FILE.fetch_add(1, Ordering::Relaxed)
-    ));
-    let result = (|| {
-        let permissions = fs::metadata(path)
-            .map_err(|error| error.to_string())?
-            .permissions();
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)
-            .map_err(|error| error.to_string())?;
-        file.set_permissions(permissions)
-            .map_err(|error| error.to_string())?;
-        file.write_all(content).map_err(|error| error.to_string())?;
-        file.sync_all().map_err(|error| error.to_string())?;
-        fs::rename(&temporary, path).map_err(|error| error.to_string())
-    })();
-    if result.is_err() {
-        let _ = fs::remove_file(&temporary);
-    }
-    result
-}
-
 fn optional_string(value: Option<serde_json::Value>) -> Option<String> {
     let value = match value? {
         serde_json::Value::String(value) => value,
@@ -390,22 +293,5 @@ mod tests {
         assert_eq!(metadata.summary.as_deref(), Some("A short summary."));
         assert_eq!(document_body(document), "# Heading\n\nBody");
         assert_eq!(document_body("---\ntitle: Notes\n---"), "");
-    }
-
-    #[test]
-    fn removes_only_the_archived_frontmatter_field() {
-        let document = "\u{feff}---\r\ntitle: Notes\r\narchived: true # hidden\r\nsummary: Kept\r\n---\r\n# Body\r\n";
-
-        assert_eq!(
-            remove_archived_metadata(document).unwrap(),
-            "\u{feff}---\r\ntitle: Notes\r\nsummary: Kept\r\n---\r\n# Body\r\n"
-        );
-    }
-
-    #[test]
-    fn refuses_to_rewrite_an_unarchived_document() {
-        let error = remove_archived_metadata("---\ntitle: Notes\n---\nBody").unwrap_err();
-
-        assert_eq!(error, "笔记当前没有归档。");
     }
 }

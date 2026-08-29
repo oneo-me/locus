@@ -267,7 +267,7 @@ fn article_value(
     let document_path = node.document_path.as_deref().expect("document node");
     let body = load_note(document_path)
         .map_err(|error| format!("无法读取 {}：{error}", document_path.display()))?;
-    let icon = if node.icon_path.is_some() {
+    let icon = if node.icon_image.is_some() {
         Some("icon.png")
     } else {
         node.icon.as_deref()

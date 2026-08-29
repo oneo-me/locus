@@ -4,10 +4,12 @@ use super::note_atmosphere::{
 use super::{Locus, SelectedNote};
 use crate::document_library::LibraryNode;
 use crate::theme::Theme;
-use crate::ui::{ActivationExt, Icon, Markdown, toolbar_icon_button, vertical_scrollbar};
+use crate::ui::{
+    ActivationExt, Icon, Markdown, document_icon_image, toolbar_icon_button, vertical_scrollbar,
+};
 use gpui::{
     AnyElement, BorderStyle, Bounds, ClipboardItem, Div, Edges, FontWeight, MouseButton, ObjectFit,
-    PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, img, linear_color_stop,
+    PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, linear_color_stop,
     linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
 const NOTE_MAX_WIDTH: f32 = 832.0;
@@ -215,6 +217,7 @@ impl Locus {
                 ));
             }
         });
+        let note_menu = self.render_note_menu(node, theme, cx);
 
         self.window_drag_region("note-titlebar-region", cx)
             .occlude()
@@ -265,7 +268,8 @@ impl Locus {
                     })
                     .child(copy_button)
                     .child(edit_button)
-                    .child(open_directory_button),
+                    .child(open_directory_button)
+                    .child(note_menu),
             )
     }
 }
@@ -669,10 +673,10 @@ fn rotate_point(value: (f32, f32), center: (f32, f32), angle: f32) -> (f32, f32)
 }
 
 fn note_icon(node: &LibraryNode) -> Option<AnyElement> {
-    if let Some(path) = &node.icon_path {
+    if let Some(image) = &node.icon_image {
         let fallback = node.icon.clone();
         return Some(
-            img(path.clone())
+            document_icon_image(image)
                 .size(px(22.0))
                 .flex_none()
                 .rounded(px(5.0))

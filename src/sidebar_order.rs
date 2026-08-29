@@ -143,7 +143,7 @@ mod tests {
             document_path: None,
             title: path.to_owned(),
             icon: None,
-            icon_path: None,
+            icon_image: None,
             summary: None,
             attachments: Vec::new(),
             change: None,

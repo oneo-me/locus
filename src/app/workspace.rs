@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 
 mod note;
 mod note_atmosphere;
+mod note_menu;
 mod pane;
 mod sidebar;
 mod window_chrome;
@@ -111,6 +112,11 @@ pub struct Locus {
     note_copy_focus: FocusHandle,
     note_edit_focus: FocusHandle,
     note_open_directory_focus: FocusHandle,
+    note_menu_focus: FocusHandle,
+    note_menu_upload_focus: FocusHandle,
+    note_menu_archive_focus: FocusHandle,
+    note_menu_open: bool,
+    note_action_pending: bool,
     copied_library_node: Option<String>,
     note_copy_generation: u64,
     mcp_endpoint_copied: bool,
@@ -355,6 +361,11 @@ impl Locus {
             note_copy_focus: cx.focus_handle(),
             note_edit_focus: cx.focus_handle(),
             note_open_directory_focus: cx.focus_handle(),
+            note_menu_focus: cx.focus_handle(),
+            note_menu_upload_focus: cx.focus_handle(),
+            note_menu_archive_focus: cx.focus_handle(),
+            note_menu_open: false,
+            note_action_pending: false,
             copied_library_node: None,
             note_copy_generation: 0,
             mcp_endpoint_focus: cx.focus_handle(),
@@ -608,6 +619,7 @@ impl Locus {
         self.selected_note = None;
         self.selected_library_node = None;
         self.copied_library_node = None;
+        self.note_menu_open = false;
         self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
         self.note_scroll_handle
             .set_offset(gpui::point(px(0.0), px(0.0)));

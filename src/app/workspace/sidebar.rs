@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use gpui::{
     Animation, AnimationExt, AnyElement, Div, DragMoveEvent, FontWeight, ObjectFit, Role,
-    StatefulInteractiveElement, StyledImage, Transformation, div, ease_out_quint, img, prelude::*,
-    px, radians,
+    StatefulInteractiveElement, StyledImage, Transformation, div, ease_out_quint, prelude::*, px,
+    radians,
 };
 
 use super::Locus;
@@ -13,7 +13,7 @@ use crate::document_library::{ChangeStatus, LibraryNode};
 use crate::localization::Language;
 use crate::sidebar_order::reorder_siblings;
 use crate::theme::Theme;
-use crate::ui::{Icon, icon, vertical_scrollbar};
+use crate::ui::{Icon, document_icon_image, icon, vertical_scrollbar};
 
 const TREE_ROW_HEIGHT: f32 = 30.0;
 const TREE_LEVEL_INDENT: f32 = 16.0;
@@ -268,6 +268,7 @@ impl Locus {
         let selection_changed = self.selected_library_node.as_deref() != Some(path.as_str());
         if selection_changed {
             self.copied_library_node = None;
+            self.note_menu_open = false;
             self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
             self.note_scroll_handle
                 .set_offset(gpui::point(gpui::px(0.0), gpui::px(0.0)));
@@ -465,10 +466,10 @@ pub(super) fn expanded_paths_for_selection(
 }
 
 fn document_icon(node: &LibraryNode) -> Option<AnyElement> {
-    if let Some(path) = &node.icon_path {
+    if let Some(image) = &node.icon_image {
         let fallback = node.icon.clone();
         return Some(
-            img(path.clone())
+            document_icon_image(image)
                 .size(px(14.0))
                 .flex_none()
                 .rounded(px(3.0))

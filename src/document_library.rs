@@ -1,17 +1,26 @@
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+mod mutations;
 mod repository;
 mod scanner;
 mod watcher;
 
-pub use scanner::{load_note, restore_archived_note};
+pub use mutations::{archive_note, restore_archived_note, update_note_icon};
+pub use scanner::load_note;
 pub use watcher::{LibraryWatchEvent, LibraryWatcher};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ChangeStatus {
     Added,
     Modified,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct DocumentIcon {
+    pub path: PathBuf,
+    pub modified: Option<SystemTime>,
+    pub byte_len: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -21,7 +30,7 @@ pub struct LibraryNode {
     pub document_path: Option<PathBuf>,
     pub title: String,
     pub icon: Option<String>,
-    pub icon_path: Option<PathBuf>,
+    pub icon_image: Option<DocumentIcon>,
     pub summary: Option<String>,
     pub attachments: Vec<Attachment>,
     pub change: Option<ChangeStatus>,
@@ -35,7 +44,7 @@ pub struct ArchivedNote {
     pub document_path: PathBuf,
     pub title: String,
     pub icon: Option<String>,
-    pub icon_path: Option<PathBuf>,
+    pub icon_image: Option<DocumentIcon>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -176,6 +185,33 @@ mod tests {
         let tree = LibraryTree::load(Some(&library.0));
         assert_eq!(tree.node("notes").unwrap().title, "Notes");
         assert!(load_note(&document_path).is_err());
+    }
+
+    #[test]
+    fn icon_source_changes_when_the_icon_file_changes() {
+        let library = TestLibrary::new();
+        let note_directory = library.0.join("notes");
+        fs::create_dir(&note_directory).unwrap();
+        fs::write(note_directory.join("index.md"), "---\ntitle: Notes\n---\n").unwrap();
+        let icon_path = note_directory.join("icon.png");
+        fs::write(&icon_path, [1]).unwrap();
+        let first = LibraryTree::load(Some(&library.0))
+            .node("notes")
+            .unwrap()
+            .icon_image
+            .clone()
+            .unwrap();
+
+        fs::write(&icon_path, [1, 2]).unwrap();
+        let second = LibraryTree::load(Some(&library.0))
+            .node("notes")
+            .unwrap()
+            .icon_image
+            .clone()
+            .unwrap();
+
+        assert_ne!(first, second);
+        assert_eq!(second.byte_len, 2);
     }
 
     #[test]
