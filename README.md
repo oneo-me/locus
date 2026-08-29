@@ -6,13 +6,22 @@ Markdown 文档树始终是知识内容的唯一事实来源。Locus 不自行�
 
 ## 实现
 
-Locus 使用 Rust 和 GPUI 构建原生桌面应用。当前基础应用会打开一个 800 × 600 的原生窗口。
+Locus 使用 Rust 和 GPUI 构建原生桌面应用。当前基础应用会打开一个 1180 × 760 的原生窗口。
 
-运行应用：
+直接运行应用：
 
 ```bash
 cargo run
 ```
+
+构建并签名 macOS 应用包：
+
+```bash
+./scripts/bundle.sh debug
+./scripts/bundle.sh release
+```
+
+应用包分别输出到 `target/debug/Locus Debug.app` 与 `target/release/Locus.app`。默认使用 ad-hoc 签名；需要 Developer ID 签名时设置 `LOCUS_CODESIGN_IDENTITY`。
 
 构建前需要安装最新版稳定 Rust、Xcode 和 Xcode Command Line Tools。
 

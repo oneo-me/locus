@@ -8,10 +8,10 @@
     },
     {
       "label": "build",
-      "type": "cargo",
-      "command": "build",
+      "type": "shell",
+      "command": "scripts/bundle.sh",
       "args": [
-        "--release"
+        "release"
       ]
     }
   ]

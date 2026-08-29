@@ -14,16 +14,58 @@ pub fn show_about_panel() {
 #[cfg(not(target_os = "macos"))]
 pub fn show_about_panel() {}
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, target_os = "macos"))]
 pub fn configure_main_window_close_behavior(window: &Window, cx: &gpui::App) {
-    window.on_window_should_close(cx, |_, cx| {
-        cx.quit();
-        true
+    window.on_window_should_close(cx, |window, cx| {
+        close_main_window(window, cx);
+        cfg!(debug_assertions)
     });
 }
 
-#[cfg(not(debug_assertions))]
+#[cfg(all(not(debug_assertions), not(target_os = "macos")))]
 pub fn configure_main_window_close_behavior(_: &Window, _: &gpui::App) {}
+
+pub fn close_main_window(window: &mut Window, cx: &mut gpui::App) {
+    #[cfg(debug_assertions)]
+    {
+        let _ = window;
+        cx.quit();
+    }
+    #[cfg(all(not(debug_assertions), target_os = "macos"))]
+    {
+        let _ = cx;
+        hide_window(window);
+    }
+    #[cfg(all(not(debug_assertions), not(target_os = "macos")))]
+    {
+        let _ = cx;
+        window.remove_window();
+    }
+}
+
+#[cfg(all(not(debug_assertions), target_os = "macos"))]
+fn hide_window(window: &mut Window) {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::NSView;
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+    let Ok(handle) = HasWindowHandle::window_handle(window) else {
+        return;
+    };
+    let RawWindowHandle::AppKit(handle) = handle.as_raw() else {
+        return;
+    };
+    let Some(_main_thread) = MainThreadMarker::new() else {
+        return;
+    };
+
+    unsafe {
+        let view = handle.ns_view.cast::<NSView>().as_ref();
+        if let Some(native_window) = view.window() {
+            native_window.orderOut(None);
+        }
+    }
+}
 
 #[cfg(target_os = "macos")]
 struct SidebarMaterial {

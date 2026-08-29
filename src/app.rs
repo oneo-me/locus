@@ -213,16 +213,7 @@ impl Locus {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        #[cfg(debug_assertions)]
-        {
-            let _ = window;
-            cx.quit();
-        }
-        #[cfg(not(debug_assertions))]
-        {
-            let _ = cx;
-            window.remove_window();
-        }
+        crate::platform::close_main_window(window, cx);
     }
 
     fn toggle_fps_counter_action(
