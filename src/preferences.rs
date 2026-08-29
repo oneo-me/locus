@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::{
     DEFAULT_CODE_FONT_FAMILY, DEFAULT_CODE_FONT_SIZE, DEFAULT_LANGUAGE, DEFAULT_LIBRARY_PATH,
-    DEFAULT_TERMINAL_COMMAND, DEFAULT_TERMINAL_SHELL, DEFAULT_THEME, DEFAULT_UI_FONT_SIZE,
-    SETTINGS_FILE,
+    DEFAULT_MCP_ENABLED, DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT, DEFAULT_TERMINAL_COMMAND,
+    DEFAULT_TERMINAL_SHELL, DEFAULT_THEME, DEFAULT_UI_FONT_SIZE, SETTINGS_FILE,
 };
 use crate::localization::Language;
 use crate::storage::data_directory;
@@ -88,6 +88,9 @@ pub struct Preferences {
     pub terminal_command: String,
     pub terminal_color_scheme: TerminalColorScheme,
     pub terminal_cursor_style: TerminalCursorStyle,
+    pub mcp_enabled: bool,
+    pub mcp_local_network: bool,
+    pub mcp_port: u16,
 }
 
 impl Default for Preferences {
@@ -104,6 +107,9 @@ impl Default for Preferences {
             terminal_command: DEFAULT_TERMINAL_COMMAND.to_owned(),
             terminal_color_scheme: TerminalColorScheme::Auto,
             terminal_cursor_style: TerminalCursorStyle::Block,
+            mcp_enabled: DEFAULT_MCP_ENABLED,
+            mcp_local_network: DEFAULT_MCP_LOCAL_NETWORK,
+            mcp_port: DEFAULT_MCP_PORT,
         }
     }
 }
@@ -147,6 +153,9 @@ impl Preferences {
         if !FONT_SIZES.contains(&self.code_font_size) {
             self.code_font_size = defaults.code_font_size;
         }
+        if self.mcp_port == 0 {
+            self.mcp_port = defaults.mcp_port;
+        }
         self.code_font_family = self.code_font_family.trim().to_owned();
         if self.code_font_family.is_empty() {
             self.code_font_family = defaults.code_font_family;
@@ -185,6 +194,9 @@ mod tests {
             terminal_command: "git status".to_owned(),
             terminal_color_scheme: TerminalColorScheme::Dark,
             terminal_cursor_style: TerminalCursorStyle::Bar,
+            mcp_enabled: true,
+            mcp_local_network: true,
+            mcp_port: 43123,
         };
         let json = serde_json::to_string(&preferences).unwrap();
         let restored: Preferences = serde_json::from_str(&json).unwrap();
@@ -206,6 +218,9 @@ mod tests {
             restored.terminal_cursor_style,
             preferences.terminal_cursor_style
         );
+        assert_eq!(restored.mcp_enabled, preferences.mcp_enabled);
+        assert_eq!(restored.mcp_local_network, preferences.mcp_local_network);
+        assert_eq!(restored.mcp_port, preferences.mcp_port);
     }
 
     #[test]
@@ -214,6 +229,7 @@ mod tests {
             ui_font_size: f32::NAN,
             code_font_family: "  ".to_owned(),
             code_font_size: 99.0,
+            mcp_port: 0,
             ..Preferences::default()
         };
 
@@ -222,5 +238,6 @@ mod tests {
         assert_eq!(preferences.ui_font_size, DEFAULT_UI_FONT_SIZE);
         assert_eq!(preferences.code_font_family, DEFAULT_CODE_FONT_FAMILY);
         assert_eq!(preferences.code_font_size, DEFAULT_CODE_FONT_SIZE);
+        assert_eq!(preferences.mcp_port, DEFAULT_MCP_PORT);
     }
 }

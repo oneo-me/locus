@@ -1,14 +1,16 @@
 use super::*;
 
 impl Settings {
-    fn render_setting_row(
+    pub(super) fn render_setting_row(
         &self,
-        title: &'static str,
-        description: &'static str,
+        title: impl Into<gpui::SharedString>,
+        description: impl Into<gpui::SharedString>,
         control: impl IntoElement,
         cx: &App,
     ) -> gpui::Div {
         let theme = Theme::current(cx);
+        let title = title.into();
+        let description = description.into();
         div()
             .min_h(px(68.0))
             .px(px(20.0))

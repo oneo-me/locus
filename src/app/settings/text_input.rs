@@ -102,6 +102,7 @@ pub struct TextInput {
     last_layout: Option<ShapedLine>,
     last_bounds: Option<Bounds<Pixels>>,
     selecting: bool,
+    width: Pixels,
 }
 
 impl EventEmitter<TextInputEvent> for TextInput {}
@@ -127,7 +128,13 @@ impl TextInput {
             last_layout: None,
             last_bounds: None,
             selecting: false,
+            width: px(320.0),
         }
+    }
+
+    pub fn with_width(mut self, width: Pixels) -> Self {
+        self.width = width;
+        self
     }
 
     pub fn set_placeholder(
@@ -680,7 +687,7 @@ impl Render for TextInput {
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_move(cx.listener(Self::on_mouse_move))
-            .w(px(320.0))
+            .w(self.width)
             .h(px(32.0))
             .overflow_hidden()
             .rounded(px(7.0))

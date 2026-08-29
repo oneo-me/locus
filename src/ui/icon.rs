@@ -14,6 +14,7 @@ pub enum Icon {
     Loader,
     PanelLeft,
     PanelRight,
+    Plug,
     Settings,
     Terminal,
 }
@@ -32,6 +33,7 @@ pub fn icon(icon: Icon, size: f32, color: Hsla) -> Svg {
         Icon::Loader => include_bytes!("../../assets/icons/loader.svg"),
         Icon::PanelLeft => include_bytes!("../../assets/icons/panel-left.svg"),
         Icon::PanelRight => include_bytes!("../../assets/icons/panel-right.svg"),
+        Icon::Plug => include_bytes!("../../assets/icons/plug.svg"),
         Icon::Settings => include_bytes!("../../assets/icons/settings.svg"),
         Icon::Terminal => include_bytes!("../../assets/icons/terminal.svg"),
     };

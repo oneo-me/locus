@@ -21,6 +21,7 @@ use crate::config::{
 };
 use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use crate::localization::Language;
+use crate::mcp::McpServerController;
 use crate::motion::WidthTween;
 use crate::preferences::Preferences;
 use crate::sidebar_order::SidebarOrderState;
@@ -80,6 +81,7 @@ pub struct Locus {
     settings_focus: FocusHandle,
     settings_open: bool,
     settings: Entity<Settings>,
+    mcp_server: McpServerController,
     terminal: Option<Entity<TerminalView>>,
     terminal_needs_restart: bool,
     library_tree: LibraryTree,
@@ -185,7 +187,17 @@ impl Locus {
         let terminal = library_path
             .clone()
             .map(|path| cx.new(|cx| TerminalView::new(path, terminal_configuration.clone(), cx)));
-        let settings = cx.new(|cx| Settings::new(preferences, load_error, root_focus.clone(), cx));
+        let mcp_server = McpServerController::new(&preferences);
+        let mcp_server_state = mcp_server.state();
+        let settings = cx.new(|cx| {
+            Settings::new(
+                preferences,
+                load_error,
+                mcp_server_state,
+                root_focus.clone(),
+                cx,
+            )
+        });
         cx.subscribe(
             &settings,
             |this, _, event: &SettingsEvent, cx| match event {
@@ -208,6 +220,7 @@ impl Locus {
                 SettingsEvent::LibraryChanged(path) => {
                     this.change_library(path, cx);
                     this.restart_terminal(cx);
+                    this.restart_mcp_server(cx);
                 }
                 SettingsEvent::TerminalLaunchChanged => {
                     this.terminal_needs_restart = true;
@@ -233,6 +246,9 @@ impl Locus {
                         });
                     }
                     cx.notify();
+                }
+                SettingsEvent::McpConfigurationChanged => {
+                    this.restart_mcp_server(cx);
                 }
             },
         )
@@ -293,6 +309,7 @@ impl Locus {
             settings_focus: cx.focus_handle(),
             settings_open: false,
             settings,
+            mcp_server,
             terminal,
             terminal_needs_restart: false,
             library_tree,
@@ -473,6 +490,14 @@ impl Locus {
         });
         self.terminal_needs_restart = false;
         cx.notify();
+    }
+
+    fn restart_mcp_server(&mut self, cx: &mut Context<Self>) {
+        let preferences = self.settings.read(cx).preferences().clone();
+        let state = self.mcp_server.apply(&preferences);
+        self.settings.update(cx, |settings, cx| {
+            settings.set_mcp_server_state(state, cx);
+        });
     }
 
     fn apply_library_tree(

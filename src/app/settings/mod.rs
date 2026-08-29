@@ -1,20 +1,22 @@
 use std::path::Path;
 
 mod controls;
+mod mcp;
 mod pages;
 pub(super) mod text_input;
 
 use crate::config::{DEFAULT_CODE_FONT_FAMILY, DEFAULT_UI_FONT_SIZE};
 use crate::localization::Language;
+use crate::mcp::McpServerState;
 use crate::preferences::{
     EditorPreference, FONT_SIZES, Preferences, TerminalColorScheme, TerminalCursorStyle,
 };
 use crate::theme::{self, Theme, ThemePreference};
 use crate::ui::{ActivationExt, Icon, icon};
 use gpui::{
-    App, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight, KeyDownEvent,
-    MouseButton, PathPromptOptions, Rems, Render, Role, Stateful, StatefulInteractiveElement,
-    Window, deferred, div, prelude::*, px, rems,
+    App, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight,
+    KeyDownEvent, MouseButton, PathPromptOptions, Rems, Render, Role, Stateful,
+    StatefulInteractiveElement, Toggled, Window, deferred, div, prelude::*, px, rems,
 };
 
 const SETTINGS_SIDEBAR_WIDTH: f32 = 252.0;
@@ -32,6 +34,16 @@ const FOCUS_CODE_FONT: usize = 9;
 const FOCUS_CODE_FONT_FAMILY: usize = 10;
 const FOCUS_TERMINAL_COLOR_SCHEME: usize = 11;
 const FOCUS_TERMINAL_CURSOR_STYLE: usize = 12;
+const FOCUS_MCP_PAGE: usize = 13;
+const FOCUS_MCP_ENABLED: usize = 14;
+const FOCUS_MCP_LOCAL_NETWORK: usize = 15;
+const FOCUS_MCP_PORT_APPLY: usize = 22;
+const FOCUS_MCP_ENDPOINT_COPY: usize = 23;
+const FOCUS_MCP_CODEX_COPY: usize = 24;
+const FOCUS_MCP_CLAUDE_COPY: usize = 25;
+const FOCUS_MCP_CURSOR_COPY: usize = 26;
+const FOCUS_MCP_OPENCODE_COPY: usize = 27;
+const FOCUS_MCP_GENERIC_COPY: usize = 28;
 
 fn font_matches_search(family: &str, normalized_query: &str) -> bool {
     normalized_query.is_empty() || family.to_lowercase().contains(normalized_query)
@@ -43,6 +55,7 @@ enum SettingsPage {
     General,
     Appearance,
     Terminal,
+    Mcp,
 }
 
 #[derive(Clone, Copy)]
@@ -92,6 +105,7 @@ pub enum SettingsEvent {
     TerminalColorSchemeChanged(TerminalColorScheme),
     TerminalCursorStyleChanged(TerminalCursorStyle),
     CodeFontChanged(String, f32),
+    McpConfigurationChanged,
 }
 
 pub struct Settings {
@@ -107,6 +121,11 @@ pub struct Settings {
     code_font_search_input: Entity<text_input::TextInput>,
     terminal_shell_input: Entity<text_input::TextInput>,
     terminal_command_input: Entity<text_input::TextInput>,
+    mcp_port_input: Entity<text_input::TextInput>,
+    mcp_port_draft: String,
+    mcp_port_error: Option<String>,
+    mcp_server_state: McpServerState,
+    mcp_copied: Option<&'static str>,
     error: Option<String>,
 }
 
@@ -116,6 +135,7 @@ impl Settings {
     pub fn new(
         preferences: Preferences,
         load_error: Option<String>,
+        mcp_server_state: McpServerState,
         return_focus: FocusHandle,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -156,6 +176,17 @@ impl Settings {
                 cx,
             )
         });
+        let mcp_port_draft = preferences.mcp_port.to_string();
+        let mcp_port_input = cx.new(|cx| {
+            text_input::TextInput::new(
+                "mcp-port-input",
+                mcp_port_draft.clone(),
+                language.text("MCP 端口", "MCP port"),
+                language.text("1 到 65535", "1 to 65535"),
+                cx,
+            )
+            .with_width(px(164.0))
+        });
         cx.subscribe(
             &code_font_search_input,
             |this, _, event: &text_input::TextInputEvent, cx| {
@@ -185,10 +216,20 @@ impl Settings {
             },
         )
         .detach();
+        cx.subscribe(
+            &mcp_port_input,
+            |this, _, event: &text_input::TextInputEvent, cx| {
+                let text_input::TextInputEvent::Changed(value) = event;
+                this.mcp_port_draft = value.clone();
+                this.mcp_port_error = None;
+                cx.notify();
+            },
+        )
+        .detach();
         Self {
             focus: cx.focus_handle(),
             return_focus,
-            controls: (0..24).map(|_| cx.focus_handle()).collect(),
+            controls: (0..32).map(|_| cx.focus_handle()).collect(),
             page: SettingsPage::General,
             open_dropdown: None,
             preferences,
@@ -198,6 +239,11 @@ impl Settings {
             code_font_search_input,
             terminal_shell_input,
             terminal_command_input,
+            mcp_port_input,
+            mcp_port_draft,
+            mcp_port_error: None,
+            mcp_server_state,
+            mcp_copied: None,
             error: load_error,
         }
     }
@@ -208,6 +254,11 @@ impl Settings {
 
     pub fn focus(&self, window: &mut Window, cx: &mut App) {
         window.focus(&self.focus, cx);
+    }
+
+    pub fn set_mcp_server_state(&mut self, state: McpServerState, cx: &mut Context<Self>) {
+        self.mcp_server_state = state;
+        cx.notify();
     }
 
     fn persist(&mut self) {
@@ -292,6 +343,10 @@ impl Settings {
                     input.set_label(language.text("默认命令", "Default command"), cx);
                     input
                         .set_placeholder(language.text("不执行默认命令", "No default command"), cx);
+                });
+                self.mcp_port_input.update(cx, |input, cx| {
+                    input.set_label(language.text("MCP 端口", "MCP port"), cx);
+                    input.set_placeholder(language.text("1 到 65535", "1 to 65535"), cx);
                 });
                 cx.emit(SettingsEvent::LanguageChanged(language));
             }
@@ -406,6 +461,14 @@ impl Settings {
                         SettingsPage::Terminal,
                         FOCUS_TERMINAL_PAGE,
                         cx,
+                    ))
+                    .child(self.render_navigation_row(
+                        "settings-mcp",
+                        "MCP",
+                        Icon::Plug,
+                        SettingsPage::Mcp,
+                        FOCUS_MCP_PAGE,
+                        cx,
                     )),
             )
     }
@@ -473,11 +536,13 @@ impl Settings {
             SettingsPage::General => language.text("通用", "General"),
             SettingsPage::Appearance => language.text("外观", "Appearance"),
             SettingsPage::Terminal => language.text("终端", "Terminal"),
+            SettingsPage::Mcp => "MCP",
         };
         let content = match self.page {
             SettingsPage::General => self.render_general(cx),
             SettingsPage::Appearance => self.render_appearance(cx),
             SettingsPage::Terminal => self.render_terminal(cx),
+            SettingsPage::Mcp => self.render_mcp(cx),
         };
 
         div()
@@ -599,6 +664,16 @@ mod tests {
             FOCUS_CODE_FONT_FAMILY,
             FOCUS_TERMINAL_COLOR_SCHEME,
             FOCUS_TERMINAL_CURSOR_STYLE,
+            FOCUS_MCP_PAGE,
+            FOCUS_MCP_ENABLED,
+            FOCUS_MCP_LOCAL_NETWORK,
+            FOCUS_MCP_PORT_APPLY,
+            FOCUS_MCP_ENDPOINT_COPY,
+            FOCUS_MCP_CODEX_COPY,
+            FOCUS_MCP_CLAUDE_COPY,
+            FOCUS_MCP_CURSOR_COPY,
+            FOCUS_MCP_OPENCODE_COPY,
+            FOCUS_MCP_GENERIC_COPY,
         ];
         let unique = indices
             .into_iter()
