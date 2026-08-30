@@ -38,8 +38,8 @@ use crate::state::{
 use crate::terminal::{TerminalConfiguration, TerminalView};
 use crate::theme::Theme;
 use crate::ui::{
-    ActivationExt, Icon, MarkdownDocument, MarkdownSelection, ScrollbarState, icon,
-    toolbar_icon_button,
+    ActivationExt, Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection, ScrollbarState,
+    icon, toolbar_icon_button,
 };
 use crate::{
     CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleLeftSidebar,
@@ -124,6 +124,7 @@ pub struct Locus {
     note_copy_focus: FocusHandle,
     note_text_focus: FocusHandle,
     note_text_selection: MarkdownSelection,
+    note_code_blocks: MarkdownCodeBlocks,
     note_edit_focus: FocusHandle,
     note_open_directory_focus: FocusHandle,
     note_menu_focus: FocusHandle,
@@ -380,6 +381,7 @@ impl Locus {
             note_copy_focus: cx.focus_handle(),
             note_text_focus: cx.focus_handle(),
             note_text_selection: MarkdownSelection::default(),
+            note_code_blocks: MarkdownCodeBlocks::default(),
             note_edit_focus: cx.focus_handle(),
             note_open_directory_focus: cx.focus_handle(),
             note_menu_focus: cx.focus_handle(),
@@ -646,6 +648,7 @@ impl Locus {
         self.note_menu_open = false;
         self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
         self.note_text_selection.reset();
+        self.note_code_blocks.reset();
         self.note_scroll_handle
             .set_offset(gpui::point(px(0.0), px(0.0)));
         self.note_scrollbar_state.reset_visibility();

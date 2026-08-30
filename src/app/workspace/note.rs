@@ -105,6 +105,7 @@ impl Locus {
                 )
                 .with_attachment_views(&node.attachments, language)
                 .with_library_tree(&self.library_tree)
+                .with_code_blocks(self.note_code_blocks.clone())
                 .with_link_handler(move |url, _, cx| {
                     if !url.starts_with(LIBRARY_REFERENCE_SCHEME) {
                         return false;

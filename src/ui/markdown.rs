@@ -1,4 +1,5 @@
 mod attachment_views;
+mod code_blocks;
 mod extension_syntax;
 mod parser;
 mod selection;
@@ -10,9 +11,11 @@ use std::sync::Arc;
 use gpui::{
     AnyElement, ClipboardItem, FocusHandle, FontStyle, FontWeight, KeyDownEvent, MouseButton,
     ObjectFit, Role, SharedString, StrikethroughStyle, StyledImage, StyledText, TextRun,
-    UnderlineStyle, div, font, img, prelude::*, px, relative,
+    Transformation, UnderlineStyle, div, font, img, linear_color_stop, linear_gradient, prelude::*,
+    px, radians, relative,
 };
 
+pub use self::code_blocks::MarkdownCodeBlocks;
 use self::parser::{Block, InlineRun, ListItem, TableAlign};
 pub use self::selection::MarkdownSelection;
 use self::selection::{LinkHandler, SelectableText};
@@ -24,6 +27,7 @@ use crate::ui::{Icon, icon};
 
 #[derive(Clone)]
 pub struct MarkdownDocument {
+    source: Arc<str>,
     blocks: Arc<[Block]>,
     selection_text: Arc<str>,
 }
@@ -33,6 +37,7 @@ impl MarkdownDocument {
         let mut blocks = parser::parse(source);
         let selection_text = parser::index_selection_text(&mut blocks);
         Self {
+            source: source.into(),
             blocks: blocks.into(),
             selection_text: selection_text.into(),
         }
@@ -55,6 +60,7 @@ pub struct Markdown<'a> {
     library_tree: Option<&'a LibraryTree>,
     language: Language,
     selection: MarkdownSelection,
+    code_blocks: MarkdownCodeBlocks,
     focus: FocusHandle,
     notify_entity: gpui::EntityId,
     link_handler: Option<LinkHandler>,
@@ -89,6 +95,7 @@ impl<'a> Markdown<'a> {
             library_tree: None,
             language: Language::Chinese,
             selection,
+            code_blocks: MarkdownCodeBlocks::default(),
             focus,
             notify_entity,
             link_handler: None,
@@ -110,6 +117,11 @@ impl<'a> Markdown<'a> {
         self
     }
 
+    pub fn with_code_blocks(mut self, code_blocks: MarkdownCodeBlocks) -> Self {
+        self.code_blocks = code_blocks;
+        self
+    }
+
     pub fn with_link_handler(
         mut self,
         handler: impl Fn(&str, &mut gpui::Window, &mut gpui::App) -> bool + 'static,
@@ -121,6 +133,7 @@ impl<'a> Markdown<'a> {
     pub fn render(self) -> AnyElement {
         self.selection
             .set_document(self.document.selection_text.clone());
+        self.code_blocks.set_document(self.document.source.clone());
         let mut context = RenderContext {
             base_directory: self.base_directory,
             theme: self.theme,
@@ -132,6 +145,7 @@ impl<'a> Markdown<'a> {
             library_tree: self.library_tree,
             language: self.language,
             selection: self.selection.clone(),
+            code_blocks: self.code_blocks,
             focus: self.focus.clone(),
             notify_entity: self.notify_entity,
             link_handler: self.link_handler,
@@ -209,6 +223,7 @@ struct RenderContext<'a> {
     library_tree: Option<&'a LibraryTree>,
     language: Language,
     selection: MarkdownSelection,
+    code_blocks: MarkdownCodeBlocks,
     focus: FocusHandle,
     notify_entity: gpui::EntityId,
     link_handler: Option<LinkHandler>,
@@ -789,6 +804,10 @@ impl RenderContext<'_> {
         }
         let code_id = self.next_code_id;
         self.next_code_id += 1;
+        let expanded = self.code_blocks.is_expanded(code_id);
+        let overflowing = self.code_blocks.is_overflowing(code_id);
+        let body_height = if language.is_some() { 168.0 } else { 200.0 };
+        let maximum_content_height = body_height - 16.0;
         let copy_label = self.language.text("复制代码", "Copy code");
         let click_code = code.to_owned();
         let keyboard_code = click_code.clone();
@@ -836,6 +855,36 @@ impl RenderContext<'_> {
                 }
             });
 
+        let measured_code_blocks = self.code_blocks.clone();
+        let notify_entity = self.notify_entity;
+        let mut code_body = div()
+            .relative()
+            .w_full()
+            .min_w_0()
+            .overflow_hidden()
+            .px(px(10.0))
+            .py(px(8.0))
+            .font_family(self.code_font_family)
+            .text_size(px(self.code_text_size))
+            .line_height(px((self.code_text_size * 1.5).round()))
+            .text_color(self.theme.text_secondary)
+            .whitespace_normal()
+            .on_children_prepainted(move |bounds, _, cx| {
+                let overflowing = bounds
+                    .first()
+                    .is_some_and(|bounds| bounds.size.height > px(maximum_content_height + 0.5));
+                if measured_code_blocks.set_overflowing(code_id, overflowing) {
+                    cx.notify(notify_entity);
+                }
+            })
+            .child(code_element);
+        if !expanded {
+            code_body = code_body.max_h(px(body_height));
+        }
+        if overflowing && !expanded {
+            code_body = code_body.child(self.render_code_toggle(code_id, false));
+        }
+
         div()
             .w_full()
             .min_w_0()
@@ -868,19 +917,80 @@ impl RenderContext<'_> {
                         .child(copy_button),
                 )
             })
+            .child(code_body)
+            .when(expanded, |element| {
+                element.child(self.render_code_toggle(code_id, true))
+            })
+            .into_any_element()
+    }
+
+    fn render_code_toggle(&self, code_id: usize, expanded: bool) -> AnyElement {
+        let label = if expanded {
+            self.language.text("折叠代码", "Collapse code")
+        } else {
+            self.language.text("展开代码", "Expand code")
+        };
+        let click_code_blocks = self.code_blocks.clone();
+        let keyboard_code_blocks = self.code_blocks.clone();
+        let notify_entity = self.notify_entity;
+        let mut control = div()
+            .id(SharedString::from(format!(
+                "{}-code-{code_id}",
+                if expanded { "collapse" } else { "expand" }
+            )))
+            .role(Role::Button)
+            .aria_label(label)
+            .tab_index(0)
+            .tab_stop(true)
+            .w_full()
+            .h(px(44.0))
+            .flex()
+            .justify_center()
+            .cursor_pointer()
+            .focus_visible(|style| style.border_1().border_color(self.theme.focus));
+        control = if expanded {
+            control.items_center()
+        } else {
+            control
+                .absolute()
+                .bottom_0()
+                .left_0()
+                .right_0()
+                .items_end()
+                .pb(px(7.0))
+                .bg(linear_gradient(
+                    180.0,
+                    linear_color_stop(self.theme.raised.opacity(0.0), 0.0),
+                    linear_color_stop(self.theme.raised, 0.72),
+                ))
+        };
+        control
             .child(
-                div()
-                    .w_full()
-                    .min_w_0()
-                    .px(px(10.0))
-                    .py(px(8.0))
-                    .font_family(self.code_font_family)
-                    .text_size(px(self.code_text_size))
-                    .line_height(px((self.code_text_size * 1.5).round()))
-                    .text_color(self.theme.text_secondary)
-                    .whitespace_normal()
-                    .child(code_element),
+                icon(Icon::ChevronDown, 16.0, self.theme.text_secondary).with_transformation(
+                    Transformation::rotate(radians(if expanded {
+                        std::f32::consts::PI
+                    } else {
+                        0.0
+                    })),
+                ),
             )
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .on_click(move |_, _, cx| {
+                if click_code_blocks.set_expanded(code_id, !expanded) {
+                    cx.notify(notify_entity);
+                }
+                cx.stop_propagation();
+            })
+            .on_key_down(move |event: &KeyDownEvent, _, cx| {
+                if !event.keystroke.modifiers.modified()
+                    && matches!(event.keystroke.key.as_str(), "enter" | "space")
+                {
+                    if keyboard_code_blocks.set_expanded(code_id, !expanded) {
+                        cx.notify(notify_entity);
+                    }
+                    cx.stop_propagation();
+                }
+            })
             .into_any_element()
     }
 

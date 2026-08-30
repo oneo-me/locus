@@ -293,6 +293,7 @@ impl Locus {
         if selection_changed {
             self.copied_library_node = None;
             self.note_text_selection.reset();
+            self.note_code_blocks.reset();
             self.note_menu_open = false;
             self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
             self.note_scroll_handle
