@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-pub use gpui_terminal::{TerminalColorScheme, TerminalCursorStyle};
+pub use oneo_gpui_terminal::{TerminalColorScheme, TerminalCursorStyle};
 use serde::{Deserialize, Serialize};
 
 use crate::config::{

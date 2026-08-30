@@ -20,7 +20,6 @@ use gpui::{
 
 use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
-use super::panel_layout::{CONTENT_MIN_WIDTH, PanelFrame, fitted_panel_widths, slide_width};
 use super::settings::{Settings, SettingsEvent};
 use crate::config::{
     DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_TITLEBAR_HEIGHT,
@@ -29,7 +28,6 @@ use crate::config::{
 use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use crate::localization::Language;
 use crate::mcp::McpServerController;
-use crate::motion::WidthTween;
 use crate::preferences::Preferences;
 use crate::sidebar_order::SidebarOrderState;
 use crate::state::{
@@ -45,7 +43,11 @@ use crate::{
     CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleLeftSidebar,
     ToggleRightSidebar,
 };
-use gpui_terminal::{TerminalConfiguration, TerminalLabels, TerminalView};
+use oneo_gpui_terminal::{TerminalConfiguration, TerminalLabels, TerminalView};
+use oneo_gpui_ui::app_shell::{
+    PanelFrame, PanelSide, PanelSize, PanelSlide, WorkspaceShell, WorkspaceShellConfig,
+    fitted_panel_widths, panel_toggle_button, slide_width,
+};
 
 const TITLEBAR_HEIGHT: f32 = WINDOW_TITLEBAR_HEIGHT;
 const TITLEBAR_CONTROL_INSET: f32 = 11.0;
@@ -80,6 +82,17 @@ fn terminal_configuration(preferences: &Preferences) -> TerminalConfiguration {
     }
 }
 const TITLEBAR_NAVIGATION_WIDTH: f32 = TITLEBAR_CONTROL_SIZE * 2.0 + TITLEBAR_NAVIGATION_GAP;
+const WORKSPACE_SHELL_CONFIG: WorkspaceShellConfig = WorkspaceShellConfig {
+    content_min_width: 360.0,
+    left: PanelSize {
+        min: LEFT_SIDEBAR_MIN_WIDTH,
+        max: LEFT_SIDEBAR_MAX_WIDTH,
+    },
+    right: PanelSize {
+        min: RIGHT_SIDEBAR_MIN_WIDTH,
+        max: RIGHT_SIDEBAR_MAX_WIDTH,
+    },
+};
 const COPY_FEEDBACK_DURATION: Duration = Duration::from_secs(2);
 const LIBRARY_EVENT_DEBOUNCE: Duration = Duration::from_millis(180);
 const WINDOW_BOUNDS_SAVE_DEBOUNCE: Duration = Duration::from_millis(100);
@@ -88,12 +101,6 @@ struct SelectedNote {
     path: String,
     document: Option<MarkdownDocument>,
     error: Option<String>,
-}
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum PanelSide {
-    Left,
-    Right,
 }
 
 #[derive(Clone, Copy)]
@@ -111,8 +118,8 @@ pub struct Locus {
     right_sidebar_width: f32,
     rendered_left_width: f32,
     rendered_right_width: f32,
-    left_sidebar_slide: Option<WidthTween>,
-    right_sidebar_slide: Option<WidthTween>,
+    left_sidebar_slide: Option<PanelSlide>,
+    right_sidebar_slide: Option<PanelSlide>,
     panel_resize_drag: Option<PanelResizeDrag>,
     header_drag_armed: bool,
     left_toggle_focus: FocusHandle,
@@ -736,6 +743,7 @@ impl Locus {
 
     fn settle_panels(&mut self, window: &Window) -> PanelFrame {
         let (left_content, right_content) = fitted_panel_widths(
+            WORKSPACE_SHELL_CONFIG,
             f32::from(window.viewport_size().width),
             self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
             self.right_sidebar_visible || self.right_sidebar_slide.is_some(),
@@ -777,12 +785,12 @@ impl Locus {
             PanelSide::Left => {
                 self.left_sidebar_visible = !self.left_sidebar_visible;
                 self.left_sidebar_slide =
-                    (!cx.reduce_motion()).then(|| WidthTween::new(self.rendered_left_width));
+                    (!cx.reduce_motion()).then(|| PanelSlide::new(self.rendered_left_width));
             }
             PanelSide::Right => {
                 self.right_sidebar_visible = !self.right_sidebar_visible;
                 self.right_sidebar_slide =
-                    (!cx.reduce_motion()).then(|| WidthTween::new(self.rendered_right_width));
+                    (!cx.reduce_motion()).then(|| PanelSlide::new(self.rendered_right_width));
             }
         }
         self.save_interface_state();
@@ -1019,14 +1027,22 @@ impl Locus {
         match drag.side {
             PanelSide::Left => {
                 let maximum = LEFT_SIDEBAR_MAX_WIDTH
-                    .min(viewport_width - CONTENT_MIN_WIDTH - self.rendered_right_width)
+                    .min(
+                        viewport_width
+                            - WORKSPACE_SHELL_CONFIG.content_min_width
+                            - self.rendered_right_width,
+                    )
                     .max(LEFT_SIDEBAR_MIN_WIDTH);
                 self.left_sidebar_width =
                     (drag.start_width + delta).clamp(LEFT_SIDEBAR_MIN_WIDTH, maximum);
             }
             PanelSide::Right => {
                 let maximum = RIGHT_SIDEBAR_MAX_WIDTH
-                    .min(viewport_width - CONTENT_MIN_WIDTH - self.rendered_left_width)
+                    .min(
+                        viewport_width
+                            - WORKSPACE_SHELL_CONFIG.content_min_width
+                            - self.rendered_left_width,
+                    )
                     .max(RIGHT_SIDEBAR_MIN_WIDTH);
                 self.right_sidebar_width =
                     (drag.start_width - delta).clamp(RIGHT_SIDEBAR_MIN_WIDTH, maximum);
@@ -1182,6 +1198,7 @@ impl Locus {
 
     fn left_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let (left_content, _) = fitted_panel_widths(
+            WORKSPACE_SHELL_CONFIG,
             f32::from(window.viewport_size().width),
             self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
             self.right_sidebar_visible || self.right_sidebar_slide.is_some(),
@@ -1214,6 +1231,7 @@ impl Locus {
 
     fn right_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let (_, right_content) = fitted_panel_widths(
+            WORKSPACE_SHELL_CONFIG,
             f32::from(window.viewport_size().width),
             self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
             self.right_sidebar_visible || self.right_sidebar_slide.is_some(),
@@ -1270,81 +1288,39 @@ impl Render for Locus {
             self.scroll_to_selected_library_node = false;
         }
 
-        let workspace = div()
-            .size_full()
-            .relative()
-            .flex()
-            .when(panels.left > 0.0, |root| {
-                root.child(
-                    div()
-                        .h_full()
-                        .flex_none()
-                        .w(px(panels.left))
-                        .when(panels.left_sliding, |panel| panel.overflow_hidden())
-                        .child(
-                            self.left_pane.clone().cached(
-                                StyleRefinement::default()
-                                    .w(px(panels.left_content))
-                                    .h_full()
-                                    .flex_none(),
-                            ),
-                        ),
-                )
-            })
-            .child(
-                self.content_pane
-                    .clone()
-                    .cached(StyleRefinement::default().flex_1().min_w(px(0.0)).h_full()),
-            )
-            .when(panels.right > 0.0, |root| {
-                root.child(
-                    div()
-                        .h_full()
-                        .flex_none()
-                        .w(px(panels.right))
-                        .flex()
-                        .relative()
-                        .when(panels.right_sliding, |panel| panel.overflow_hidden())
-                        .child(
-                            div()
-                                .absolute()
-                                .top_0()
-                                .right_0()
-                                .h_full()
-                                .w(px(panels.right_content))
-                                .child(
-                                    self.right_pane
-                                        .clone()
-                                        .cached(StyleRefinement::default().size_full()),
-                                ),
-                        ),
-                )
-            })
-            .child(
-                div()
-                    .absolute()
-                    .top(px(TITLEBAR_CONTROL_INSET))
-                    .left(px(left_toggle_offset))
-                    .child(self.render_panel_toggle(PanelSide::Left, cx)),
-            )
-            .child(
-                div()
-                    .absolute()
-                    .top(px(TITLEBAR_CONTROL_INSET))
-                    .left(px(navigation_left_offset))
-                    .flex()
-                    .items_center()
-                    .gap(px(TITLEBAR_NAVIGATION_GAP))
-                    .child(self.render_history_button(NavigationDirection::Back, cx))
-                    .child(self.render_history_button(NavigationDirection::Forward, cx)),
-            )
-            .child(
-                div()
-                    .absolute()
-                    .top(px(TITLEBAR_CONTROL_INSET))
-                    .right(px(TITLEBAR_CONTROL_INSET))
-                    .child(self.render_panel_toggle(PanelSide::Right, cx)),
-            );
+        let workspace = WorkspaceShell::new(
+            panels,
+            self.left_pane
+                .clone()
+                .cached(StyleRefinement::default().size_full())
+                .into_any_element(),
+            self.content_pane
+                .clone()
+                .cached(StyleRefinement::default().size_full())
+                .into_any_element(),
+            self.right_pane
+                .clone()
+                .cached(StyleRefinement::default().size_full())
+                .into_any_element(),
+            self.render_panel_toggle(PanelSide::Left, cx)
+                .into_any_element(),
+            self.render_panel_toggle(PanelSide::Right, cx)
+                .into_any_element(),
+        )
+        .left_toggle_offset(left_toggle_offset)
+        .control_inset(TITLEBAR_CONTROL_INSET)
+        .into_element()
+        .child(
+            div()
+                .absolute()
+                .top(px(TITLEBAR_CONTROL_INSET))
+                .left(px(navigation_left_offset))
+                .flex()
+                .items_center()
+                .gap(px(TITLEBAR_NAVIGATION_GAP))
+                .child(self.render_history_button(NavigationDirection::Back, cx))
+                .child(self.render_history_button(NavigationDirection::Forward, cx)),
+        );
 
         div()
             .key_context("Locus")

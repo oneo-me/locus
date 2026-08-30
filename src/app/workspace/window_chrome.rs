@@ -39,7 +39,7 @@ impl Locus {
     ) -> Stateful<Div> {
         let theme = Theme::current(cx);
         let language = self.language(cx);
-        let (focus, id, label, icon_kind) = match side {
+        let (focus, id, label) = match side {
             PanelSide::Left => (
                 &self.left_toggle_focus,
                 "toggle-left-sidebar",
@@ -48,7 +48,6 @@ impl Locus {
                 } else {
                     language.text("显示左侧栏", "Show left sidebar")
                 },
-                Icon::PanelLeft,
             ),
             PanelSide::Right => (
                 &self.right_toggle_focus,
@@ -58,11 +57,10 @@ impl Locus {
                 } else {
                     language.text("显示右侧栏", "Show right sidebar")
                 },
-                Icon::PanelRight,
             ),
         };
 
-        toolbar_icon_button(id, label, focus, icon_kind, theme)
+        panel_toggle_button(id, label, focus, side, theme)
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_activation(cx, move |this, _, cx| this.toggle_panel(side, cx))
     }

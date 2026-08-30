@@ -1,10 +1,10 @@
 [package]
-name = "gpui-terminal"
+name = "oneo-gpui-terminal"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 alacritty_terminal = { version = "0.26", default-features = false }
 gpui.workspace = true
-gpui-ui = { path = "../gpui-ui" }
+oneo-gpui-ui = { path = "../oneo-gpui-ui" }
 serde = { version = "1", features = ["derive"] }

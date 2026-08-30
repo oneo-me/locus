@@ -18,7 +18,7 @@ pub use self::parser::{
 };
 use self::selection::{LinkHandler, SelectableText};
 pub use self::selection::{MarkdownSelection, selectable_code_text};
-use gpui_ui::{Icon, Theme, icon};
+use oneo_gpui_ui::{Icon, Theme, icon};
 
 pub trait MarkdownExtensions {
     fn render_code_block(

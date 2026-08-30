@@ -1,3 +1,5 @@
+pub mod app_shell;
+
 mod activation;
 mod button;
 mod icon;

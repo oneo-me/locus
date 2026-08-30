@@ -3,7 +3,7 @@ mod extension_syntax;
 mod thumbnail;
 
 use gpui::{AnyElement, ObjectFit, StyledImage, div, prelude::*, px};
-use gpui_markdown::{MarkdownExtensions, generic_link_icon};
+use oneo_gpui_markdown::{MarkdownExtensions, generic_link_icon};
 
 use crate::document_library::{
     Attachment, LIBRARY_REFERENCE_SCHEME, LibraryTree, library_reference_path,

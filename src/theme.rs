@@ -1,5 +1,5 @@
 use gpui::{App, Window, WindowAppearance};
-pub use gpui_ui::Theme;
+pub use oneo_gpui_ui::Theme;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -35,7 +35,7 @@ pub fn apply_preference(preference: ThemePreference, window: &mut Window, cx: &m
     } else {
         Theme::light()
     };
-    gpui_ui::set_theme(theme, cx);
+    oneo_gpui_ui::set_theme(theme, cx);
     window.refresh();
 }
 

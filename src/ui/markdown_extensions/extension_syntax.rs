@@ -2,7 +2,7 @@ use std::path::{Component, Path};
 
 use crate::document_library::Attachment;
 use crate::localization::Language;
-use gpui_markdown::{Block, InlineRun, parse_blocks};
+use oneo_gpui_markdown::{Block, InlineRun, parse_blocks};
 
 #[derive(Clone)]
 pub(super) struct GalleryItem {

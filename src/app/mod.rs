@@ -1,4 +1,3 @@
-mod panel_layout;
 mod settings;
 mod workspace;
 

@@ -24,6 +24,7 @@ use gpui::{
     KeyDownEvent, MouseButton, PathPromptOptions, Rems, Render, Role, Stateful,
     StatefulInteractiveElement, Toggled, Window, deferred, div, prelude::*, px, rems,
 };
+use oneo_gpui_ui::app_shell::{SettingsShell, settings_back_button};
 
 const SETTINGS_SIDEBAR_WIDTH: f32 = 252.0;
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 720.0;
@@ -567,7 +568,7 @@ impl Settings {
             }))
     }
 
-    fn render_sidebar(&self, fullscreen: bool, cx: &mut Context<Self>) -> gpui::Div {
+    fn render_sidebar_header(&self, fullscreen: bool, cx: &mut Context<Self>) -> gpui::Div {
         let theme = Theme::current(cx);
         let language = self.preferences.language;
         let back_label = language.text("返回", "Back");
@@ -578,130 +579,94 @@ impl Settings {
         };
 
         div()
-            .w(px(SETTINGS_SIDEBAR_WIDTH))
-            .h_full()
-            .flex_none()
+            .size_full()
+            .flex()
+            .items_center()
+            .child(
+                self.render_titlebar_drag_region("settings-sidebar-traffic-light-drag-region", cx)
+                    .w(px(traffic_light_clearance))
+                    .flex_none(),
+            )
+            .child(
+                div().h_full().flex_1().pr(px(8.0)).py(px(7.0)).child(
+                    settings_back_button(
+                        "settings-back",
+                        back_label,
+                        &self.controls[FOCUS_BACK],
+                        theme,
+                    )
+                    .text_size(scaled_ui_pixels(13.0))
+                    .on_activation(cx, |this, window, cx| this.close(window, cx)),
+                ),
+            )
+    }
+
+    fn render_sidebar(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
+        let language = self.preferences.language;
+        div()
+            .id("settings-sidebar-scroll")
+            .size_full()
+            .overflow_y_scroll()
+            .px(px(12.0))
+            .pt(px(12.0))
+            .pb(px(20.0))
             .flex()
             .flex_col()
-            .child(
-                div()
-                    .h(px(WINDOW_TITLEBAR_HEIGHT))
-                    .flex_none()
-                    .flex()
-                    .items_center()
-                    .child(
-                        self.render_titlebar_drag_region(
-                            "settings-sidebar-traffic-light-drag-region",
-                            cx,
-                        )
-                        .w(px(traffic_light_clearance))
-                        .flex_none(),
-                    )
-                    .child(
-                        div().h_full().flex_1().pr(px(8.0)).py(px(7.0)).child(
-                            div()
-                                .id("settings-back")
-                                .role(Role::Button)
-                                .aria_label(back_label)
-                                .track_focus(&self.controls[FOCUS_BACK])
-                                .tab_index(0)
-                                .tab_stop(true)
-                                .size_full()
-                                .px(px(9.0))
-                                .rounded(px(8.0))
-                                .flex()
-                                .items_center()
-                                .cursor_default()
-                                .text_size(scaled_ui_pixels(13.0))
-                                .text_color(theme.text_secondary)
-                                .hover(|style| style.bg(theme.control_hover))
-                                .active(|style| style.bg(theme.control_active))
-                                .focus_visible(|style| style.border_1().border_color(theme.focus))
-                                .gap(px(9.0))
-                                .child(icon(Icon::ArrowLeft, 15.0, theme.text_tertiary))
-                                .child(back_label)
-                                .on_key_down(cx.listener(
-                                    |this, event: &KeyDownEvent, window, cx| {
-                                        if matches!(event.keystroke.key.as_str(), "enter" | "space")
-                                        {
-                                            this.close(window, cx);
-                                            cx.stop_propagation();
-                                        }
-                                    },
-                                ))
-                                .on_click(
-                                    cx.listener(|this, _, window, cx| this.close(window, cx)),
-                                ),
-                        ),
+            .gap(px(14.0))
+            .child(self.render_navigation_group(
+                language.text("应用", "Application"),
+                vec![
+                    self.render_navigation_row(
+                        "settings-general",
+                        SettingsPage::General.label(language),
+                        Icon::Settings,
+                        SettingsPage::General,
+                        FOCUS_GENERAL_PAGE,
+                        cx,
                     ),
-            )
-            .child(
-                div()
-                    .id("settings-sidebar-scroll")
-                    .min_h_0()
-                    .flex_1()
-                    .overflow_y_scroll()
-                    .px(px(12.0))
-                    .pt(px(12.0))
-                    .pb(px(20.0))
-                    .flex()
-                    .flex_col()
-                    .gap(px(14.0))
-                    .child(self.render_navigation_group(
-                        language.text("应用", "Application"),
-                        vec![
-                            self.render_navigation_row(
-                                "settings-general",
-                                SettingsPage::General.label(language),
-                                Icon::Settings,
-                                SettingsPage::General,
-                                FOCUS_GENERAL_PAGE,
-                                cx,
-                            ),
-                            self.render_navigation_row(
-                                "settings-appearance",
-                                SettingsPage::Appearance.label(language),
-                                Icon::Appearance,
-                                SettingsPage::Appearance,
-                                FOCUS_APPEARANCE_PAGE,
-                                cx,
-                            ),
-                            self.render_navigation_row(
-                                "settings-terminal",
-                                SettingsPage::Terminal.label(language),
-                                Icon::Terminal,
-                                SettingsPage::Terminal,
-                                FOCUS_TERMINAL_PAGE,
-                                cx,
-                            ),
-                        ],
+                    self.render_navigation_row(
+                        "settings-appearance",
+                        SettingsPage::Appearance.label(language),
+                        Icon::Appearance,
+                        SettingsPage::Appearance,
+                        FOCUS_APPEARANCE_PAGE,
                         cx,
-                    ))
-                    .child(self.render_navigation_group(
-                        language.text("文档库", "Library"),
-                        vec![self.render_navigation_row(
-                            "settings-archive",
-                            SettingsPage::Archive.label(language),
-                            Icon::Archive,
-                            SettingsPage::Archive,
-                            FOCUS_ARCHIVE_PAGE,
-                            cx,
-                        )],
+                    ),
+                    self.render_navigation_row(
+                        "settings-terminal",
+                        SettingsPage::Terminal.label(language),
+                        Icon::Terminal,
+                        SettingsPage::Terminal,
+                        FOCUS_TERMINAL_PAGE,
                         cx,
-                    ))
-                    .child(self.render_navigation_group(
-                        language.text("连接", "Connections"),
-                        vec![self.render_navigation_row(
-                            "settings-mcp",
-                            SettingsPage::Mcp.label(language),
-                            Icon::Plug,
-                            SettingsPage::Mcp,
-                            FOCUS_MCP_PAGE,
-                            cx,
-                        )],
-                        cx,
-                    )),
-            )
+                    ),
+                ],
+                cx,
+            ))
+            .child(self.render_navigation_group(
+                language.text("文档库", "Library"),
+                vec![self.render_navigation_row(
+                    "settings-archive",
+                    SettingsPage::Archive.label(language),
+                    Icon::Archive,
+                    SettingsPage::Archive,
+                    FOCUS_ARCHIVE_PAGE,
+                    cx,
+                )],
+                cx,
+            ))
+            .child(self.render_navigation_group(
+                language.text("连接", "Connections"),
+                vec![self.render_navigation_row(
+                    "settings-mcp",
+                    SettingsPage::Mcp.label(language),
+                    Icon::Plug,
+                    SettingsPage::Mcp,
+                    FOCUS_MCP_PAGE,
+                    cx,
+                )],
+                cx,
+            ))
     }
 
     fn render_navigation_group(
@@ -783,10 +748,20 @@ impl Settings {
             }))
     }
 
-    fn render_content(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn render_content_header(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
+        let title = self.page.label(self.preferences.language);
+        self.render_titlebar_drag_region("settings-content-titlebar", cx)
+            .size_full()
+            .px(px(32.0))
+            .flex()
+            .items_center()
+            .text_sm()
+            .font_weight(FontWeight::SEMIBOLD)
+            .child(title)
+    }
+
+    fn render_content(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
         let theme = Theme::current(cx);
-        let language = self.preferences.language;
-        let title = self.page.label(language);
         let content = match self.page {
             SettingsPage::General => self.render_general(cx),
             SettingsPage::Archive => self.render_archive(cx),
@@ -796,60 +771,37 @@ impl Settings {
         };
 
         div()
-            .min_w_0()
-            .h_full()
-            .flex_1()
-            .flex()
-            .flex_col()
-            .border_l_1()
-            .border_color(theme.sidebar_border)
-            .bg(theme.surface)
-            .child(
-                self.render_titlebar_drag_region("settings-content-titlebar", cx)
-                    .h(px(WINDOW_TITLEBAR_HEIGHT))
-                    .flex_none()
-                    .px(px(32.0))
-                    .flex()
-                    .items_center()
-                    .text_sm()
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .child(title),
-            )
+            .id("settings-content-scroll")
+            .size_full()
+            .overflow_y_scroll()
+            .px(px(32.0))
+            .pb(px(48.0))
             .child(
                 div()
-                    .id("settings-content-scroll")
-                    .min_h_0()
-                    .flex_1()
-                    .overflow_y_scroll()
-                    .px(px(32.0))
-                    .pb(px(48.0))
+                    .w_full()
+                    .max_w(px(SETTINGS_CONTENT_MAX_WIDTH))
+                    .mx_auto()
+                    .pb(px(190.0))
+                    .when_some(self.error.as_ref(), |view, error| {
+                        view.child(
+                            div()
+                                .mt(px(14.0))
+                                .rounded(px(8.0))
+                                .border_1()
+                                .border_color(theme.error)
+                                .px(px(12.0))
+                                .py(px(9.0))
+                                .text_sm()
+                                .text_color(theme.error)
+                                .child(error.clone()),
+                        )
+                    })
                     .child(
                         div()
-                            .w_full()
-                            .max_w(px(SETTINGS_CONTENT_MAX_WIDTH))
-                            .mx_auto()
-                            .pb(px(190.0))
-                            .when_some(self.error.as_ref(), |view, error| {
-                                view.child(
-                                    div()
-                                        .mt(px(14.0))
-                                        .rounded(px(8.0))
-                                        .border_1()
-                                        .border_color(theme.error)
-                                        .px(px(12.0))
-                                        .py(px(9.0))
-                                        .text_sm()
-                                        .text_color(theme.error)
-                                        .child(error.clone()),
-                                )
-                            })
-                            .child(
-                                div()
-                                    .mt(px(15.0))
-                                    .rounded(px(13.0))
-                                    .bg(theme.raised)
-                                    .child(content),
-                            ),
+                            .mt(px(15.0))
+                            .rounded(px(13.0))
+                            .bg(theme.raised)
+                            .child(content),
                     ),
             )
     }
@@ -900,8 +852,19 @@ impl Render for Settings {
             .bg(theme.surface)
             .text_color(theme.text)
             .font_family(self.preferences.resolved_ui_font_family().to_owned())
-            .child(self.render_sidebar(window.is_fullscreen(), cx))
-            .child(self.render_content(cx))
+            .child(
+                SettingsShell::new(
+                    self.render_sidebar_header(window.is_fullscreen(), cx)
+                        .into_any_element(),
+                    self.render_sidebar(cx).into_any_element(),
+                    self.render_content_header(cx).into_any_element(),
+                    self.render_content(cx).into_any_element(),
+                    theme,
+                )
+                .sidebar_width(SETTINGS_SIDEBAR_WIDTH)
+                .titlebar_height(WINDOW_TITLEBAR_HEIGHT)
+                .into_element(),
+            )
     }
 }
 

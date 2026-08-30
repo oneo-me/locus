@@ -30,7 +30,7 @@ use gpui::{
     UnderlineStyle, Window, canvas, div, font, point, prelude::*, px, rgb, size,
 };
 
-use gpui_ui::Theme;
+use oneo_gpui_ui::Theme;
 
 mod color;
 mod config;

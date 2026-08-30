@@ -3,7 +3,6 @@ mod config;
 mod document_library;
 mod localization;
 mod mcp;
-mod motion;
 mod platform;
 mod preferences;
 mod process_environment;
