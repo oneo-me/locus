@@ -7,15 +7,16 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, FontStyle, FontWeight, InteractiveText, ObjectFit, SharedString,
-    StrikethroughStyle, StyledText, TextRun, UnderlineStyle, div, font, img, prelude::*, px,
-    relative,
+    AnyElement, ClipboardItem, FontStyle, FontWeight, InteractiveText, KeyDownEvent, MouseButton,
+    ObjectFit, Role, SharedString, StrikethroughStyle, StyledText, TextRun, UnderlineStyle, div,
+    font, img, prelude::*, px, relative,
 };
 
 use self::parser::{Block, InlineRun, ListItem, TableAlign};
 use crate::document_library::Attachment;
 use crate::localization::Language;
 use crate::theme::Theme;
+use crate::ui::{Icon, icon};
 
 #[derive(Clone)]
 pub struct MarkdownDocument {
@@ -90,6 +91,7 @@ impl<'a> Markdown<'a> {
             attachments: self.attachments,
             language: self.language,
             next_text_id: 0,
+            next_code_id: 0,
         };
         let children = self
             .document
@@ -119,6 +121,7 @@ struct RenderContext<'a> {
     attachments: &'a [Attachment],
     language: Language,
     next_text_id: usize,
+    next_code_id: usize,
 }
 
 impl RenderContext<'_> {
@@ -214,6 +217,53 @@ impl RenderContext<'_> {
     }
 
     fn inline_text(&mut self, runs: &[InlineRun], base_weight: FontWeight) -> AnyElement {
+        if runs.iter().any(|run| run.style.code) {
+            let children = runs
+                .iter()
+                .map(|run| {
+                    if run.style.code {
+                        self.inline_code(run, base_weight)
+                    } else {
+                        self.styled_text(std::slice::from_ref(run), base_weight)
+                    }
+                })
+                .collect::<Vec<_>>();
+            return div()
+                .w_full()
+                .min_w_0()
+                .flex()
+                .flex_wrap()
+                .items_baseline()
+                .children(children)
+                .into_any_element();
+        }
+        self.styled_text(runs, base_weight)
+    }
+
+    fn inline_code(&self, run: &InlineRun, base_weight: FontWeight) -> AnyElement {
+        div()
+            .min_w_0()
+            .max_w_full()
+            .px(px(4.0))
+            .rounded(px(4.0))
+            .border_1()
+            .border_color(self.theme.border)
+            .bg(self.theme.control_selected)
+            .font_family(self.code_font_family)
+            .text_size(px(self.code_text_size))
+            .line_height(px((self.code_text_size * 1.8).round()))
+            .font_weight(if run.style.bold && base_weight < FontWeight::SEMIBOLD {
+                FontWeight::SEMIBOLD
+            } else {
+                base_weight
+            })
+            .text_color(self.theme.text)
+            .whitespace_normal()
+            .child(SharedString::from(run.text.clone()))
+            .into_any_element()
+    }
+
+    fn styled_text(&mut self, runs: &[InlineRun], base_weight: FontWeight) -> AnyElement {
         let mut text = String::new();
         let mut text_runs = Vec::with_capacity(runs.len());
         let mut links: Vec<(std::ops::Range<usize>, String)> = Vec::new();
@@ -225,11 +275,7 @@ impl RenderContext<'_> {
             let start = text.len();
             text.push_str(&run.text);
             let end = text.len();
-            let mut run_font = font(if run.style.code {
-                self.code_font_family
-            } else {
-                self.text_font_family
-            });
+            let mut run_font = font(self.text_font_family);
             run_font.weight = if run.style.bold && base_weight < FontWeight::SEMIBOLD {
                 FontWeight::SEMIBOLD
             } else {
@@ -258,7 +304,7 @@ impl RenderContext<'_> {
                 } else {
                     self.theme.text
                 },
-                background_color: run.style.code.then_some(self.theme.control_selected),
+                background_color: None,
                 underline: run.style.link.is_some().then_some(UnderlineStyle {
                     color: Some(self.theme.focus),
                     thickness: px(1.0),
@@ -430,7 +476,7 @@ impl RenderContext<'_> {
             .into_any_element()
     }
 
-    fn render_code_block(&self, language: &Option<String>, code: &str) -> AnyElement {
+    fn render_code_block(&mut self, language: &Option<String>, code: &str) -> AnyElement {
         match language.as_deref() {
             Some("gallery") => {
                 return attachment_views::render_gallery(
@@ -450,6 +496,42 @@ impl RenderContext<'_> {
             }
             _ => {}
         }
+        let code_id = self.next_code_id;
+        self.next_code_id += 1;
+        let copy_label = self.language.text("复制代码", "Copy code");
+        let click_code = code.to_owned();
+        let keyboard_code = click_code.clone();
+        let copy_button = div()
+            .id(SharedString::from(format!("copy-code-{code_id}")))
+            .role(Role::Button)
+            .aria_label(copy_label)
+            .tab_index(0)
+            .tab_stop(true)
+            .size(px(24.0))
+            .flex_none()
+            .rounded(px(5.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .cursor_default()
+            .focus_visible(|style| style.border_1().border_color(self.theme.focus))
+            .hover(|style| style.bg(self.theme.control_hover))
+            .active(|style| style.bg(self.theme.control_active))
+            .child(icon(Icon::Copy, 13.0, self.theme.text_tertiary))
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .on_click(move |_, _, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(click_code.clone()));
+                cx.stop_propagation();
+            })
+            .on_key_down(move |event: &KeyDownEvent, _, cx| {
+                if !event.keystroke.modifiers.modified()
+                    && matches!(event.keystroke.key.as_str(), "enter" | "space")
+                {
+                    cx.write_to_clipboard(ClipboardItem::new_string(keyboard_code.clone()));
+                    cx.stop_propagation();
+                }
+            });
+
         div()
             .w_full()
             .min_w_0()
@@ -462,14 +544,24 @@ impl RenderContext<'_> {
                 element.child(
                     div()
                         .w_full()
-                        .px(px(10.0))
-                        .py(px(6.0))
+                        .h(px(32.0))
+                        .pl(px(10.0))
+                        .pr(px(4.0))
                         .border_b_1()
                         .border_color(self.theme.border)
+                        .flex()
+                        .items_center()
                         .text_size(px(12.0))
                         .line_height(px(16.0))
                         .text_color(self.theme.text_tertiary)
-                        .child(language.to_ascii_lowercase()),
+                        .child(
+                            div()
+                                .min_w_0()
+                                .flex_1()
+                                .truncate()
+                                .child(language.to_ascii_lowercase()),
+                        )
+                        .child(copy_button),
                 )
             })
             .child(
@@ -519,6 +611,8 @@ impl RenderContext<'_> {
                     FontWeight::SEMIBOLD,
                     !rows.is_empty(),
                 )
+                .when(rows.is_empty(), |row| row.rounded(px(7.0)))
+                .when(!rows.is_empty(), |row| row.rounded_t(px(7.0)))
                 .bg(self.theme.control_selected),
             );
         }

@@ -224,7 +224,7 @@ impl Locus {
         .on_activation(cx, |this, window, cx| this.open_settings(window, cx))
     }
 
-    pub(super) fn render_mcp_endpoint(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+    pub(super) fn render_mcp_status(&self, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::current(cx);
         let language = self.language(cx);
         let state = self.mcp_server.state();
@@ -238,62 +238,48 @@ impl Locus {
             }
         };
         let endpoint = state.endpoint().to_owned();
-        let display = if self.mcp_endpoint_copied {
-            language.text("已复制", "Copied").to_owned()
+        let label = if self.mcp_status_copied {
+            language.text("MCP 地址已复制", "MCP URL copied").to_owned()
         } else {
-            endpoint.clone()
-        };
-        let label = if self.mcp_endpoint_copied {
             format!(
                 "{status} · {}",
-                language.text("MCP 地址已复制", "MCP URL copied")
-            )
-        } else {
-            format!(
-                "{status} · {}: {endpoint}",
                 language.text("复制 MCP 地址", "Copy MCP URL")
             )
+        };
+        let (icon_kind, icon_color) = if self.mcp_status_copied {
+            (Icon::Check, theme.success)
+        } else {
+            (Icon::Plug, color)
         };
 
         div()
             .id("copy-mcp-endpoint")
             .role(Role::Button)
             .aria_label(label)
-            .track_focus(&self.mcp_endpoint_focus)
+            .track_focus(&self.mcp_status_focus)
             .tab_index(0)
             .tab_stop(true)
-            .min_w_0()
-            .flex_1()
-            .h(px(28.0))
+            .size(px(28.0))
+            .flex_none()
             .rounded(px(6.0))
             .flex()
             .items_center()
-            .gap(px(5.0))
-            .px(px(5.0))
-            .text_xs()
+            .justify_center()
             .cursor_default()
             .focus_visible(|style| style.border_1().border_color(theme.focus))
             .hover(|style| style.bg(theme.control_hover))
             .active(|style| style.bg(theme.control_active))
-            .child(div().size(px(6.0)).flex_none().rounded_full().bg(color))
-            .child(
-                div()
-                    .min_w_0()
-                    .truncate()
-                    .text_color(theme.text_tertiary)
-                    .child(display),
-            )
+            .child(icon(icon_kind, 14.0, icon_color))
             .on_activation(cx, move |this, _, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string(endpoint.clone()));
-                this.mcp_endpoint_copied = true;
-                this.mcp_endpoint_copy_generation =
-                    this.mcp_endpoint_copy_generation.wrapping_add(1);
-                let generation = this.mcp_endpoint_copy_generation;
+                this.mcp_status_copied = true;
+                this.mcp_status_copy_generation = this.mcp_status_copy_generation.wrapping_add(1);
+                let generation = this.mcp_status_copy_generation;
                 cx.spawn(async move |this, cx| {
                     cx.background_executor().timer(COPY_FEEDBACK_DURATION).await;
                     let _ = this.update(cx, |this, cx| {
-                        if this.mcp_endpoint_copy_generation == generation {
-                            this.mcp_endpoint_copied = false;
+                        if this.mcp_status_copy_generation == generation {
+                            this.mcp_status_copied = false;
                             cx.notify();
                         }
                     });
