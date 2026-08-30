@@ -10,6 +10,8 @@ use gpui::{
     TextLayout, Window, fill, point,
 };
 
+pub(super) type LinkHandler = Rc<dyn Fn(&str, &mut Window, &mut App) -> bool>;
+
 #[derive(Clone, Default)]
 pub struct MarkdownSelection(Rc<RefCell<SelectionState>>);
 
@@ -291,6 +293,7 @@ pub(super) struct TextInteraction {
     pub selection: MarkdownSelection,
     pub focus: FocusHandle,
     pub notify_entity: gpui::EntityId,
+    pub link_handler: Option<LinkHandler>,
 }
 
 impl SelectableText {
@@ -383,6 +386,7 @@ impl Element for SelectableText {
         let selection = self.interaction.selection.clone();
         let focus = self.interaction.focus.clone();
         let notify_entity = self.interaction.notify_entity;
+        let link_handler = self.interaction.link_handler.clone();
 
         paint_selection(
             &layout,
@@ -469,7 +473,12 @@ impl Element for SelectableText {
                     selection.release_link(document_range.start + local.min(document_range.len()))
                 });
                 if let Some(url) = url {
-                    cx.open_url(&url);
+                    if !link_handler
+                        .as_ref()
+                        .is_some_and(|handler| handler(&url, window, cx))
+                    {
+                        cx.open_url(&url);
+                    }
                 } else {
                     selection.end();
                 }

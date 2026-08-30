@@ -258,7 +258,7 @@ impl Locus {
         cx.notify();
     }
 
-    fn select_library_node(
+    pub(super) fn select_library_node(
         &mut self,
         path: String,
         has_children: bool,

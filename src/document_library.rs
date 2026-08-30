@@ -2,11 +2,13 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 mod mutations;
+mod reference;
 mod repository;
 mod scanner;
 mod watcher;
 
 pub use mutations::{archive_note, restore_archived_note, update_note_icon};
+pub use reference::{LIBRARY_REFERENCE_SCHEME, library_reference_path};
 pub use scanner::load_note;
 pub use watcher::{LibraryWatchEvent, LibraryWatcher};
 

@@ -15,7 +15,7 @@ use gpui::{
 
 use self::parser::{Block, InlineRun, ListItem, TableAlign};
 pub use self::selection::MarkdownSelection;
-use self::selection::SelectableText;
+use self::selection::{LinkHandler, SelectableText};
 use crate::document_library::Attachment;
 use crate::localization::Language;
 use crate::theme::Theme;
@@ -55,6 +55,7 @@ pub struct Markdown<'a> {
     selection: MarkdownSelection,
     focus: FocusHandle,
     notify_entity: gpui::EntityId,
+    link_handler: Option<LinkHandler>,
 }
 
 pub struct MarkdownTypography<'a> {
@@ -87,6 +88,7 @@ impl<'a> Markdown<'a> {
             selection,
             focus,
             notify_entity,
+            link_handler: None,
         }
     }
 
@@ -97,6 +99,14 @@ impl<'a> Markdown<'a> {
     ) -> Self {
         self.attachments = attachments;
         self.language = language;
+        self
+    }
+
+    pub fn with_link_handler(
+        mut self,
+        handler: impl Fn(&str, &mut gpui::Window, &mut gpui::App) -> bool + 'static,
+    ) -> Self {
+        self.link_handler = Some(std::rc::Rc::new(handler));
         self
     }
 
@@ -115,6 +125,7 @@ impl<'a> Markdown<'a> {
             selection: self.selection.clone(),
             focus: self.focus.clone(),
             notify_entity: self.notify_entity,
+            link_handler: self.link_handler,
             next_text_id: 0,
             next_code_id: 0,
         };
@@ -189,6 +200,7 @@ struct RenderContext<'a> {
     selection: MarkdownSelection,
     focus: FocusHandle,
     notify_entity: gpui::EntityId,
+    link_handler: Option<LinkHandler>,
     next_text_id: usize,
     next_code_id: usize,
 }
@@ -458,6 +470,7 @@ impl RenderContext<'_> {
                 selection: self.selection.clone(),
                 focus: self.focus.clone(),
                 notify_entity: self.notify_entity,
+                link_handler: self.link_handler.clone(),
             },
         )
         .into_any_element()

@@ -2,7 +2,7 @@ use super::note_atmosphere::{
     AtmosphereBackdrop, AtmosphereShape, NoteAtmosphere, Pattern, derive_note_atmosphere,
 };
 use super::{Locus, SelectedNote};
-use crate::document_library::LibraryNode;
+use crate::document_library::{LIBRARY_REFERENCE_SCHEME, LibraryNode, library_reference_path};
 use crate::theme::Theme;
 use crate::ui::{
     ActivationExt, Icon, Markdown, MarkdownTypography, document_icon_image, toolbar_icon_button,
@@ -34,6 +34,7 @@ impl Locus {
         let markdown_code_text_size = preferences.code_font_size;
         let language = preferences.language;
         let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark);
+        let locus = cx.weak_entity();
         let titlebar =
             self.render_note_titlebar(node, left_control_clearance, content_width, theme, cx);
         let selected_note = selected_note.filter(|note| note.path == node.path);
@@ -103,6 +104,16 @@ impl Locus {
                     self.content_pane.entity_id(),
                 )
                 .with_attachment_views(&node.attachments, language)
+                .with_link_handler(move |url, _, cx| {
+                    if !url.starts_with(LIBRARY_REFERENCE_SCHEME) {
+                        return false;
+                    }
+                    if let Some(path) = library_reference_path(url) {
+                        let path = path.to_owned();
+                        let _ = locus.update(cx, |this, cx| this.open_library_reference(&path, cx));
+                    }
+                    true
+                })
                 .render(),
             );
         }
@@ -156,6 +167,22 @@ impl Locus {
             ))
     }
 
+    fn open_library_reference(&mut self, path: &str, cx: &mut gpui::Context<Self>) {
+        let Some((has_children, is_note)) = self
+            .library_tree
+            .node(path)
+            .map(|node| (!node.children.is_empty(), node.document_path.is_some()))
+        else {
+            return;
+        };
+        if !is_note {
+            return;
+        }
+        self.select_library_node(path.to_owned(), has_children, cx);
+        self.scroll_to_selected_library_node = true;
+        cx.notify();
+    }
+
     fn render_note_titlebar(
         &self,
         node: &LibraryNode,
@@ -164,7 +191,7 @@ impl Locus {
         theme: Theme,
         cx: &mut gpui::Context<Self>,
     ) -> impl IntoElement {
-        let reference = format!("locus://{}", node.path);
+        let reference = format!("{LIBRARY_REFERENCE_SCHEME}{}", node.path);
         let copied = self.copied_library_node.as_deref() == Some(node.path.as_str());
         let editor = self.settings.read(cx).preferences().editor;
         let language = self.language(cx);

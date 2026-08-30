@@ -745,6 +745,18 @@ mod tests {
     }
 
     #[test]
+    fn preserves_locus_link_destinations() {
+        let blocks = parse("[Architecture](locus://projects/locus/architecture)");
+        let Block::Paragraph { runs } = &blocks[0] else {
+            panic!("expected paragraph");
+        };
+        assert_eq!(
+            runs[0].style.link.as_deref(),
+            Some("locus://projects/locus/architecture")
+        );
+    }
+
+    #[test]
     fn separates_images_from_surrounding_paragraph_text() {
         let blocks = parse("before ![diagram](diagram.png) after");
         assert!(matches!(blocks[0], Block::Paragraph { .. }));
