@@ -1,11 +1,11 @@
 use std::time::{Duration, Instant};
 
 use super::FpsCounterState;
-use crate::{Icon, Theme, toolbar_icon_button};
 use gpui::{
     AnyElement, Div, FocusHandle, Hsla, Stateful, Window, div, ease_out_quint, prelude::*, px,
     transparent_black,
 };
+use oneo_gpui_ui::{Icon, Theme, toolbar_icon_button};
 
 const PANEL_SLIDE_DURATION: Duration = Duration::from_millis(200);
 

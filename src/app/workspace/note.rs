@@ -13,7 +13,7 @@ use gpui::{
     PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, linear_color_stop,
     linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
-use oneo_gpui_ui::app_shell::PanelSide;
+use oneo_gpui_app_shell::PanelSide;
 const NOTE_MAX_WIDTH: f32 = 832.0;
 const ATMOSPHERE_HEIGHT: f32 = 268.0;
 const SHAPE_HEIGHT: f32 = 208.0;

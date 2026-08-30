@@ -3315,6 +3315,7 @@ dependencies = [
  "notify",
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",
+ "oneo-gpui-app-shell",
  "oneo-gpui-markdown",
  "oneo-gpui-terminal",
  "oneo-gpui-ui",
@@ -4096,6 +4097,14 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+
+[[package]]
+name = "oneo-gpui-app-shell"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "oneo-gpui-ui",
+]
 
 [[package]]
 name = "oneo-gpui-markdown"

@@ -25,7 +25,7 @@ use gpui::{
 };
 use gpui_platform::application;
 use localization::Language;
-use oneo_gpui_ui::app_shell::{
+use oneo_gpui_app_shell::{
     About, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit, ToggleFpsCounter,
     ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
 };

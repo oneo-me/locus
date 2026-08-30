@@ -203,7 +203,7 @@ impl Locus {
     }
 
     pub(super) fn render_fps_counter(&self, cx: &mut Context<Self>) -> Div {
-        oneo_gpui_ui::app_shell::fps_counter(self.app_shell.fps_counter(), Theme::current(cx))
+        oneo_gpui_app_shell::fps_counter(self.app_shell.fps_counter(), Theme::current(cx))
     }
 
     pub(super) fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {

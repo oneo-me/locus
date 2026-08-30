@@ -1,9 +1,9 @@
 use super::TITLEBAR_HEIGHT;
-use crate::{Icon, Theme, icon};
 use gpui::{
     AnyElement, Div, FocusHandle, FontWeight, Role, SharedString, Stateful, div, prelude::*, px,
     rems,
 };
+use oneo_gpui_ui::{Icon, Theme, icon};
 
 pub fn settings_sidebar_header(
     left_control_clearance: f32,

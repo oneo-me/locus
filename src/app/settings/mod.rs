@@ -24,7 +24,7 @@ use gpui::{
     KeyDownEvent, MouseButton, PathPromptOptions, Render, Role, Stateful,
     StatefulInteractiveElement, Toggled, Window, deferred, div, prelude::*, px,
 };
-use oneo_gpui_ui::app_shell::{
+use oneo_gpui_app_shell::{
     SettingsShell, settings_back_button, settings_navigation_group, settings_navigation_row,
     settings_sidebar_header,
 };

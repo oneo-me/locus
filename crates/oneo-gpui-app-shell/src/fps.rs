@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
-use crate::Theme;
 use gpui::{Div, Window, div, prelude::*, px};
+use oneo_gpui_ui::Theme;
 
 pub struct FpsCounterState {
     visible: bool,

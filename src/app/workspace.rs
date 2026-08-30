@@ -40,13 +40,13 @@ use crate::{
     CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleFullScreen,
     ToggleLeftPanel, ToggleRightPanel,
 };
-use oneo_gpui_terminal::{TerminalConfiguration, TerminalLabels, TerminalView};
-use oneo_gpui_ui::app_shell::{
+use oneo_gpui_app_shell::{
     AppShellState, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
     TITLEBAR_HEIGHT, WorkspaceShell, WorkspaceShellConfig, WorkspaceShellState,
     panel_resize_handle, panel_toggle_button, titlebar_content_left_padding,
     titlebar_left_control_offset,
 };
+use oneo_gpui_terminal::{TerminalConfiguration, TerminalLabels, TerminalView};
 
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
 const TITLEBAR_NAVIGATION_INSET: f32 = 6.0;
