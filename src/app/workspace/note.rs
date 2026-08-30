@@ -13,6 +13,7 @@ use gpui::{
     PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, linear_color_stop,
     linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
+use oneo_gpui_ui::app_shell::PanelSide;
 const NOTE_MAX_WIDTH: f32 = 832.0;
 const ATMOSPHERE_HEIGHT: f32 = 268.0;
 const SHAPE_HEIGHT: f32 = 208.0;
@@ -191,7 +192,7 @@ impl Locus {
         let language = self.language(cx);
         let (left_padding, right_padding) = note_titlebar_padding(
             content_width,
-            self.rendered_left_width,
+            self.app_shell.workspace().rendered_width(PanelSide::Left),
             left_control_clearance,
         );
         let copy_button = toolbar_icon_button(
@@ -314,7 +315,7 @@ impl Locus {
                                     .child(node.title.clone()),
                             ),
                     )
-                    .when(self.fps_counter_visible, |header| {
+                    .when(self.app_shell.fps_counter().visible(), |header| {
                         header.child(self.render_fps_counter(cx))
                     })
                     .child(copy_button)

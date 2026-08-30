@@ -8,65 +8,11 @@ impl Locus {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        match side {
-            PanelSide::Left => {
-                self.left_sidebar_visible = !self.left_sidebar_visible;
-                self.left_sidebar_slide =
-                    (!cx.reduce_motion()).then(|| PanelSlide::new(self.rendered_left_width));
-            }
-            PanelSide::Right => {
-                let panel_content_width = self
-                    .right_sidebar_window_resize
-                    .map(PanelWindowResize::panel_content_width)
-                    .unwrap_or_else(|| {
-                        if self.right_sidebar_visible {
-                            self.rendered_right_width
-                        } else if window.is_fullscreen() || window.is_maximized() {
-                            fitted_panel_widths(
-                                WORKSPACE_SHELL_CONFIG,
-                                f32::from(window.viewport_size().width),
-                                self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
-                                true,
-                                self.left_sidebar_width,
-                                self.right_sidebar_width,
-                            )
-                            .1
-                        } else {
-                            self.right_sidebar_width
-                        }
-                    });
-                self.right_sidebar_visible = !self.right_sidebar_visible;
-                self.right_sidebar_slide =
-                    (!cx.reduce_motion()).then(|| PanelSlide::new(self.rendered_right_width));
-                self.right_sidebar_window_resize = Some(PanelWindowResize::new(
-                    window,
-                    self.rendered_right_width,
-                    panel_content_width,
-                    WINDOW_MIN_WIDTH,
-                ));
-            }
-        }
+        self.app_shell
+            .workspace_mut()
+            .toggle(side, window, cx.reduce_motion(), WINDOW_MIN_WIDTH);
         self.save_interface_state();
         cx.notify();
-    }
-
-    pub(super) fn sync_window_and_right_sidebar(
-        &mut self,
-        panels: &mut PanelFrame,
-        window: &mut Window,
-    ) {
-        let Some(resize) = self.right_sidebar_window_resize else {
-            self.rendered_right_width = panels.right;
-            return;
-        };
-        let frame = resize.sync(panels.right, window);
-        panels.right = frame.panel_width;
-        self.rendered_right_width = frame.panel_width;
-        if self.right_sidebar_slide.is_none() && frame.window_resize_complete {
-            self.right_sidebar_window_resize = None;
-        }
-        panels.right_sliding =
-            self.right_sidebar_slide.is_some() || self.right_sidebar_window_resize.is_some();
     }
 
     pub(super) fn window_drag_region(
@@ -110,7 +56,7 @@ impl Locus {
             PanelSide::Left => (
                 &self.left_toggle_focus,
                 "toggle-left-sidebar",
-                if self.left_sidebar_visible {
+                if self.app_shell.workspace().visible(PanelSide::Left) {
                     language.text("隐藏左侧栏", "Hide left sidebar")
                 } else {
                     language.text("显示左侧栏", "Show left sidebar")
@@ -119,7 +65,7 @@ impl Locus {
             PanelSide::Right => (
                 &self.right_toggle_focus,
                 "toggle-right-sidebar",
-                if self.right_sidebar_visible {
+                if self.app_shell.workspace().visible(PanelSide::Right) {
                     language.text("隐藏右侧栏", "Hide right sidebar")
                 } else {
                     language.text("显示右侧栏", "Show right sidebar")
@@ -220,9 +166,11 @@ impl Locus {
             .flex()
             .items_center()
             .gap(px(8.0))
-            .pl(px(
-                (left_control_clearance - self.rendered_left_width).max(14.0)
-            ))
+            .pl(px(titlebar_content_left_padding(
+                left_control_clearance,
+                self.app_shell.workspace().rendered_width(PanelSide::Left),
+                14.0,
+            )))
             .pr(px(14.0))
             .child(
                 self.window_drag_region("content-title-region", cx)
@@ -248,34 +196,14 @@ impl Locus {
                 self.window_drag_region("content-center-drag-region", cx)
                     .flex_1(),
             )
-            .when(self.fps_counter_visible, |header| {
+            .when(self.app_shell.fps_counter().visible(), |header| {
                 header.child(self.render_fps_counter(cx))
             })
             .child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
     }
 
     pub(super) fn render_fps_counter(&self, cx: &mut Context<Self>) -> Div {
-        let theme = Theme::current(cx);
-        div()
-            .h(px(26.0))
-            .flex_none()
-            .px(px(6.0))
-            .flex()
-            .items_center()
-            .gap(px(5.0))
-            .text_xs()
-            .text_color(theme.text_tertiary)
-            .child(
-                div()
-                    .size(px(6.0))
-                    .rounded_full()
-                    .bg(if self.fps_value > 0 {
-                        theme.focus
-                    } else {
-                        theme.text_tertiary
-                    }),
-            )
-            .child(format!("{} FPS", self.fps_value))
+        oneo_gpui_ui::app_shell::fps_counter(self.app_shell.fps_counter(), Theme::current(cx))
     }
 
     pub(super) fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {

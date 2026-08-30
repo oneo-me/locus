@@ -20,30 +20,25 @@ use config::{
     WINDOW_HEIGHT, WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH, WINDOW_TITLEBAR_HEIGHT, WINDOW_WIDTH,
 };
 use gpui::{
-    App, AppContext, Bounds, KeyBinding, Menu, MenuItem, Pixels, TitlebarOptions,
+    App, AppContext, Bounds, KeyBinding, MenuItem, Pixels, TitlebarOptions,
     WindowBackgroundAppearance, WindowBounds, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
 use localization::Language;
+use oneo_gpui_ui::app_shell::{
+    About, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit, ToggleFpsCounter,
+    ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
+};
+use oneo_gpui_ui::{
+    configure_main_window_close_behavior, configure_sidebar_material, init_reduce_motion,
+};
 use preferences::Preferences;
 use state::InterfaceState;
 
 const MIN_VISIBLE_TITLEBAR_WIDTH: f32 = 120.0;
 const MIN_VISIBLE_TITLEBAR_HEIGHT: f32 = 24.0;
 
-actions!(
-    locus,
-    [
-        Quit,
-        About,
-        CloseWindow,
-        OpenSettings,
-        ReloadCurrentNote,
-        ToggleLeftSidebar,
-        ToggleRightSidebar,
-        ToggleFpsCounter
-    ]
-);
+actions!(locus, [ReloadCurrentNote]);
 
 fn main() {
     let main_window: Rc<RefCell<Option<gpui::WindowHandle<Locus>>>> = Rc::new(RefCell::new(None));
@@ -59,17 +54,10 @@ fn main() {
     });
 
     platform_application.run(move |cx: &mut App| {
-        platform::init_reduce_motion(cx);
+        init_reduce_motion(cx);
         app::bind_keys(cx);
-        cx.bind_keys([
-            KeyBinding::new("secondary-q", Quit, None),
-            KeyBinding::new("secondary-w", CloseWindow, None),
-            KeyBinding::new("secondary-,", OpenSettings, None),
-            KeyBinding::new("secondary-r", ReloadCurrentNote, None),
-            KeyBinding::new("secondary-b", ToggleLeftSidebar, None),
-            KeyBinding::new("secondary-shift-b", ToggleRightSidebar, None),
-            KeyBinding::new("secondary-alt-shift-f", ToggleFpsCounter, None),
-        ]);
+        bind_app_shell_keys(cx);
+        cx.bind_keys([KeyBinding::new("secondary-r", ReloadCurrentNote, None)]);
         cx.on_action(|_: &About, _| platform::show_about_panel());
         cx.on_action(|_: &Quit, cx| cx.quit());
         let (preferences, load_error) = Preferences::load();
@@ -100,8 +88,8 @@ fn main() {
                     ..Default::default()
                 },
                 |window, cx| {
-                    platform::configure_main_window_close_behavior(window, cx);
-                    platform::configure_sidebar_material(window)
+                    configure_main_window_close_behavior(window, cx);
+                    configure_sidebar_material(window)
                         .expect("failed to install macOS sidebar material");
                     cx.new(|cx| Locus::new(window, preferences, load_error, interface_state, cx))
                 },
@@ -141,44 +129,27 @@ fn window_titlebar_is_reachable(
 }
 
 pub(crate) fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: bool) {
-    let mut application_items = Vec::new();
-    #[cfg(target_os = "macos")]
-    application_items.extend([
-        MenuItem::action(language.text("关于 Locus", "About Locus"), About),
-        MenuItem::separator(),
-    ]);
-    application_items.extend([
-        MenuItem::action(language.text("设置…", "Settings…"), OpenSettings),
-        MenuItem::separator(),
-        MenuItem::action(language.text("退出 Locus", "Quit Locus"), Quit),
-    ]);
-
-    cx.set_menus(vec![
-        Menu::new("Locus").items(application_items),
-        Menu::new(language.text("编辑", "Edit")).disabled(true),
-        Menu::new(language.text("显示", "View")).items([
-            MenuItem::action(
+    set_app_shell_menus(
+        cx,
+        AppShellMenus::new("Locus")
+            .labels(AppShellMenuLabels {
+                about: language.text("关于 Locus", "About Locus").into(),
+                close_window: language.text("关闭窗口", "Close Window").into(),
+                edit: language.text("编辑", "Edit").into(),
+                quit: language.text("退出 Locus", "Quit Locus").into(),
+                settings: language.text("设置…", "Settings…").into(),
+                toggle_left_panel: language.text("切换左侧栏", "Toggle Left Sidebar").into(),
+                toggle_right_panel: language.text("切换右侧栏", "Toggle Right Sidebar").into(),
+                toggle_fps_counter: language.text("显示帧率", "Show FPS").into(),
+                view: language.text("显示", "View").into(),
+                window: language.text("窗口", "Window").into(),
+            })
+            .view_items_before_panels([MenuItem::action(
                 language.text("重新载入当前笔记", "Reload Current Note"),
                 ReloadCurrentNote,
             )
-            .disabled(!can_reload_current_note),
-            MenuItem::separator(),
-            MenuItem::action(
-                language.text("切换左侧栏", "Toggle Left Sidebar"),
-                ToggleLeftSidebar,
-            ),
-            MenuItem::action(
-                language.text("切换右侧栏", "Toggle Right Sidebar"),
-                ToggleRightSidebar,
-            ),
-            MenuItem::separator(),
-            MenuItem::action(language.text("显示帧率", "Show FPS"), ToggleFpsCounter),
-        ]),
-        Menu::new(language.text("窗口", "Window")).items([MenuItem::action(
-            language.text("关闭窗口", "Close Window"),
-            CloseWindow,
-        )]),
-    ]);
+            .disabled(!can_reload_current_note)]),
+    );
 }
 
 #[cfg(test)]

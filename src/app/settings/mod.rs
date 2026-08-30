@@ -8,7 +8,7 @@ pub(super) mod text_input;
 
 use crate::config::{
     DEFAULT_CODE_FONT_FAMILY, DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY,
-    DEFAULT_UI_FONT_SIZE, WINDOW_TITLEBAR_HEIGHT, WINDOW_TRAFFIC_LIGHT_CLEARANCE,
+    WINDOW_TITLEBAR_HEIGHT, WINDOW_TRAFFIC_LIGHT_CLEARANCE,
 };
 use crate::document_library::ArchivedNote;
 use crate::localization::Language;
@@ -21,10 +21,13 @@ use crate::theme::{self, Theme, ThemePreference};
 use crate::ui::{ActivationExt, Icon, MarkdownSelection, icon, selectable_code_text};
 use gpui::{
     App, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight,
-    KeyDownEvent, MouseButton, PathPromptOptions, Rems, Render, Role, Stateful,
-    StatefulInteractiveElement, Toggled, Window, deferred, div, prelude::*, px, rems,
+    KeyDownEvent, MouseButton, PathPromptOptions, Render, Role, Stateful,
+    StatefulInteractiveElement, Toggled, Window, deferred, div, prelude::*, px,
 };
-use oneo_gpui_ui::app_shell::{SettingsShell, settings_back_button};
+use oneo_gpui_ui::app_shell::{
+    SettingsShell, settings_back_button, settings_navigation_group, settings_navigation_row,
+    settings_sidebar_header,
+};
 
 const SETTINGS_SIDEBAR_WIDTH: f32 = 252.0;
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 720.0;
@@ -578,31 +581,24 @@ impl Settings {
             SETTINGS_TITLEBAR_CONTROL_INSET
         };
 
-        div()
-            .size_full()
-            .flex()
-            .items_center()
-            .child(
-                self.render_titlebar_drag_region("settings-sidebar-traffic-light-drag-region", cx)
-                    .w(px(traffic_light_clearance))
-                    .flex_none(),
+        settings_sidebar_header(
+            traffic_light_clearance,
+            self.render_titlebar_drag_region("settings-sidebar-traffic-light-drag-region", cx)
+                .into_any_element(),
+            settings_back_button(
+                "settings-back",
+                back_label,
+                &self.controls[FOCUS_BACK],
+                theme,
             )
-            .child(
-                div().h_full().flex_1().pr(px(8.0)).py(px(7.0)).child(
-                    settings_back_button(
-                        "settings-back",
-                        back_label,
-                        &self.controls[FOCUS_BACK],
-                        theme,
-                    )
-                    .text_size(scaled_ui_pixels(13.0))
-                    .on_activation(cx, |this, window, cx| this.close(window, cx)),
-                ),
-            )
+            .on_activation(cx, |this, window, cx| this.close(window, cx))
+            .into_any_element(),
+        )
     }
 
     fn render_sidebar(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
         let language = self.preferences.language;
+        let theme = Theme::current(cx);
         div()
             .id("settings-sidebar-scroll")
             .size_full()
@@ -613,7 +609,7 @@ impl Settings {
             .flex()
             .flex_col()
             .gap(px(14.0))
-            .child(self.render_navigation_group(
+            .child(settings_navigation_group(
                 language.text("应用", "Application"),
                 vec![
                     self.render_navigation_row(
@@ -641,9 +637,9 @@ impl Settings {
                         cx,
                     ),
                 ],
-                cx,
+                theme,
             ))
-            .child(self.render_navigation_group(
+            .child(settings_navigation_group(
                 language.text("文档库", "Library"),
                 vec![self.render_navigation_row(
                     "settings-archive",
@@ -653,9 +649,9 @@ impl Settings {
                     FOCUS_ARCHIVE_PAGE,
                     cx,
                 )],
-                cx,
+                theme,
             ))
-            .child(self.render_navigation_group(
+            .child(settings_navigation_group(
                 language.text("连接", "Connections"),
                 vec![self.render_navigation_row(
                     "settings-mcp",
@@ -665,31 +661,8 @@ impl Settings {
                     FOCUS_MCP_PAGE,
                     cx,
                 )],
-                cx,
+                theme,
             ))
-    }
-
-    fn render_navigation_group(
-        &self,
-        label: &'static str,
-        rows: impl IntoIterator<Item = Stateful<gpui::Div>>,
-        cx: &App,
-    ) -> gpui::Div {
-        let theme = Theme::current(cx);
-        rows.into_iter().fold(
-            div().flex().flex_col().gap(px(3.0)).child(
-                div()
-                    .h(px(22.0))
-                    .px(px(11.0))
-                    .flex()
-                    .items_center()
-                    .text_size(scaled_ui_pixels(11.0))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text_tertiary)
-                    .child(label),
-            ),
-            |group, row| group.child(row),
-        )
     }
 
     fn render_navigation_row(
@@ -703,49 +676,23 @@ impl Settings {
     ) -> Stateful<gpui::Div> {
         let theme = Theme::current(cx);
         let selected = self.page == page;
-        div()
-            .id(id)
-            .role(Role::Button)
-            .aria_label(label)
-            .track_focus(&self.controls[focus_index])
-            .tab_index(0)
-            .tab_stop(true)
-            .h(px(36.0))
-            .px(px(11.0))
-            .rounded(px(8.0))
-            .flex()
-            .items_center()
-            .gap(px(10.0))
-            .cursor_default()
-            .text_size(scaled_ui_pixels(13.0))
-            .text_color(if selected {
-                theme.text
-            } else {
-                theme.text_secondary
-            })
-            .when(selected, |row| row.bg(theme.control_selected))
-            .hover(|style| style.bg(theme.control_selected))
-            .active(|style| style.bg(theme.control_selected))
-            .focus_visible(|style| style.border_1().border_color(theme.focus))
-            .child(icon(
-                icon_kind,
-                15.0,
-                if selected {
-                    theme.text_secondary
-                } else {
-                    theme.text_tertiary
-                },
-            ))
-            .child(label)
-            .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
-                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                    this.apply_choice(Choice::Page(page), window, cx);
-                    cx.stop_propagation();
-                }
-            }))
-            .on_click(cx.listener(move |this, _, window, cx| {
+        settings_navigation_row(
+            id,
+            label,
+            icon_kind,
+            &self.controls[focus_index],
+            selected,
+            theme,
+        )
+        .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
+            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
                 this.apply_choice(Choice::Page(page), window, cx);
-            }))
+                cx.stop_propagation();
+            }
+        }))
+        .on_click(cx.listener(move |this, _, window, cx| {
+            this.apply_choice(Choice::Page(page), window, cx);
+        }))
     }
 
     fn render_content_header(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
@@ -818,10 +765,6 @@ fn font_size_label(value: f32) -> &'static str {
         20 => "20",
         _ => unreachable!("unsupported font size"),
     }
-}
-
-fn scaled_ui_pixels(value: f32) -> Rems {
-    rems(value / DEFAULT_UI_FONT_SIZE)
 }
 
 impl Render for Settings {
