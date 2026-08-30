@@ -9,16 +9,17 @@ use std::sync::Arc;
 
 use gpui::{
     AnyElement, ClipboardItem, FocusHandle, FontStyle, FontWeight, KeyDownEvent, MouseButton,
-    ObjectFit, Role, SharedString, StrikethroughStyle, StyledText, TextRun, UnderlineStyle, div,
-    font, img, prelude::*, px, relative,
+    ObjectFit, Role, SharedString, StrikethroughStyle, StyledImage, StyledText, TextRun,
+    UnderlineStyle, div, font, img, prelude::*, px, relative,
 };
 
 use self::parser::{Block, InlineRun, ListItem, TableAlign};
 pub use self::selection::MarkdownSelection;
 use self::selection::{LinkHandler, SelectableText};
-use crate::document_library::Attachment;
+use crate::document_library::{Attachment, LibraryTree, library_reference_path};
 use crate::localization::Language;
 use crate::theme::Theme;
+use crate::ui::link_icon::remote_link_icon;
 use crate::ui::{Icon, icon};
 
 #[derive(Clone)]
@@ -51,6 +52,7 @@ pub struct Markdown<'a> {
     code_font_family: &'a str,
     code_text_size: f32,
     attachments: &'a [Attachment],
+    library_tree: Option<&'a LibraryTree>,
     language: Language,
     selection: MarkdownSelection,
     focus: FocusHandle,
@@ -84,6 +86,7 @@ impl<'a> Markdown<'a> {
             code_font_family: typography.code_font_family,
             code_text_size: typography.code_text_size,
             attachments: &[],
+            library_tree: None,
             language: Language::Chinese,
             selection,
             focus,
@@ -99,6 +102,11 @@ impl<'a> Markdown<'a> {
     ) -> Self {
         self.attachments = attachments;
         self.language = language;
+        self
+    }
+
+    pub fn with_library_tree(mut self, library_tree: &'a LibraryTree) -> Self {
+        self.library_tree = Some(library_tree);
         self
     }
 
@@ -121,6 +129,7 @@ impl<'a> Markdown<'a> {
             code_font_family: self.code_font_family,
             code_text_size: self.code_text_size,
             attachments: self.attachments,
+            library_tree: self.library_tree,
             language: self.language,
             selection: self.selection.clone(),
             focus: self.focus.clone(),
@@ -128,6 +137,7 @@ impl<'a> Markdown<'a> {
             link_handler: self.link_handler,
             next_text_id: 0,
             next_code_id: 0,
+            next_link_id: 0,
         };
         let children = self
             .document
@@ -196,6 +206,7 @@ struct RenderContext<'a> {
     code_font_family: &'a str,
     code_text_size: f32,
     attachments: &'a [Attachment],
+    library_tree: Option<&'a LibraryTree>,
     language: Language,
     selection: MarkdownSelection,
     focus: FocusHandle,
@@ -203,6 +214,7 @@ struct RenderContext<'a> {
     link_handler: Option<LinkHandler>,
     next_text_id: usize,
     next_code_id: usize,
+    next_link_id: usize,
 }
 
 impl RenderContext<'_> {
@@ -306,31 +318,147 @@ impl RenderContext<'_> {
     }
 
     fn inline_text(&mut self, runs: &[InlineRun], base_weight: FontWeight) -> AnyElement {
-        if runs.iter().any(|run| run.style.code) {
-            let children = runs
-                .iter()
-                .map(|run| {
-                    if run.style.code {
-                        self.inline_code(run, base_weight)
-                    } else {
-                        div()
-                            .min_w_0()
-                            .max_w_full()
-                            .child(self.styled_text(std::slice::from_ref(run), base_weight))
-                            .into_any_element()
-                    }
-                })
-                .collect::<Vec<_>>();
-            return div()
-                .w_full()
-                .min_w_0()
-                .flex()
-                .flex_wrap()
-                .items_baseline()
-                .children(children)
+        if !runs
+            .iter()
+            .any(|run| run.style.code || run.style.link.is_some())
+        {
+            return self.styled_text(runs, base_weight);
+        }
+
+        let mut children = Vec::new();
+        let mut index = 0;
+        while index < runs.len() {
+            let run = &runs[index];
+            if let Some(url) = run.style.link.as_deref() {
+                let mut title = String::new();
+                while index < runs.len() && runs[index].style.link.as_deref() == Some(url) {
+                    title.push_str(&runs[index].text);
+                    index += 1;
+                }
+                children.push(self.render_link_button(url, title));
+            } else if run.style.code {
+                children.push(self.inline_code(run, base_weight));
+                index += 1;
+            } else {
+                let start = index;
+                while index < runs.len()
+                    && !runs[index].style.code
+                    && runs[index].style.link.is_none()
+                {
+                    index += 1;
+                }
+                children.push(
+                    div()
+                        .min_w_0()
+                        .max_w_full()
+                        .child(self.styled_text(&runs[start..index], base_weight))
+                        .into_any_element(),
+                );
+            }
+        }
+
+        div()
+            .w_full()
+            .min_w_0()
+            .flex()
+            .flex_wrap()
+            .items_center()
+            .children(children)
+            .into_any_element()
+    }
+
+    fn render_link_button(&mut self, url: &str, title: String) -> AnyElement {
+        let id = SharedString::from(format!("markdown-link-{}", self.next_link_id));
+        self.next_link_id += 1;
+        let click_url = url.to_owned();
+        let keyboard_url = click_url.clone();
+        let click_handler = self.link_handler.clone();
+        let keyboard_handler = click_handler.clone();
+
+        div()
+            .id(id)
+            .role(Role::Button)
+            .aria_label(title.clone())
+            .tab_index(0)
+            .tab_stop(true)
+            .min_w_0()
+            .max_w_full()
+            .h(px((self.code_text_size * 1.8).round()))
+            .mx(px(2.0))
+            .px(px(8.0))
+            .flex()
+            .items_center()
+            .gap(px(5.0))
+            .rounded_full()
+            .border_1()
+            .border_color(self.theme.border)
+            .bg(self.theme.raised)
+            .font_family(self.code_font_family)
+            .text_size(px(self.code_text_size))
+            .line_height(px((self.code_text_size * 1.4).round()))
+            .text_color(self.theme.text)
+            .cursor_pointer()
+            .focus_visible(|style| style.border_color(self.theme.focus))
+            .hover(|style| {
+                style
+                    .bg(self.theme.control_hover)
+                    .border_color(self.theme.border_strong)
+            })
+            .active(|style| style.bg(self.theme.control_active))
+            .child(self.render_link_icon(url))
+            .child(div().min_w_0().truncate().child(title))
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .on_click(move |_, window, cx| {
+                activate_link(&click_url, click_handler.as_ref(), window, cx);
+                cx.stop_propagation();
+            })
+            .on_key_down(move |event: &KeyDownEvent, window, cx| {
+                if !event.keystroke.modifiers.modified()
+                    && matches!(event.keystroke.key.as_str(), "enter" | "space")
+                {
+                    activate_link(&keyboard_url, keyboard_handler.as_ref(), window, cx);
+                    cx.stop_propagation();
+                }
+            })
+            .into_any_element()
+    }
+
+    fn render_link_icon(&self, url: &str) -> AnyElement {
+        if let Some(path) = library_reference_path(url) {
+            if let Some(node) = self.library_tree.and_then(|tree| tree.node(path)) {
+                if let Some(source) = node.icon_image.as_ref() {
+                    let fallback_icon = node.icon.clone();
+                    let theme = self.theme;
+                    return crate::ui::document_icon_image(source)
+                        .size(px(13.0))
+                        .rounded(px(3.0))
+                        .object_fit(ObjectFit::Cover)
+                        .with_fallback(move || {
+                            fallback_icon
+                                .clone()
+                                .map(emoji_link_icon)
+                                .unwrap_or_else(|| generic_link_icon(theme))
+                        })
+                        .into_any_element();
+                }
+                if let Some(value) = node.icon.clone() {
+                    return emoji_link_icon(value);
+                }
+            }
+            return generic_link_icon(self.theme);
+        }
+        if url.starts_with("http://") || url.starts_with("https://") {
+            let loading_theme = self.theme;
+            let fallback_theme = self.theme;
+            return remote_link_icon(url)
+                .size(px(13.0))
+                .rounded(px(3.0))
+                .object_fit(ObjectFit::Cover)
+                .with_loading(move || generic_link_icon(loading_theme))
+                .with_fallback(move || generic_link_icon(fallback_theme))
                 .into_any_element();
         }
-        self.styled_text(runs, base_weight)
+        generic_link_icon(self.theme)
     }
 
     fn inline_code(&mut self, run: &InlineRun, base_weight: FontWeight) -> AnyElement {
@@ -858,6 +986,34 @@ fn image_path(base_directory: &Path, url: &str) -> PathBuf {
     } else {
         base_directory.join(path)
     }
+}
+
+fn activate_link(
+    url: &str,
+    handler: Option<&LinkHandler>,
+    window: &mut gpui::Window,
+    cx: &mut gpui::App,
+) {
+    if !handler.is_some_and(|handler| handler(url, window, cx)) {
+        cx.open_url(url);
+    }
+}
+
+fn emoji_link_icon(value: String) -> AnyElement {
+    div()
+        .size(px(13.0))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .text_size(px(12.0))
+        .line_height(px(13.0))
+        .child(value)
+        .into_any_element()
+}
+
+fn generic_link_icon(theme: Theme) -> AnyElement {
+    icon(Icon::Link, 12.0, theme.text_tertiary).into_any_element()
 }
 
 fn column_widths(

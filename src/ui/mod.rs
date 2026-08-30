@@ -1,6 +1,7 @@
 mod activation;
 mod button;
 mod icon;
+mod link_icon;
 mod local_image;
 mod markdown;
 mod scrollbar;
