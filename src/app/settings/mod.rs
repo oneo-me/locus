@@ -8,7 +8,7 @@ pub(super) mod text_input;
 
 use crate::config::{
     DEFAULT_CODE_FONT_FAMILY, DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY,
-    DEFAULT_UI_FONT_SIZE,
+    DEFAULT_UI_FONT_SIZE, WINDOW_TITLEBAR_HEIGHT, WINDOW_TRAFFIC_LIGHT_CLEARANCE,
 };
 use crate::document_library::ArchivedNote;
 use crate::localization::Language;
@@ -18,7 +18,7 @@ use crate::preferences::{
     terminal_color_scheme_label, terminal_cursor_style_label,
 };
 use crate::theme::{self, Theme, ThemePreference};
-use crate::ui::{ActivationExt, Icon, icon};
+use crate::ui::{ActivationExt, Icon, MarkdownSelection, icon, selectable_code_text};
 use gpui::{
     App, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight,
     KeyDownEvent, MouseButton, PathPromptOptions, Rems, Render, Role, Stateful,
@@ -27,6 +27,7 @@ use gpui::{
 
 const SETTINGS_SIDEBAR_WIDTH: f32 = 252.0;
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 720.0;
+const SETTINGS_TITLEBAR_CONTROL_INSET: f32 = 11.0;
 const FOCUS_BACK: usize = 0;
 const FOCUS_GENERAL_PAGE: usize = 1;
 const FOCUS_APPEARANCE_PAGE: usize = 2;
@@ -50,11 +51,13 @@ const FOCUS_ARCHIVE_PAGE: usize = 19;
 const FOCUS_MENU_START: usize = 20;
 const FOCUS_MCP_PORT_APPLY: usize = 27;
 const FOCUS_MCP_ENDPOINT_COPY: usize = 28;
-const FOCUS_MCP_CODEX_COPY: usize = 29;
-const FOCUS_MCP_CLAUDE_COPY: usize = 30;
-const FOCUS_MCP_CURSOR_COPY: usize = 31;
-const FOCUS_MCP_OPENCODE_COPY: usize = 32;
-const FOCUS_MCP_GENERIC_COPY: usize = 33;
+const FOCUS_MCP_CODEX_TAB: usize = 29;
+const FOCUS_MCP_CLAUDE_TAB: usize = 30;
+const FOCUS_MCP_CURSOR_TAB: usize = 31;
+const FOCUS_MCP_OPENCODE_TAB: usize = 32;
+const FOCUS_MCP_GENERIC_TAB: usize = 33;
+const FOCUS_MCP_GUIDE_COPY: usize = 34;
+const FOCUS_MCP_GUIDE_CODE: usize = 35;
 
 fn font_matches_search(family: &str, normalized_query: &str) -> bool {
     normalized_query.is_empty() || family.to_lowercase().contains(normalized_query)
@@ -68,6 +71,18 @@ enum SettingsPage {
     Appearance,
     Terminal,
     Mcp,
+}
+
+impl SettingsPage {
+    fn label(self, language: Language) -> &'static str {
+        match self {
+            Self::General => language.text("通用", "General"),
+            Self::Archive => language.text("归档", "Archive"),
+            Self::Appearance => language.text("外观", "Appearance"),
+            Self::Terminal => language.text("终端", "Terminal"),
+            Self::Mcp => "MCP",
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -193,12 +208,15 @@ pub struct Settings {
     mcp_port_error: Option<String>,
     mcp_server_state: McpServerState,
     mcp_copied: Option<&'static str>,
+    mcp_client: mcp::McpClient,
+    mcp_code_selection: MarkdownSelection,
     archived_notes: Vec<ArchivedNote>,
     archive_action_focus: Vec<FocusHandle>,
     archive_load_error: Option<String>,
     archive_action_error: Option<String>,
     restoring_archive: Option<std::path::PathBuf>,
     error: Option<String>,
+    titlebar_drag_armed: bool,
 }
 
 impl EventEmitter<SettingsEvent> for Settings {}
@@ -325,12 +343,15 @@ impl Settings {
             mcp_port_error: None,
             mcp_server_state,
             mcp_copied: None,
+            mcp_client: mcp::McpClient::default(),
+            mcp_code_selection: MarkdownSelection::default(),
             archived_notes,
             archive_action_focus,
             archive_load_error,
             archive_action_error: None,
             restoring_archive: None,
             error: load_error,
+            titlebar_drag_armed: false,
         }
     }
 
@@ -510,10 +531,51 @@ impl Settings {
         cx.notify();
     }
 
-    fn render_sidebar(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn render_titlebar_drag_region(
+        &self,
+        id: &'static str,
+        cx: &mut Context<Self>,
+    ) -> Stateful<gpui::Div> {
+        div()
+            .id(id)
+            .h_full()
+            .on_click(|event, window, _| {
+                if event.click_count() == 2 {
+                    window.titlebar_double_click();
+                }
+            })
+            .on_mouse_down_out(cx.listener(|this, _, _, _| {
+                this.titlebar_drag_armed = false;
+            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, _, _| {
+                    this.titlebar_drag_armed = true;
+                }),
+            )
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|this, _, _, _| {
+                    this.titlebar_drag_armed = false;
+                }),
+            )
+            .on_mouse_move(cx.listener(|this, _, window, _| {
+                if this.titlebar_drag_armed {
+                    this.titlebar_drag_armed = false;
+                    window.start_window_move();
+                }
+            }))
+    }
+
+    fn render_sidebar(&self, fullscreen: bool, cx: &mut Context<Self>) -> gpui::Div {
         let theme = Theme::current(cx);
         let language = self.preferences.language;
         let back_label = language.text("返回", "Back");
+        let traffic_light_clearance = if cfg!(target_os = "macos") && !fullscreen {
+            WINDOW_TRAFFIC_LIGHT_CLEARANCE
+        } else {
+            SETTINGS_TITLEBAR_CONTROL_INSET
+        };
 
         div()
             .w(px(SETTINGS_SIDEBAR_WIDTH))
@@ -521,87 +583,148 @@ impl Settings {
             .flex_none()
             .flex()
             .flex_col()
-            .child(div().h(px(48.0)).flex_none())
-            .child(
-                div().px(px(12.0)).child(
-                    div()
-                        .id("settings-back")
-                        .role(Role::Button)
-                        .aria_label(back_label)
-                        .track_focus(&self.controls[FOCUS_BACK])
-                        .tab_index(0)
-                        .tab_stop(true)
-                        .h(px(34.0))
-                        .px(px(11.0))
-                        .rounded(px(8.0))
-                        .flex()
-                        .items_center()
-                        .cursor_default()
-                        .text_size(scaled_ui_pixels(13.0))
-                        .text_color(theme.text_secondary)
-                        .hover(|style| style.bg(theme.control_hover))
-                        .active(|style| style.bg(theme.control_active))
-                        .focus_visible(|style| style.border_1().border_color(theme.focus))
-                        .gap(px(9.0))
-                        .child(icon(Icon::ArrowLeft, 15.0, theme.text_tertiary))
-                        .child(back_label)
-                        .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
-                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                                this.close(window, cx);
-                                cx.stop_propagation();
-                            }
-                        }))
-                        .on_click(cx.listener(|this, _, window, cx| this.close(window, cx))),
-                ),
-            )
-            .child(div().h(px(18.0)))
             .child(
                 div()
+                    .h(px(WINDOW_TITLEBAR_HEIGHT))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .child(
+                        self.render_titlebar_drag_region(
+                            "settings-sidebar-traffic-light-drag-region",
+                            cx,
+                        )
+                        .w(px(traffic_light_clearance))
+                        .flex_none(),
+                    )
+                    .child(
+                        div().h_full().flex_1().pr(px(8.0)).py(px(7.0)).child(
+                            div()
+                                .id("settings-back")
+                                .role(Role::Button)
+                                .aria_label(back_label)
+                                .track_focus(&self.controls[FOCUS_BACK])
+                                .tab_index(0)
+                                .tab_stop(true)
+                                .size_full()
+                                .px(px(9.0))
+                                .rounded(px(8.0))
+                                .flex()
+                                .items_center()
+                                .cursor_default()
+                                .text_size(scaled_ui_pixels(13.0))
+                                .text_color(theme.text_secondary)
+                                .hover(|style| style.bg(theme.control_hover))
+                                .active(|style| style.bg(theme.control_active))
+                                .focus_visible(|style| style.border_1().border_color(theme.focus))
+                                .gap(px(9.0))
+                                .child(icon(Icon::ArrowLeft, 15.0, theme.text_tertiary))
+                                .child(back_label)
+                                .on_key_down(cx.listener(
+                                    |this, event: &KeyDownEvent, window, cx| {
+                                        if matches!(event.keystroke.key.as_str(), "enter" | "space")
+                                        {
+                                            this.close(window, cx);
+                                            cx.stop_propagation();
+                                        }
+                                    },
+                                ))
+                                .on_click(
+                                    cx.listener(|this, _, window, cx| this.close(window, cx)),
+                                ),
+                        ),
+                    ),
+            )
+            .child(
+                div()
+                    .id("settings-sidebar-scroll")
+                    .min_h_0()
+                    .flex_1()
+                    .overflow_y_scroll()
                     .px(px(12.0))
+                    .pt(px(12.0))
+                    .pb(px(20.0))
                     .flex()
                     .flex_col()
-                    .gap(px(3.0))
-                    .child(self.render_navigation_row(
-                        "settings-general",
-                        language.text("通用", "General"),
-                        Icon::Settings,
-                        SettingsPage::General,
-                        FOCUS_GENERAL_PAGE,
+                    .gap(px(14.0))
+                    .child(self.render_navigation_group(
+                        language.text("应用", "Application"),
+                        vec![
+                            self.render_navigation_row(
+                                "settings-general",
+                                SettingsPage::General.label(language),
+                                Icon::Settings,
+                                SettingsPage::General,
+                                FOCUS_GENERAL_PAGE,
+                                cx,
+                            ),
+                            self.render_navigation_row(
+                                "settings-appearance",
+                                SettingsPage::Appearance.label(language),
+                                Icon::Appearance,
+                                SettingsPage::Appearance,
+                                FOCUS_APPEARANCE_PAGE,
+                                cx,
+                            ),
+                            self.render_navigation_row(
+                                "settings-terminal",
+                                SettingsPage::Terminal.label(language),
+                                Icon::Terminal,
+                                SettingsPage::Terminal,
+                                FOCUS_TERMINAL_PAGE,
+                                cx,
+                            ),
+                        ],
                         cx,
                     ))
-                    .child(self.render_navigation_row(
-                        "settings-archive",
-                        language.text("归档", "Archive"),
-                        Icon::Archive,
-                        SettingsPage::Archive,
-                        FOCUS_ARCHIVE_PAGE,
+                    .child(self.render_navigation_group(
+                        language.text("文档库", "Library"),
+                        vec![self.render_navigation_row(
+                            "settings-archive",
+                            SettingsPage::Archive.label(language),
+                            Icon::Archive,
+                            SettingsPage::Archive,
+                            FOCUS_ARCHIVE_PAGE,
+                            cx,
+                        )],
                         cx,
                     ))
-                    .child(self.render_navigation_row(
-                        "settings-appearance",
-                        language.text("外观", "Appearance"),
-                        Icon::Appearance,
-                        SettingsPage::Appearance,
-                        FOCUS_APPEARANCE_PAGE,
-                        cx,
-                    ))
-                    .child(self.render_navigation_row(
-                        "settings-terminal",
-                        language.text("终端", "Terminal"),
-                        Icon::Terminal,
-                        SettingsPage::Terminal,
-                        FOCUS_TERMINAL_PAGE,
-                        cx,
-                    ))
-                    .child(self.render_navigation_row(
-                        "settings-mcp",
-                        "MCP",
-                        Icon::Plug,
-                        SettingsPage::Mcp,
-                        FOCUS_MCP_PAGE,
+                    .child(self.render_navigation_group(
+                        language.text("连接", "Connections"),
+                        vec![self.render_navigation_row(
+                            "settings-mcp",
+                            SettingsPage::Mcp.label(language),
+                            Icon::Plug,
+                            SettingsPage::Mcp,
+                            FOCUS_MCP_PAGE,
+                            cx,
+                        )],
                         cx,
                     )),
             )
+    }
+
+    fn render_navigation_group(
+        &self,
+        label: &'static str,
+        rows: impl IntoIterator<Item = Stateful<gpui::Div>>,
+        cx: &App,
+    ) -> gpui::Div {
+        let theme = Theme::current(cx);
+        rows.into_iter().fold(
+            div().flex().flex_col().gap(px(3.0)).child(
+                div()
+                    .h(px(22.0))
+                    .px(px(11.0))
+                    .flex()
+                    .items_center()
+                    .text_size(scaled_ui_pixels(11.0))
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(theme.text_tertiary)
+                    .child(label),
+            ),
+            |group, row| group.child(row),
+        )
     }
 
     fn render_navigation_row(
@@ -663,13 +786,7 @@ impl Settings {
     fn render_content(&self, cx: &mut Context<Self>) -> gpui::Div {
         let theme = Theme::current(cx);
         let language = self.preferences.language;
-        let title = match self.page {
-            SettingsPage::General => language.text("通用", "General"),
-            SettingsPage::Archive => language.text("归档", "Archive"),
-            SettingsPage::Appearance => language.text("外观", "Appearance"),
-            SettingsPage::Terminal => language.text("终端", "Terminal"),
-            SettingsPage::Mcp => "MCP",
-        };
+        let title = self.page.label(language);
         let content = match self.page {
             SettingsPage::General => self.render_general(cx),
             SettingsPage::Archive => self.render_archive(cx),
@@ -687,7 +804,17 @@ impl Settings {
             .border_l_1()
             .border_color(theme.sidebar_border)
             .bg(theme.surface)
-            .child(div().h(px(48.0)).flex_none())
+            .child(
+                self.render_titlebar_drag_region("settings-content-titlebar", cx)
+                    .h(px(WINDOW_TITLEBAR_HEIGHT))
+                    .flex_none()
+                    .px(px(32.0))
+                    .flex()
+                    .items_center()
+                    .text_sm()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child(title),
+            )
             .child(
                 div()
                     .id("settings-content-scroll")
@@ -702,7 +829,6 @@ impl Settings {
                             .max_w(px(SETTINGS_CONTENT_MAX_WIDTH))
                             .mx_auto()
                             .pb(px(190.0))
-                            .child(div().text_lg().font_weight(FontWeight::MEDIUM).child(title))
                             .when_some(self.error.as_ref(), |view, error| {
                                 view.child(
                                     div()
@@ -747,7 +873,7 @@ fn scaled_ui_pixels(value: f32) -> Rems {
 }
 
 impl Render for Settings {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::current(cx);
         div()
             .key_context("Settings")
@@ -774,7 +900,7 @@ impl Render for Settings {
             .bg(theme.surface)
             .text_color(theme.text)
             .font_family(self.preferences.resolved_ui_font_family().to_owned())
-            .child(self.render_sidebar(cx))
+            .child(self.render_sidebar(window.is_fullscreen(), cx))
             .child(self.render_content(cx))
     }
 }
@@ -807,11 +933,13 @@ mod tests {
             FOCUS_MCP_LOCAL_NETWORK,
             FOCUS_MCP_PORT_APPLY,
             FOCUS_MCP_ENDPOINT_COPY,
-            FOCUS_MCP_CODEX_COPY,
-            FOCUS_MCP_CLAUDE_COPY,
-            FOCUS_MCP_CURSOR_COPY,
-            FOCUS_MCP_OPENCODE_COPY,
-            FOCUS_MCP_GENERIC_COPY,
+            FOCUS_MCP_CODEX_TAB,
+            FOCUS_MCP_CLAUDE_TAB,
+            FOCUS_MCP_CURSOR_TAB,
+            FOCUS_MCP_OPENCODE_TAB,
+            FOCUS_MCP_GENERIC_TAB,
+            FOCUS_MCP_GUIDE_COPY,
+            FOCUS_MCP_GUIDE_CODE,
             FOCUS_ARCHIVE_PAGE,
         ];
         let mut unique = std::collections::HashSet::new();

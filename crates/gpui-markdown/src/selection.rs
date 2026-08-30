@@ -4,10 +4,11 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui::{
-    App, Bounds, CursorStyle, DispatchPhase, Element, ElementId, FocusHandle, GlobalElementId,
-    Hitbox, HitboxBehavior, Hsla, InspectorElementId, IntoElement, LayoutId, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, SharedString, StyledText, TextAlign,
-    TextLayout, Window, fill, point,
+    AnyElement, App, Bounds, ClipboardItem, CursorStyle, DispatchPhase, Element, ElementId,
+    EntityId, FocusHandle, FontWeight, GlobalElementId, Hitbox, HitboxBehavior, Hsla,
+    InspectorElementId, IntoElement, KeyDownEvent, LayoutId, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, Pixels, SharedString, StyledText, TextAlign, TextLayout, TextRun,
+    Window, div, fill, font, point, prelude::*, px,
 };
 
 pub(super) type LinkHandler = Rc<dyn Fn(&str, &mut Window, &mut App) -> bool>;
@@ -316,6 +317,91 @@ impl SelectableText {
             interaction,
         }
     }
+}
+
+pub fn selectable_code_text(
+    id: &'static str,
+    value: SharedString,
+    font_family: SharedString,
+    font_size: f32,
+    line_height: f32,
+    color: Hsla,
+    selection_color: Hsla,
+    selection: MarkdownSelection,
+    focus: FocusHandle,
+    notify_entity: EntityId,
+) -> AnyElement {
+    selection.set_document(Arc::from(value.to_string()));
+    let len = value.len();
+    let mut code_font = font(font_family);
+    code_font.weight = FontWeight::NORMAL;
+    let text = StyledText::new(value.clone()).with_runs(vec![TextRun {
+        len,
+        font: code_font,
+        color,
+        ..Default::default()
+    }]);
+    let selectable = SelectableText::new(
+        format!("{id}-text"),
+        value.clone(),
+        text,
+        0..len,
+        Vec::new(),
+        selection_color,
+        TextInteraction {
+            selection: selection.clone(),
+            focus: focus.clone(),
+            notify_entity,
+            link_handler: None,
+        },
+    );
+    let selection_for_copy = selection.clone();
+    let selection_for_mouse_up = selection.clone();
+    let selection_for_mouse_up_out = selection.clone();
+
+    div()
+        .id(id)
+        .track_focus(&focus)
+        .on_key_down(move |event: &KeyDownEvent, window, cx| {
+            let modifiers = &event.keystroke.modifiers;
+            if !modifiers.secondary() || modifiers.number_of_modifiers() != 1 {
+                return;
+            }
+            if event.keystroke.key.eq_ignore_ascii_case("c") {
+                if let Some(text) = selection_for_copy.selected_text() {
+                    cx.write_to_clipboard(ClipboardItem::new_string(text));
+                    window.prevent_default();
+                    cx.stop_propagation();
+                }
+            } else if event.keystroke.key.eq_ignore_ascii_case("a")
+                && selection_for_copy.select_all()
+            {
+                window.prevent_default();
+                cx.stop_propagation();
+                cx.notify(notify_entity);
+            }
+        })
+        .on_mouse_up(MouseButton::Left, move |_, _, cx| {
+            if selection_for_mouse_up.finish_drag() {
+                cx.notify(notify_entity);
+            }
+        })
+        .on_mouse_up_out(MouseButton::Left, move |_, _, cx| {
+            if selection_for_mouse_up_out.end() {
+                cx.notify(notify_entity);
+            }
+        })
+        .on_mouse_down_out(move |event, _, cx| {
+            if event.button == MouseButton::Left && selection.reset() {
+                cx.notify(notify_entity);
+            }
+        })
+        .w_full()
+        .min_w_0()
+        .text_size(px(font_size))
+        .line_height(px(line_height))
+        .child(selectable)
+        .into_any_element()
 }
 
 impl IntoElement for SelectableText {

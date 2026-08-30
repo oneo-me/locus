@@ -4,7 +4,7 @@ mod markdown_extensions;
 
 pub use gpui_markdown::{
     Markdown, MarkdownCodeBlocks, MarkdownDocument, MarkdownLabels, MarkdownSelection,
-    MarkdownTypography,
+    MarkdownTypography, selectable_code_text,
 };
 pub use gpui_ui::{
     ActivationExt, Icon, ScrollbarState, icon, toolbar_icon_button, vertical_scrollbar,

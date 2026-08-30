@@ -1,12 +1,112 @@
 use super::*;
 
-struct McpGuide {
-    title: &'static str,
-    description: &'static str,
-    code_label: &'static str,
-    code: String,
-    key: &'static str,
-    copy_focus: usize,
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(super) enum McpClient {
+    #[default]
+    Codex,
+    ClaudeCode,
+    Cursor,
+    OpenCode,
+    Generic,
+}
+
+impl McpClient {
+    const ALL: [Self; 5] = [
+        Self::Codex,
+        Self::ClaudeCode,
+        Self::Cursor,
+        Self::OpenCode,
+        Self::Generic,
+    ];
+
+    fn label(self, language: Language) -> &'static str {
+        match self {
+            Self::Codex => "Codex",
+            Self::ClaudeCode => "Claude Code",
+            Self::Cursor => "Cursor",
+            Self::OpenCode => "OpenCode",
+            Self::Generic => language.text("通用", "Generic"),
+        }
+    }
+
+    fn description(self, language: Language) -> &'static str {
+        match self {
+            Self::Codex => language.text(
+                "CLI 与 IDE 扩展共享这项配置；进入 Codex 后运行 /mcp 检查连接。",
+                "The CLI and IDE extension share this configuration; run /mcp in Codex to verify it.",
+            ),
+            Self::ClaudeCode => language.text(
+                "添加 HTTP 类型服务；进入 Claude Code 后运行 /mcp 检查连接。",
+                "Adds an HTTP server; run /mcp in Claude Code to verify it.",
+            ),
+            Self::Cursor => language.text(
+                "写入全局 MCP 配置，然后在 Cursor 中刷新 MCP 服务。",
+                "Add this to the global MCP configuration, then refresh MCP servers in Cursor.",
+            ),
+            Self::OpenCode => language.text(
+                "添加远程 MCP 服务，再运行 opencode mcp list 检查连接。",
+                "Add the remote MCP server, then run opencode mcp list to verify it.",
+            ),
+            Self::Generic => language.text(
+                "客户端字段名称可能不同；选择 Streamable HTTP，不要选择旧式 SSE。",
+                "Field names vary by client; choose Streamable HTTP, not legacy SSE.",
+            ),
+        }
+    }
+
+    fn code_label(self, language: Language) -> &'static str {
+        match self {
+            Self::Codex | Self::ClaudeCode | Self::OpenCode => language.text("终端", "Terminal"),
+            Self::Cursor => "~/.cursor/mcp.json",
+            Self::Generic => language.text("连接参数", "Connection parameters"),
+        }
+    }
+
+    fn code(self, endpoint: &str) -> String {
+        match self {
+            Self::Codex => format!("codex mcp add locus --url {endpoint}"),
+            Self::ClaudeCode => {
+                format!("claude mcp add --transport http locus {endpoint}")
+            }
+            Self::Cursor => format!(
+                "{{\n  \"mcpServers\": {{\n    \"locus\": {{\n      \"url\": \"{endpoint}\"\n    }}\n  }}\n}}"
+            ),
+            Self::OpenCode => format!("opencode mcp add locus --url {endpoint}"),
+            Self::Generic => format!(
+                "Name: locus\nTransport: Streamable HTTP\nURL: {endpoint}\nAuthentication: none"
+            ),
+        }
+    }
+
+    fn copy_key(self) -> &'static str {
+        match self {
+            Self::Codex => "mcp-codex-copy",
+            Self::ClaudeCode => "mcp-claude-copy",
+            Self::Cursor => "mcp-cursor-copy",
+            Self::OpenCode => "mcp-opencode-copy",
+            Self::Generic => "mcp-generic-copy",
+        }
+    }
+
+    fn tab_id(self) -> &'static str {
+        match self {
+            Self::Codex => "mcp-codex-tab",
+            Self::ClaudeCode => "mcp-claude-tab",
+            Self::Cursor => "mcp-cursor-tab",
+            Self::OpenCode => "mcp-opencode-tab",
+            Self::Generic => "mcp-generic-tab",
+        }
+    }
+
+    fn tab_focus(self) -> usize {
+        match self {
+            Self::Codex => FOCUS_MCP_CODEX_TAB,
+            Self::ClaudeCode => FOCUS_MCP_CLAUDE_TAB,
+            Self::Cursor => FOCUS_MCP_CURSOR_TAB,
+            Self::OpenCode => FOCUS_MCP_OPENCODE_TAB,
+            Self::Generic => FOCUS_MCP_GENERIC_TAB,
+        }
+    }
 }
 
 impl Settings {
@@ -54,6 +154,13 @@ impl Settings {
         cx.write_to_clipboard(ClipboardItem::new_string(value));
         self.mcp_copied = Some(key);
         cx.notify();
+    }
+
+    fn select_mcp_client(&mut self, client: McpClient, cx: &mut Context<Self>) {
+        if self.mcp_client != client {
+            self.mcp_client = client;
+            cx.notify();
+        }
     }
 
     fn render_mcp_switch(
@@ -129,69 +236,164 @@ impl Settings {
             .on_activation(cx, move |this, _, cx| action(this, cx))
     }
 
+    fn render_mcp_client_tab(
+        &self,
+        client: McpClient,
+        cx: &mut Context<Self>,
+    ) -> Stateful<gpui::Div> {
+        let theme = Theme::current(cx);
+        let language = self.preferences.language;
+        let selected = self.mcp_client == client;
+        let label = client.label(language);
+        div()
+            .id(client.tab_id())
+            .role(Role::Tab)
+            .aria_label(label)
+            .aria_selected(selected)
+            .track_focus(&self.controls[client.tab_focus()])
+            .tab_index(0)
+            .tab_stop(true)
+            .h(px(34.0))
+            .px(px(2.0))
+            .flex()
+            .items_center()
+            .border_b_2()
+            .border_color(if selected { theme.focus } else { theme.border })
+            .cursor_default()
+            .text_xs()
+            .font_weight(if selected {
+                FontWeight::MEDIUM
+            } else {
+                FontWeight::NORMAL
+            })
+            .text_color(if selected {
+                theme.text
+            } else {
+                theme.text_secondary
+            })
+            .hover(|style| style.text_color(theme.text))
+            .focus_visible(|style| style.border_color(theme.focus))
+            .child(label)
+            .on_activation(cx, move |this, _, cx| this.select_mcp_client(client, cx))
+    }
+
     fn render_mcp_code(
         &self,
-        key: &'static str,
-        label: &'static str,
+        client: McpClient,
         code: String,
-        copy_focus: usize,
         cx: &mut Context<Self>,
     ) -> gpui::Div {
         let theme = Theme::current(cx);
         let language = self.preferences.language;
+        let key = client.copy_key();
+        let code_font_size = self.preferences.code_font_size;
         let copied = self.mcp_copied == Some(key);
-        let button_label = if copied {
-            language.text("已复制", "Copied")
+        let copy_label = if copied {
+            language.text("配置已复制", "Configuration copied")
         } else {
-            language.text("复制", "Copy")
+            language.text("复制配置", "Copy configuration")
         };
         let copy_value = code.clone();
+        let copy_button = div()
+            .id(key)
+            .role(Role::Button)
+            .aria_label(copy_label)
+            .track_focus(&self.controls[FOCUS_MCP_GUIDE_COPY])
+            .tab_index(0)
+            .tab_stop(true)
+            .size(px(24.0))
+            .flex_none()
+            .rounded(px(5.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .cursor_default()
+            .focus_visible(|style| style.border_1().border_color(theme.focus))
+            .hover(|style| style.bg(theme.control_hover))
+            .active(|style| style.bg(theme.control_active))
+            .child(icon(
+                if copied { Icon::Check } else { Icon::Copy },
+                13.0,
+                theme.text_tertiary,
+            ))
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .on_activation(cx, move |this, _, cx| {
+                this.copy_mcp_value(key, copy_value.clone(), cx)
+            });
+
         div()
-            .mt(px(9.0))
-            .rounded(px(9.0))
+            .mt(px(12.0))
+            .w_full()
+            .min_w_0()
+            .rounded(px(8.0))
             .border_1()
             .border_color(theme.border)
-            .bg(theme.surface)
+            .bg(theme.raised)
             .overflow_hidden()
             .child(
                 div()
+                    .w_full()
                     .h(px(32.0))
-                    .px(px(10.0))
+                    .pl(px(10.0))
+                    .pr(px(4.0))
                     .border_b_1()
                     .border_color(theme.border)
                     .flex()
                     .items_center()
-                    .justify_between()
                     .text_xs()
-                    .text_color(theme.text_secondary)
-                    .child(label)
-                    .child(self.render_mcp_button(
-                        key,
-                        button_label,
-                        copy_focus,
-                        cx,
-                        move |this, cx| this.copy_mcp_value(key, copy_value.clone(), cx),
-                    )),
+                    .text_color(theme.text_tertiary)
+                    .child(
+                        div()
+                            .min_w_0()
+                            .flex_1()
+                            .truncate()
+                            .child(client.code_label(language)),
+                    )
+                    .child(copy_button),
             )
             .child(
                 div()
                     .id(format!("{key}-code"))
                     .role(Role::Code)
-                    .px(px(11.0))
-                    .py(px(9.0))
+                    .px(px(10.0))
+                    .py(px(8.0))
                     .overflow_x_scroll()
                     .restrict_scroll_to_axis()
                     .whitespace_nowrap()
-                    .text_size(px(self.preferences.code_font_size))
-                    .line_height(px((self.preferences.code_font_size * 1.5).round()))
-                    .font_family(self.preferences.resolved_code_font_family().to_owned())
-                    .text_color(theme.text_secondary)
-                    .child(code),
+                    .child(selectable_code_text(
+                        "mcp-client-code-text",
+                        code.into(),
+                        self.preferences
+                            .resolved_code_font_family()
+                            .to_owned()
+                            .into(),
+                        code_font_size,
+                        (code_font_size * 1.5).round(),
+                        theme.text_secondary,
+                        theme.focus.opacity(if theme.is_dark { 0.34 } else { 0.24 }),
+                        self.mcp_code_selection.clone(),
+                        self.controls[FOCUS_MCP_GUIDE_CODE].clone(),
+                        cx.entity_id(),
+                    )),
             )
     }
 
-    fn render_mcp_guide(&self, guide: McpGuide, cx: &mut Context<Self>) -> gpui::Div {
+    fn render_mcp_guide(&self, endpoint: &str, cx: &mut Context<Self>) -> gpui::Div {
         let theme = Theme::current(cx);
+        let language = self.preferences.language;
+        let client = self.mcp_client;
+        let tabs = McpClient::ALL.into_iter().fold(
+            div()
+                .id("mcp-client-tabs")
+                .role(Role::TabList)
+                .flex()
+                .items_center()
+                .gap(px(14.0))
+                .border_b_1()
+                .border_color(theme.border),
+            |tabs, client| tabs.child(self.render_mcp_client_tab(client, cx)),
+        );
+
         div()
             .px(px(20.0))
             .py(px(15.0))
@@ -199,22 +401,17 @@ impl Settings {
                 div()
                     .text_sm()
                     .font_weight(FontWeight::MEDIUM)
-                    .child(guide.title),
+                    .child(language.text("配置到 Agent", "Connect an Agent")),
             )
+            .child(tabs)
             .child(
                 div()
-                    .mt(px(4.0))
+                    .mt(px(12.0))
                     .text_xs()
                     .text_color(theme.text_secondary)
-                    .child(guide.description),
+                    .child(client.description(language)),
             )
-            .child(self.render_mcp_code(
-                guide.key,
-                guide.code_label,
-                guide.code,
-                guide.copy_focus,
-                cx,
-            ))
+            .child(self.render_mcp_code(client, client.code(endpoint), cx))
     }
 
     pub(super) fn render_mcp(&self, cx: &mut Context<Self>) -> gpui::Div {
@@ -232,15 +429,6 @@ impl Settings {
                 language.text("启动失败", "Failed to start")
             ),
         };
-        let codex = format!("codex mcp add locus --url {endpoint}");
-        let claude = format!("claude mcp add --transport http locus {endpoint}");
-        let cursor = format!(
-            "{{\n  \"mcpServers\": {{\n    \"locus\": {{\n      \"url\": \"{endpoint}\"\n    }}\n  }}\n}}"
-        );
-        let opencode = format!("opencode mcp add locus --url {endpoint}");
-        let generic = format!(
-            "Name: locus\nTransport: Streamable HTTP\nURL: {endpoint}\nAuthentication: none"
-        );
         let port_button = language.text("应用", "Apply");
 
         div()
@@ -333,87 +521,8 @@ impl Settings {
                 ),
                 cx,
             ))
-            .child(
-                div()
-                    .mx(px(20.0))
-                    .my(px(4.0))
-                    .pt(px(15.0))
-                    .border_t_1()
-                    .border_color(theme.border)
-                    .text_sm()
-                    .font_weight(FontWeight::MEDIUM)
-                    .child(language.text("配置到 Agent", "Connect an Agent")),
-            )
-            .child(self.render_mcp_guide(
-                McpGuide {
-                    title: "Codex",
-                    description: language.text(
-                        "CLI 与 IDE 扩展共享这项配置；进入 Codex 后运行 /mcp 检查连接。",
-                        "The CLI and IDE extension share this configuration; run /mcp in Codex to verify it.",
-                    ),
-                    code_label: language.text("终端", "Terminal"),
-                    code: codex,
-                    key: "mcp-codex-copy",
-                    copy_focus: FOCUS_MCP_CODEX_COPY,
-                },
-                cx,
-            ))
-            .child(self.render_mcp_guide(
-                McpGuide {
-                    title: "Claude Code",
-                    description: language.text(
-                        "添加 HTTP 类型服务；进入 Claude Code 后运行 /mcp 检查连接。",
-                        "Adds an HTTP server; run /mcp in Claude Code to verify it.",
-                    ),
-                    code_label: language.text("终端", "Terminal"),
-                    code: claude,
-                    key: "mcp-claude-copy",
-                    copy_focus: FOCUS_MCP_CLAUDE_COPY,
-                },
-                cx,
-            ))
-            .child(self.render_mcp_guide(
-                McpGuide {
-                    title: "Cursor",
-                    description: language.text(
-                        "写入全局 MCP 配置，然后在 Cursor 中刷新 MCP 服务。",
-                        "Add this to the global MCP configuration, then refresh MCP servers in Cursor.",
-                    ),
-                    code_label: "~/.cursor/mcp.json",
-                    code: cursor,
-                    key: "mcp-cursor-copy",
-                    copy_focus: FOCUS_MCP_CURSOR_COPY,
-                },
-                cx,
-            ))
-            .child(self.render_mcp_guide(
-                McpGuide {
-                    title: "OpenCode",
-                    description: language.text(
-                        "添加远程 MCP 服务，再运行 opencode mcp list 检查连接。",
-                        "Add the remote MCP server, then run opencode mcp list to verify it.",
-                    ),
-                    code_label: language.text("终端", "Terminal"),
-                    code: opencode,
-                    key: "mcp-opencode-copy",
-                    copy_focus: FOCUS_MCP_OPENCODE_COPY,
-                },
-                cx,
-            ))
-            .child(self.render_mcp_guide(
-                McpGuide {
-                    title: language.text("通用方案", "Generic setup"),
-                    description: language.text(
-                        "客户端字段名称可能不同；选择 Streamable HTTP，不要选择旧式 SSE。",
-                        "Field names vary by client; choose Streamable HTTP, not legacy SSE.",
-                    ),
-                    code_label: language.text("连接参数", "Connection parameters"),
-                    code: generic,
-                    key: "mcp-generic-copy",
-                    copy_focus: FOCUS_MCP_GENERIC_COPY,
-                },
-                cx,
-            ))
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(self.render_mcp_guide(&endpoint, cx))
             .child(
                 div()
                     .px(px(20.0))
@@ -425,5 +534,23 @@ impl Settings {
                         "The server only provides list_articles, search_articles, and resolve_article; Agents maintain content and attachments with local file tools.",
                     )),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_mcp_client_uses_the_current_endpoint_and_unique_controls() {
+        let endpoint = "http://127.0.0.1:2301/mcp";
+        let mut copy_keys = std::collections::HashSet::new();
+        let mut tab_focus = std::collections::HashSet::new();
+
+        for client in McpClient::ALL {
+            assert!(client.code(endpoint).contains(endpoint));
+            assert!(copy_keys.insert(client.copy_key()));
+            assert!(tab_focus.insert(client.tab_focus()));
+        }
     }
 }

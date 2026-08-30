@@ -24,6 +24,7 @@ use super::panel_layout::{CONTENT_MIN_WIDTH, PanelFrame, fitted_panel_widths, sl
 use super::settings::{Settings, SettingsEvent};
 use crate::config::{
     DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_TITLEBAR_HEIGHT,
+    WINDOW_TRAFFIC_LIGHT_CLEARANCE,
 };
 use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use crate::localization::Language;
@@ -47,7 +48,6 @@ use crate::{
 use gpui_terminal::{TerminalConfiguration, TerminalLabels, TerminalView};
 
 const TITLEBAR_HEIGHT: f32 = WINDOW_TITLEBAR_HEIGHT;
-const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
 const TITLEBAR_CONTROL_INSET: f32 = 11.0;
 const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
@@ -1370,14 +1370,6 @@ impl Render for Locus {
                         .clone()
                         .cached(StyleRefinement::default().size_full()),
                 )
-                .child(
-                    self.window_drag_region("settings-titlebar-region", cx)
-                        .absolute()
-                        .top_0()
-                        .left_0()
-                        .right_0()
-                        .h(px(TITLEBAR_HEIGHT)),
-                )
             })
             .when(!self.settings_open, |root| root.child(workspace))
     }
@@ -1422,7 +1414,7 @@ fn event_affects_document(
 
 fn left_toggle_offset(fullscreen: bool) -> f32 {
     if cfg!(target_os = "macos") && !fullscreen {
-        TRAFFIC_LIGHT_CLEARANCE
+        WINDOW_TRAFFIC_LIGHT_CLEARANCE
     } else {
         TITLEBAR_CONTROL_INSET
     }

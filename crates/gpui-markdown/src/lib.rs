@@ -16,8 +16,8 @@ pub use self::code_blocks::MarkdownCodeBlocks;
 pub use self::parser::{
     Block, InlineRun, InlineStyle, ListItem, TableAlign, parse as parse_blocks,
 };
-pub use self::selection::MarkdownSelection;
 use self::selection::{LinkHandler, SelectableText};
+pub use self::selection::{MarkdownSelection, selectable_code_text};
 use gpui_ui::{Icon, Theme, icon};
 
 pub trait MarkdownExtensions {
