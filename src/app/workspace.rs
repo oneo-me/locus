@@ -37,8 +37,8 @@ use crate::ui::{
     icon, toolbar_icon_button,
 };
 use crate::{
-    CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleLeftPanel,
-    ToggleRightPanel,
+    CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleFullScreen,
+    ToggleLeftPanel, ToggleRightPanel,
 };
 use oneo_gpui_terminal::{TerminalConfiguration, TerminalLabels, TerminalView};
 use oneo_gpui_ui::app_shell::{
@@ -827,6 +827,15 @@ impl Locus {
         cx.notify();
     }
 
+    fn toggle_full_screen_action(
+        &mut self,
+        _: &ToggleFullScreen,
+        window: &mut Window,
+        _: &mut Context<Self>,
+    ) {
+        window.toggle_fullscreen();
+    }
+
     fn render_panel_resize_handle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::current(cx);
         let active = self.app_shell.workspace().resize_active(side);
@@ -1130,6 +1139,7 @@ impl Render for Locus {
             .on_action(cx.listener(Self::open_settings_action))
             .on_action(cx.listener(Self::reload_current_note_action))
             .on_action(cx.listener(Self::toggle_fps_counter_action))
+            .on_action(cx.listener(Self::toggle_full_screen_action))
             .on_action(cx.listener(Self::toggle_left_sidebar_action))
             .on_action(cx.listener(Self::toggle_right_sidebar_action))
             .capture_any_mouse_down(cx.listener(Self::navigation_mouse_down))

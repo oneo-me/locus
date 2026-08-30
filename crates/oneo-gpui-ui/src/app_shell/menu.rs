@@ -8,6 +8,7 @@ actions!(
         OpenSettings,
         Quit,
         ToggleFpsCounter,
+        ToggleFullScreen,
         ToggleLeftPanel,
         ToggleRightPanel
     ]
@@ -16,12 +17,15 @@ actions!(
 pub struct AppShellMenuLabels {
     pub about: SharedString,
     pub close_window: SharedString,
+    pub developer: SharedString,
     pub edit: SharedString,
+    pub file: SharedString,
     pub quit: SharedString,
     pub settings: SharedString,
     pub toggle_left_panel: SharedString,
     pub toggle_right_panel: SharedString,
     pub toggle_fps_counter: SharedString,
+    pub toggle_full_screen: SharedString,
     pub view: SharedString,
     pub window: SharedString,
 }
@@ -31,12 +35,15 @@ impl Default for AppShellMenuLabels {
         Self {
             about: "About".into(),
             close_window: "Close Window".into(),
+            developer: "Developer".into(),
             edit: "Edit".into(),
+            file: "File".into(),
             quit: "Quit".into(),
             settings: "Settings…".into(),
             toggle_left_panel: "Toggle Left Panel".into(),
             toggle_right_panel: "Toggle Right Panel".into(),
             toggle_fps_counter: "Show FPS".into(),
+            toggle_full_screen: "Enter Full Screen".into(),
             view: "View".into(),
             window: "Window".into(),
         }
@@ -57,6 +64,8 @@ pub struct AppShellMenus {
     pub app_name: SharedString,
     pub labels: AppShellMenuLabels,
     pub application_items: Vec<MenuItem>,
+    pub edit_items: Vec<MenuItem>,
+    pub file_items: Vec<MenuItem>,
     pub view_items_before_panels: Vec<MenuItem>,
     pub view_items_after_panels: Vec<MenuItem>,
 }
@@ -68,6 +77,8 @@ impl AppShellMenus {
             labels: AppShellMenuLabels::for_app(&app_name),
             app_name,
             application_items: Vec::new(),
+            edit_items: Vec::new(),
+            file_items: Vec::new(),
             view_items_before_panels: Vec::new(),
             view_items_after_panels: Vec::new(),
         }
@@ -80,6 +91,16 @@ impl AppShellMenus {
 
     pub fn application_items(mut self, items: impl IntoIterator<Item = MenuItem>) -> Self {
         self.application_items.extend(items);
+        self
+    }
+
+    pub fn file_items(mut self, items: impl IntoIterator<Item = MenuItem>) -> Self {
+        self.file_items.extend(items);
+        self
+    }
+
+    pub fn edit_items(mut self, items: impl IntoIterator<Item = MenuItem>) -> Self {
+        self.edit_items.extend(items);
         self
     }
 
@@ -101,8 +122,17 @@ pub fn bind_app_shell_keys(cx: &mut App) {
         KeyBinding::new("secondary-,", OpenSettings, None),
         KeyBinding::new("secondary-b", ToggleLeftPanel, None),
         KeyBinding::new("secondary-shift-b", ToggleRightPanel, None),
-        KeyBinding::new("secondary-alt-shift-f", ToggleFpsCounter, None),
     ]);
+    #[cfg(target_os = "macos")]
+    cx.bind_keys([KeyBinding::new("ctrl-cmd-f", ToggleFullScreen, None)]);
+    #[cfg(not(target_os = "macos"))]
+    cx.bind_keys([KeyBinding::new("f11", ToggleFullScreen, None)]);
+    #[cfg(debug_assertions)]
+    cx.bind_keys([KeyBinding::new(
+        "secondary-alt-shift-f",
+        ToggleFpsCounter,
+        None,
+    )]);
 }
 
 pub fn set_app_shell_menus(cx: &mut App, menus: AppShellMenus) {
@@ -130,18 +160,30 @@ pub fn set_app_shell_menus(cx: &mut App, menus: AppShellMenus) {
     view_items.extend([
         MenuItem::action(labels.toggle_left_panel, ToggleLeftPanel),
         MenuItem::action(labels.toggle_right_panel, ToggleRightPanel),
-        MenuItem::separator(),
-        MenuItem::action(labels.toggle_fps_counter, ToggleFpsCounter),
     ]);
     if !menus.view_items_after_panels.is_empty() {
         view_items.push(MenuItem::separator());
         view_items.extend(menus.view_items_after_panels);
     }
-
-    cx.set_menus([
-        Menu::new(menus.app_name).items(application_items),
-        Menu::new(labels.edit).disabled(true),
-        Menu::new(labels.view).items(view_items),
-        Menu::new(labels.window).items([MenuItem::action(labels.close_window, CloseWindow)]),
+    view_items.extend([
+        MenuItem::separator(),
+        MenuItem::action(labels.toggle_full_screen, ToggleFullScreen),
     ]);
+
+    let mut native_menus = vec![Menu::new(menus.app_name).items(application_items)];
+    if !menus.file_items.is_empty() {
+        native_menus.push(Menu::new(labels.file).items(menus.file_items));
+    }
+    if !menus.edit_items.is_empty() {
+        native_menus.push(Menu::new(labels.edit).items(menus.edit_items));
+    }
+    native_menus.push(Menu::new(labels.view).items(view_items));
+    #[cfg(debug_assertions)]
+    native_menus.push(Menu::new(labels.developer).items([MenuItem::action(
+        labels.toggle_fps_counter,
+        ToggleFpsCounter,
+    )]));
+    native_menus
+        .push(Menu::new(labels.window).items([MenuItem::action(labels.close_window, CloseWindow)]));
+    cx.set_menus(native_menus);
 }

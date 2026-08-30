@@ -27,7 +27,7 @@ use gpui_platform::application;
 use localization::Language;
 use oneo_gpui_ui::app_shell::{
     About, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit, ToggleFpsCounter,
-    ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
+    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
 };
 use oneo_gpui_ui::{
     configure_main_window_close_behavior, configure_sidebar_material, init_reduce_motion,
@@ -135,12 +135,15 @@ pub(crate) fn set_app_menus(cx: &mut App, language: Language, can_reload_current
             .labels(AppShellMenuLabels {
                 about: language.text("关于 Locus", "About Locus").into(),
                 close_window: language.text("关闭窗口", "Close Window").into(),
+                developer: language.text("开发", "Developer").into(),
                 edit: language.text("编辑", "Edit").into(),
+                file: language.text("文件", "File").into(),
                 quit: language.text("退出 Locus", "Quit Locus").into(),
                 settings: language.text("设置…", "Settings…").into(),
                 toggle_left_panel: language.text("切换左侧栏", "Toggle Left Sidebar").into(),
                 toggle_right_panel: language.text("切换右侧栏", "Toggle Right Sidebar").into(),
                 toggle_fps_counter: language.text("显示帧率", "Show FPS").into(),
+                toggle_full_screen: language.text("进入全屏幕", "Enter Full Screen").into(),
                 view: language.text("显示", "View").into(),
                 window: language.text("窗口", "Window").into(),
             })

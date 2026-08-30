@@ -27,7 +27,7 @@ pub fn titlebar_content_left_padding(
 pub use fps::{FpsCounterState, fps_counter};
 pub use menu::{
     About, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit, ToggleFpsCounter,
-    ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
+    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
 };
 pub use settings::{
     SettingsShell, settings_back_button, settings_navigation_group, settings_navigation_row,
