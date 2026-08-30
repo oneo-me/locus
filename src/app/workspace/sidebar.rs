@@ -264,6 +264,30 @@ impl Locus {
         has_children: bool,
         cx: &mut gpui::Context<Self>,
     ) {
+        self.library_navigation
+            .visit(self.selected_library_node.as_deref(), &path);
+        self.apply_library_selection(path, has_children, cx);
+    }
+
+    pub(super) fn restore_library_selection(&mut self, path: String, cx: &mut gpui::Context<Self>) {
+        let Some(has_children) = self
+            .library_tree
+            .node(&path)
+            .map(|node| !node.children.is_empty())
+        else {
+            return;
+        };
+        self.apply_library_selection(path, has_children, cx);
+        self.scroll_to_selected_library_node = true;
+        cx.notify();
+    }
+
+    fn apply_library_selection(
+        &mut self,
+        path: String,
+        has_children: bool,
+        cx: &mut gpui::Context<Self>,
+    ) {
         let could_reload_current_note = self.can_reload_current_note();
         let selection_changed = self.selected_library_node.as_deref() != Some(path.as_str());
         if selection_changed {

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+mod navigation;
 mod note;
 mod note_atmosphere;
 mod note_menu;
@@ -12,10 +13,12 @@ mod window_chrome;
 
 use gpui::{
     AnyElement, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Render, Role, ScrollAnchor, ScrollHandle,
-    Stateful, StyleRefinement, Task, Window, div, prelude::*, px, transparent_black,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render, Role,
+    ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Task, Window, div, prelude::*, px,
+    transparent_black,
 };
 
+use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
 use super::panel_layout::{CONTENT_MIN_WIDTH, PanelFrame, fitted_panel_widths, slide_width};
 use super::settings::{Settings, SettingsEvent};
@@ -48,6 +51,9 @@ const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
 const TITLEBAR_CONTROL_INSET: f32 = 11.0;
 const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
+const TITLEBAR_NAVIGATION_INSET: f32 = 6.0;
+const TITLEBAR_NAVIGATION_GAP: f32 = 2.0;
+const TITLEBAR_NAVIGATION_WIDTH: f32 = TITLEBAR_CONTROL_SIZE * 2.0 + TITLEBAR_NAVIGATION_GAP;
 const COPY_FEEDBACK_DURATION: Duration = Duration::from_secs(2);
 const LIBRARY_EVENT_DEBOUNCE: Duration = Duration::from_millis(180);
 const WINDOW_BOUNDS_SAVE_DEBOUNCE: Duration = Duration::from_millis(100);
@@ -84,6 +90,8 @@ pub struct Locus {
     panel_resize_drag: Option<PanelResizeDrag>,
     header_drag_armed: bool,
     left_toggle_focus: FocusHandle,
+    navigation_back_focus: FocusHandle,
+    navigation_forward_focus: FocusHandle,
     right_toggle_focus: FocusHandle,
     mcp_status_focus: FocusHandle,
     settings_focus: FocusHandle,
@@ -105,6 +113,7 @@ pub struct Locus {
     library_reorder_generation: u64,
     expanded_library_nodes: HashSet<String>,
     selected_library_node: Option<String>,
+    library_navigation: LibraryNavigation,
     selected_note: Option<SelectedNote>,
     note_load_generation: u64,
     note_load_task: Option<Task<()>>,
@@ -338,6 +347,8 @@ impl Locus {
             panel_resize_drag: None,
             header_drag_armed: false,
             left_toggle_focus: cx.focus_handle(),
+            navigation_back_focus: cx.focus_handle(),
+            navigation_forward_focus: cx.focus_handle(),
             right_toggle_focus: cx.focus_handle(),
             settings_focus: cx.focus_handle(),
             settings_open: false,
@@ -358,6 +369,7 @@ impl Locus {
             library_reorder_generation: 0,
             expanded_library_nodes,
             selected_library_node,
+            library_navigation: LibraryNavigation::default(),
             selected_note,
             note_load_generation,
             note_load_task,
@@ -529,6 +541,7 @@ impl Locus {
             );
         });
         self.sidebar_order.apply(path, &mut self.library_tree.nodes);
+        self.library_navigation.clear();
         self.clear_library_selection();
         self.expanded_library_nodes.clear();
         self.scroll_to_selected_library_node = false;
@@ -576,6 +589,8 @@ impl Locus {
             settings.set_archive_state(tree.archived_notes.clone(), tree.error.clone(), cx);
         });
         self.library_tree = tree;
+        self.library_navigation
+            .retain(|path| self.library_tree.node(path).is_some());
 
         let selection_still_valid = selected_path.as_deref().is_some_and(|path| {
             self.library_tree
@@ -774,6 +789,44 @@ impl Locus {
         cx: &mut Context<Self>,
     ) {
         self.toggle_panel(PanelSide::Right, cx);
+    }
+
+    fn navigate_back(&mut self, cx: &mut Context<Self>) {
+        let current = self.selected_library_node.clone();
+        let Some(path) = self.library_navigation.go_back(current.as_deref()) else {
+            return;
+        };
+        self.restore_library_selection(path, cx);
+    }
+
+    fn navigate_forward(&mut self, cx: &mut Context<Self>) {
+        let current = self.selected_library_node.clone();
+        let Some(path) = self.library_navigation.go_forward(current.as_deref()) else {
+            return;
+        };
+        self.restore_library_selection(path, cx);
+    }
+
+    fn navigation_mouse_down(
+        &mut self,
+        event: &MouseDownEvent,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.settings_open {
+            return;
+        }
+        match event.button {
+            MouseButton::Navigate(NavigationDirection::Back) => {
+                cx.stop_propagation();
+                self.navigate_back(cx);
+            }
+            MouseButton::Navigate(NavigationDirection::Forward) => {
+                cx.stop_propagation();
+                self.navigate_forward(cx);
+            }
+            _ => {}
+        }
     }
 
     fn language(&self, cx: &Context<Self>) -> Language {
@@ -1101,9 +1154,7 @@ impl Locus {
             self.left_sidebar_width,
             self.right_sidebar_width,
         );
-        let left_control_clearance = left_toggle_offset(window.is_fullscreen())
-            + TITLEBAR_CONTROL_SIZE
-            + TITLEBAR_CONTROL_GAP;
+        let left_control_clearance = left_titlebar_control_clearance(window.is_fullscreen());
         self.render_left_sidebar(
             left_content,
             self.left_sidebar_visible && self.left_sidebar_slide.is_none(),
@@ -1114,9 +1165,7 @@ impl Locus {
     }
 
     fn content_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let left_control_clearance = left_toggle_offset(window.is_fullscreen())
-            + TITLEBAR_CONTROL_SIZE
-            + TITLEBAR_CONTROL_GAP;
+        let left_control_clearance = left_titlebar_control_clearance(window.is_fullscreen());
         let content_width = f32::from(window.viewport_size().width)
             - self.rendered_left_width
             - self.rendered_right_width;
@@ -1159,6 +1208,8 @@ impl Render for Locus {
         let right_was_sliding = self.right_sidebar_slide.is_some();
         let panels = self.settle_panels(window);
         let left_toggle_offset = left_toggle_offset(window.is_fullscreen());
+        let navigation_left_offset =
+            navigation_left_offset(left_toggle_offset, panels.left, self.left_sidebar_visible);
         if let Some(terminal) = &self.terminal {
             terminal.update(cx, |terminal, _| {
                 terminal.set_available_size(
@@ -1246,6 +1297,17 @@ impl Render for Locus {
                 div()
                     .absolute()
                     .top(px(TITLEBAR_CONTROL_INSET))
+                    .left(px(navigation_left_offset))
+                    .flex()
+                    .items_center()
+                    .gap(px(TITLEBAR_NAVIGATION_GAP))
+                    .child(self.render_history_button(NavigationDirection::Back, cx))
+                    .child(self.render_history_button(NavigationDirection::Forward, cx)),
+            )
+            .child(
+                div()
+                    .absolute()
+                    .top(px(TITLEBAR_CONTROL_INSET))
                     .right(px(TITLEBAR_CONTROL_INSET))
                     .child(self.render_panel_toggle(PanelSide::Right, cx)),
             );
@@ -1259,6 +1321,7 @@ impl Render for Locus {
             .on_action(cx.listener(Self::toggle_fps_counter_action))
             .on_action(cx.listener(Self::toggle_left_sidebar_action))
             .on_action(cx.listener(Self::toggle_right_sidebar_action))
+            .capture_any_mouse_down(cx.listener(Self::navigation_mouse_down))
             .on_mouse_move(cx.listener(Self::resize_panel_mouse_move))
             .capture_any_mouse_up(cx.listener(Self::finish_panel_resize))
             .size_full()
@@ -1331,6 +1394,26 @@ fn left_toggle_offset(fullscreen: bool) -> f32 {
     }
 }
 
+fn left_titlebar_control_clearance(fullscreen: bool) -> f32 {
+    left_toggle_offset(fullscreen)
+        + TITLEBAR_CONTROL_SIZE
+        + TITLEBAR_NAVIGATION_INSET
+        + TITLEBAR_NAVIGATION_WIDTH
+        + TITLEBAR_CONTROL_GAP
+}
+
+fn navigation_left_offset(
+    left_toggle_offset: f32,
+    rendered_left_width: f32,
+    left_sidebar_visible: bool,
+) -> f32 {
+    let collapsed_offset = left_toggle_offset + TITLEBAR_CONTROL_SIZE + TITLEBAR_NAVIGATION_INSET;
+    if !left_sidebar_visible {
+        return collapsed_offset;
+    }
+    (rendered_left_width - TITLEBAR_CONTROL_INSET - TITLEBAR_NAVIGATION_WIDTH).max(collapsed_offset)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1338,6 +1421,34 @@ mod tests {
     #[test]
     fn fullscreen_left_toggle_uses_the_window_inset() {
         assert_eq!(left_toggle_offset(true), TITLEBAR_CONTROL_INSET);
+    }
+
+    #[test]
+    fn titlebar_clearance_includes_navigation_buttons() {
+        assert_eq!(
+            left_titlebar_control_clearance(true),
+            TITLEBAR_CONTROL_INSET
+                + TITLEBAR_CONTROL_SIZE
+                + TITLEBAR_NAVIGATION_INSET
+                + TITLEBAR_NAVIGATION_WIDTH
+                + TITLEBAR_CONTROL_GAP
+        );
+    }
+
+    #[test]
+    fn navigation_buttons_follow_the_sidebar_right_edge_when_expanded() {
+        assert_eq!(
+            navigation_left_offset(TITLEBAR_CONTROL_INSET, 280.0, true),
+            280.0 - TITLEBAR_CONTROL_INSET - TITLEBAR_NAVIGATION_WIDTH
+        );
+    }
+
+    #[test]
+    fn navigation_buttons_follow_the_toggle_when_the_sidebar_is_collapsed() {
+        assert_eq!(
+            navigation_left_offset(TITLEBAR_CONTROL_INSET, 0.0, false),
+            TITLEBAR_CONTROL_INSET + TITLEBAR_CONTROL_SIZE + TITLEBAR_NAVIGATION_INSET
+        );
     }
 
     #[test]

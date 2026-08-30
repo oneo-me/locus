@@ -67,6 +67,59 @@ impl Locus {
             .on_activation(cx, move |this, _, cx| this.toggle_panel(side, cx))
     }
 
+    pub(super) fn render_history_button(
+        &self,
+        direction: NavigationDirection,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
+        let theme = Theme::current(cx);
+        let language = self.language(cx);
+        let (id, label, focus, icon_kind, enabled) = match direction {
+            NavigationDirection::Back => (
+                "navigate-back",
+                language.text("后退", "Back"),
+                &self.navigation_back_focus,
+                Icon::ArrowLeft,
+                self.library_navigation.can_go_back(),
+            ),
+            NavigationDirection::Forward => (
+                "navigate-forward",
+                language.text("前进", "Forward"),
+                &self.navigation_forward_focus,
+                Icon::ArrowRight,
+                self.library_navigation.can_go_forward(),
+            ),
+        };
+
+        div()
+            .id(id)
+            .role(Role::Button)
+            .aria_label(label)
+            .size(px(TITLEBAR_CONTROL_SIZE))
+            .flex_none()
+            .rounded(px(6.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .cursor_default()
+            .when(!enabled, |button| button.opacity(0.35))
+            .when(enabled, |button| {
+                button
+                    .track_focus(focus)
+                    .tab_index(0)
+                    .tab_stop(true)
+                    .focus_visible(|style| style.border_1().border_color(theme.focus))
+                    .hover(|style| style.bg(theme.control_hover))
+                    .active(|style| style.bg(theme.control_active))
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                    .on_activation(cx, move |this, _, cx| match direction {
+                        NavigationDirection::Back => this.navigate_back(cx),
+                        NavigationDirection::Forward => this.navigate_forward(cx),
+                    })
+            })
+            .child(icon(icon_kind, 14.0, theme.text_secondary))
+    }
+
     pub(super) fn render_left_titlebar(
         &self,
         left_control_clearance: f32,
