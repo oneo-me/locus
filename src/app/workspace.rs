@@ -35,7 +35,6 @@ use crate::state::{
     InterfaceState, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH,
     RIGHT_SIDEBAR_MIN_WIDTH,
 };
-use crate::terminal::{TerminalConfiguration, TerminalView};
 use crate::theme::Theme;
 use crate::ui::{
     ActivationExt, Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection, ScrollbarState,
@@ -45,6 +44,7 @@ use crate::{
     CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleLeftSidebar,
     ToggleRightSidebar,
 };
+use gpui_terminal::{TerminalConfiguration, TerminalLabels, TerminalView};
 
 const TITLEBAR_HEIGHT: f32 = WINDOW_TITLEBAR_HEIGHT;
 const TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
@@ -53,6 +53,32 @@ const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
 const TITLEBAR_NAVIGATION_INSET: f32 = 6.0;
 const TITLEBAR_NAVIGATION_GAP: f32 = 2.0;
+
+fn terminal_labels(language: Language) -> TerminalLabels {
+    TerminalLabels {
+        accessibility_label: language.text("终端", "Terminal").into(),
+        could_not_start: language
+            .text("无法启动终端", "Could not start terminal")
+            .into(),
+        starting: language.text("正在启动终端…", "Starting terminal…").into(),
+        process_exited: language.text("进程已退出", "Process exited").into(),
+    }
+}
+
+fn terminal_configuration(preferences: &Preferences) -> TerminalConfiguration {
+    TerminalConfiguration {
+        shell: preferences.terminal_shell.clone(),
+        startup_command: preferences.terminal_command.clone(),
+        color_scheme: preferences.terminal_color_scheme,
+        cursor_style: preferences.terminal_cursor_style,
+        font_family: preferences
+            .resolved_terminal_font_family()
+            .to_owned()
+            .into(),
+        font_size: preferences.terminal_font_size,
+        labels: terminal_labels(preferences.language),
+    }
+}
 const TITLEBAR_NAVIGATION_WIDTH: f32 = TITLEBAR_CONTROL_SIZE * 2.0 + TITLEBAR_NAVIGATION_GAP;
 const COPY_FEEDBACK_DURATION: Duration = Duration::from_secs(2);
 const LIBRARY_EVENT_DEBOUNCE: Duration = Duration::from_millis(180);
@@ -217,7 +243,7 @@ impl Locus {
                     })
             })
             .unwrap_or((None, None));
-        let terminal_configuration = TerminalConfiguration::from_preferences(&preferences);
+        let terminal_configuration = terminal_configuration(&preferences);
         let terminal = library_path
             .clone()
             .map(|path| cx.new(|cx| TerminalView::new(path, terminal_configuration.clone(), cx)));
@@ -253,7 +279,7 @@ impl Locus {
                     crate::set_app_menus(cx, *language, this.can_reload_current_note());
                     if let Some(terminal) = &this.terminal {
                         terminal.update(cx, |terminal, cx| {
-                            terminal.set_language(*language, cx);
+                            terminal.set_labels(terminal_labels(*language), cx);
                         });
                     }
                     cx.notify();
@@ -496,7 +522,12 @@ impl Locus {
             let result = cx
                 .background_spawn(async move {
                     load_note(&document_path)
-                        .map(|content| MarkdownDocument::parse(&content))
+                        .map(|content| {
+                            MarkdownDocument::parse_with_hidden_code_blocks(
+                                &content,
+                                &["gallery", "attachments"],
+                            )
+                        })
                         .map_err(|error| error.to_string())
                 })
                 .await;
@@ -556,7 +587,7 @@ impl Locus {
     fn restart_terminal(&mut self, cx: &mut Context<Self>) {
         let preferences = self.settings.read(cx).preferences().clone();
         self.terminal = preferences.library_path.clone().map(|path| {
-            let configuration = TerminalConfiguration::from_preferences(&preferences);
+            let configuration = terminal_configuration(&preferences);
             cx.new(|cx| TerminalView::new(path, configuration, cx))
         });
         self.terminal_needs_restart = false;

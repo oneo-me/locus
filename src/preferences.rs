@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+pub use gpui_terminal::{TerminalColorScheme, TerminalCursorStyle};
 use serde::{Deserialize, Serialize};
 
 use crate::config::{
@@ -15,45 +16,19 @@ use crate::theme::ThemePreference;
 
 pub const FONT_SIZES: [f32; 7] = [12.0, 14.0, 15.0, 16.0, 17.0, 18.0, 20.0];
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum TerminalColorScheme {
-    #[default]
-    Auto,
-    Light,
-    Dark,
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum TerminalCursorStyle {
-    #[default]
-    Block,
-    Underline,
-    Bar,
-}
-
-impl TerminalCursorStyle {
-    pub const ALL: [Self; 3] = [Self::Block, Self::Underline, Self::Bar];
-
-    pub fn label(self, language: Language) -> &'static str {
-        match self {
-            Self::Block => language.text("块状", "Block"),
-            Self::Underline => language.text("下划线", "Underline"),
-            Self::Bar => language.text("竖线", "Bar"),
-        }
+pub fn terminal_color_scheme_label(value: TerminalColorScheme, language: Language) -> &'static str {
+    match value {
+        TerminalColorScheme::Auto => language.text("自动", "Auto"),
+        TerminalColorScheme::Light => language.text("亮色", "Light"),
+        TerminalColorScheme::Dark => language.text("暗色", "Dark"),
     }
 }
 
-impl TerminalColorScheme {
-    pub const ALL: [Self; 3] = [Self::Auto, Self::Light, Self::Dark];
-
-    pub fn label(self, language: Language) -> &'static str {
-        match self {
-            Self::Auto => language.text("自动", "Auto"),
-            Self::Light => language.text("亮色", "Light"),
-            Self::Dark => language.text("暗色", "Dark"),
-        }
+pub fn terminal_cursor_style_label(value: TerminalCursorStyle, language: Language) -> &'static str {
+    match value {
+        TerminalCursorStyle::Block => language.text("块状", "Block"),
+        TerminalCursorStyle::Underline => language.text("下划线", "Underline"),
+        TerminalCursorStyle::Bar => language.text("竖线", "Bar"),
     }
 }
 

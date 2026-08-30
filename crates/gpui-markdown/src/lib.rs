@@ -1,9 +1,6 @@
-mod attachment_views;
 mod code_blocks;
-mod extension_syntax;
 mod parser;
 mod selection;
-mod thumbnail;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -16,14 +13,48 @@ use gpui::{
 };
 
 pub use self::code_blocks::MarkdownCodeBlocks;
-use self::parser::{Block, InlineRun, ListItem, TableAlign};
+pub use self::parser::{
+    Block, InlineRun, InlineStyle, ListItem, TableAlign, parse as parse_blocks,
+};
 pub use self::selection::MarkdownSelection;
 use self::selection::{LinkHandler, SelectableText};
-use crate::document_library::{Attachment, LibraryTree, library_reference_path};
-use crate::localization::Language;
-use crate::theme::Theme;
-use crate::ui::link_icon::remote_link_icon;
-use crate::ui::{Icon, icon};
+use gpui_ui::{Icon, Theme, icon};
+
+pub trait MarkdownExtensions {
+    fn render_code_block(
+        &self,
+        _language: &str,
+        _source: &str,
+        _theme: Theme,
+    ) -> Option<AnyElement> {
+        None
+    }
+
+    fn render_image(&self, _url: &str, _theme: Theme) -> Option<AnyElement> {
+        None
+    }
+
+    fn render_link_icon(&self, _url: &str, _theme: Theme) -> Option<AnyElement> {
+        None
+    }
+}
+
+#[derive(Clone)]
+pub struct MarkdownLabels {
+    pub copy_code: SharedString,
+    pub collapse_code: SharedString,
+    pub expand_code: SharedString,
+}
+
+impl Default for MarkdownLabels {
+    fn default() -> Self {
+        Self {
+            copy_code: "Copy code".into(),
+            collapse_code: "Collapse code".into(),
+            expand_code: "Expand code".into(),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct MarkdownDocument {
@@ -34,8 +65,12 @@ pub struct MarkdownDocument {
 
 impl MarkdownDocument {
     pub fn parse(source: &str) -> Self {
+        Self::parse_with_hidden_code_blocks(source, &[])
+    }
+
+    pub fn parse_with_hidden_code_blocks(source: &str, hidden_languages: &[&str]) -> Self {
         let mut blocks = parser::parse(source);
-        let selection_text = parser::index_selection_text(&mut blocks);
+        let selection_text = parser::index_selection_text(&mut blocks, hidden_languages);
         Self {
             source: source.into(),
             blocks: blocks.into(),
@@ -56,9 +91,8 @@ pub struct Markdown<'a> {
     text_size: f32,
     code_font_family: &'a str,
     code_text_size: f32,
-    attachments: &'a [Attachment],
-    library_tree: Option<&'a LibraryTree>,
-    language: Language,
+    labels: MarkdownLabels,
+    extensions: Option<&'a dyn MarkdownExtensions>,
     selection: MarkdownSelection,
     code_blocks: MarkdownCodeBlocks,
     focus: FocusHandle,
@@ -91,9 +125,8 @@ impl<'a> Markdown<'a> {
             text_size: typography.text_size,
             code_font_family: typography.code_font_family,
             code_text_size: typography.code_text_size,
-            attachments: &[],
-            library_tree: None,
-            language: Language::Chinese,
+            labels: MarkdownLabels::default(),
+            extensions: None,
             selection,
             code_blocks: MarkdownCodeBlocks::default(),
             focus,
@@ -102,18 +135,13 @@ impl<'a> Markdown<'a> {
         }
     }
 
-    pub fn with_attachment_views(
-        mut self,
-        attachments: &'a [Attachment],
-        language: Language,
-    ) -> Self {
-        self.attachments = attachments;
-        self.language = language;
+    pub fn with_labels(mut self, labels: MarkdownLabels) -> Self {
+        self.labels = labels;
         self
     }
 
-    pub fn with_library_tree(mut self, library_tree: &'a LibraryTree) -> Self {
-        self.library_tree = Some(library_tree);
+    pub fn with_extensions(mut self, extensions: &'a dyn MarkdownExtensions) -> Self {
+        self.extensions = Some(extensions);
         self
     }
 
@@ -141,9 +169,8 @@ impl<'a> Markdown<'a> {
             text_size: self.text_size,
             code_font_family: self.code_font_family,
             code_text_size: self.code_text_size,
-            attachments: self.attachments,
-            library_tree: self.library_tree,
-            language: self.language,
+            labels: self.labels,
+            extensions: self.extensions,
             selection: self.selection.clone(),
             code_blocks: self.code_blocks,
             focus: self.focus.clone(),
@@ -219,9 +246,8 @@ struct RenderContext<'a> {
     text_size: f32,
     code_font_family: &'a str,
     code_text_size: f32,
-    attachments: &'a [Attachment],
-    library_tree: Option<&'a LibraryTree>,
-    language: Language,
+    labels: MarkdownLabels,
+    extensions: Option<&'a dyn MarkdownExtensions>,
     selection: MarkdownSelection,
     code_blocks: MarkdownCodeBlocks,
     focus: FocusHandle,
@@ -439,39 +465,11 @@ impl RenderContext<'_> {
     }
 
     fn render_link_icon(&self, url: &str) -> AnyElement {
-        if let Some(path) = library_reference_path(url) {
-            if let Some(node) = self.library_tree.and_then(|tree| tree.node(path)) {
-                if let Some(source) = node.icon_image.as_ref() {
-                    let fallback_icon = node.icon.clone();
-                    let theme = self.theme;
-                    return crate::ui::document_icon_image(source)
-                        .size(px(13.0))
-                        .rounded(px(3.0))
-                        .object_fit(ObjectFit::Cover)
-                        .with_fallback(move || {
-                            fallback_icon
-                                .clone()
-                                .map(emoji_link_icon)
-                                .unwrap_or_else(|| generic_link_icon(theme))
-                        })
-                        .into_any_element();
-                }
-                if let Some(value) = node.icon.clone() {
-                    return emoji_link_icon(value);
-                }
-            }
-            return generic_link_icon(self.theme);
-        }
-        if url.starts_with("http://") || url.starts_with("https://") {
-            let loading_theme = self.theme;
-            let fallback_theme = self.theme;
-            return remote_link_icon(url)
-                .size(px(13.0))
-                .rounded(px(3.0))
-                .object_fit(ObjectFit::Cover)
-                .with_loading(move || generic_link_icon(loading_theme))
-                .with_fallback(move || generic_link_icon(fallback_theme))
-                .into_any_element();
+        if let Some(icon) = self
+            .extensions
+            .and_then(|extensions| extensions.render_link_icon(url, self.theme))
+        {
+            return icon;
         }
         generic_link_icon(self.theme)
     }
@@ -718,16 +716,17 @@ impl RenderContext<'_> {
     ) -> AnyElement {
         let caption =
             (!alt.trim().is_empty()).then(|| self.caption_text(alt, alt_selection_range.clone()));
-        if let Some(attachment) = extension_syntax::find_image_attachment(self.attachments, url) {
+        if let Some(image) = self
+            .extensions
+            .and_then(|extensions| extensions.render_image(url, self.theme))
+        {
             return div()
                 .w_full()
                 .min_w_0()
                 .flex()
                 .flex_col()
                 .gap(px(4.0))
-                .child(attachment_views::render_thumbnail_image(
-                    attachment, self.theme,
-                ))
+                .child(image)
                 .when_some(caption, |element, caption| element.child(caption))
                 .into_any_element();
         }
@@ -783,24 +782,11 @@ impl RenderContext<'_> {
         code: &str,
         selection_range: &std::ops::Range<usize>,
     ) -> AnyElement {
-        match language.as_deref() {
-            Some("gallery") => {
-                return attachment_views::render_gallery(
-                    code,
-                    self.attachments,
-                    self.theme,
-                    self.language,
-                );
-            }
-            Some("attachments") => {
-                return attachment_views::render_attachments(
-                    code,
-                    self.attachments,
-                    self.theme,
-                    self.language,
-                );
-            }
-            _ => {}
+        if let Some(element) = language.as_deref().and_then(|language| {
+            self.extensions
+                .and_then(|extensions| extensions.render_code_block(language, code, self.theme))
+        }) {
+            return element;
         }
         let code_id = self.next_code_id;
         self.next_code_id += 1;
@@ -808,7 +794,7 @@ impl RenderContext<'_> {
         let overflowing = self.code_blocks.is_overflowing(code_id);
         let body_height = if language.is_some() { 168.0 } else { 200.0 };
         let maximum_content_height = body_height - 16.0;
-        let copy_label = self.language.text("复制代码", "Copy code");
+        let copy_label = self.labels.copy_code.clone();
         let click_code = code.to_owned();
         let keyboard_code = click_code.clone();
         let mut code_font = font(self.code_font_family);
@@ -926,9 +912,9 @@ impl RenderContext<'_> {
 
     fn render_code_toggle(&self, code_id: usize, expanded: bool) -> AnyElement {
         let label = if expanded {
-            self.language.text("折叠代码", "Collapse code")
+            self.labels.collapse_code.clone()
         } else {
-            self.language.text("展开代码", "Expand code")
+            self.labels.expand_code.clone()
         };
         let click_code_blocks = self.code_blocks.clone();
         let keyboard_code_blocks = self.code_blocks.clone();
@@ -1109,20 +1095,7 @@ fn activate_link(
     }
 }
 
-fn emoji_link_icon(value: String) -> AnyElement {
-    div()
-        .size(px(13.0))
-        .flex_none()
-        .flex()
-        .items_center()
-        .justify_center()
-        .text_size(px(12.0))
-        .line_height(px(13.0))
-        .child(value)
-        .into_any_element()
-}
-
-fn generic_link_icon(theme: Theme) -> AnyElement {
+pub fn generic_link_icon(theme: Theme) -> AnyElement {
     icon(Icon::Link, 12.0, theme.text_tertiary).into_any_element()
 }
 
@@ -1217,5 +1190,15 @@ mod tests {
         let widths = column_widths(&[short, long], &[], 2);
         assert!((widths.iter().sum::<f32>() - 1.0).abs() < f32::EPSILON);
         assert!(widths.iter().all(|width| *width >= 0.275));
+    }
+
+    #[test]
+    fn extension_code_blocks_can_be_hidden_from_selection_text() {
+        let document = MarkdownDocument::parse_with_hidden_code_blocks(
+            "Before\n\n```gallery\n![Sea](sea.jpg)\n```\n\nAfter",
+            &["gallery"],
+        );
+
+        assert_eq!(document.selection_text.as_ref(), "Before\nAfter");
     }
 }

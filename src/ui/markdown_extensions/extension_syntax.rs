@@ -1,8 +1,8 @@
 use std::path::{Component, Path};
 
-use super::parser::{Block, InlineRun};
 use crate::document_library::Attachment;
 use crate::localization::Language;
+use gpui_markdown::{Block, InlineRun, parse_blocks};
 
 #[derive(Clone)]
 pub(super) struct GalleryItem {
@@ -14,7 +14,7 @@ pub(super) fn gallery_items(
     attachments: &[Attachment],
     language: Language,
 ) -> Result<Vec<GalleryItem>, String> {
-    let blocks = super::parser::parse(source);
+    let blocks = parse_blocks(source);
     let mut items = Vec::new();
     for block in blocks {
         if let Block::Paragraph { runs } = &block
@@ -59,7 +59,7 @@ pub(super) fn attachment_items(
     attachments: &[Attachment],
     language: Language,
 ) -> Result<Vec<Attachment>, String> {
-    let blocks = super::parser::parse(source);
+    let blocks = parse_blocks(source);
     let mut items = Vec::new();
     for block in blocks {
         let Block::Paragraph { runs } = block else {

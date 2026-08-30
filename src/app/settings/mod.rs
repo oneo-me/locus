@@ -15,6 +15,7 @@ use crate::localization::Language;
 use crate::mcp::McpServerState;
 use crate::preferences::{
     EditorPreference, FONT_SIZES, Preferences, TerminalColorScheme, TerminalCursorStyle,
+    terminal_color_scheme_label, terminal_cursor_style_label,
 };
 use crate::theme::{self, Theme, ThemePreference};
 use crate::ui::{ActivationExt, Icon, icon};

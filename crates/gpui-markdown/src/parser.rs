@@ -579,22 +579,25 @@ fn heading_level(level: HeadingLevel) -> u8 {
     }
 }
 
-pub fn index_selection_text(blocks: &mut [Block]) -> String {
-    let mut indexer = SelectionTextIndexer::default();
+pub fn index_selection_text(blocks: &mut [Block], hidden_code_block_languages: &[&str]) -> String {
+    let mut indexer = SelectionTextIndexer {
+        text: String::new(),
+        hidden_code_block_languages,
+    };
     indexer.index_blocks(blocks);
     indexer.text
 }
 
-#[derive(Default)]
-struct SelectionTextIndexer {
+struct SelectionTextIndexer<'a> {
     text: String,
+    hidden_code_block_languages: &'a [&'a str],
 }
 
-impl SelectionTextIndexer {
+impl SelectionTextIndexer<'_> {
     fn index_blocks(&mut self, blocks: &mut [Block]) {
         let mut has_previous = false;
         for block in blocks {
-            if !block_has_selection_text(block) {
+            if !block_has_selection_text(block, self.hidden_code_block_languages) {
                 continue;
             }
             if has_previous {
@@ -618,7 +621,10 @@ impl SelectionTextIndexer {
                 code,
                 selection_range,
             } => {
-                if matches!(language.as_deref(), Some("gallery" | "attachments")) {
+                if language
+                    .as_deref()
+                    .is_some_and(|language| self.hidden_code_block_languages.contains(&language))
+                {
                     *selection_range = self.text.len()..self.text.len();
                 } else {
                     *selection_range = self.push_text(code);
@@ -644,7 +650,11 @@ impl SelectionTextIndexer {
         let mut visible_index = 0_u64;
         let mut has_previous = false;
         for item in items {
-            if !item.blocks.iter().any(block_has_selection_text) {
+            if !item
+                .blocks
+                .iter()
+                .any(|block| block_has_selection_text(block, self.hidden_code_block_languages))
+            {
                 continue;
             }
             if has_previous {
@@ -700,19 +710,26 @@ impl SelectionTextIndexer {
     }
 }
 
-fn block_has_selection_text(block: &Block) -> bool {
+fn block_has_selection_text(block: &Block, hidden_code_block_languages: &[&str]) -> bool {
     match block {
         Block::Paragraph { runs } | Block::Heading { runs, .. } => {
             runs.iter().any(|run| !run.text.is_empty())
         }
         Block::Image { alt, .. } => !alt.is_empty(),
         Block::Code { language, code, .. } => {
-            !code.is_empty() && !matches!(language.as_deref(), Some("gallery" | "attachments"))
+            !code.is_empty()
+                && !language
+                    .as_deref()
+                    .is_some_and(|language| hidden_code_block_languages.contains(&language))
         }
-        Block::Quote { children } => children.iter().any(block_has_selection_text),
-        Block::List { items, .. } => items
+        Block::Quote { children } => children
             .iter()
-            .any(|item| item.blocks.iter().any(block_has_selection_text)),
+            .any(|block| block_has_selection_text(block, hidden_code_block_languages)),
+        Block::List { items, .. } => items.iter().any(|item| {
+            item.blocks
+                .iter()
+                .any(|block| block_has_selection_text(block, hidden_code_block_languages))
+        }),
         Block::Table { header, rows, .. } => {
             header.iter().flatten().any(|run| !run.text.is_empty())
                 || rows
@@ -745,14 +762,14 @@ mod tests {
     }
 
     #[test]
-    fn preserves_locus_link_destinations() {
-        let blocks = parse("[Architecture](locus://projects/locus/architecture)");
+    fn preserves_custom_scheme_link_destinations() {
+        let blocks = parse("[Architecture](app://notes/architecture)");
         let Block::Paragraph { runs } = &blocks[0] else {
             panic!("expected paragraph");
         };
         assert_eq!(
             runs[0].style.link.as_deref(),
-            Some("locus://projects/locus/architecture")
+            Some("app://notes/architecture")
         );
     }
 
@@ -779,7 +796,7 @@ mod tests {
         let mut blocks = parse(
             "# Heading\n\nParagraph\n\n- first\n- [x] second\n\n| A | B |\n| - | - |\n| C | D |",
         );
-        let text = index_selection_text(&mut blocks);
+        let text = index_selection_text(&mut blocks, &[]);
         assert_eq!(text, "Heading\nParagraph\n• first\n[x] second\nA\tB\nC\tD");
 
         let Block::Heading { runs, .. } = &blocks[0] else {

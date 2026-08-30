@@ -1,0 +1,10 @@
+[package]
+name = "gpui-markdown"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gpui.workspace = true
+gpui-ui = { path = "../gpui-ui" }
+pulldown-cmark = "0.13"
+regex = "1"

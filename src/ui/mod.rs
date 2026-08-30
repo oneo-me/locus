@@ -1,16 +1,13 @@
-mod activation;
-mod button;
-mod icon;
 mod link_icon;
 mod local_image;
-mod markdown;
-mod scrollbar;
+mod markdown_extensions;
 
-pub use activation::ActivationExt;
-pub use button::toolbar_icon_button;
-pub use icon::{Icon, icon};
-pub use local_image::document_icon_image;
-pub use markdown::{
-    Markdown, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection, MarkdownTypography,
+pub use gpui_markdown::{
+    Markdown, MarkdownCodeBlocks, MarkdownDocument, MarkdownLabels, MarkdownSelection,
+    MarkdownTypography,
 };
-pub use scrollbar::{ScrollbarState, vertical_scrollbar};
+pub use gpui_ui::{
+    ActivationExt, Icon, ScrollbarState, icon, toolbar_icon_button, vertical_scrollbar,
+};
+pub use local_image::document_icon_image;
+pub use markdown_extensions::LocusMarkdownExtensions;

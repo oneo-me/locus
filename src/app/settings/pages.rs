@@ -284,7 +284,7 @@ impl Settings {
             .into_iter()
             .map(|value| {
                 (
-                    value.label(language),
+                    terminal_color_scheme_label(value, language),
                     value == self.preferences.terminal_color_scheme,
                     Choice::TerminalColorScheme(value),
                 )
@@ -294,7 +294,7 @@ impl Settings {
             .into_iter()
             .map(|value| {
                 (
-                    value.label(language),
+                    terminal_cursor_style_label(value, language),
                     value == self.preferences.terminal_cursor_style,
                     Choice::TerminalCursorStyle(value),
                 )
@@ -359,7 +359,7 @@ impl Settings {
                 ),
                 self.render_dropdown(
                     "terminal-color-scheme-selector",
-                    self.preferences.terminal_color_scheme.label(language),
+                    terminal_color_scheme_label(self.preferences.terminal_color_scheme, language),
                     Dropdown::TerminalColorScheme,
                     color_choices,
                     FOCUS_TERMINAL_COLOR_SCHEME,
@@ -376,7 +376,7 @@ impl Settings {
                 ),
                 self.render_dropdown(
                     "terminal-cursor-style-selector",
-                    self.preferences.terminal_cursor_style.label(language),
+                    terminal_cursor_style_label(self.preferences.terminal_cursor_style, language),
                     Dropdown::TerminalCursorStyle,
                     cursor_choices,
                     FOCUS_TERMINAL_CURSOR_STYLE,

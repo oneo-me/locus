@@ -10,7 +10,6 @@ mod process_environment;
 mod sidebar_order;
 mod state;
 mod storage;
-mod terminal;
 mod theme;
 mod ui;
 

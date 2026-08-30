@@ -8,7 +8,7 @@ use gpui::{
     quad, size, transparent_black,
 };
 
-use crate::theme::Theme;
+use crate::Theme;
 
 const TRACK_WIDTH: f32 = 11.0;
 const TRACK_INSET: f32 = 2.0;

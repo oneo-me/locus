@@ -1,8 +1,6 @@
 use gpui::{Div, FocusHandle, Role, Stateful, div, prelude::*, px};
 
-use crate::theme::Theme;
-
-use super::{Icon, icon};
+use crate::{Icon, Theme, icon};
 
 pub fn toolbar_icon_button(
     id: &'static str,

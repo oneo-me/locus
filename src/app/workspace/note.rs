@@ -5,8 +5,8 @@ use super::{Locus, SelectedNote};
 use crate::document_library::{LIBRARY_REFERENCE_SCHEME, LibraryNode, library_reference_path};
 use crate::theme::Theme;
 use crate::ui::{
-    ActivationExt, Icon, Markdown, MarkdownTypography, document_icon_image, toolbar_icon_button,
-    vertical_scrollbar,
+    ActivationExt, Icon, LocusMarkdownExtensions, Markdown, MarkdownLabels, MarkdownTypography,
+    document_icon_image, toolbar_icon_button, vertical_scrollbar,
 };
 use gpui::{
     AnyElement, BorderStyle, Bounds, ClipboardItem, Div, Edges, FontWeight, MouseButton, ObjectFit,
@@ -73,6 +73,13 @@ impl Locus {
             .and_then(|note| note.document.as_ref())
             .filter(|document| !document.is_empty())
         {
+            let extensions =
+                LocusMarkdownExtensions::new(&node.attachments, &self.library_tree, language);
+            let labels = MarkdownLabels {
+                copy_code: language.text("复制代码", "Copy code").into(),
+                collapse_code: language.text("折叠代码", "Collapse code").into(),
+                expand_code: language.text("展开代码", "Expand code").into(),
+            };
             article = article.child(
                 Markdown::new(
                     document,
@@ -88,8 +95,8 @@ impl Locus {
                     self.note_text_focus.clone(),
                     self.content_pane.entity_id(),
                 )
-                .with_attachment_views(&node.attachments, language)
-                .with_library_tree(&self.library_tree)
+                .with_labels(labels)
+                .with_extensions(&extensions)
                 .with_code_blocks(self.note_code_blocks.clone())
                 .with_link_handler(move |url, _, cx| {
                     if !url.starts_with(LIBRARY_REFERENCE_SCHEME) {
