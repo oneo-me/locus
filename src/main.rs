@@ -6,6 +6,7 @@ mod mcp;
 mod motion;
 mod platform;
 mod preferences;
+mod process_environment;
 mod sidebar_order;
 mod state;
 mod storage;

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use super::ChangeStatus;
+use crate::process_environment;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct RepositoryChange {
@@ -31,7 +31,7 @@ pub(super) fn read_changes(root: &Path) -> Result<Vec<RepositoryChange>, String>
 }
 
 fn run_git(root: &Path, arguments: &[&str]) -> Result<Vec<u8>, String> {
-    let output = Command::new("git")
+    let output = process_environment::command("git")
         .arg("-c")
         .arg(format!("safe.directory={}", root.display()))
         .arg("-C")
