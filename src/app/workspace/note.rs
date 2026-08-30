@@ -50,23 +50,8 @@ impl Locus {
             .flex()
             .flex_col()
             .gap(px(22.0));
-        if let Some(summary) = node
-            .summary
-            .as_ref()
-            .filter(|summary| !summary.trim().is_empty())
-        {
-            article = article.child(
-                div()
-                    .w_full()
-                    .rounded(px(8.0))
-                    .overflow_hidden()
-                    .bg(atmosphere.panel)
-                    .px(px(14.0))
-                    .py(px(8.0))
-                    .text_sm()
-                    .line_height(px(21.0))
-                    .child(summary.clone()),
-            );
+        if let Some(metadata) = note_metadata(node, atmosphere.panel, theme) {
+            article = article.child(metadata);
         }
         if let Some(error) = selected_note.and_then(|note| note.error.as_deref()) {
             article = article.child(
@@ -346,6 +331,84 @@ fn note_titlebar_padding(
         super::TITLEBAR_CONTROL_INSET + super::TITLEBAR_CONTROL_SIZE + super::TITLEBAR_CONTROL_GAP;
     let right = (right_control_clearance - right_sidebar_width - centered_gutter).max(16.0);
     (left, right)
+}
+
+fn note_metadata(node: &LibraryNode, panel_color: gpui::Hsla, theme: Theme) -> Option<Div> {
+    let summary = node
+        .summary
+        .as_ref()
+        .filter(|summary| !summary.trim().is_empty());
+    if summary.is_none() && node.additional_metadata.is_empty() {
+        return None;
+    }
+
+    let mut panel = div()
+        .w_full()
+        .rounded(px(8.0))
+        .overflow_hidden()
+        .bg(panel_color)
+        .flex()
+        .flex_col();
+    if let Some(summary) = summary {
+        panel = panel.child(
+            div()
+                .px(px(14.0))
+                .py(px(8.0))
+                .text_sm()
+                .line_height(px(21.0))
+                .child(summary.clone()),
+        );
+    }
+    if !node.additional_metadata.is_empty() {
+        let mut fields = div().py(px(4.0)).flex().flex_col();
+        for (key, value) in &node.additional_metadata {
+            fields = fields.child(
+                div()
+                    .w_full()
+                    .min_w_0()
+                    .flex()
+                    .items_start()
+                    .text_xs()
+                    .line_height(px(18.0))
+                    .child(
+                        div()
+                            .w(px(112.0))
+                            .min_w_0()
+                            .flex_none()
+                            .px(px(14.0))
+                            .py(px(6.0))
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(theme.text_secondary)
+                            .whitespace_normal()
+                            .child(key.clone()),
+                    )
+                    .child(
+                        div()
+                            .min_w_0()
+                            .flex_1()
+                            .px(px(14.0))
+                            .py(px(6.0))
+                            .text_color(theme.text)
+                            .whitespace_normal()
+                            .child(format_yaml_metadata_value(value)),
+                    ),
+            );
+        }
+        panel = panel.child(fields);
+    }
+    Some(panel)
+}
+
+fn format_yaml_metadata_value(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(value) => value.clone(),
+        serde_json::Value::Null => "null".to_owned(),
+        serde_json::Value::Bool(value) => value.to_string(),
+        serde_json::Value::Number(value) => value.to_string(),
+        serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+            serde_json::to_string_pretty(value).expect("JSON values are serializable")
+        }
+    }
 }
 
 fn note_titlebar_background(
@@ -780,6 +843,19 @@ mod tests {
         assert_eq!(
             note_titlebar_padding(700.0, 250.0, 250.0, 120.0),
             (16.0, 16.0)
+        );
+    }
+
+    #[test]
+    fn formats_yaml_metadata_like_the_previous_reader() {
+        assert_eq!(
+            format_yaml_metadata_value(&serde_json::Value::String("active".to_owned())),
+            "active"
+        );
+        assert_eq!(format_yaml_metadata_value(&serde_json::Value::Null), "null");
+        assert_eq!(
+            format_yaml_metadata_value(&serde_json::json!({ "name": "Oneo" })),
+            "{\n  \"name\": \"Oneo\"\n}"
         );
     }
 }

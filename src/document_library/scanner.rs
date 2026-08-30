@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use image::{ImageDecoder, ImageReader, metadata::Orientation};
+use serde::de::{MapAccess, Visitor};
 
 use super::repository::{RepositoryChange, document_change};
 use super::{ArchivedNote, Attachment, ChangeStatus, DocumentIcon, ImageSize, LibraryNode};
@@ -17,15 +18,39 @@ struct DocumentMetadata {
     icon: Option<String>,
     summary: Option<String>,
     archived: bool,
+    additional: Vec<(String, serde_json::Value)>,
 }
 
-#[derive(Default, serde::Deserialize)]
-#[serde(default)]
-struct RawDocumentMetadata {
-    title: Option<serde_json::Value>,
-    icon: Option<serde_json::Value>,
-    summary: Option<serde_json::Value>,
-    archived: bool,
+struct OrderedFrontmatter(Vec<(String, serde_json::Value)>);
+
+impl<'de> serde::Deserialize<'de> for OrderedFrontmatter {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(OrderedFrontmatterVisitor)
+    }
+}
+
+struct OrderedFrontmatterVisitor;
+
+impl<'de> Visitor<'de> for OrderedFrontmatterVisitor {
+    type Value = OrderedFrontmatter;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a YAML mapping")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut entries = Vec::with_capacity(map.size_hint().unwrap_or_default());
+        while let Some(entry) = map.next_entry()? {
+            entries.push(entry);
+        }
+        Ok(OrderedFrontmatter(entries))
+    }
 }
 
 pub(super) fn scan_children(
@@ -100,6 +125,7 @@ pub(super) fn scan_children(
             icon: metadata.icon,
             icon_image,
             summary: metadata.summary,
+            additional_metadata: metadata.additional,
             attachments,
             change,
             descendant_change,
@@ -213,15 +239,21 @@ fn read_document_metadata(path: &Path) -> Result<DocumentMetadata, std::io::Erro
 }
 
 fn parse_frontmatter_metadata(frontmatter: &str) -> DocumentMetadata {
-    let Ok(raw) = serde_saphyr::from_str::<RawDocumentMetadata>(frontmatter) else {
+    let Ok(OrderedFrontmatter(entries)) = serde_saphyr::from_str(frontmatter) else {
         return DocumentMetadata::default();
     };
-    DocumentMetadata {
-        title: optional_string(raw.title),
-        icon: optional_string(raw.icon),
-        summary: optional_string(raw.summary),
-        archived: raw.archived,
+
+    let mut metadata = DocumentMetadata::default();
+    for (key, value) in entries {
+        match key.as_str() {
+            "title" => metadata.title = optional_string(Some(value)),
+            "icon" => metadata.icon = optional_string(Some(value)),
+            "summary" => metadata.summary = optional_string(Some(value)),
+            "archived" => metadata.archived = value == serde_json::Value::Bool(true),
+            _ => metadata.additional.push((key, value)),
+        }
     }
+    metadata
 }
 
 fn document_body(content: &str) -> &str {
@@ -293,5 +325,23 @@ mod tests {
         assert_eq!(metadata.summary.as_deref(), Some("A short summary."));
         assert_eq!(document_body(document), "# Heading\n\nBody");
         assert_eq!(document_body("---\ntitle: Notes\n---"), "");
+    }
+
+    #[test]
+    fn keeps_additional_frontmatter_metadata_in_source_order() {
+        let document = "---\ntitle: Notes\nstatus: active\ntags:\n  - rust\n  - gpui\nowner:\n  name: Oneo\narchived: false\n---\nBody";
+        let metadata = parse_frontmatter_metadata(frontmatter_parts(document).unwrap().0);
+
+        assert_eq!(
+            metadata.additional,
+            vec![
+                (
+                    "status".to_owned(),
+                    serde_json::Value::String("active".to_owned())
+                ),
+                ("tags".to_owned(), serde_json::json!(["rust", "gpui"])),
+                ("owner".to_owned(), serde_json::json!({ "name": "Oneo" })),
+            ]
+        );
     }
 }

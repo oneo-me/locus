@@ -145,6 +145,7 @@ mod tests {
             icon: None,
             icon_image: None,
             summary: None,
+            additional_metadata: Vec::new(),
             attachments: Vec::new(),
             change: None,
             descendant_change: None,
