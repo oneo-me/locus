@@ -5,7 +5,8 @@ use super::{Locus, SelectedNote};
 use crate::document_library::LibraryNode;
 use crate::theme::Theme;
 use crate::ui::{
-    ActivationExt, Icon, Markdown, document_icon_image, toolbar_icon_button, vertical_scrollbar,
+    ActivationExt, Icon, Markdown, MarkdownTypography, document_icon_image, toolbar_icon_button,
+    vertical_scrollbar,
 };
 use gpui::{
     AnyElement, BorderStyle, Bounds, ClipboardItem, Div, Edges, FontWeight, MouseButton, ObjectFit,
@@ -40,6 +41,7 @@ impl Locus {
         let mut article = div()
             .mx_auto()
             .w_full()
+            .min_w_0()
             .max_w(px(NOTE_MAX_WIDTH))
             .px(px(16.0))
             .pt(px(72.0))
@@ -90,16 +92,23 @@ impl Locus {
                     document,
                     &node.directory,
                     theme,
-                    &markdown_text_font_family,
-                    markdown_text_size,
-                    &markdown_code_font_family,
-                    markdown_code_text_size,
+                    MarkdownTypography {
+                        text_font_family: &markdown_text_font_family,
+                        text_size: markdown_text_size,
+                        code_font_family: &markdown_code_font_family,
+                        code_text_size: markdown_code_text_size,
+                    },
+                    self.note_text_selection.clone(),
+                    self.note_text_focus.clone(),
+                    self.content_pane.entity_id(),
                 )
                 .with_attachment_views(&node.attachments, language)
                 .render(),
             );
         }
 
+        let selection_for_scroll = self.note_text_selection.clone();
+        let scroll_handle = self.note_scroll_handle.clone();
         let scroll = div()
             .id("note-scroll")
             .absolute()
@@ -107,6 +116,26 @@ impl Locus {
             .min_h_0()
             .overflow_y_scroll()
             .track_scroll(&self.note_scroll_handle)
+            .on_mouse_move(move |event, window, _| {
+                if !selection_for_scroll.is_selecting() {
+                    return;
+                }
+                let bounds = scroll_handle.bounds();
+                let edge = px(28.0);
+                let step = px(14.0);
+                let current = scroll_handle.offset();
+                let next_y = if event.position.y < bounds.top() + edge {
+                    (current.y + step).min(Pixels::ZERO)
+                } else if event.position.y > bounds.bottom() - edge {
+                    (current.y - step).max(-scroll_handle.max_offset().y)
+                } else {
+                    current.y
+                };
+                if next_y != current.y {
+                    scroll_handle.set_offset(point(current.x, next_y));
+                    window.refresh();
+                }
+            })
             .child(
                 div()
                     .relative()

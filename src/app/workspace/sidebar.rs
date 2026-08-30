@@ -268,6 +268,7 @@ impl Locus {
         let selection_changed = self.selected_library_node.as_deref() != Some(path.as_str());
         if selection_changed {
             self.copied_library_node = None;
+            self.note_text_selection.reset();
             self.note_menu_open = false;
             self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
             self.note_scroll_handle

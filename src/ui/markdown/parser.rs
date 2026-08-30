@@ -1,3 +1,4 @@
+use std::ops::Range;
 use std::sync::LazyLock;
 
 use pulldown_cmark::{Alignment, CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
@@ -20,6 +21,7 @@ pub struct InlineStyle {
 pub struct InlineRun {
     pub text: String,
     pub style: InlineStyle,
+    pub selection_range: Range<usize>,
 }
 
 impl InlineRun {
@@ -27,6 +29,7 @@ impl InlineRun {
         Self {
             text: text.into(),
             style: InlineStyle::default(),
+            selection_range: 0..0,
         }
     }
 }
@@ -59,6 +62,7 @@ pub enum Block {
     Image {
         url: String,
         alt: String,
+        alt_selection_range: Range<usize>,
     },
     Heading {
         level: u8,
@@ -67,6 +71,7 @@ pub enum Block {
     Code {
         language: Option<String>,
         code: String,
+        selection_range: Range<usize>,
     },
     Quote {
         children: Vec<Block>,
@@ -158,7 +163,11 @@ fn parse_started_block(cursor: &mut Cursor) -> Vec<Block> {
             if code.ends_with('\n') {
                 code.pop();
             }
-            vec![Block::Code { language, code }]
+            vec![Block::Code {
+                language,
+                code,
+                selection_range: 0..0,
+            }]
         }
         Tag::BlockQuote(_) => vec![Block::Quote {
             children: parse_block_sequence(cursor),
@@ -341,6 +350,7 @@ fn parse_inline_event(cursor: &mut Cursor, pieces: &mut Vec<InlinePiece>, style:
         Event::Text(text) => pieces.push(InlinePiece::Run(InlineRun {
             text: text.to_string(),
             style: style.clone(),
+            selection_range: 0..0,
         })),
         Event::Code(text) => {
             let mut code_style = style.clone();
@@ -348,11 +358,13 @@ fn parse_inline_event(cursor: &mut Cursor, pieces: &mut Vec<InlinePiece>, style:
             pieces.push(InlinePiece::Run(InlineRun {
                 text: text.to_string(),
                 style: code_style,
+                selection_range: 0..0,
             }));
         }
         Event::SoftBreak | Event::HardBreak => pieces.push(InlinePiece::Run(InlineRun {
             text: "\n".to_owned(),
             style: style.clone(),
+            selection_range: 0..0,
         })),
         Event::Start(Tag::Image {
             dest_url, title, ..
@@ -390,14 +402,17 @@ fn parse_inline_event(cursor: &mut Cursor, pieces: &mut Vec<InlinePiece>, style:
         Event::Html(text) | Event::InlineHtml(text) => pieces.push(InlinePiece::Run(InlineRun {
             text: text.to_string(),
             style: style.clone(),
+            selection_range: 0..0,
         })),
         Event::FootnoteReference(label) => pieces.push(InlinePiece::Run(InlineRun {
             text: format!("[{label}]"),
             style: style.clone(),
+            selection_range: 0..0,
         })),
         Event::TaskListMarker(checked) => pieces.push(InlinePiece::Run(InlineRun {
             text: if checked { "[x] " } else { "[ ] " }.to_owned(),
             style: style.clone(),
+            selection_range: 0..0,
         })),
         Event::End(_) | Event::Rule | Event::InlineMath(_) | Event::DisplayMath(_) => {}
     }
@@ -415,7 +430,11 @@ fn pieces_into_blocks(pieces: Vec<InlinePiece>) -> Vec<Block> {
                         runs: std::mem::take(&mut runs),
                     });
                 }
-                blocks.push(Block::Image { url, alt });
+                blocks.push(Block::Image {
+                    url,
+                    alt,
+                    alt_selection_range: 0..0,
+                });
             }
         }
     }
@@ -475,6 +494,7 @@ fn push_linkified_run(run: InlineRun, pieces: &mut Vec<InlinePiece>) {
             pieces.push(InlinePiece::Run(InlineRun {
                 text: run.text[cursor..candidate.start()].to_owned(),
                 style: run.style.clone(),
+                selection_range: 0..0,
             }));
         }
         let url = &run.text[candidate.start()..end];
@@ -483,6 +503,7 @@ fn push_linkified_run(run: InlineRun, pieces: &mut Vec<InlinePiece>) {
         pieces.push(InlinePiece::Run(InlineRun {
             text: url.to_owned(),
             style: link_style,
+            selection_range: 0..0,
         }));
         cursor = end;
     }
@@ -490,6 +511,7 @@ fn push_linkified_run(run: InlineRun, pieces: &mut Vec<InlinePiece>) {
         pieces.push(InlinePiece::Run(InlineRun {
             text: run.text[cursor..].to_owned(),
             style: run.style,
+            selection_range: 0..0,
         }));
     }
 }
@@ -557,6 +579,152 @@ fn heading_level(level: HeadingLevel) -> u8 {
     }
 }
 
+pub fn index_selection_text(blocks: &mut [Block]) -> String {
+    let mut indexer = SelectionTextIndexer::default();
+    indexer.index_blocks(blocks);
+    indexer.text
+}
+
+#[derive(Default)]
+struct SelectionTextIndexer {
+    text: String,
+}
+
+impl SelectionTextIndexer {
+    fn index_blocks(&mut self, blocks: &mut [Block]) {
+        let mut has_previous = false;
+        for block in blocks {
+            if !block_has_selection_text(block) {
+                continue;
+            }
+            if has_previous {
+                self.line_break();
+            }
+            self.index_block(block);
+            has_previous = true;
+        }
+    }
+
+    fn index_block(&mut self, block: &mut Block) {
+        match block {
+            Block::Paragraph { runs } | Block::Heading { runs, .. } => self.index_runs(runs),
+            Block::Image {
+                alt,
+                alt_selection_range,
+                ..
+            } => *alt_selection_range = self.push_text(alt),
+            Block::Code {
+                language,
+                code,
+                selection_range,
+            } => {
+                if matches!(language.as_deref(), Some("gallery" | "attachments")) {
+                    *selection_range = self.text.len()..self.text.len();
+                } else {
+                    *selection_range = self.push_text(code);
+                }
+            }
+            Block::Quote { children } => self.index_blocks(children),
+            Block::List {
+                ordered_start,
+                items,
+            } => self.index_list(*ordered_start, items),
+            Block::Table { header, rows, .. } => self.index_table(header, rows),
+            Block::Rule => {}
+        }
+    }
+
+    fn index_runs(&mut self, runs: &mut [InlineRun]) {
+        for run in runs {
+            run.selection_range = self.push_text(&run.text);
+        }
+    }
+
+    fn index_list(&mut self, ordered_start: Option<u64>, items: &mut [ListItem]) {
+        let mut visible_index = 0_u64;
+        let mut has_previous = false;
+        for item in items {
+            if !item.blocks.iter().any(block_has_selection_text) {
+                continue;
+            }
+            if has_previous {
+                self.line_break();
+            }
+            let marker = match (ordered_start, item.task) {
+                (_, Some(true)) => "[x] ".to_owned(),
+                (_, Some(false)) => "[ ] ".to_owned(),
+                (Some(start), None) => format!("{}. ", start + visible_index),
+                (None, None) => "• ".to_owned(),
+            };
+            self.text.push_str(&marker);
+            self.index_blocks(&mut item.blocks);
+            visible_index += 1;
+            has_previous = true;
+        }
+    }
+
+    fn index_table(&mut self, header: &mut [Vec<InlineRun>], rows: &mut [Vec<Vec<InlineRun>>]) {
+        let mut has_previous = false;
+        if !header.is_empty() {
+            self.index_table_row(header);
+            has_previous = true;
+        }
+        for row in rows {
+            if has_previous {
+                self.line_break();
+            }
+            self.index_table_row(row);
+            has_previous = true;
+        }
+    }
+
+    fn index_table_row(&mut self, cells: &mut [Vec<InlineRun>]) {
+        for (index, cell) in cells.iter_mut().enumerate() {
+            if index > 0 {
+                self.text.push('\t');
+            }
+            self.index_runs(cell);
+        }
+    }
+
+    fn push_text(&mut self, text: &str) -> Range<usize> {
+        let start = self.text.len();
+        self.text.push_str(text);
+        start..self.text.len()
+    }
+
+    fn line_break(&mut self) {
+        if !self.text.is_empty() && !self.text.ends_with('\n') {
+            self.text.push('\n');
+        }
+    }
+}
+
+fn block_has_selection_text(block: &Block) -> bool {
+    match block {
+        Block::Paragraph { runs } | Block::Heading { runs, .. } => {
+            runs.iter().any(|run| !run.text.is_empty())
+        }
+        Block::Image { alt, .. } => !alt.is_empty(),
+        Block::Code { language, code, .. } => {
+            !code.is_empty() && !matches!(language.as_deref(), Some("gallery" | "attachments"))
+        }
+        Block::Quote { children } => children.iter().any(block_has_selection_text),
+        Block::List { items, .. } => items
+            .iter()
+            .any(|item| item.blocks.iter().any(block_has_selection_text)),
+        Block::Table { header, rows, .. } => {
+            header.iter().flatten().any(|run| !run.text.is_empty())
+                || rows
+                    .iter()
+                    .flatten()
+                    .flatten()
+                    .any(|run| !run.text.is_empty())
+        }
+        Block::Rule => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -592,5 +760,23 @@ mod tests {
         };
         let linked = runs.iter().find(|run| run.style.link.is_some()).unwrap();
         assert_eq!(linked.text, "https://example.com/docs");
+    }
+
+    #[test]
+    fn indexes_rendered_text_across_blocks_lists_and_tables() {
+        let mut blocks = parse(
+            "# Heading\n\nParagraph\n\n- first\n- [x] second\n\n| A | B |\n| - | - |\n| C | D |",
+        );
+        let text = index_selection_text(&mut blocks);
+        assert_eq!(text, "Heading\nParagraph\n• first\n[x] second\nA\tB\nC\tD");
+
+        let Block::Heading { runs, .. } = &blocks[0] else {
+            panic!("expected heading");
+        };
+        assert_eq!(runs[0].selection_range, 0..7);
+        let Block::Paragraph { runs } = &blocks[1] else {
+            panic!("expected paragraph");
+        };
+        assert_eq!(&text[runs[0].selection_range.clone()], "Paragraph");
     }
 }

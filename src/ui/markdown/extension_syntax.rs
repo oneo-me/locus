@@ -22,7 +22,7 @@ pub(super) fn gallery_items(
         {
             continue;
         }
-        let Block::Image { url, alt } = block else {
+        let Block::Image { url, alt, .. } = block else {
             return Err(language
                 .text(
                     "请只填写当前笔记的本地图片，并为每张图片提供替代文本。",
