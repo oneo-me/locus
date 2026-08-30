@@ -2,6 +2,73 @@ use super::*;
 use crate::mcp::McpServerState;
 
 impl Locus {
+    pub(super) fn toggle_panel(
+        &mut self,
+        side: PanelSide,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match side {
+            PanelSide::Left => {
+                self.left_sidebar_visible = !self.left_sidebar_visible;
+                self.left_sidebar_slide =
+                    (!cx.reduce_motion()).then(|| PanelSlide::new(self.rendered_left_width));
+            }
+            PanelSide::Right => {
+                let panel_content_width = self
+                    .right_sidebar_window_resize
+                    .map(PanelWindowResize::panel_content_width)
+                    .unwrap_or_else(|| {
+                        if self.right_sidebar_visible {
+                            self.rendered_right_width
+                        } else if window.is_fullscreen() || window.is_maximized() {
+                            fitted_panel_widths(
+                                WORKSPACE_SHELL_CONFIG,
+                                f32::from(window.viewport_size().width),
+                                self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
+                                true,
+                                self.left_sidebar_width,
+                                self.right_sidebar_width,
+                            )
+                            .1
+                        } else {
+                            self.right_sidebar_width
+                        }
+                    });
+                self.right_sidebar_visible = !self.right_sidebar_visible;
+                self.right_sidebar_slide =
+                    (!cx.reduce_motion()).then(|| PanelSlide::new(self.rendered_right_width));
+                self.right_sidebar_window_resize = Some(PanelWindowResize::new(
+                    window,
+                    self.rendered_right_width,
+                    panel_content_width,
+                    WINDOW_MIN_WIDTH,
+                ));
+            }
+        }
+        self.save_interface_state();
+        cx.notify();
+    }
+
+    pub(super) fn sync_window_and_right_sidebar(
+        &mut self,
+        panels: &mut PanelFrame,
+        window: &mut Window,
+    ) {
+        let Some(resize) = self.right_sidebar_window_resize else {
+            self.rendered_right_width = panels.right;
+            return;
+        };
+        let frame = resize.sync(panels.right, window);
+        panels.right = frame.panel_width;
+        self.rendered_right_width = frame.panel_width;
+        if self.right_sidebar_slide.is_none() && frame.window_resize_complete {
+            self.right_sidebar_window_resize = None;
+        }
+        panels.right_sliding =
+            self.right_sidebar_slide.is_some() || self.right_sidebar_window_resize.is_some();
+    }
+
     pub(super) fn window_drag_region(
         &self,
         id: &'static str,
@@ -62,7 +129,9 @@ impl Locus {
 
         panel_toggle_button(id, label, focus, side, theme)
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .on_activation(cx, move |this, _, cx| this.toggle_panel(side, cx))
+            .on_activation(cx, move |this, window, cx| {
+                this.toggle_panel(side, window, cx)
+            })
     }
 
     pub(super) fn render_history_button(
@@ -182,9 +251,7 @@ impl Locus {
             .when(self.fps_counter_visible, |header| {
                 header.child(self.render_fps_counter(cx))
             })
-            .when(!self.right_sidebar_visible, |header| {
-                header.child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
-            })
+            .child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
     }
 
     pub(super) fn render_fps_counter(&self, cx: &mut Context<Self>) -> Div {
@@ -257,7 +324,6 @@ impl Locus {
                             ),
                     ),
             )
-            .child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
     }
 
     pub(super) fn render_settings_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {

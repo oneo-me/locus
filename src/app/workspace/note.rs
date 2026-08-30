@@ -192,7 +192,6 @@ impl Locus {
         let (left_padding, right_padding) = note_titlebar_padding(
             content_width,
             self.rendered_left_width,
-            self.rendered_right_width,
             left_control_clearance,
         );
         let copy_button = toolbar_icon_button(
@@ -329,14 +328,13 @@ impl Locus {
 fn note_titlebar_padding(
     content_width: f32,
     left_sidebar_width: f32,
-    right_sidebar_width: f32,
     left_control_clearance: f32,
 ) -> (f32, f32) {
     let centered_gutter = ((content_width - NOTE_MAX_WIDTH) / 2.0).max(0.0);
     let left = (left_control_clearance - left_sidebar_width - centered_gutter).max(16.0);
     let right_control_clearance =
         super::TITLEBAR_CONTROL_INSET + super::TITLEBAR_CONTROL_SIZE + super::TITLEBAR_CONTROL_GAP;
-    let right = (right_control_clearance - right_sidebar_width - centered_gutter).max(16.0);
+    let right = (right_control_clearance - centered_gutter).max(16.0);
     (left, right)
 }
 
@@ -841,16 +839,13 @@ mod tests {
 
     #[test]
     fn wide_note_titlebar_stays_aligned_when_sidebars_are_hidden() {
-        assert_eq!(note_titlebar_padding(1200.0, 0.0, 0.0, 120.0), (16.0, 16.0));
+        assert_eq!(note_titlebar_padding(1200.0, 0.0, 120.0), (16.0, 16.0));
     }
 
     #[test]
     fn narrow_note_titlebar_only_avoids_controls_that_overlap_content() {
-        assert_eq!(note_titlebar_padding(700.0, 0.0, 0.0, 120.0), (120.0, 45.0));
-        assert_eq!(
-            note_titlebar_padding(700.0, 250.0, 250.0, 120.0),
-            (16.0, 16.0)
-        );
+        assert_eq!(note_titlebar_padding(700.0, 0.0, 120.0), (120.0, 45.0));
+        assert_eq!(note_titlebar_padding(700.0, 250.0, 120.0), (16.0, 45.0));
     }
 
     #[test]

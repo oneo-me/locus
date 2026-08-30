@@ -22,8 +22,8 @@ use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
 use super::settings::{Settings, SettingsEvent};
 use crate::config::{
-    DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_TITLEBAR_HEIGHT,
-    WINDOW_TRAFFIC_LIGHT_CLEARANCE,
+    DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_MIN_WIDTH,
+    WINDOW_TITLEBAR_HEIGHT, WINDOW_TRAFFIC_LIGHT_CLEARANCE,
 };
 use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use crate::localization::Language;
@@ -45,8 +45,8 @@ use crate::{
 };
 use oneo_gpui_terminal::{TerminalConfiguration, TerminalLabels, TerminalView};
 use oneo_gpui_ui::app_shell::{
-    PanelFrame, PanelSide, PanelSize, PanelSlide, WorkspaceShell, WorkspaceShellConfig,
-    fitted_panel_widths, panel_toggle_button, slide_width,
+    PanelFrame, PanelSide, PanelSize, PanelSlide, PanelWindowResize, WorkspaceShell,
+    WorkspaceShellConfig, fitted_panel_widths, panel_toggle_button, slide_width,
 };
 
 const TITLEBAR_HEIGHT: f32 = WINDOW_TITLEBAR_HEIGHT;
@@ -120,6 +120,7 @@ pub struct Locus {
     rendered_right_width: f32,
     left_sidebar_slide: Option<PanelSlide>,
     right_sidebar_slide: Option<PanelSlide>,
+    right_sidebar_window_resize: Option<PanelWindowResize>,
     panel_resize_drag: Option<PanelResizeDrag>,
     header_drag_armed: bool,
     left_toggle_focus: FocusHandle,
@@ -378,6 +379,7 @@ impl Locus {
             },
             left_sidebar_slide: None,
             right_sidebar_slide: None,
+            right_sidebar_window_resize: None,
             panel_resize_drag: None,
             header_drag_armed: false,
             left_toggle_focus: cx.focus_handle(),
@@ -742,14 +744,22 @@ impl Locus {
     }
 
     fn settle_panels(&mut self, window: &Window) -> PanelFrame {
+        let viewport_width = self
+            .right_sidebar_window_resize
+            .map(PanelWindowResize::layout_width)
+            .unwrap_or_else(|| f32::from(window.viewport_size().width));
         let (left_content, right_content) = fitted_panel_widths(
             WORKSPACE_SHELL_CONFIG,
-            f32::from(window.viewport_size().width),
+            viewport_width,
             self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
             self.right_sidebar_visible || self.right_sidebar_slide.is_some(),
             self.left_sidebar_width,
             self.right_sidebar_width,
         );
+        let right_content = self
+            .right_sidebar_window_resize
+            .map(PanelWindowResize::panel_content_width)
+            .unwrap_or(right_content);
         let left = slide_width(
             &mut self.left_sidebar_slide,
             if self.left_sidebar_visible {
@@ -768,8 +778,6 @@ impl Locus {
         );
 
         self.rendered_left_width = left;
-        self.rendered_right_width = right;
-
         PanelFrame {
             left_content,
             right_content,
@@ -778,23 +786,6 @@ impl Locus {
             left_sliding: self.left_sidebar_slide.is_some(),
             right_sliding: self.right_sidebar_slide.is_some(),
         }
-    }
-
-    fn toggle_panel(&mut self, side: PanelSide, cx: &mut Context<Self>) {
-        match side {
-            PanelSide::Left => {
-                self.left_sidebar_visible = !self.left_sidebar_visible;
-                self.left_sidebar_slide =
-                    (!cx.reduce_motion()).then(|| PanelSlide::new(self.rendered_left_width));
-            }
-            PanelSide::Right => {
-                self.right_sidebar_visible = !self.right_sidebar_visible;
-                self.right_sidebar_slide =
-                    (!cx.reduce_motion()).then(|| PanelSlide::new(self.rendered_right_width));
-            }
-        }
-        self.save_interface_state();
-        cx.notify();
     }
 
     fn interface_state(&self) -> InterfaceState {
@@ -818,19 +809,19 @@ impl Locus {
     fn toggle_left_sidebar_action(
         &mut self,
         _: &ToggleLeftSidebar,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.toggle_panel(PanelSide::Left, cx);
+        self.toggle_panel(PanelSide::Left, window, cx);
     }
 
     fn toggle_right_sidebar_action(
         &mut self,
         _: &ToggleRightSidebar,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.toggle_panel(PanelSide::Right, cx);
+        self.toggle_panel(PanelSide::Right, window, cx);
     }
 
     fn navigate_back(&mut self, cx: &mut Context<Self>) {
@@ -1169,8 +1160,6 @@ impl Locus {
             .flex()
             .flex_col()
             .min_w_0()
-            .border_l_1()
-            .border_color(theme.border_strong)
             .bg(theme.surface)
             .child(self.render_right_titlebar(cx))
             .child(
@@ -1230,17 +1219,25 @@ impl Locus {
     }
 
     fn right_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let (_, right_content) = fitted_panel_widths(
-            WORKSPACE_SHELL_CONFIG,
-            f32::from(window.viewport_size().width),
-            self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
-            self.right_sidebar_visible || self.right_sidebar_slide.is_some(),
-            self.left_sidebar_width,
-            self.right_sidebar_width,
-        );
+        let right_content = self
+            .right_sidebar_window_resize
+            .map(PanelWindowResize::panel_content_width)
+            .unwrap_or_else(|| {
+                fitted_panel_widths(
+                    WORKSPACE_SHELL_CONFIG,
+                    f32::from(window.viewport_size().width),
+                    self.left_sidebar_visible || self.left_sidebar_slide.is_some(),
+                    self.right_sidebar_visible || self.right_sidebar_slide.is_some(),
+                    self.left_sidebar_width,
+                    self.right_sidebar_width,
+                )
+                .1
+            });
         self.render_right_sidebar(
             right_content,
-            self.right_sidebar_visible && self.right_sidebar_slide.is_none(),
+            self.right_sidebar_visible
+                && self.right_sidebar_slide.is_none()
+                && self.right_sidebar_window_resize.is_none(),
             cx,
         )
         .into_any_element()
@@ -1257,8 +1254,10 @@ impl Render for Locus {
             .resolved_ui_font_family()
             .to_owned();
         let left_was_sliding = self.left_sidebar_slide.is_some();
-        let right_was_sliding = self.right_sidebar_slide.is_some();
-        let panels = self.settle_panels(window);
+        let right_was_sliding =
+            self.right_sidebar_slide.is_some() || self.right_sidebar_window_resize.is_some();
+        let mut panels = self.settle_panels(window);
+        self.sync_window_and_right_sidebar(&mut panels, window);
         let left_toggle_offset = left_toggle_offset(window.is_fullscreen());
         let navigation_left_offset =
             navigation_left_offset(left_toggle_offset, panels.left, self.left_sidebar_visible);
@@ -1309,6 +1308,7 @@ impl Render for Locus {
         )
         .left_toggle_offset(left_toggle_offset)
         .control_inset(TITLEBAR_CONTROL_INSET)
+        .right_divider_color(theme.border_strong)
         .into_element()
         .child(
             div()
