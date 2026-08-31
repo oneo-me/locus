@@ -5,7 +5,7 @@ use super::{Locus, SelectedNote};
 use crate::document_library::{LIBRARY_REFERENCE_SCHEME, LibraryNode, library_reference_path};
 use crate::theme::Theme;
 use crate::ui::{
-    ActivationExt, Icon, LocusMarkdownExtensions, Markdown, MarkdownLabels, MarkdownTypography,
+    Icon, LocusMarkdownExtensions, Markdown, MarkdownLabels, MarkdownTypography,
     document_icon_image, toolbar_icon_button,
 };
 use gpui::{
@@ -67,7 +67,7 @@ impl Locus {
                     .text_color(theme.danger)
                     .child(format!(
                         "{}：{error}",
-                        language.text("无法读取笔记", "Could not read note")
+                        language.text("workspace.note.read_error")
                     )),
             );
         }
@@ -78,9 +78,9 @@ impl Locus {
             let extensions =
                 LocusMarkdownExtensions::new(&node.attachments, &self.library_tree, language);
             let labels = MarkdownLabels {
-                copy_code: language.text("复制代码", "Copy code").into(),
-                collapse_code: language.text("折叠代码", "Collapse code").into(),
-                expand_code: language.text("展开代码", "Expand code").into(),
+                copy_code: language.text("workspace.note.copy_code").into(),
+                collapse_code: language.text("workspace.note.collapse_code").into(),
+                expand_code: language.text("workspace.note.expand_code").into(),
             };
             article = article.child(
                 Markdown::new(
@@ -156,7 +156,15 @@ impl Locus {
             .overflow_hidden()
             .child(scroll)
             .child(titlebar)
-            .child(Scrollbar::vertical(&self.note_scroll_handle))
+            .child(
+                div()
+                    .absolute()
+                    .top(px(super::TITLEBAR_HEIGHT))
+                    .right_0()
+                    .bottom_0()
+                    .w(Scrollbar::width())
+                    .child(Scrollbar::vertical(&self.note_scroll_handle).viewport_from_layout()),
+            )
     }
 
     fn open_library_reference(&mut self, path: &str, cx: &mut gpui::Context<Self>) {
@@ -195,16 +203,15 @@ impl Locus {
         let copy_button = toolbar_icon_button(
             "copy-note-reference",
             if copied {
-                language.text("笔记引用已复制", "Note reference copied")
+                language.text("workspace.note.reference_copied")
             } else {
-                language.text("复制笔记引用", "Copy note reference")
+                language.text("workspace.note.copy_reference")
             },
-            &self.note_copy_focus,
             if copied { Icon::Check } else { Icon::Copy },
             theme,
         )
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .on_activation(cx, move |this, _, cx| {
+        .on_click(cx.listener(move |this, _, _, cx| {
             cx.write_to_clipboard(ClipboardItem::new_string(reference.clone()));
             this.copied_library_node = this.selected_library_node.clone();
             this.note_copy_generation = this.note_copy_generation.wrapping_add(1);
@@ -222,26 +229,27 @@ impl Locus {
             })
             .detach();
             cx.notify();
-        });
+        }));
         let document_path = node
             .document_path
             .clone()
             .expect("note has a document path");
         let edit_button = toolbar_icon_button(
             "edit-note",
-            language.text("编辑笔记", "Edit note"),
-            &self.note_edit_focus,
+            language.text("workspace.note.edit"),
             Icon::File,
             theme,
         )
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .on_activation(cx, move |_, window, cx| {
+        .on_click(move |_, window, cx| {
             if let Err(error) = crate::platform::open_in_editor(&document_path, editor) {
+                let title = language.text("workspace.note.edit_error");
+                let confirmation = language.text("common.ok");
                 drop(window.prompt(
                     PromptLevel::Critical,
-                    language.text("无法编辑笔记", "Could not edit note"),
+                    &title,
                     Some(&error),
-                    &[language.text("好", "OK")],
+                    &[confirmation.as_str()],
                     cx,
                 ));
             }
@@ -249,19 +257,20 @@ impl Locus {
         let directory = node.directory.clone();
         let open_directory_button = toolbar_icon_button(
             "open-note-directory",
-            language.text("打开目录", "Open directory"),
-            &self.note_open_directory_focus,
+            language.text("workspace.note.open_directory"),
             Icon::FolderOpen,
             theme,
         )
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .on_activation(cx, move |_, window, cx| {
+        .on_click(move |_, window, cx| {
             if let Err(error) = crate::platform::open_directory(&directory) {
+                let title = language.text("workspace.note.open_directory_error");
+                let confirmation = language.text("common.ok");
                 drop(window.prompt(
                     PromptLevel::Critical,
-                    language.text("无法打开目录", "Could not open directory"),
+                    &title,
                     Some(&error),
-                    &[language.text("好", "OK")],
+                    &[confirmation.as_str()],
                     cx,
                 ));
             }

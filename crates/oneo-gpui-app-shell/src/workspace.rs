@@ -2,8 +2,7 @@ use std::time::{Duration, Instant};
 
 use super::FpsCounterState;
 use gpui::{
-    AnyElement, Div, FocusHandle, Hsla, Stateful, Window, div, ease_out_quint, prelude::*, px,
-    transparent_black,
+    AnyElement, Div, Hsla, Stateful, Window, div, ease_out_quint, prelude::*, px, transparent_black,
 };
 use gpui_component::{IconName, Theme};
 
@@ -553,16 +552,15 @@ fn fitted_panel_widths(
 
 pub fn panel_toggle_button(
     id: &'static str,
-    label: &'static str,
-    focus: &FocusHandle,
+    label: impl Into<gpui::SharedString>,
     side: PanelSide,
     theme: &Theme,
-) -> Stateful<Div> {
+) -> gpui_component::button::Button {
     let icon = match side {
         PanelSide::Left => IconName::PanelLeft,
         PanelSide::Right => IconName::PanelRight,
     };
-    toolbar_icon_button(id, label, focus, icon, theme)
+    toolbar_icon_button(id, label, icon, theme)
 }
 
 pub fn panel_resize_handle(

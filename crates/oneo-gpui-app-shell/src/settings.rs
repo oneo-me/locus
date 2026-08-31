@@ -1,9 +1,10 @@
 use super::TITLEBAR_HEIGHT;
-use gpui::{
-    AnyElement, Div, FocusHandle, FontWeight, Role, SharedString, Stateful, div, prelude::*, px,
-    rems,
-};
+use gpui::{AnyElement, Div, FontWeight, SharedString, div, prelude::*, px, rems};
 use gpui_component::{Icon, IconName, Sizable as _, Theme};
+use gpui_component::{
+    Selectable as _,
+    button::{Button, ButtonVariants as _},
+};
 
 pub fn settings_sidebar_header(
     left_control_clearance: f32,
@@ -57,75 +58,72 @@ where
 
 pub fn settings_navigation_row(
     id: &'static str,
-    label: &'static str,
+    label: impl Into<SharedString>,
     icon_kind: IconName,
-    focus: &FocusHandle,
     selected: bool,
     theme: &Theme,
-) -> Stateful<Div> {
-    div()
-        .id(id)
-        .role(Role::Button)
-        .aria_label(label)
-        .track_focus(focus)
-        .tab_index(0)
-        .tab_stop(true)
+) -> Button {
+    let label = label.into();
+    Button::new(id)
+        .ghost()
+        .small()
+        .w_full()
         .h(px(36.0))
         .px(px(11.0))
-        .rounded(px(8.0))
-        .flex()
-        .items_center()
-        .gap(px(10.0))
-        .cursor_default()
         .text_size(rems(13.0 / 16.0))
         .text_color(if selected {
-            theme.foreground
+            theme.sidebar_accent_foreground
         } else {
             theme.muted_foreground
         })
-        .when(selected, |row| row.bg(theme.accent))
-        .hover(|style| style.bg(theme.accent))
-        .active(|style| style.bg(theme.accent))
-        .focus_visible(|style| style.border_1().border_color(theme.ring))
+        .accessibility_label(label.clone())
+        .selected(selected)
+        .when(selected, |button| button.bg(theme.sidebar_accent))
         .child(
-            Icon::new(icon_kind)
-                .small()
-                .text_color(theme.muted_foreground),
+            div()
+                .w_full()
+                .min_w_0()
+                .flex()
+                .items_center()
+                .gap(px(10.0))
+                .child(
+                    Icon::new(icon_kind)
+                        .small()
+                        .text_color(theme.muted_foreground),
+                )
+                .child(div().min_w_0().truncate().child(label)),
         )
-        .child(label)
 }
 
 pub fn settings_back_button(
     id: &'static str,
-    label: &'static str,
-    focus: &FocusHandle,
+    label: impl Into<SharedString>,
     theme: &Theme,
-) -> Stateful<Div> {
-    div()
-        .id(id)
-        .role(Role::Button)
-        .aria_label(label)
-        .track_focus(focus)
-        .tab_index(0)
-        .tab_stop(true)
-        .size_full()
+) -> Button {
+    let label = label.into();
+    Button::new(id)
+        .ghost()
+        .small()
+        .w_full()
+        .h_full()
         .px(px(9.0))
-        .rounded(px(8.0))
-        .flex()
-        .items_center()
-        .cursor_default()
         .text_size(rems(13.0 / 16.0))
         .text_color(theme.muted_foreground)
-        .hover(|style| style.bg(theme.accent))
-        .active(|style| style.bg(theme.accent))
-        .focus_visible(|style| style.border_1().border_color(theme.ring))
-        .gap(px(9.0))
+        .accessibility_label(label.clone())
         .child(
-            Icon::new(IconName::ArrowLeft)
-                .small()
-                .text_color(theme.muted_foreground),
+            div()
+                .w_full()
+                .min_w_0()
+                .flex()
+                .items_center()
+                .gap(px(9.0))
+                .child(
+                    Icon::new(IconName::ArrowLeft)
+                        .small()
+                        .text_color(theme.muted_foreground),
+                )
+                .child(div().min_w_0().truncate().child(label)),
         )
-        .child(label)
 }
 
 pub struct SettingsShell {
@@ -180,6 +178,8 @@ impl SettingsShell {
                     .flex_none()
                     .flex()
                     .flex_col()
+                    .bg(self.theme.sidebar)
+                    .text_color(self.theme.sidebar_foreground)
                     .border_r_1()
                     .border_color(self.theme.sidebar_border)
                     .child(

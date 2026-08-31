@@ -1,4 +1,5 @@
 use gpui::{AnyElement, ObjectFit, StyledImage};
+use gpui_component::{Disableable as _, Sizable as _, button::Button};
 
 use super::*;
 use crate::document_library::restore_archived_note;
@@ -32,7 +33,6 @@ impl Settings {
                             .position(|note| note.document_path == document_path)
                         {
                             this.archived_notes.remove(index);
-                            this.archive_action_focus.remove(index);
                         }
                         cx.emit(SettingsEvent::ArchiveRestored);
                     }
@@ -49,35 +49,35 @@ impl Settings {
         let language = self.preferences.language;
         if self.preferences.library_path.is_none() {
             return archive_message(
-                language.text(
-                    "请先在通用设置中选择文档库。",
-                    "Choose a library in General settings first.",
-                ),
+                language.text("settings.archive.library_required"),
                 theme.muted_foreground,
             );
         }
         if let Some(error) = &self.archive_load_error {
             return archive_message(
-                format!(
-                    "{}：{error}",
-                    language.text("无法读取归档", "Could not read archives")
-                ),
+                format!("{}：{error}", language.text("settings.archive.load_error")),
                 theme.danger,
             );
         }
         if self.archived_notes.is_empty() {
             return archive_message(
-                language.text("暂无归档笔记。", "No archived notes."),
+                language.text("settings.archive.empty"),
                 theme.muted_foreground,
             );
         }
 
-        let mut list = div().flex().flex_col();
+        let mut list = div()
+            .w_full()
+            .self_stretch()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .items_stretch();
         for (index, note) in self.archived_notes.iter().cloned().enumerate() {
             if index > 0 {
                 list = list.child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border));
             }
-            list = list.child(self.render_archive_row(index, note, cx));
+            list = list.child(self.render_archive_row(note, cx));
         }
         list.when_some(self.archive_action_error.as_ref(), |list, error| {
             list.child(
@@ -93,58 +93,36 @@ impl Settings {
                     .text_color(theme.danger)
                     .child(format!(
                         "{}：{error}",
-                        language.text("无法移出归档", "Could not remove from archive")
+                        language.text("settings.archive.restore_error")
                     )),
             )
         })
     }
 
-    fn render_archive_row(
-        &self,
-        index: usize,
-        note: ArchivedNote,
-        cx: &mut Context<Self>,
-    ) -> gpui::Div {
+    fn render_archive_row(&self, note: ArchivedNote, cx: &mut Context<Self>) -> gpui::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let pending = self.restoring_archive.as_ref() == Some(&note.document_path);
         let disabled = self.restoring_archive.is_some();
         let button_label = if pending {
-            language.text("正在移出…", "Removing…")
+            language.text("settings.archive.restoring")
         } else {
-            language.text("移出归档", "Remove from archive")
+            language.text("settings.archive.restore")
         };
         let action_note = note.clone();
-        let button = div()
-            .id(format!("restore-archive-{}", note.path))
-            .role(Role::Button)
-            .aria_label(button_label)
-            .track_focus(&self.archive_action_focus[index])
-            .tab_index(0)
-            .tab_stop(!disabled)
-            .h(px(30.0))
-            .px(px(10.0))
-            .rounded(px(7.0))
-            .border_1()
-            .border_color(if disabled { theme.border } else { theme.input })
-            .bg(theme.secondary)
-            .flex()
-            .items_center()
-            .text_sm()
-            .text_color(theme.muted_foreground)
-            .cursor_default()
-            .focus_visible(|style| style.border_color(theme.ring))
-            .when(!disabled, |button| {
-                button
-                    .hover(|style| style.bg(theme.accent))
-                    .active(|style| style.bg(theme.accent))
-                    .on_activation(cx, move |this, _, cx| {
-                        this.restore_archive(action_note.clone(), cx)
-                    })
-            })
-            .child(button_label);
+        let button = Button::new(format!("restore-archive-{}", note.path))
+            .small()
+            .label(button_label)
+            .loading(pending)
+            .disabled(disabled)
+            .on_click(
+                cx.listener(move |this, _, _, cx| this.restore_archive(action_note.clone(), cx)),
+            );
 
         div()
+            .w_full()
+            .self_stretch()
+            .min_w_0()
             .min_h(px(68.0))
             .px(px(20.0))
             .py(px(13.0))
@@ -222,6 +200,9 @@ fn emoji_icon(value: String) -> AnyElement {
 
 fn archive_message(message: impl Into<gpui::SharedString>, color: gpui::Hsla) -> gpui::Div {
     div()
+        .w_full()
+        .self_stretch()
+        .min_w_0()
         .min_h(px(68.0))
         .px(px(20.0))
         .py(px(13.0))

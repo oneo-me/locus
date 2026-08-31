@@ -5,6 +5,7 @@ use gpui_component::{
     button::{Button, ButtonVariants as _},
     tab::{Tab, TabBar},
 };
+use rust_i18n::t;
 
 pub(super) const TERMINAL_TAB_BAR_HEIGHT: f32 = 36.0;
 
@@ -14,17 +15,21 @@ pub(super) struct TerminalTab {
 }
 
 fn terminal_tab_label(language: Language, id: u64) -> String {
-    match language {
-        Language::Chinese => format!("终端 {id}"),
-        Language::English => format!("Terminal {id}"),
-    }
+    t!(
+        "workspace.terminal.tab",
+        locale = language.locale(),
+        id = id
+    )
+    .into_owned()
 }
 
 fn close_terminal_label(language: Language, id: u64) -> String {
-    match language {
-        Language::Chinese => format!("关闭终端 {id}"),
-        Language::English => format!("Close terminal {id}"),
-    }
+    t!(
+        "workspace.terminal.close_tab",
+        locale = language.locale(),
+        id = id
+    )
+    .into_owned()
 }
 
 fn adjacent_tab_after_close(remaining_tabs: usize, closed_index: usize) -> Option<usize> {
@@ -180,7 +185,7 @@ impl Locus {
                     )
             })
             .collect::<Vec<_>>();
-        let add_label = language.text("新建终端", "New terminal");
+        let add_label = language.text("workspace.terminal.new");
 
         TabBar::new("terminal-tabs")
             .w_full()
@@ -199,7 +204,7 @@ impl Locus {
                     .mr_2()
                     .icon(Icon::Plus)
                     .disabled(self.current_library_path(cx).is_none())
-                    .accessibility_label(add_label)
+                    .accessibility_label(add_label.clone())
                     .tooltip(add_label)
                     .on_click(cx.listener(|this, _, window, cx| {
                         this.create_terminal(window, cx);
@@ -211,7 +216,7 @@ impl Locus {
         let language = self.language(cx);
         let theme = Theme::global(cx).clone();
         let has_library = self.current_library_path(cx).is_some();
-        let add_label = language.text("新建终端", "New terminal");
+        let add_label = language.text("workspace.terminal.new");
 
         div()
             .min_h_0()
@@ -238,12 +243,9 @@ impl Locus {
                     )
                     .child(div().text_sm().text_color(theme.muted_foreground).child(
                         if has_library {
-                            language.text("或按 Command+`", "Or press Command+`")
+                            language.text("workspace.terminal.shortcut_hint")
                         } else {
-                            language.text(
-                                "请先在设置中选择文档库",
-                                "Choose a library in Settings first",
-                            )
+                            language.text("workspace.terminal.library_required")
                         },
                     )),
             )

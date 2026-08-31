@@ -23,11 +23,7 @@ pub fn render_gallery(
     let items = match extension_syntax::gallery_items(source, attachments, language) {
         Ok(items) => items,
         Err(error) => {
-            return extension_error(
-                language.text("无法显示图库", "Could not show gallery"),
-                error,
-                theme,
-            );
+            return extension_error(language.text("markdown.gallery.render_error"), error, theme);
         }
     };
     let children = items
@@ -80,7 +76,7 @@ pub fn render_attachments(
         Ok(items) => items,
         Err(error) => {
             return extension_error(
-                language.text("无法显示附件", "Could not show attachments"),
+                language.text("markdown.attachments.render_error"),
                 error,
                 theme,
             );
@@ -193,17 +189,19 @@ fn split_filename(value: &str) -> (String, String) {
 
 fn open_attachment(path: &Path, language: Language, window: &mut Window, cx: &mut App) {
     if let Err(error) = crate::platform::open_path(path) {
+        let title = language.text("markdown.attachments.open_error");
+        let confirmation = language.text("common.ok");
         drop(window.prompt(
             PromptLevel::Critical,
-            language.text("无法打开附件", "Could not open attachment"),
+            &title,
             Some(&error),
-            &[language.text("好", "OK")],
+            &[confirmation.as_str()],
             cx,
         ));
     }
 }
 
-fn extension_error(title: &str, message: String, theme: Theme) -> AnyElement {
+fn extension_error(title: String, message: String, theme: Theme) -> AnyElement {
     div()
         .w_full()
         .min_w_0()
@@ -218,11 +216,7 @@ fn extension_error(title: &str, message: String, theme: Theme) -> AnyElement {
         .gap(px(3.0))
         .text_size(px(13.0))
         .line_height(px(19.0))
-        .child(
-            div()
-                .font_weight(gpui::FontWeight::SEMIBOLD)
-                .child(title.to_owned()),
-        )
+        .child(div().font_weight(gpui::FontWeight::SEMIBOLD).child(title))
         .child(div().text_color(theme.muted_foreground).child(message))
         .into_any_element()
 }

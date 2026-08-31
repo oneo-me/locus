@@ -16,19 +16,19 @@ use crate::theme::ThemePreference;
 
 pub const FONT_SIZES: [f32; 7] = [12.0, 14.0, 15.0, 16.0, 17.0, 18.0, 20.0];
 
-pub fn terminal_color_scheme_label(value: TerminalColorScheme, language: Language) -> &'static str {
+pub fn terminal_color_scheme_label(value: TerminalColorScheme, language: Language) -> String {
     match value {
-        TerminalColorScheme::Auto => language.text("自动", "Auto"),
-        TerminalColorScheme::Light => language.text("亮色", "Light"),
-        TerminalColorScheme::Dark => language.text("暗色", "Dark"),
+        TerminalColorScheme::Auto => language.text("terminal.color_scheme.auto"),
+        TerminalColorScheme::Light => language.text("terminal.color_scheme.light"),
+        TerminalColorScheme::Dark => language.text("terminal.color_scheme.dark"),
     }
 }
 
-pub fn terminal_cursor_style_label(value: TerminalCursorStyle, language: Language) -> &'static str {
+pub fn terminal_cursor_style_label(value: TerminalCursorStyle, language: Language) -> String {
     match value {
-        TerminalCursorStyle::Block => language.text("块状", "Block"),
-        TerminalCursorStyle::Underline => language.text("下划线", "Underline"),
-        TerminalCursorStyle::Bar => language.text("竖线", "Bar"),
+        TerminalCursorStyle::Block => language.text("terminal.cursor_style.block"),
+        TerminalCursorStyle::Underline => language.text("terminal.cursor_style.underline"),
+        TerminalCursorStyle::Bar => language.text("terminal.cursor_style.bar"),
     }
 }
 
@@ -42,10 +42,10 @@ pub enum EditorPreference {
 impl EditorPreference {
     pub const ALL: [Self; 2] = [Self::System, Self::VisualStudioCode];
 
-    pub fn label(self, language: Language) -> &'static str {
+    pub fn label(self, language: Language) -> String {
         match self {
-            Self::System => language.text("系统默认", "System default"),
-            Self::VisualStudioCode => "VS Code",
+            Self::System => language.text("settings.editor.system_default"),
+            Self::VisualStudioCode => "VS Code".to_owned(),
         }
     }
 }

@@ -35,7 +35,7 @@ impl Locus {
         let theme = Theme::global(cx).clone();
         if self.settings.read(cx).preferences().library_path.is_none() {
             return sidebar_message(
-                language.text("尚未打开文档库", "No library selected"),
+                language.text("workspace.library.no_selection"),
                 theme.muted_foreground,
             );
         }
@@ -65,18 +65,15 @@ impl Locus {
                     .text_color(theme.danger)
                     .child(format!(
                         "{}：{error}",
-                        language.text("Git 状态不可用", "Git status unavailable")
+                        language.text("workspace.library.git_unavailable")
                     )),
             );
         }
         if self.library_tree.nodes.is_empty() {
             let message = if self.library_tree.archived_notes.is_empty() {
-                language.text("文档库还是空的。", "The library is empty.")
+                language.text("workspace.library.empty")
             } else {
-                language.text(
-                    "所有笔记均已归档。可在设置的归档中移出。",
-                    "All notes are archived. Remove them from Archive in Settings.",
-                )
+                language.text("workspace.library.all_archived")
             };
             return div().size_full().child(
                 body.child(
@@ -103,7 +100,7 @@ impl Locus {
                     .text_color(theme.danger)
                     .child(format!(
                         "{}：{error}",
-                        language.text("文件观察不可用", "File watching unavailable")
+                        language.text("workspace.library.watching_unavailable")
                     )),
             );
         }
@@ -148,13 +145,16 @@ impl Locus {
             .flex()
             .items_center()
             .cursor_default()
-            .when(selected, |row| row.bg(theme.accent))
+            .when(selected, |row| {
+                row.bg(theme.sidebar_accent)
+                    .text_color(theme.sidebar_accent_foreground)
+            })
             .when(selected, |row| {
                 row.anchor_scroll(Some(self.selected_library_scroll_anchor.clone()))
             })
             .when(!selected, |row| {
-                row.hover(|style| style.bg(theme.accent))
-                    .active(|style| style.bg(theme.accent))
+                row.hover(|style| style.bg(theme.sidebar_accent))
+                    .active(|style| style.bg(theme.sidebar_accent))
             })
             .when(dragged, |row| row.bg(theme.secondary))
             .child(library_node_content(node, expanded, theme))
@@ -291,7 +291,6 @@ impl Locus {
             self.copied_library_node = None;
             self.note_text_selection.reset();
             self.note_code_blocks.reset();
-            self.note_menu_open = false;
             self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
             self.note_scroll_handle
                 .set_offset(gpui::point(gpui::px(0.0), gpui::px(0.0)));

@@ -14,7 +14,7 @@ mod window_chrome;
 
 use gpui::{
     AnyElement, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render, Role,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
     ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Task, Window, div, prelude::*, px,
     transparent_black,
 };
@@ -22,7 +22,7 @@ use gpui::{
 use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
 use self::terminal_tabs::TerminalTab;
-use super::settings::{Settings, SettingsEvent};
+use super::settings::{Settings, SettingsEvent, SettingsInit};
 use crate::config::{DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_MIN_WIDTH};
 use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use crate::localization::Language;
@@ -35,8 +35,7 @@ use crate::state::{
 };
 use crate::theme::Theme;
 use crate::ui::{
-    ActivationExt, Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection, icon,
-    toolbar_icon_button,
+    Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection, toolbar_icon_button,
 };
 use crate::{
     CloseTerminalTab, CloseWindow, NewTerminal, OpenSettings, ReloadCurrentNote, ToggleFpsCounter,
@@ -56,12 +55,10 @@ const TITLEBAR_NAVIGATION_GAP: f32 = 2.0;
 
 fn terminal_labels(language: Language) -> TerminalLabels {
     TerminalLabels {
-        accessibility_label: language.text("终端", "Terminal").into(),
-        could_not_start: language
-            .text("无法启动终端", "Could not start terminal")
-            .into(),
-        starting: language.text("正在启动终端…", "Starting terminal…").into(),
-        process_exited: language.text("进程已退出", "Process exited").into(),
+        accessibility_label: language.text("terminal.accessibility_label").into(),
+        could_not_start: language.text("terminal.error.could_not_start").into(),
+        starting: language.text("terminal.status.starting").into(),
+        process_exited: language.text("terminal.status.process_exited").into(),
     }
 }
 
@@ -105,12 +102,6 @@ pub struct Locus {
     root_focus: FocusHandle,
     app_shell: AppShellState,
     header_drag_armed: bool,
-    left_toggle_focus: FocusHandle,
-    navigation_back_focus: FocusHandle,
-    navigation_forward_focus: FocusHandle,
-    right_toggle_focus: FocusHandle,
-    mcp_status_focus: FocusHandle,
-    settings_focus: FocusHandle,
     settings: Entity<Settings>,
     left_pane: Entity<LocusPane>,
     content_pane: Entity<LocusPane>,
@@ -139,16 +130,9 @@ pub struct Locus {
     library_scroll_handle: ScrollHandle,
     selected_library_scroll_anchor: ScrollAnchor,
     scroll_to_selected_library_node: bool,
-    note_copy_focus: FocusHandle,
     note_text_focus: FocusHandle,
     note_text_selection: MarkdownSelection,
     note_code_blocks: MarkdownCodeBlocks,
-    note_edit_focus: FocusHandle,
-    note_open_directory_focus: FocusHandle,
-    note_menu_focus: FocusHandle,
-    note_menu_upload_focus: FocusHandle,
-    note_menu_archive_focus: FocusHandle,
-    note_menu_open: bool,
     note_action_pending: bool,
     copied_library_node: Option<String>,
     note_copy_generation: u64,
@@ -235,11 +219,14 @@ impl Locus {
         let archive_load_error = library_tree.error.clone();
         let settings = cx.new(|cx| {
             Settings::new(
-                preferences,
-                load_error,
-                mcp_server_state,
-                archived_notes,
-                archive_load_error,
+                window,
+                SettingsInit {
+                    preferences,
+                    load_error,
+                    mcp_server_state,
+                    archived_notes,
+                    archive_load_error,
+                },
                 root_focus.clone(),
                 cx,
             )
@@ -258,7 +245,7 @@ impl Locus {
                     this.reload_library_projection(cx);
                 }
                 SettingsEvent::LanguageChanged(language) => {
-                    gpui_component::set_locale(language.locale());
+                    language.activate();
                     crate::set_app_menus(cx, *language, this.can_reload_current_note());
                     for tab in &this.terminal_tabs {
                         tab.terminal.update(cx, |terminal, cx| {
@@ -347,11 +334,6 @@ impl Locus {
             ))
             .with_fps_counter_visible(interface_state.fps_counter_visible),
             header_drag_armed: false,
-            left_toggle_focus: cx.focus_handle(),
-            navigation_back_focus: cx.focus_handle(),
-            navigation_forward_focus: cx.focus_handle(),
-            right_toggle_focus: cx.focus_handle(),
-            settings_focus: cx.focus_handle(),
             settings,
             left_pane,
             content_pane,
@@ -380,20 +362,12 @@ impl Locus {
             library_scroll_handle,
             selected_library_scroll_anchor,
             scroll_to_selected_library_node,
-            note_copy_focus: cx.focus_handle(),
             note_text_focus: cx.focus_handle(),
             note_text_selection: MarkdownSelection::default(),
             note_code_blocks: MarkdownCodeBlocks::default(),
-            note_edit_focus: cx.focus_handle(),
-            note_open_directory_focus: cx.focus_handle(),
-            note_menu_focus: cx.focus_handle(),
-            note_menu_upload_focus: cx.focus_handle(),
-            note_menu_archive_focus: cx.focus_handle(),
-            note_menu_open: false,
             note_action_pending: false,
             copied_library_node: None,
             note_copy_generation: 0,
-            mcp_status_focus: cx.focus_handle(),
             mcp_status_copied: false,
             mcp_status_copy_generation: 0,
             note_scroll_handle: ScrollHandle::new(),
@@ -636,7 +610,6 @@ impl Locus {
         self.selected_note = None;
         self.selected_library_node = None;
         self.copied_library_node = None;
-        self.note_menu_open = false;
         self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
         self.note_text_selection.reset();
         self.note_code_blocks.reset();

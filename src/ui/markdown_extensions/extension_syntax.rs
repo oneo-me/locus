@@ -3,6 +3,7 @@ use std::path::{Component, Path};
 use crate::document_library::Attachment;
 use crate::localization::Language;
 use oneo_gpui_markdown::{Block, InlineRun, parse_blocks};
+use rust_i18n::t;
 
 #[derive(Clone)]
 pub(super) struct GalleryItem {
@@ -23,33 +24,30 @@ pub(super) fn gallery_items(
             continue;
         }
         let Block::Image { url, alt, .. } = block else {
-            return Err(language
-                .text(
-                    "请只填写当前笔记的本地图片，并为每张图片提供替代文本。",
-                    "Include only local images from this note and provide alt text for each image.",
-                )
-                .to_owned());
+            return Err(language.text("markdown.gallery.local_images_only"));
         };
         let Some(attachment) = find_image_attachment(attachments, &url) else {
-            return Err(match language {
-                Language::Chinese => format!("图片附件不存在或不受支持：{url}"),
-                Language::English => format!("Image attachment is missing or unsupported: {url}"),
-            });
+            return Err(t!(
+                "markdown.gallery.image_unavailable",
+                locale = language.locale(),
+                url = url
+            )
+            .into_owned());
         };
         if alt.trim().is_empty() {
-            return Err(match language {
-                Language::Chinese => format!("图片缺少替代文本：{}", attachment.name),
-                Language::English => format!("Image is missing alt text: {}", attachment.name),
-            });
+            return Err(t!(
+                "markdown.gallery.alt_text_required",
+                locale = language.locale(),
+                name = attachment.name
+            )
+            .into_owned());
         }
         items.push(GalleryItem {
             attachment: attachment.clone(),
         });
     }
     if items.is_empty() {
-        return Err(language
-            .text("请至少填写一张图片。", "Include at least one image.")
-            .to_owned());
+        return Err(language.text("markdown.gallery.image_required"));
     }
     Ok(items)
 }
@@ -63,22 +61,12 @@ pub(super) fn attachment_items(
     let mut items = Vec::new();
     for block in blocks {
         let Block::Paragraph { runs } = block else {
-            return Err(language
-                .text(
-                    "请只填写当前笔记的本地附件链接。",
-                    "Include only local attachment links from this note.",
-                )
-                .to_owned());
+            return Err(language.text("markdown.attachments.local_links_only"));
         };
         collect_attachment_links(&runs, attachments, language, &mut items)?;
     }
     if items.is_empty() {
-        return Err(language
-            .text(
-                "请至少填写一个附件链接。",
-                "Include at least one attachment link.",
-            )
-            .to_owned());
+        return Err(language.text("markdown.attachments.link_required"));
     }
     Ok(items)
 }
@@ -105,12 +93,7 @@ fn collect_attachment_links(
                 index += 1;
                 continue;
             }
-            return Err(language
-                .text(
-                    "附件块中只能包含附件链接。",
-                    "Attachment blocks can contain only attachment links.",
-                )
-                .to_owned());
+            return Err(language.text("markdown.attachments.links_only"));
         };
         let mut label = String::new();
         while index < runs.len() && runs[index].style.link.as_deref() == Some(target) {
@@ -118,21 +101,20 @@ fn collect_attachment_links(
             index += 1;
         }
         let Some(attachment) = local_attachment(attachments, target) else {
-            return Err(match language {
-                Language::Chinese => format!("附件不存在：{target}"),
-                Language::English => format!("Attachment does not exist: {target}"),
-            });
+            return Err(t!(
+                "markdown.attachments.missing",
+                locale = language.locale(),
+                target = target
+            )
+            .into_owned());
         };
         if label.trim() != attachment.name {
-            return Err(match language {
-                Language::Chinese => format!("链接文字必须使用附件文件名：{}", attachment.name),
-                Language::English => {
-                    format!(
-                        "Link label must match the attachment name: {}",
-                        attachment.name
-                    )
-                }
-            });
+            return Err(t!(
+                "markdown.attachments.label_mismatch",
+                locale = language.locale(),
+                name = attachment.name
+            )
+            .into_owned());
         }
         items.push(attachment.clone());
     }

@@ -1,3 +1,5 @@
+rust_i18n::i18n!("locales", fallback = "en");
+
 mod app;
 mod config;
 mod document_library;
@@ -57,9 +59,9 @@ fn main() {
     });
 
     platform_application.run(move |cx: &mut App| {
+        rust_i18n::extend!(gpui_component);
         gpui_component::init(cx);
         init_reduce_motion(cx);
-        app::bind_keys(cx);
         bind_app_shell_keys(cx);
         cx.bind_keys([
             KeyBinding::new("secondary-w", CloseTerminalTab, Some("Terminal")),
@@ -74,7 +76,7 @@ fn main() {
             eprintln!("{error}");
         }
         let language = preferences.language;
-        gpui_component::set_locale(language.locale());
+        language.activate();
 
         let bounds = restored_window_bounds(interface_state.window_bounds, cx);
 
@@ -151,22 +153,22 @@ pub(crate) fn set_app_menus(cx: &mut App, language: Language, can_reload_current
         cx,
         AppShellMenus::new("Locus")
             .labels(AppShellMenuLabels {
-                about: language.text("关于 Locus", "About Locus").into(),
-                close_window: language.text("关闭窗口", "Close Window").into(),
-                developer: language.text("开发", "Developer").into(),
-                edit: language.text("编辑", "Edit").into(),
-                file: language.text("文件", "File").into(),
-                quit: language.text("退出 Locus", "Quit Locus").into(),
-                settings: language.text("设置…", "Settings…").into(),
-                toggle_left_panel: language.text("切换左侧栏", "Toggle Left Sidebar").into(),
-                toggle_right_panel: language.text("切换右侧栏", "Toggle Right Sidebar").into(),
-                toggle_fps_counter: language.text("显示帧率", "Show FPS").into(),
-                toggle_full_screen: language.text("进入全屏幕", "Enter Full Screen").into(),
-                view: language.text("显示", "View").into(),
-                window: language.text("窗口", "Window").into(),
+                about: language.text("menu.application.about").into(),
+                close_window: language.text("menu.window.close").into(),
+                developer: language.text("menu.developer.title").into(),
+                edit: language.text("menu.edit.title").into(),
+                file: language.text("menu.file.title").into(),
+                quit: language.text("menu.application.quit").into(),
+                settings: language.text("menu.application.settings").into(),
+                toggle_left_panel: language.text("menu.view.toggle_left_sidebar").into(),
+                toggle_right_panel: language.text("menu.view.toggle_right_sidebar").into(),
+                toggle_fps_counter: language.text("menu.developer.show_fps").into(),
+                toggle_full_screen: language.text("menu.view.enter_full_screen").into(),
+                view: language.text("menu.view.title").into(),
+                window: language.text("menu.window.title").into(),
             })
             .view_items_before_panels([MenuItem::action(
-                language.text("重新载入当前笔记", "Reload Current Note"),
+                language.text("menu.view.reload_current_note"),
                 ReloadCurrentNote,
             )
             .disabled(!can_reload_current_note)]),

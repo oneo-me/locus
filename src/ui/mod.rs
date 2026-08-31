@@ -5,7 +5,7 @@ mod markdown_extensions;
 pub use gpui_component::IconName as Icon;
 pub use local_image::document_icon_image;
 pub use markdown_extensions::LocusMarkdownExtensions;
-pub use oneo_gpui_app_shell::{ActivationExt, toolbar_icon_button};
+pub use oneo_gpui_app_shell::toolbar_icon_button;
 pub use oneo_gpui_markdown::{
     Markdown, MarkdownCodeBlocks, MarkdownDocument, MarkdownLabels, MarkdownSelection,
     MarkdownTypography, SelectableCodeStyle, selectable_code_text,

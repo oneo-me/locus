@@ -3830,6 +3830,7 @@ dependencies = [
  "regex",
  "reqwest_client",
  "rmcp",
+ "rust-i18n",
  "schemars",
  "serde",
  "serde-saphyr 1.1.0",

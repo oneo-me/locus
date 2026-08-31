@@ -1,4 +1,3 @@
-mod activation;
 mod button;
 mod fps;
 mod menu;
@@ -11,7 +10,6 @@ pub const TITLEBAR_CONTROL_INSET: f32 = 11.0;
 pub const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 pub const MACOS_TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
 
-pub use activation::ActivationExt;
 pub use button::toolbar_icon_button;
 
 pub fn titlebar_left_control_offset(fullscreen: bool) -> f32 {
