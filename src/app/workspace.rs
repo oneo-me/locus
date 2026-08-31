@@ -14,8 +14,8 @@ mod window_chrome;
 use gpui::{
     AnyElement, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
     MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
-    ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Task, Window, div, prelude::*, px,
-    transparent_black,
+    ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Subscription, Task, Window, div,
+    prelude::*, px, transparent_black,
 };
 use gpui_component::{ElementExt as _, Root};
 
@@ -47,7 +47,7 @@ use oneo_gpui_app_shell::{
     panel_resize_handle, panel_toggle_button, titlebar_content_left_padding,
     titlebar_left_control_offset,
 };
-use oneo_gpui_terminal::{TerminalConfiguration, TerminalLabels, TerminalView};
+use oneo_gpui_terminal::{TerminalConfiguration, TerminalEvent, TerminalLabels, TerminalView};
 
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
 const TITLEBAR_NAVIGATION_INSET: f32 = 6.0;

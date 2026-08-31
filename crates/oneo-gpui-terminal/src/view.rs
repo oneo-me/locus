@@ -1,7 +1,61 @@
 use super::*;
 
+const ACTIVE_PROCESS_POLL_INTERVAL: Duration = Duration::from_millis(250);
+
 pub(super) fn terminal_cell_height(font_size: f32) -> f32 {
     font_size + CELL_HEIGHT_PADDING
+}
+
+pub(super) fn normalized_program_title(title: Option<String>) -> Option<String> {
+    let title = title?;
+    let sanitized = title
+        .chars()
+        .map(|character| {
+            if character.is_control() {
+                ' '
+            } else {
+                character
+            }
+        })
+        .collect::<String>();
+    let sanitized = sanitized.trim();
+    (!sanitized.is_empty()).then(|| sanitized.to_owned())
+}
+
+#[derive(Default)]
+pub(super) struct TerminalTitleState {
+    active_process_name: Option<String>,
+    program_title: Option<String>,
+}
+
+impl TerminalTitleState {
+    pub(super) fn current(&self) -> Option<&str> {
+        self.program_title
+            .as_deref()
+            .or(self.active_process_name.as_deref())
+    }
+
+    pub(super) fn update_active_process(&mut self, active_process_name: String) -> bool {
+        let previous_title = self.current().map(str::to_owned);
+        if self.active_process_name.as_deref() != Some(active_process_name.as_str()) {
+            if self.active_process_name.is_some() {
+                self.program_title = None;
+            }
+            self.active_process_name = Some(active_process_name);
+        }
+        previous_title.as_deref() != self.current()
+    }
+
+    pub(super) fn update_program_title(
+        &mut self,
+        active_process_name: String,
+        program_title: Option<String>,
+    ) -> bool {
+        let previous_title = self.current().map(str::to_owned);
+        self.active_process_name = Some(active_process_name);
+        self.program_title = normalized_program_title(program_title);
+        previous_title.as_deref() != self.current()
+    }
 }
 
 pub(super) fn marked_text_range(text: &str) -> Option<Range<usize>> {
@@ -130,6 +184,8 @@ pub struct TerminalView {
     scroll_accumulator: f32,
     exited: bool,
     marked_text: String,
+    title: TerminalTitleState,
+    next_active_process_poll: Instant,
 }
 
 impl TerminalView {
@@ -189,7 +245,13 @@ impl TerminalView {
             scroll_accumulator: 0.0,
             exited: false,
             marked_text: String::new(),
+            title: TerminalTitleState::default(),
+            next_active_process_poll: Instant::now(),
         }
+    }
+
+    pub fn title(&self) -> Option<&str> {
+        self.title.current()
     }
 
     pub fn set_available_size(&mut self, width: f32, height: f32) {
@@ -268,6 +330,15 @@ impl TerminalView {
             return false;
         };
         let mut changed = session.dirty.swap(false, Ordering::AcqRel);
+        let now = Instant::now();
+        if now >= self.next_active_process_poll {
+            self.next_active_process_poll = now + ACTIVE_PROCESS_POLL_INTERVAL;
+            let active_process_name = session.active_process_name();
+            if self.title.update_active_process(active_process_name) {
+                cx.emit(TerminalEvent::TitleChanged);
+                changed = true;
+            }
+        }
         while let Ok(event) = session.ui_events.try_recv() {
             changed = true;
             match event {
@@ -280,6 +351,14 @@ impl TerminalView {
                         .and_then(|item| item.text())
                         .unwrap_or_default();
                     session.write(formatter(&text).into_bytes());
+                }
+                TerminalUiEvent::TitleChanged(title) => {
+                    if self
+                        .title
+                        .update_program_title(session.active_process_name(), title)
+                    {
+                        cx.emit(TerminalEvent::TitleChanged);
+                    }
                 }
                 TerminalUiEvent::Exited => self.exited = true,
             }
@@ -456,6 +535,8 @@ impl TerminalView {
         cx.notify();
     }
 }
+
+impl EventEmitter<TerminalEvent> for TerminalView {}
 
 impl EntityInputHandler for TerminalView {
     fn text_for_range(

@@ -12,6 +12,7 @@ pub(super) const TERMINAL_TAB_BAR_HEIGHT: f32 = 36.0;
 pub(super) struct TerminalTab {
     pub(super) id: u64,
     pub(super) terminal: Entity<TerminalView>,
+    _title_subscription: Subscription,
 }
 
 fn terminal_tab_label(language: Language, id: u64) -> String {
@@ -21,6 +22,12 @@ fn terminal_tab_label(language: Language, id: u64) -> String {
         id = id
     )
     .into_owned()
+}
+
+fn terminal_tab_title(language: Language, id: u64, terminal_title: Option<&str>) -> String {
+    terminal_title
+        .map(str::to_owned)
+        .unwrap_or_else(|| terminal_tab_label(language, id))
 }
 
 fn close_terminal_label(language: Language, id: u64) -> String {
@@ -55,8 +62,13 @@ impl Locus {
         self.next_terminal_id += 1;
         let configuration = terminal_configuration(&preferences);
         let terminal = cx.new(|cx| TerminalView::new(path, configuration, cx));
+        let title_subscription = cx.subscribe(&terminal, |_, _, _: &TerminalEvent, cx| cx.notify());
         let focus = terminal.read(cx).focus_handle(cx);
-        self.terminal_tabs.push(TerminalTab { id, terminal });
+        self.terminal_tabs.push(TerminalTab {
+            id,
+            terminal,
+            _title_subscription: title_subscription,
+        });
         self.selected_terminal_id = Some(id);
         self.scroll_to_terminal_tab(id);
         window.focus(&focus, cx);
@@ -145,7 +157,11 @@ impl Locus {
         for tab in &mut self.terminal_tabs {
             let path = path.clone();
             let configuration = configuration.clone();
-            tab.terminal = cx.new(|cx| TerminalView::new(path, configuration, cx));
+            let terminal = cx.new(|cx| TerminalView::new(path, configuration, cx));
+            let title_subscription =
+                cx.subscribe(&terminal, |_, _, _: &TerminalEvent, cx| cx.notify());
+            tab.terminal = terminal;
+            tab._title_subscription = title_subscription;
         }
         self.terminals_need_restart = false;
         cx.notify();
@@ -162,21 +178,19 @@ impl Locus {
             .map(|tab| {
                 let id = tab.id;
                 let close_label = close_terminal_label(language, id);
-                Tab::new()
-                    .px_2()
-                    .label(terminal_tab_label(language, id))
-                    .suffix(
-                        Button::new(format!("close-terminal-{id}"))
-                            .ghost()
-                            .xsmall()
-                            .icon(Icon::Close)
-                            .accessibility_label(close_label.clone())
-                            .tooltip(close_label)
-                            .on_click(cx.listener(move |this, _, window, cx| {
-                                cx.stop_propagation();
-                                this.close_terminal(id, window, cx);
-                            })),
-                    )
+                let label = terminal_tab_title(language, id, tab.terminal.read(cx).title());
+                Tab::new().px_2().label(label).suffix(
+                    Button::new(format!("close-terminal-{id}"))
+                        .ghost()
+                        .xsmall()
+                        .icon(Icon::Close)
+                        .accessibility_label(close_label.clone())
+                        .tooltip(close_label)
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            cx.stop_propagation();
+                            this.close_terminal(id, window, cx);
+                        })),
+                )
             })
             .collect::<Vec<_>>();
         let add_label = language.text("workspace.terminal.new");
@@ -279,7 +293,11 @@ impl Locus {
 
 #[cfg(test)]
 mod tests {
-    use super::{adjacent_tab_after_close, should_hide_terminal_panel, terminal_tab_scroll_item};
+    use super::{
+        adjacent_tab_after_close, should_hide_terminal_panel, terminal_tab_scroll_item,
+        terminal_tab_title,
+    };
+    use crate::localization::Language;
 
     #[test]
     fn closing_a_tab_selects_the_right_neighbor_then_the_left_neighbor() {
@@ -299,5 +317,14 @@ mod tests {
     fn terminal_panel_hides_only_after_the_last_tab_closes() {
         assert!(!should_hide_terminal_panel(1));
         assert!(should_hide_terminal_panel(0));
+    }
+
+    #[test]
+    fn terminal_tab_title_prefers_the_session_title() {
+        assert_eq!(
+            terminal_tab_title(Language::English, 3, Some("π - locus")),
+            "π - locus"
+        );
+        assert_eq!(terminal_tab_title(Language::English, 3, None), "Terminal 3");
     }
 }

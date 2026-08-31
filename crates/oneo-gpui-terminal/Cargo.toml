@@ -8,3 +8,6 @@ alacritty_terminal = { version = "0.26", default-features = false }
 gpui.workspace = true
 gpui-component.workspace = true
 serde = { version = "1", features = ["derive"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

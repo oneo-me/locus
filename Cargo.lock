@@ -4855,6 +4855,7 @@ dependencies = [
  "alacritty_terminal",
  "gpui",
  "gpui-component",
+ "libc",
  "serde",
 ]
 

@@ -7,6 +7,7 @@ fn lock_unpoisoned<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 pub(super) enum TerminalUiEvent {
     ClipboardStore(String),
     ClipboardLoad(Arc<dyn Fn(&str) -> String + Send + Sync>),
+    TitleChanged(Option<String>),
     Exited,
 }
 
@@ -24,6 +25,26 @@ impl TerminalEventProxy {
         if let Some(sender) = self.sender.get() {
             let _ = sender.send(Msg::Input(bytes.into()));
         }
+    }
+
+    #[cfg(test)]
+    pub(super) fn for_test() -> (Self, Receiver<TerminalUiEvent>) {
+        let (ui_events, receiver) = channel();
+        (
+            Self {
+                dirty: Arc::new(AtomicBool::new(false)),
+                sender: Arc::new(OnceLock::new()),
+                ui_events,
+                window_size: Arc::new(Mutex::new(WindowSize {
+                    num_lines: 24,
+                    num_cols: 80,
+                    cell_width: 8,
+                    cell_height: 16,
+                })),
+                dark_palette: Arc::new(AtomicBool::new(true)),
+            },
+            receiver,
+        )
     }
 }
 
@@ -50,11 +71,19 @@ impl EventListener for TerminalEventProxy {
                 let size = *lock_unpoisoned(&self.window_size);
                 self.write_pty(formatter(size).into_bytes());
             }
+            Event::Title(title) => {
+                let _ = self
+                    .ui_events
+                    .send(TerminalUiEvent::TitleChanged(Some(title)));
+            }
+            Event::ResetTitle => {
+                let _ = self.ui_events.send(TerminalUiEvent::TitleChanged(None));
+            }
             Event::Exit | Event::ChildExit(_) => {
                 let _ = self.ui_events.send(TerminalUiEvent::Exited);
                 self.dirty.store(true, Ordering::Release);
             }
-            Event::Title(_) | Event::ResetTitle | Event::Bell => {}
+            Event::Bell => {}
         }
     }
 }
@@ -86,6 +115,7 @@ pub(super) struct TerminalSession {
     window_size: Arc<Mutex<WindowSize>>,
     pub(super) grid_size: (usize, usize),
     dark_palette: Arc<AtomicBool>,
+    active_process: ActiveProcess,
 }
 
 impl TerminalSession {
@@ -137,6 +167,7 @@ impl TerminalSession {
 
         let pty = tty::new(&options, window_size, 0)
             .map_err(|error| format!("{}: {error}", configuration.labels.could_not_start))?;
+        let active_process = ActiveProcess::new(&pty, &shell);
         let event_loop = EventLoop::new(term.clone(), proxy, pty, false, false)
             .map_err(|error| error.to_string())?;
         let sender = event_loop.channel();
@@ -159,6 +190,7 @@ impl TerminalSession {
             window_size: shared_window_size,
             grid_size: (columns, rows),
             dark_palette,
+            active_process,
         })
     }
 
@@ -205,6 +237,10 @@ impl TerminalSession {
 
     pub(super) fn mode(&self) -> TermMode {
         *self.term.lock().mode()
+    }
+
+    pub(super) fn active_process_name(&self) -> String {
+        self.active_process.name()
     }
 
     pub(super) fn scroll(&self, lines: i32) {

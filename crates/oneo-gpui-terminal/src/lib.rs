@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use alacritty_terminal::event::{Event, EventListener, WindowSize};
 use alacritty_terminal::event_loop::{EventLoop, EventLoopSender, Msg};
@@ -23,11 +23,11 @@ use alacritty_terminal::vte::ansi::{
     Rgb,
 };
 use gpui::{
-    App, Bounds, ClipboardItem, Context, ElementInputHandler, EntityInputHandler, FocusHandle,
-    Focusable, FontStyle, FontWeight, Hsla, IntoElement, KeyDownEvent, Keystroke, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render, Role, ScrollDelta,
-    ScrollWheelEvent, SharedString, StrikethroughStyle, StyledText, TextRun, UTF16Selection,
-    UnderlineStyle, Window, canvas, div, font, point, prelude::*, px, rgb, size,
+    App, Bounds, ClipboardItem, Context, ElementInputHandler, EntityInputHandler, EventEmitter,
+    FocusHandle, Focusable, FontStyle, FontWeight, Hsla, IntoElement, KeyDownEvent, Keystroke,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render, Role,
+    ScrollDelta, ScrollWheelEvent, SharedString, StrikethroughStyle, StyledText, TextRun,
+    UTF16Selection, UnderlineStyle, Window, canvas, div, font, point, prelude::*, px, rgb, size,
 };
 
 use gpui_component::Theme;
@@ -36,6 +36,7 @@ mod color;
 mod config;
 mod input;
 mod platform;
+mod process;
 mod session;
 mod view;
 
@@ -43,16 +44,17 @@ use color::*;
 pub use config::{TerminalColorScheme, TerminalConfiguration, TerminalCursorStyle, TerminalLabels};
 use input::*;
 use platform::*;
+use process::*;
 #[cfg(test)]
-use session::TerminalDimensions;
+use session::{TerminalDimensions, TerminalEventProxy};
 use session::{TerminalSession, TerminalUiEvent};
 pub use view::TerminalView;
-#[cfg(test)]
-use view::marked_text_range;
 use view::{
     CursorPaint, TerminalCell, TerminalPalette, TerminalRow, TerminalRun, TerminalRunStyle,
     TerminalSnapshot, cursor_paint, terminal_cell_height, terminal_cell_text, terminal_config,
 };
+#[cfg(test)]
+use view::{TerminalTitleState, marked_text_range, normalized_program_title};
 
 const CELL_WIDTH_FALLBACK: f32 = 7.8;
 const CELL_HEIGHT_PADDING: f32 = 5.0;
@@ -61,6 +63,11 @@ const PADDING_Y: f32 = 8.0;
 const MIN_COLUMNS: usize = 20;
 const MIN_ROWS: usize = 8;
 const SCROLLBACK_LINES: usize = 10_000;
+
+#[derive(Clone, Copy)]
+pub enum TerminalEvent {
+    TitleChanged,
+}
 
 #[cfg(test)]
 mod tests {
@@ -188,6 +195,39 @@ mod tests {
     }
 
     #[test]
+    fn program_title_takes_precedence_and_is_sanitized() {
+        assert_eq!(
+            normalized_program_title(Some("\0π - locus\n".to_owned())),
+            Some("π - locus".to_owned())
+        );
+        assert_eq!(normalized_program_title(Some("\n\0".to_owned())), None);
+        let mut title = TerminalTitleState::default();
+        assert!(title.update_active_process("pi".to_owned()));
+        assert_eq!(title.current(), Some("pi"));
+        assert!(title.update_program_title("pi".to_owned(), Some("π - locus".to_owned())));
+        assert_eq!(title.current(), Some("π - locus"));
+        assert!(title.update_active_process("zsh".to_owned()));
+        assert_eq!(title.current(), Some("zsh"));
+    }
+
+    #[test]
+    fn terminal_title_events_reach_the_ui() {
+        let (proxy, ui_events) = TerminalEventProxy::for_test();
+
+        proxy.send_event(Event::Title("π - locus".to_owned()));
+        assert!(matches!(
+            ui_events.try_recv(),
+            Ok(TerminalUiEvent::TitleChanged(Some(title))) if title == "π - locus"
+        ));
+
+        proxy.send_event(Event::ResetTitle);
+        assert!(matches!(
+            ui_events.try_recv(),
+            Ok(TerminalUiEvent::TitleChanged(None))
+        ));
+    }
+
+    #[test]
     fn wide_character_spacer_does_not_add_a_third_cell() {
         let dimensions = TerminalDimensions {
             columns: 4,
@@ -244,5 +284,44 @@ mod tests {
         }
 
         panic!("PTY did not report the requested working directory: {last_text:?}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn active_process_name_follows_the_foreground_job() {
+        let configuration = TerminalConfiguration {
+            shell: "/bin/sh".to_owned(),
+            startup_command: String::new(),
+            color_scheme: TerminalColorScheme::Auto,
+            cursor_style: TerminalCursorStyle::Block,
+            font_family: "monospace".into(),
+            font_size: 14.0,
+            labels: TerminalLabels {
+                accessibility_label: "test terminal".into(),
+                could_not_start: "test startup failure".into(),
+                starting: "test starting".into(),
+                process_exited: "test process exit".into(),
+            },
+        };
+        let session = TerminalSession::new(Path::new("/tmp"), &configuration, 80, 24).unwrap();
+
+        assert_process_name_eventually(&session, "sh");
+        session.write(b"sleep 1\r".to_vec());
+        assert_process_name_eventually(&session, "sleep");
+        session.write(b"\x03exit\r".to_vec());
+    }
+
+    #[cfg(unix)]
+    fn assert_process_name_eventually(session: &TerminalSession, expected: &str) {
+        for _ in 0..100 {
+            if session.active_process_name() == expected {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        panic!(
+            "PTY did not report foreground process {expected:?}; last name: {:?}",
+            session.active_process_name()
+        );
     }
 }
