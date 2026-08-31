@@ -26,7 +26,7 @@ pub const DEFAULT_MCP_PORT: u16 = 2301;
 pub const DEFAULT_LEFT_SIDEBAR_VISIBLE: bool = true;
 pub const DEFAULT_RIGHT_SIDEBAR_VISIBLE: bool = true;
 pub const DEFAULT_FPS_COUNTER_VISIBLE: bool = false;
-pub const DEFAULT_LEFT_SIDEBAR_WIDTH: f32 = 290.0;
+pub const DEFAULT_LEFT_SIDEBAR_WIDTH: f32 = 252.0;
 pub const DEFAULT_RIGHT_SIDEBAR_WIDTH: f32 = 520.0;
 
 pub const WINDOW_WIDTH: f32 = 980.0;

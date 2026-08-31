@@ -10,7 +10,7 @@ use crate::config::{
 };
 use crate::storage::data_directory;
 
-pub const LEFT_SIDEBAR_MIN_WIDTH: f32 = 180.0;
+pub const LEFT_SIDEBAR_MIN_WIDTH: f32 = DEFAULT_LEFT_SIDEBAR_WIDTH;
 pub const LEFT_SIDEBAR_MAX_WIDTH: f32 = 420.0;
 pub const RIGHT_SIDEBAR_MIN_WIDTH: f32 = 280.0;
 pub const RIGHT_SIDEBAR_MAX_WIDTH: f32 = 1000.0;
@@ -162,6 +162,19 @@ mod tests {
         assert_eq!(state.right_sidebar_width, RIGHT_SIDEBAR_MAX_WIDTH);
         assert_eq!(state.selected_library_node, None);
         assert_eq!(state.window_bounds, None);
+    }
+
+    #[test]
+    fn left_sidebar_width_uses_the_default_as_its_minimum() {
+        let mut state = InterfaceState {
+            left_sidebar_width: 180.0,
+            ..InterfaceState::default()
+        };
+
+        state.normalize();
+
+        assert_eq!(LEFT_SIDEBAR_MIN_WIDTH, DEFAULT_LEFT_SIDEBAR_WIDTH);
+        assert_eq!(state.left_sidebar_width, DEFAULT_LEFT_SIDEBAR_WIDTH);
     }
 
     #[test]

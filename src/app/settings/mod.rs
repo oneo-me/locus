@@ -6,8 +6,8 @@ mod mcp;
 mod pages;
 
 use crate::config::{
-    DEFAULT_CODE_FONT_FAMILY, DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY,
-    WINDOW_TITLEBAR_HEIGHT, WINDOW_TRAFFIC_LIGHT_CLEARANCE,
+    DEFAULT_CODE_FONT_FAMILY, DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_TERMINAL_FONT_FAMILY,
+    DEFAULT_UI_FONT_FAMILY, WINDOW_TITLEBAR_HEIGHT, WINDOW_TRAFFIC_LIGHT_CLEARANCE,
 };
 use crate::document_library::ArchivedNote;
 use crate::localization::Language;
@@ -37,7 +37,6 @@ fn ui_rem(value: f32) -> gpui::Rems {
     gpui::rems(value / 16.0)
 }
 
-const SETTINGS_SIDEBAR_WIDTH: f32 = 252.0;
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 720.0;
 const SETTINGS_CONTROL_WIDTH_REM: f32 = 20.0;
 const SETTINGS_TITLEBAR_CONTROL_INSET: f32 = 11.0;
@@ -895,7 +894,7 @@ impl Render for Settings {
                     self.render_content(cx).into_any_element(),
                     theme,
                 )
-                .sidebar_width(SETTINGS_SIDEBAR_WIDTH)
+                .sidebar_width(DEFAULT_LEFT_SIDEBAR_WIDTH)
                 .titlebar_height(WINDOW_TITLEBAR_HEIGHT)
                 .into_element(),
             )
