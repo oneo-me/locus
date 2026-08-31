@@ -1,4 +1,5 @@
 mod code_blocks;
+mod inline_flow;
 mod parser;
 mod selection;
 
@@ -13,6 +14,7 @@ use gpui::{
 };
 
 pub use self::code_blocks::MarkdownCodeBlocks;
+use self::inline_flow::{InlineFlow, InlineFlowItem, InlineTextItem};
 pub use self::parser::{
     Block, InlineRun, InlineStyle, ListItem, TableAlign, parse as parse_blocks,
 };
@@ -179,6 +181,7 @@ impl<'a> Markdown<'a> {
             next_text_id: 0,
             next_code_id: 0,
             next_link_id: 0,
+            next_flow_id: 0,
         };
         let children = self
             .document
@@ -256,6 +259,7 @@ struct RenderContext<'a> {
     next_text_id: usize,
     next_code_id: usize,
     next_link_id: usize,
+    next_flow_id: usize,
 }
 
 impl RenderContext<'_> {
@@ -366,7 +370,7 @@ impl RenderContext<'_> {
             return self.styled_text(runs, base_weight);
         }
 
-        let mut children = Vec::new();
+        let mut items = Vec::new();
         let mut index = 0;
         while index < runs.len() {
             let run = &runs[index];
@@ -376,9 +380,9 @@ impl RenderContext<'_> {
                     title.push_str(&runs[index].text);
                     index += 1;
                 }
-                children.push(self.render_link_button(url, title));
+                items.push(InlineFlowItem::Element(self.render_link_button(url, title)));
             } else if run.style.code {
-                children.push(self.inline_code(run, base_weight));
+                items.push(InlineFlowItem::Element(self.inline_code(run, base_weight)));
                 index += 1;
             } else {
                 let start = index;
@@ -388,24 +392,26 @@ impl RenderContext<'_> {
                 {
                     index += 1;
                 }
-                children.push(
-                    div()
-                        .min_w_0()
-                        .max_w_full()
-                        .child(self.styled_text(&runs[start..index], base_weight))
-                        .into_any_element(),
-                );
+                items.push(InlineFlowItem::Text(
+                    self.text_item(&runs[start..index], base_weight),
+                ));
             }
         }
 
-        div()
-            .w_full()
-            .min_w_0()
-            .flex()
-            .flex_wrap()
-            .items_center()
-            .children(children)
-            .into_any_element()
+        let id = SharedString::from(format!("markdown-inline-flow-{}", self.next_flow_id));
+        self.next_flow_id += 1;
+        InlineFlow::new(
+            id,
+            items,
+            self.theme.selection,
+            selection::TextInteraction {
+                selection: self.selection.clone(),
+                focus: self.focus.clone(),
+                notify_entity: self.notify_entity,
+                link_handler: self.link_handler.clone(),
+            },
+        )
+        .into_any_element()
     }
 
     fn render_link_button(&mut self, url: &str, title: String) -> AnyElement {
@@ -422,6 +428,7 @@ impl RenderContext<'_> {
             .aria_label(title.clone())
             .tab_index(0)
             .tab_stop(true)
+            .w_auto()
             .min_w_0()
             .max_w_full()
             .h(px((self.code_text_size * 1.8).round()))
@@ -506,6 +513,7 @@ impl RenderContext<'_> {
             links,
         );
         div()
+            .w_auto()
             .min_w_0()
             .max_w_full()
             .px(px(4.0))
@@ -523,6 +531,25 @@ impl RenderContext<'_> {
     }
 
     fn styled_text(&mut self, runs: &[InlineRun], base_weight: FontWeight) -> AnyElement {
+        let item = self.text_item(runs, base_weight);
+        SelectableText::new(
+            item.id,
+            item.text.clone(),
+            StyledText::new(item.text).with_runs(item.runs),
+            item.document_range,
+            item.links,
+            self.theme.selection,
+            selection::TextInteraction {
+                selection: self.selection.clone(),
+                focus: self.focus.clone(),
+                notify_entity: self.notify_entity,
+                link_handler: self.link_handler.clone(),
+            },
+        )
+        .into_any_element()
+    }
+
+    fn text_item(&mut self, runs: &[InlineRun], base_weight: FontWeight) -> InlineTextItem {
         let mut text = String::new();
         let mut text_runs = Vec::with_capacity(runs.len());
         let mut links: Vec<(std::ops::Range<usize>, String)> = Vec::new();
@@ -581,7 +608,15 @@ impl RenderContext<'_> {
             .zip(runs.last())
             .map(|(first, last)| first.selection_range.start..last.selection_range.end)
             .unwrap_or(0..0);
-        self.selectable_text(SharedString::from(text), text_runs, document_range, links)
+        let id = SharedString::from(format!("markdown-text-{}", self.next_text_id));
+        self.next_text_id += 1;
+        InlineTextItem {
+            id,
+            text: SharedString::from(text),
+            runs: text_runs,
+            document_range,
+            links,
+        }
     }
 
     fn selectable_text(
