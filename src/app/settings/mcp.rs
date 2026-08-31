@@ -185,10 +185,10 @@ impl Settings {
             );
 
         div()
-            .mt(px(12.0))
+            .mt(ui_rem(12.0))
             .w_full()
             .min_w_0()
-            .rounded(px(8.0))
+            .rounded(ui_rem(8.0))
             .border_1()
             .border_color(theme.border)
             .bg(theme.secondary)
@@ -196,9 +196,9 @@ impl Settings {
             .child(
                 div()
                     .w_full()
-                    .h(px(32.0))
-                    .pl(px(10.0))
-                    .pr(px(4.0))
+                    .h(ui_rem(32.0))
+                    .pl(ui_rem(10.0))
+                    .pr(ui_rem(4.0))
                     .border_b_1()
                     .border_color(theme.border)
                     .flex()
@@ -218,8 +218,8 @@ impl Settings {
                 div()
                     .id(format!("{key}-code"))
                     .role(Role::Code)
-                    .px(px(10.0))
-                    .py(px(8.0))
+                    .px(ui_rem(10.0))
+                    .py(ui_rem(8.0))
                     .overflow_x_scroll()
                     .restrict_scroll_to_axis()
                     .whitespace_nowrap()
@@ -270,8 +270,8 @@ impl Settings {
             .w_full()
             .self_stretch()
             .min_w_0()
-            .px(px(20.0))
-            .py(px(15.0))
+            .px(ui_rem(20.0))
+            .py(ui_rem(15.0))
             .child(
                 div()
                     .text_sm()
@@ -281,7 +281,7 @@ impl Settings {
             .child(tabs)
             .child(
                 div()
-                    .mt(px(12.0))
+                    .mt(ui_rem(12.0))
                     .text_xs()
                     .text_color(theme.muted_foreground)
                     .child(client.description(language)),
@@ -299,9 +299,7 @@ impl Settings {
             McpServerState::Running { endpoint } => {
                 format!("{} · {endpoint}", language.text("mcp.status.running"))
             }
-            McpServerState::Failed { message, .. } => {
-                format!("{}：{message}", language.text("mcp.status.failed"))
-            }
+            McpServerState::Failed { .. } => language.text("mcp.status.failed"),
         };
         let port_button = language.text("settings.mcp.port.apply");
 
@@ -324,7 +322,7 @@ impl Settings {
                 ),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.mcp.local_network.label"),
                 language.text("settings.mcp.local_network.description"),
@@ -337,7 +335,7 @@ impl Settings {
                 ),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(
                 self.render_setting_row(
                     language.text("settings.mcp.port.title"),
@@ -346,10 +344,10 @@ impl Settings {
                         .flex_none()
                         .flex()
                         .items_center()
-                        .gap(px(8.0))
+                        .gap(ui_rem(8.0))
                         .child(
                             Input::new(&self.mcp_port_input)
-                                .w(px(164.0))
+                                .w(ui_rem(164.0))
                                 .aria_label(language.text("settings.mcp.port.label")),
                         )
                         .child(self.render_mcp_button(
@@ -364,14 +362,14 @@ impl Settings {
             .when_some(self.mcp_port_error.as_ref(), |view, error| {
                 view.child(
                     div()
-                        .px(px(20.0))
-                        .pb(px(12.0))
+                        .px(ui_rem(20.0))
+                        .pb(ui_rem(12.0))
                         .text_xs()
                         .text_color(theme.danger)
                         .child(error.clone()),
                 )
             })
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.mcp.endpoint.label"),
                 status,
@@ -389,12 +387,12 @@ impl Settings {
                 ),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_mcp_guide(&endpoint, cx))
             .child(
                 div()
-                    .px(px(20.0))
-                    .pb(px(18.0))
+                    .px(ui_rem(20.0))
+                    .pb(ui_rem(18.0))
                     .text_xs()
                     .text_color(theme.muted_foreground)
                     .child(language.text("settings.mcp.scope_note")),

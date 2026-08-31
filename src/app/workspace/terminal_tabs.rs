@@ -58,6 +58,7 @@ impl Locus {
         let focus = terminal.read(cx).focus_handle(cx);
         self.terminal_tabs.push(TerminalTab { id, terminal });
         self.selected_terminal_id = Some(id);
+        self.scroll_to_terminal_tab(id);
         window.focus(&focus, cx);
         cx.notify();
     }
@@ -86,6 +87,7 @@ impl Locus {
         };
         let focus = tab.terminal.read(cx).focus_handle(cx);
         self.selected_terminal_id = Some(tab.id);
+        self.scroll_to_terminal_tab(tab.id);
         window.focus(&focus, cx);
         cx.notify();
     }
@@ -103,6 +105,7 @@ impl Locus {
                 let tab = &self.terminal_tabs[selected_index];
                 let focus = tab.terminal.read(cx).focus_handle(cx);
                 self.selected_terminal_id = Some(tab.id);
+                self.scroll_to_terminal_tab(tab.id);
                 window.focus(&focus, cx);
             } else {
                 self.selected_terminal_id = None;
@@ -153,15 +156,6 @@ impl Locus {
         let selected_index = self
             .selected_terminal_id
             .and_then(|id| self.terminal_tabs.iter().position(|tab| tab.id == id));
-        if self
-            .last_scrolled_terminal_id
-            .replace(self.selected_terminal_id)
-            != self.selected_terminal_id
-            && let Some(index) = selected_index
-        {
-            self.terminal_tab_scroll_handle
-                .scroll_to_item(terminal_tab_scroll_item(index));
-        }
         let tabs = self
             .terminal_tabs
             .iter()
@@ -210,6 +204,13 @@ impl Locus {
                         this.create_terminal(window, cx);
                     })),
             )
+    }
+
+    fn scroll_to_terminal_tab(&self, id: u64) {
+        if let Some(index) = self.terminal_tabs.iter().position(|tab| tab.id == id) {
+            self.terminal_tab_scroll_handle
+                .scroll_to_item(terminal_tab_scroll_item(index));
+        }
     }
 
     fn render_terminal_placeholder(&self, cx: &mut Context<Self>) -> Div {

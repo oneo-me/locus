@@ -1,4 +1,3 @@
-use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -18,6 +17,7 @@ use gpui::{
     ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Task, Window, div, prelude::*, px,
     transparent_black,
 };
+use gpui_component::{ElementExt as _, Root};
 
 use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
@@ -111,7 +111,6 @@ pub struct Locus {
     selected_terminal_id: Option<u64>,
     next_terminal_id: u64,
     terminal_tab_scroll_handle: ScrollHandle,
-    last_scrolled_terminal_id: Cell<Option<u64>>,
     terminals_need_restart: bool,
     library_tree: LibraryTree,
     library_watcher: Option<LibraryWatcher>,
@@ -157,8 +156,7 @@ impl Locus {
         let content_pane = LocusPane::new(&locus, Locus::content_pane_content, cx);
         let right_pane = LocusPane::new(&locus, Locus::right_pane_content, cx);
         window.focus(&root_focus, cx);
-        crate::theme::apply_preference(preferences.theme, window, cx);
-        window.set_rem_size(px(preferences.ui_font_size));
+        crate::theme::apply_preference(preferences.theme, preferences.ui_font_size, window, cx);
         let library_path = preferences.library_path.clone();
         let (library_watcher, library_watch_task, library_watcher_error) =
             Self::start_library_watcher(library_path.as_deref(), cx);
@@ -295,7 +293,8 @@ impl Locus {
         cx.observe_window_appearance(window, |this, window, cx| {
             let preference = this.settings.read(cx).preferences().theme;
             if preference == crate::theme::ThemePreference::System {
-                crate::theme::apply_preference(preference, window, cx);
+                let ui_font_size = this.settings.read(cx).preferences().ui_font_size;
+                crate::theme::apply_preference(preference, ui_font_size, window, cx);
                 cx.notify();
             }
         })
@@ -343,7 +342,6 @@ impl Locus {
             selected_terminal_id: None,
             next_terminal_id: 1,
             terminal_tab_scroll_handle: ScrollHandle::new(),
-            last_scrolled_terminal_id: Cell::new(None),
             terminals_need_restart: false,
             library_tree,
             library_watcher,
@@ -482,16 +480,27 @@ impl Locus {
                 {
                     return;
                 }
-                let Some(note) = this.selected_note.as_mut().filter(|note| note.path == path)
-                else {
+                if !this
+                    .selected_note
+                    .as_ref()
+                    .is_some_and(|note| note.path == path)
+                {
                     return;
-                };
+                }
                 match result {
                     Ok(document) => {
+                        document.synchronize_interaction_state(
+                            &this.note_text_selection,
+                            &this.note_code_blocks,
+                        );
+                        let note = this.selected_note.as_mut().expect("selected note checked");
                         note.document = Some(document);
                         note.error = None;
                     }
-                    Err(error) => note.error = Some(error),
+                    Err(error) => {
+                        let note = this.selected_note.as_mut().expect("selected note checked");
+                        note.error = Some(error);
+                    }
                 }
                 cx.notify();
             });
@@ -966,7 +975,7 @@ impl Locus {
             })
     }
 
-    fn left_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn left_pane_content(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let workspace = self.app_shell.workspace();
         let left_content =
             workspace.panel_content_width(PanelSide::Left, f32::from(window.viewport_size().width));
@@ -980,7 +989,7 @@ impl Locus {
         .into_any_element()
     }
 
-    fn content_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn content_pane_content(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let left_control_clearance = left_titlebar_control_clearance(window.is_fullscreen());
         let content_width = f32::from(window.viewport_size().width)
             - self.app_shell.workspace().rendered_width(PanelSide::Left)
@@ -989,7 +998,7 @@ impl Locus {
             .into_any_element()
     }
 
-    fn right_pane_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn right_pane_content(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let workspace = self.app_shell.workspace();
         let right_content = workspace
             .panel_content_width(PanelSide::Right, f32::from(window.viewport_size().width));
@@ -1000,25 +1009,10 @@ impl Locus {
         )
         .into_any_element()
     }
-}
 
-impl Render for Locus {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = Theme::global(cx).clone();
-        let ui_font_family = self
-            .settings
-            .read(cx)
-            .preferences()
-            .resolved_ui_font_family()
-            .to_owned();
+    fn advance_render_lifecycle(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let layout = self.app_shell.workspace_mut().layout(window);
         let panels = layout.frame;
-        let left_toggle_offset = left_toggle_offset(window.is_fullscreen());
-        let navigation_left_offset = navigation_left_offset(
-            left_toggle_offset,
-            panels.left,
-            self.app_shell.workspace().visible(PanelSide::Left),
-        );
         for tab in &self.terminal_tabs {
             tab.terminal.update(cx, |terminal, _| {
                 terminal.set_available_size(
@@ -1043,7 +1037,28 @@ impl Render for Locus {
             self.selected_library_scroll_anchor.scroll_to(window, cx);
             self.scroll_to_selected_library_node = false;
         }
+    }
+}
 
+impl Render for Locus {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let sheet_layer = Root::render_sheet_layer(window, cx);
+        let dialog_layer = Root::render_dialog_layer(window, cx);
+        let notification_layer = Root::render_notification_layer(window, cx);
+        let theme = Theme::global(cx).clone();
+        let ui_font_family = self
+            .settings
+            .read(cx)
+            .preferences()
+            .resolved_ui_font_family()
+            .to_owned();
+        let panels = self.app_shell.workspace().frame(window);
+        let left_toggle_offset = left_toggle_offset(window.is_fullscreen());
+        let navigation_left_offset = navigation_left_offset(
+            left_toggle_offset,
+            panels.left,
+            self.app_shell.workspace().visible(PanelSide::Left),
+        );
         let workspace = WorkspaceShell::new(
             panels,
             self.left_pane
@@ -1079,6 +1094,7 @@ impl Render for Locus {
                 .child(self.render_history_button(NavigationDirection::Forward, cx)),
         );
 
+        let locus = cx.weak_entity();
         div()
             .key_context("Locus")
             .track_focus(&self.root_focus)
@@ -1097,6 +1113,11 @@ impl Render for Locus {
             .size_full()
             .relative()
             .flex()
+            .on_prepaint(move |_, window, cx| {
+                let _ = locus.update(cx, |this, cx| {
+                    this.advance_render_lifecycle(window, cx);
+                });
+            })
             .bg(crate::theme::workspace_background(&theme))
             .font_family(ui_font_family)
             .text_color(theme.foreground)
@@ -1110,6 +1131,9 @@ impl Render for Locus {
             .when(!self.app_shell.is_settings_open(), |root| {
                 root.child(workspace)
             })
+            .children(sheet_layer)
+            .children(dialog_layer)
+            .children(notification_layer)
     }
 }
 

@@ -39,8 +39,8 @@ impl Locus {
                 theme.muted_foreground,
             );
         }
-        if let Some(error) = &self.library_tree.error {
-            return sidebar_message(error.clone(), theme.danger);
+        if self.library_tree.error.is_some() {
+            return sidebar_message(language.text("workspace.library.load_error"), theme.danger);
         }
 
         let mut body = div()
@@ -51,7 +51,7 @@ impl Locus {
             .track_scroll(&self.library_scroll_handle)
             .px(px(8.0))
             .py(px(TREE_VERTICAL_PADDING));
-        if let Some(error) = &self.library_tree.repository_error {
+        if self.library_tree.repository_error.is_some() {
             body = body.child(
                 div()
                     .mx(px(4.0))
@@ -63,10 +63,7 @@ impl Locus {
                     .border_color(theme.danger.opacity(0.35))
                     .text_xs()
                     .text_color(theme.danger)
-                    .child(format!(
-                        "{}：{error}",
-                        language.text("workspace.library.git_unavailable")
-                    )),
+                    .child(language.text("workspace.library.git_unavailable")),
             );
         }
         if self.library_tree.nodes.is_empty() {
@@ -86,7 +83,7 @@ impl Locus {
                 ),
             );
         }
-        if let Some(error) = &self.library_watcher_error {
+        if self.library_watcher_error.is_some() {
             body = body.child(
                 div()
                     .mx(px(4.0))
@@ -98,10 +95,7 @@ impl Locus {
                     .border_color(theme.danger.opacity(0.35))
                     .text_xs()
                     .text_color(theme.danger)
-                    .child(format!(
-                        "{}：{error}",
-                        language.text("workspace.library.watching_unavailable")
-                    )),
+                    .child(language.text("workspace.library.watching_unavailable")),
             );
         }
 

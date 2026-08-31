@@ -2,7 +2,7 @@ use gpui::{AnyElement, App, Context, Entity, Render, WeakEntity, Window, div, pr
 
 use super::Locus;
 
-type PaneContent = fn(&mut Locus, &mut Window, &mut Context<Locus>) -> AnyElement;
+type PaneContent = fn(&Locus, &mut Window, &mut Context<Locus>) -> AnyElement;
 
 pub(super) struct LocusPane {
     locus: WeakEntity<Locus>,

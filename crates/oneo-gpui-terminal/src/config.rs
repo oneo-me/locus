@@ -35,17 +35,6 @@ pub struct TerminalLabels {
     pub process_exited: SharedString,
 }
 
-impl Default for TerminalLabels {
-    fn default() -> Self {
-        Self {
-            accessibility_label: "Terminal".into(),
-            could_not_start: "Could not start terminal".into(),
-            starting: "Starting terminal…".into(),
-            process_exited: "Process exited".into(),
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct TerminalConfiguration {
     pub shell: String,

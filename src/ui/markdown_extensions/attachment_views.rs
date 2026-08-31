@@ -189,12 +189,14 @@ fn split_filename(value: &str) -> (String, String) {
 
 fn open_attachment(path: &Path, language: Language, window: &mut Window, cx: &mut App) {
     if let Err(error) = crate::platform::open_path(path) {
+        eprintln!("{error}");
         let title = language.text("markdown.attachments.open_error");
+        let detail = language.text("common.file_action_error_detail");
         let confirmation = language.text("common.ok");
         drop(window.prompt(
             PromptLevel::Critical,
             &title,
-            Some(&error),
+            Some(&detail),
             &[confirmation.as_str()],
             cx,
         ));

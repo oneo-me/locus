@@ -18,12 +18,12 @@ impl Settings {
         div()
             .w_full()
             .self_stretch()
-            .min_h(px(68.0))
-            .px(px(20.0))
-            .py(px(13.0))
+            .min_h(ui_rem(68.0))
+            .px(ui_rem(20.0))
+            .py(ui_rem(13.0))
             .flex()
             .items_center()
-            .gap(px(24.0))
+            .gap(ui_rem(24.0))
             .child(
                 div()
                     .min_w_0()
@@ -31,7 +31,7 @@ impl Settings {
                     .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(title))
                     .child(
                         div()
-                            .mt(px(4.0))
+                            .mt(ui_rem(4.0))
                             .text_xs()
                             .text_color(theme.muted_foreground)
                             .child(description),
@@ -55,8 +55,8 @@ impl Settings {
             .min_w_0()
             .flex_none()
             .w(gpui::rems(SETTINGS_CONTROL_WIDTH_REM))
-            .h(px(32.0))
-            .rounded(px(7.0))
+            .h(ui_rem(32.0))
+            .rounded(ui_rem(7.0))
             .border_1()
             .border_color(theme.input)
             .bg(theme.background)
@@ -67,7 +67,7 @@ impl Settings {
                 div()
                     .min_w_0()
                     .flex_1()
-                    .px(px(10.0))
+                    .px(ui_rem(10.0))
                     .overflow_hidden()
                     .whitespace_nowrap()
                     .text_ellipsis()
@@ -80,7 +80,7 @@ impl Settings {
                     .text()
                     .small()
                     .h_full()
-                    .px(px(10.0))
+                    .px(ui_rem(10.0))
                     .label(choose_label)
                     .on_click(cx.listener(|this, _, _, cx| this.choose_library(cx))),
             );
@@ -98,7 +98,7 @@ impl Settings {
                 path_control,
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.editor.label"),
                 language.text("settings.editor.description"),
@@ -123,35 +123,35 @@ impl Settings {
                 self.render_dropdown(Dropdown::Theme, cx),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.appearance.language.label"),
                 language.text("settings.appearance.language.description"),
                 self.render_dropdown(Dropdown::Language, cx),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.appearance.interface_font.label"),
                 language.text("settings.appearance.interface_font.description"),
                 self.render_font_picker(FontKind::Ui, cx),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.appearance.interface_font_size.label"),
                 language.text("settings.appearance.interface_font_size.description"),
                 self.render_dropdown(Dropdown::UiFontSize, cx),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.appearance.code_font.label"),
                 language.text("settings.appearance.code_font.description"),
                 self.render_font_picker(FontKind::Code, cx),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.appearance.code_font_size.label"),
                 language.text("settings.appearance.code_font_size.description"),
@@ -176,14 +176,14 @@ impl Settings {
                 self.render_font_picker(FontKind::Terminal, cx),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.terminal.font_size.label"),
                 language.text("settings.terminal.font_size.description"),
                 self.render_dropdown(Dropdown::TerminalFontSize, cx),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(
                 self.render_setting_row(
                     language.text("settings.terminal.shell.label"),
@@ -195,7 +195,7 @@ impl Settings {
                     cx,
                 ),
             )
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(
                 self.render_setting_row(
                     language.text("settings.terminal.command.label"),
@@ -207,14 +207,14 @@ impl Settings {
                     cx,
                 ),
             )
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.terminal.color_scheme.label"),
                 language.text("settings.terminal.color_scheme.description"),
                 self.render_dropdown(Dropdown::TerminalColorScheme, cx),
                 cx,
             ))
-            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
                 language.text("settings.terminal.cursor_style.label"),
                 language.text("settings.terminal.cursor_style.description"),

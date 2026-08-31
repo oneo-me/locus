@@ -5,8 +5,8 @@ use super::{Locus, SelectedNote};
 use crate::document_library::{LIBRARY_REFERENCE_SCHEME, LibraryNode, library_reference_path};
 use crate::theme::Theme;
 use crate::ui::{
-    Icon, LocusMarkdownExtensions, Markdown, MarkdownLabels, MarkdownTypography,
-    document_icon_image, toolbar_icon_button,
+    Icon, LocusMarkdownExtensions, Markdown, MarkdownLabels, MarkdownPresentation,
+    MarkdownTypography, document_icon_image, toolbar_icon_button,
 };
 use gpui::{
     AnyElement, BorderStyle, Bounds, ClipboardItem, Div, Edges, FontWeight, MouseButton, ObjectFit,
@@ -55,7 +55,10 @@ impl Locus {
         if let Some(metadata) = note_metadata(node, atmosphere.panel, &theme) {
             article = article.child(metadata);
         }
-        if let Some(error) = selected_note.and_then(|note| note.error.as_deref()) {
+        if selected_note
+            .and_then(|note| note.error.as_deref())
+            .is_some()
+        {
             article = article.child(
                 div()
                     .rounded(px(8.0))
@@ -65,10 +68,7 @@ impl Locus {
                     .py(px(9.0))
                     .text_sm()
                     .text_color(theme.danger)
-                    .child(format!(
-                        "{}：{error}",
-                        language.text("workspace.note.read_error")
-                    )),
+                    .child(language.text("workspace.note.read_error")),
             );
         }
         if let Some(document) = selected_note
@@ -86,18 +86,20 @@ impl Locus {
                 Markdown::new(
                     document,
                     &node.directory,
-                    theme,
-                    MarkdownTypography {
-                        text_font_family: &markdown_text_font_family,
-                        text_size: markdown_text_size,
-                        code_font_family: &markdown_code_font_family,
-                        code_text_size: markdown_code_text_size,
+                    MarkdownPresentation {
+                        theme,
+                        typography: MarkdownTypography {
+                            text_font_family: &markdown_text_font_family,
+                            text_size: markdown_text_size,
+                            code_font_family: &markdown_code_font_family,
+                            code_text_size: markdown_code_text_size,
+                        },
+                        labels,
                     },
                     self.note_text_selection.clone(),
                     self.note_text_focus.clone(),
                     self.content_pane.entity_id(),
                 )
-                .with_labels(labels)
                 .with_extensions(&extensions)
                 .with_code_blocks(self.note_code_blocks.clone())
                 .with_link_handler(move |url, _, cx| {
@@ -243,12 +245,14 @@ impl Locus {
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_click(move |_, window, cx| {
             if let Err(error) = crate::platform::open_in_editor(&document_path, editor) {
+                eprintln!("{error}");
                 let title = language.text("workspace.note.edit_error");
+                let detail = language.text("common.file_action_error_detail");
                 let confirmation = language.text("common.ok");
                 drop(window.prompt(
                     PromptLevel::Critical,
                     &title,
-                    Some(&error),
+                    Some(&detail),
                     &[confirmation.as_str()],
                     cx,
                 ));
@@ -264,12 +268,14 @@ impl Locus {
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_click(move |_, window, cx| {
             if let Err(error) = crate::platform::open_directory(&directory) {
+                eprintln!("{error}");
                 let title = language.text("workspace.note.open_directory_error");
+                let detail = language.text("common.file_action_error_detail");
                 let confirmation = language.text("common.ok");
                 drop(window.prompt(
                     PromptLevel::Critical,
                     &title,
-                    Some(&error),
+                    Some(&detail),
                     &[confirmation.as_str()],
                     cx,
                 ));

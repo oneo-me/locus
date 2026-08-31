@@ -249,6 +249,37 @@ impl WorkspaceShellState {
         }
     }
 
+    pub fn frame(&self, window: &Window) -> PanelFrame {
+        let (left_content, right_content) =
+            self.fitted_content_widths(f32::from(window.viewport_size().width));
+        let left = sampled_slide_width(
+            self.left_slide,
+            if self.left_visible { left_content } else { 0.0 },
+        );
+        let right = sampled_slide_width(
+            self.right_slide,
+            if self.right_visible {
+                right_content
+            } else {
+                0.0
+            },
+        );
+        let mut frame = PanelFrame {
+            left_content,
+            right_content,
+            left,
+            right,
+            left_sliding: self.left_slide.is_some(),
+            right_sliding: self.right_slide.is_some(),
+        };
+
+        if let Some(resize) = self.right_window_resize {
+            frame.right = resize.preview(frame.right, window).panel_width;
+        }
+        frame.right_sliding = self.right_slide.is_some() || self.right_window_resize.is_some();
+        frame
+    }
+
     pub fn toggle(
         &mut self,
         side: PanelSide,
@@ -447,24 +478,31 @@ impl PanelWindowResize {
     }
 
     fn sync(self, panel_width: f32, window: &mut Window) -> PanelWindowFrame {
+        let frame = self.preview(panel_width, window);
+        if !self.enabled {
+            return frame;
+        }
+        let viewport_size = window.viewport_size();
+        let target_width = self.target_window_width(panel_width);
+        if !frame.window_resize_complete {
+            window.resize(gpui::size(px(target_width), viewport_size.height));
+            window.request_animation_frame();
+        }
+        frame
+    }
+
+    fn preview(self, panel_width: f32, window: &Window) -> PanelWindowFrame {
         if !self.enabled {
             return PanelWindowFrame {
                 panel_width,
                 window_resize_complete: true,
             };
         }
-        let viewport_size = window.viewport_size();
+        let current_width = f32::from(window.viewport_size().width);
         let target_width = self.target_window_width(panel_width);
-        let current_width = f32::from(viewport_size.width);
-        let window_resize_complete = (current_width - target_width).abs() <= 0.5;
-        let panel_width = self.synced_panel_width(panel_width, current_width, target_width);
-        if !window_resize_complete {
-            window.resize(gpui::size(px(target_width), viewport_size.height));
-            window.request_animation_frame();
-        }
         PanelWindowFrame {
-            panel_width,
-            window_resize_complete,
+            panel_width: self.synced_panel_width(panel_width, current_width, target_width),
+            window_resize_complete: (current_width - target_width).abs() <= 0.5,
         }
     }
 
@@ -508,6 +546,12 @@ fn slide_width(slide: &mut Option<PanelSlide>, target: f32) -> f32 {
             target
         }
     }
+}
+
+fn sampled_slide_width(slide: Option<PanelSlide>, target: f32) -> f32 {
+    slide
+        .and_then(|slide| slide.width_toward(target))
+        .unwrap_or(target)
 }
 
 fn fitted_panel_widths(

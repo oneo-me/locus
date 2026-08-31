@@ -83,13 +83,16 @@ impl Locus {
                 this.note_action_pending = false;
                 match result {
                     Ok(()) => this.reload_library_projection(cx),
-                    Err(error) => show_action_error(
-                        language.text("workspace.note_menu.archive_error"),
-                        &error,
-                        language.text("common.ok"),
-                        window,
-                        cx,
-                    ),
+                    Err(error) => {
+                        eprintln!("{error}");
+                        show_action_error(
+                            language.text("workspace.note_menu.archive_error"),
+                            language.text("common.file_action_error_detail"),
+                            language.text("common.ok"),
+                            window,
+                            cx,
+                        )
+                    }
                 }
                 cx.notify();
             });
@@ -114,10 +117,11 @@ impl Locus {
                 Ok(Ok(Some(paths))) => paths.into_iter().next(),
                 Ok(Ok(None)) | Err(_) => return,
                 Ok(Err(error)) => {
+                    eprintln!("{error}");
                     let _ = this.update_in(cx, |_, window, cx| {
                         show_action_error(
                             language.text("workspace.note_menu.choose_icon_error"),
-                            &error.to_string(),
+                            language.text("common.file_action_error_detail"),
                             language.text("common.ok"),
                             window,
                             cx,
@@ -145,13 +149,16 @@ impl Locus {
                 this.note_action_pending = false;
                 match result {
                     Ok(()) => this.reload_library_projection(cx),
-                    Err(error) => show_action_error(
-                        language.text("workspace.note_menu.update_icon_error"),
-                        &error,
-                        language.text("common.ok"),
-                        window,
-                        cx,
-                    ),
+                    Err(error) => {
+                        eprintln!("{error}");
+                        show_action_error(
+                            language.text("workspace.note_menu.update_icon_error"),
+                            language.text("common.file_action_error_detail"),
+                            language.text("common.ok"),
+                            window,
+                            cx,
+                        )
+                    }
                 }
                 cx.notify();
             });
@@ -162,7 +169,7 @@ impl Locus {
 
 fn show_action_error(
     title: String,
-    error: &str,
+    detail: String,
     confirmation: String,
     window: &mut Window,
     cx: &mut App,
@@ -170,7 +177,7 @@ fn show_action_error(
     drop(window.prompt(
         PromptLevel::Critical,
         &title,
-        Some(error),
+        Some(&detail),
         &[confirmation.as_str()],
         cx,
     ));

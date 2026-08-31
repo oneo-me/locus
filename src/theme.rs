@@ -1,4 +1,4 @@
-use gpui::{App, Hsla, Window, WindowAppearance, rgb};
+use gpui::{App, Hsla, Window, WindowAppearance, px, rgb};
 pub use gpui_component::Theme;
 use gpui_component::ThemeMode;
 use serde::{Deserialize, Serialize};
@@ -34,7 +34,12 @@ pub fn resolves_to_dark(preference: ThemePreference, appearance: WindowAppearanc
     }
 }
 
-pub fn apply_preference(preference: ThemePreference, window: &mut Window, cx: &mut App) {
+pub fn apply_preference(
+    preference: ThemePreference,
+    ui_font_size: f32,
+    window: &mut Window,
+    cx: &mut App,
+) {
     crate::platform::set_window_appearance(
         window,
         match preference {
@@ -49,6 +54,13 @@ pub fn apply_preference(preference: ThemePreference, window: &mut Window, cx: &m
         ThemeMode::Light
     };
     Theme::change(mode, Some(window), cx);
+    apply_ui_font_size(ui_font_size, window, cx);
+}
+
+pub fn apply_ui_font_size(size: f32, window: &mut Window, cx: &mut App) {
+    Theme::global_mut(cx).font_size = px(size);
+    Theme::sync_base(cx);
+    window.refresh();
 }
 
 #[cfg(test)]

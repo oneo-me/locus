@@ -99,8 +99,11 @@ settings.page.terminal:
   en: Terminal
   zh-CN: 终端
 settings.save_error:
-  en: Could not save settings
-  zh-CN: 无法保存设置
+  en: Could not save settings. Check access to the Locus data directory.
+  zh-CN: 无法保存设置。请检查 Locus 数据目录的访问权限。
+settings.load_error:
+  en: Could not read saved settings. Defaults are in use.
+  zh-CN: 无法读取已保存的设置，当前使用默认值。
 settings.terminal.font.label:
   en: Terminal font
   zh-CN: 终端字体
@@ -161,6 +164,9 @@ workspace.mcp.copy_endpoint:
 workspace.mcp.endpoint_copied:
   en: MCP URL copied
   zh-CN: MCP 地址已复制
+workspace.fps.label:
+  en: FPS
+  zh-CN: 帧/秒
 workspace.navigation.back:
   en: Back
   zh-CN: 后退
@@ -206,6 +212,9 @@ workspace.terminal.tab:
 common.ok:
   en: OK
   zh-CN: 好
+common.file_action_error_detail:
+  en: Check that the file still exists and that Locus has permission to access it.
+  zh-CN: 请确认文件仍然存在，并且 Locus 有权访问它。
 markdown.attachments.label_mismatch:
   en: "Link label must match the attachment name: %{name}"
   zh-CN: 链接文字必须使用附件文件名：%{name}
@@ -273,14 +282,17 @@ workspace.library.empty:
   en: The library is empty.
   zh-CN: 文档库还是空的。
 workspace.library.git_unavailable:
-  en: Git status unavailable
-  zh-CN: Git 状态不可用
+  en: Git status is unavailable for this library.
+  zh-CN: 当前文档库的 Git 状态不可用。
+workspace.library.load_error:
+  en: Could not read the library. Check that the folder exists and is accessible.
+  zh-CN: 无法读取文档库。请确认目录存在且可访问。
 workspace.library.no_selection:
   en: No library selected
   zh-CN: 尚未打开文档库
 workspace.library.watching_unavailable:
-  en: File watching unavailable
-  zh-CN: 文件观察不可用
+  en: File watching is unavailable. External changes may not appear automatically.
+  zh-CN: 文件观察不可用，外部修改可能不会自动显示。
 workspace.note.collapse_code:
   en: Collapse code
   zh-CN: 折叠代码
@@ -306,8 +318,8 @@ workspace.note.open_directory_error:
   en: Could not open directory
   zh-CN: 无法打开目录
 workspace.note.read_error:
-  en: Could not read note
-  zh-CN: 无法读取笔记
+  en: Could not read the note. Check that the file exists and is accessible.
+  zh-CN: 无法读取笔记。请确认文件存在且可访问。
 workspace.note.reference_copied:
   en: Note reference copied
   zh-CN: 笔记引用已复制

@@ -33,6 +33,10 @@ use oneo_gpui_app_shell::{
     settings_sidebar_header,
 };
 
+fn ui_rem(value: f32) -> gpui::Rems {
+    gpui::rems(value / 16.0)
+}
+
 const SETTINGS_SIDEBAR_WIDTH: f32 = 252.0;
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 720.0;
 const SETTINGS_CONTROL_WIDTH_REM: f32 = 20.0;
@@ -330,6 +334,10 @@ impl Settings {
             archive_load_error,
         } = init;
         let language = preferences.language;
+        let settings_error = load_error.map(|error| {
+            eprintln!("{error}");
+            language.text("settings.load_error")
+        });
         let mut font_names = cx.text_system().all_font_names();
         for family in [
             DEFAULT_UI_FONT_FAMILY,
@@ -473,7 +481,7 @@ impl Settings {
             archive_load_error,
             archive_action_error: None,
             restoring_archive: None,
-            error: load_error,
+            error: settings_error,
             titlebar_drag_armed: false,
         }
     }
@@ -512,11 +520,13 @@ impl Settings {
 
     fn persist(&mut self) {
         let language = self.preferences.language;
-        self.error = self
-            .preferences
-            .save()
-            .err()
-            .map(|error| format!("{}：{error}", language.text("settings.save_error")));
+        self.error = match self.preferences.save() {
+            Ok(()) => None,
+            Err(error) => {
+                eprintln!("{error}");
+                Some(language.text("settings.save_error"))
+            }
+        };
     }
 
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -577,7 +587,7 @@ impl Settings {
                     return;
                 }
                 self.preferences.theme = preference;
-                theme::apply_preference(preference, window, cx);
+                theme::apply_preference(preference, self.preferences.ui_font_size, window, cx);
             }
             Choice::Language(language) => {
                 if self.preferences.language == language {
@@ -613,8 +623,7 @@ impl Settings {
                     return;
                 }
                 self.preferences.ui_font_size = size;
-                window.set_rem_size(px(size));
-                window.refresh();
+                theme::apply_ui_font_size(size, window, cx);
                 cx.emit(SettingsEvent::UiFontChanged);
             }
             Choice::CodeFontSize(size) => {
@@ -716,12 +725,12 @@ impl Settings {
             .id("settings-sidebar-scroll")
             .size_full()
             .overflow_y_scroll()
-            .px(px(12.0))
-            .pt(px(12.0))
-            .pb(px(20.0))
+            .px(ui_rem(12.0))
+            .pt(ui_rem(12.0))
+            .pb(ui_rem(20.0))
             .flex()
             .flex_col()
-            .gap(px(14.0))
+            .gap(ui_rem(14.0))
             .child(settings_navigation_group(
                 language.text("settings.navigation.application"),
                 vec![
@@ -793,7 +802,7 @@ impl Settings {
         let title = self.page.label(self.preferences.language);
         self.render_titlebar_drag_region("settings-content-titlebar", cx)
             .size_full()
-            .px(px(32.0))
+            .px(ui_rem(32.0))
             .flex()
             .items_center()
             .text_sm()
@@ -815,23 +824,23 @@ impl Settings {
             .id("settings-content-scroll")
             .size_full()
             .overflow_y_scroll()
-            .px(px(32.0))
-            .pb(px(48.0))
+            .px(ui_rem(32.0))
+            .pb(ui_rem(48.0))
             .child(
                 div()
                     .w_full()
-                    .max_w(px(SETTINGS_CONTENT_MAX_WIDTH))
+                    .max_w(ui_rem(SETTINGS_CONTENT_MAX_WIDTH))
                     .mx_auto()
-                    .pb(px(190.0))
+                    .pb(ui_rem(190.0))
                     .when_some(self.error.as_ref(), |view, error| {
                         view.child(
                             div()
-                                .mt(px(14.0))
-                                .rounded(px(8.0))
+                                .mt(ui_rem(14.0))
+                                .rounded(ui_rem(8.0))
                                 .border_1()
                                 .border_color(theme.danger)
-                                .px(px(12.0))
-                                .py(px(9.0))
+                                .px(ui_rem(12.0))
+                                .py(ui_rem(9.0))
                                 .text_sm()
                                 .text_color(theme.danger)
                                 .child(error.clone()),
@@ -841,8 +850,8 @@ impl Settings {
                         div()
                             .w_full()
                             .min_w_0()
-                            .mt(px(15.0))
-                            .rounded(px(13.0))
+                            .mt(ui_rem(15.0))
+                            .rounded(ui_rem(13.0))
                             .bg(theme.muted)
                             .flex()
                             .flex_col()

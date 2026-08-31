@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use gpui::{Div, Window, div, prelude::*, px};
+use gpui::{Div, SharedString, Window, div, prelude::*, px};
 use gpui_component::Theme;
 
 pub struct FpsCounterState {
@@ -48,7 +48,7 @@ impl FpsCounterState {
     }
 }
 
-pub fn fps_counter(state: &FpsCounterState, theme: &Theme) -> Div {
+pub fn fps_counter(state: &FpsCounterState, label: impl Into<SharedString>, theme: &Theme) -> Div {
     div()
         .h(px(28.0))
         .flex()
@@ -56,5 +56,5 @@ pub fn fps_counter(state: &FpsCounterState, theme: &Theme) -> Div {
         .px(px(6.0))
         .text_xs()
         .text_color(theme.muted_foreground)
-        .child(format!("{} FPS", state.value))
+        .child(format!("{} {}", state.value, label.into()))
 }

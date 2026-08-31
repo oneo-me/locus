@@ -30,36 +30,6 @@ pub struct AppShellMenuLabels {
     pub window: SharedString,
 }
 
-impl Default for AppShellMenuLabels {
-    fn default() -> Self {
-        Self {
-            about: "About".into(),
-            close_window: "Close Window".into(),
-            developer: "Developer".into(),
-            edit: "Edit".into(),
-            file: "File".into(),
-            quit: "Quit".into(),
-            settings: "Settings…".into(),
-            toggle_left_panel: "Toggle Left Panel".into(),
-            toggle_right_panel: "Toggle Right Panel".into(),
-            toggle_fps_counter: "Show FPS".into(),
-            toggle_full_screen: "Enter Full Screen".into(),
-            view: "View".into(),
-            window: "Window".into(),
-        }
-    }
-}
-
-impl AppShellMenuLabels {
-    fn for_app(app_name: &str) -> Self {
-        Self {
-            about: format!("About {app_name}").into(),
-            quit: format!("Quit {app_name}").into(),
-            ..Self::default()
-        }
-    }
-}
-
 pub struct AppShellMenus {
     pub app_name: SharedString,
     pub labels: AppShellMenuLabels,
@@ -71,10 +41,10 @@ pub struct AppShellMenus {
 }
 
 impl AppShellMenus {
-    pub fn new(app_name: impl Into<SharedString>) -> Self {
+    pub fn new(app_name: impl Into<SharedString>, labels: AppShellMenuLabels) -> Self {
         let app_name = app_name.into();
         Self {
-            labels: AppShellMenuLabels::for_app(&app_name),
+            labels,
             app_name,
             application_items: Vec::new(),
             edit_items: Vec::new(),
@@ -82,11 +52,6 @@ impl AppShellMenus {
             view_items_before_panels: Vec::new(),
             view_items_after_panels: Vec::new(),
         }
-    }
-
-    pub fn labels(mut self, labels: AppShellMenuLabels) -> Self {
-        self.labels = labels;
-        self
     }
 
     pub fn application_items(mut self, items: impl IntoIterator<Item = MenuItem>) -> Self {

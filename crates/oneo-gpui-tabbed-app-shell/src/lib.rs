@@ -4,8 +4,9 @@ mod platform;
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{
-    AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, Role,
-    SharedString, StatefulInteractiveElement, Styled, Window, div, px, transparent_black,
+    AnyElement, App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    RenderOnce, Role, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
+    transparent_black,
 };
 use gpui_component::{
     Icon, IconName, Sizable as _, Theme,
@@ -127,6 +128,7 @@ impl TabbedAppShell {
         content: impl IntoElement,
         titlebar_prefix: impl IntoElement,
         titlebar_drag_region: impl IntoElement,
+        close_tab_label: impl Into<SharedString>,
     ) -> Self {
         Self {
             tabs: state.tabs.clone(),
@@ -135,7 +137,7 @@ impl TabbedAppShell {
             titlebar_prefix: titlebar_prefix.into_any_element(),
             titlebar_drag_region: titlebar_drag_region.into_any_element(),
             titlebar_status: None,
-            close_tab_label: "Close tab".into(),
+            close_tab_label: close_tab_label.into(),
             on_select: None,
             on_close: None,
         }
@@ -155,11 +157,6 @@ impl TabbedAppShell {
         self.titlebar_status = Some(status.into_any_element());
         self
     }
-
-    pub fn close_tab_label(mut self, label: impl Into<SharedString>) -> Self {
-        self.close_tab_label = label.into();
-        self
-    }
 }
 
 impl RenderOnce for TabbedAppShell {
@@ -172,6 +169,7 @@ impl RenderOnce for TabbedAppShell {
             .into_iter()
             .enumerate()
             .map(|(index, tab)| {
+                let tab_id = tab.id.clone();
                 let tab = Tab::new().label(tab.label).min_h(px(TITLEBAR_HEIGHT));
                 if index == 0 {
                     return tab;
@@ -181,7 +179,7 @@ impl RenderOnce for TabbedAppShell {
                 tab.suffix(
                     div().pr(px(6.0)).child(
                         div()
-                            .id(("app-shell-close-tab", index))
+                            .id((ElementId::from("app-shell-close-tab"), tab_id))
                             .role(Role::Button)
                             .aria_label(close_tab_label.clone())
                             .size(px(18.0))

@@ -6,6 +6,10 @@ use gpui_component::{
     button::{Button, ButtonVariants as _},
 };
 
+fn ui_rem(value: f32) -> gpui::Rems {
+    rems(value / 16.0)
+}
+
 pub fn settings_sidebar_header(
     left_control_clearance: f32,
     drag_region: AnyElement,
@@ -26,8 +30,8 @@ pub fn settings_sidebar_header(
             div()
                 .h_full()
                 .flex_1()
-                .pr(px(8.0))
-                .py(px(7.0))
+                .pr(ui_rem(8.0))
+                .py(ui_rem(7.0))
                 .child(back_button),
         )
 }
@@ -41,10 +45,10 @@ where
     E: IntoElement,
 {
     rows.into_iter().fold(
-        div().flex().flex_col().gap(px(3.0)).child(
+        div().flex().flex_col().gap(ui_rem(3.0)).child(
             div()
-                .h(px(22.0))
-                .px(px(11.0))
+                .h(ui_rem(22.0))
+                .px(ui_rem(11.0))
                 .flex()
                 .items_center()
                 .text_size(rems(11.0 / 16.0))
@@ -68,8 +72,8 @@ pub fn settings_navigation_row(
         .ghost()
         .small()
         .w_full()
-        .h(px(36.0))
-        .px(px(11.0))
+        .h(ui_rem(36.0))
+        .px(ui_rem(11.0))
         .text_size(rems(13.0 / 16.0))
         .text_color(if selected {
             theme.sidebar_accent_foreground
@@ -85,7 +89,7 @@ pub fn settings_navigation_row(
                 .min_w_0()
                 .flex()
                 .items_center()
-                .gap(px(10.0))
+                .gap(ui_rem(10.0))
                 .child(
                     Icon::new(icon_kind)
                         .small()
@@ -106,7 +110,7 @@ pub fn settings_back_button(
         .small()
         .w_full()
         .h_full()
-        .px(px(9.0))
+        .px(ui_rem(9.0))
         .text_size(rems(13.0 / 16.0))
         .text_color(theme.muted_foreground)
         .accessibility_label(label.clone())
@@ -116,7 +120,7 @@ pub fn settings_back_button(
                 .min_w_0()
                 .flex()
                 .items_center()
-                .gap(px(9.0))
+                .gap(ui_rem(9.0))
                 .child(
                     Icon::new(IconName::ArrowLeft)
                         .small()
@@ -173,7 +177,7 @@ impl SettingsShell {
             .text_color(self.theme.foreground)
             .child(
                 div()
-                    .w(px(self.sidebar_width))
+                    .w(ui_rem(self.sidebar_width))
                     .h_full()
                     .flex_none()
                     .flex()

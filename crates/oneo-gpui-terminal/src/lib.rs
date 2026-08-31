@@ -215,7 +215,12 @@ mod tests {
             cursor_style: TerminalCursorStyle::Block,
             font_family: "monospace".into(),
             font_size: 14.0,
-            labels: TerminalLabels::default(),
+            labels: TerminalLabels {
+                accessibility_label: "test terminal".into(),
+                could_not_start: "test startup failure".into(),
+                starting: "test starting".into(),
+                process_exited: "test process exit".into(),
+            },
         };
         let working_directory = std::fs::canonicalize("/tmp").unwrap();
         let expected = working_directory.to_string_lossy().into_owned();

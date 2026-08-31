@@ -36,7 +36,14 @@ impl Settings {
                         }
                         cx.emit(SettingsEvent::ArchiveRestored);
                     }
-                    Err(error) => this.archive_action_error = Some(error),
+                    Err(error) => {
+                        eprintln!("{error}");
+                        this.archive_action_error = Some(
+                            this.preferences
+                                .language
+                                .text("settings.archive.restore_error"),
+                        );
+                    }
                 }
                 cx.notify();
             });
@@ -53,11 +60,8 @@ impl Settings {
                 theme.muted_foreground,
             );
         }
-        if let Some(error) = &self.archive_load_error {
-            return archive_message(
-                format!("{}：{error}", language.text("settings.archive.load_error")),
-                theme.danger,
-            );
+        if self.archive_load_error.is_some() {
+            return archive_message(language.text("settings.archive.load_error"), theme.danger);
         }
         if self.archived_notes.is_empty() {
             return archive_message(
@@ -75,26 +79,23 @@ impl Settings {
             .items_stretch();
         for (index, note) in self.archived_notes.iter().cloned().enumerate() {
             if index > 0 {
-                list = list.child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border));
+                list = list.child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border));
             }
             list = list.child(self.render_archive_row(note, cx));
         }
         list.when_some(self.archive_action_error.as_ref(), |list, error| {
             list.child(
                 div()
-                    .mx(px(20.0))
-                    .mb(px(13.0))
-                    .rounded(px(8.0))
+                    .mx(ui_rem(20.0))
+                    .mb(ui_rem(13.0))
+                    .rounded(ui_rem(8.0))
                     .border_1()
                     .border_color(theme.danger)
-                    .px(px(12.0))
-                    .py(px(9.0))
+                    .px(ui_rem(12.0))
+                    .py(ui_rem(9.0))
                     .text_sm()
                     .text_color(theme.danger)
-                    .child(format!(
-                        "{}：{error}",
-                        language.text("settings.archive.restore_error")
-                    )),
+                    .child(error.clone()),
             )
         })
     }
@@ -123,12 +124,12 @@ impl Settings {
             .w_full()
             .self_stretch()
             .min_w_0()
-            .min_h(px(68.0))
-            .px(px(20.0))
-            .py(px(13.0))
+            .min_h(ui_rem(68.0))
+            .px(ui_rem(20.0))
+            .py(ui_rem(13.0))
             .flex()
             .items_center()
-            .gap(px(24.0))
+            .gap(ui_rem(24.0))
             .child(
                 div()
                     .min_w_0()
@@ -138,7 +139,7 @@ impl Settings {
                             .min_w_0()
                             .flex()
                             .items_center()
-                            .gap(px(8.0))
+                            .gap(ui_rem(8.0))
                             .child(archive_note_icon(&note, &theme))
                             .child(
                                 div()
@@ -151,7 +152,7 @@ impl Settings {
                     )
                     .child(
                         div()
-                            .mt(px(4.0))
+                            .mt(ui_rem(4.0))
                             .truncate()
                             .text_xs()
                             .text_color(theme.muted_foreground)
@@ -167,9 +168,9 @@ fn archive_note_icon(note: &ArchivedNote, theme: &Theme) -> AnyElement {
         let fallback = note.icon.clone();
         let muted_foreground = theme.muted_foreground;
         return document_icon_image(image)
-            .size(px(16.0))
+            .size(ui_rem(16.0))
             .flex_none()
-            .rounded(px(3.0))
+            .rounded(ui_rem(3.0))
             .object_fit(ObjectFit::Cover)
             .with_fallback(move || {
                 fallback
@@ -187,13 +188,13 @@ fn archive_note_icon(note: &ArchivedNote, theme: &Theme) -> AnyElement {
 
 fn emoji_icon(value: String) -> AnyElement {
     div()
-        .size(px(16.0))
+        .size(ui_rem(16.0))
         .flex_none()
         .flex()
         .items_center()
         .justify_center()
-        .text_size(px(13.0))
-        .line_height(px(16.0))
+        .text_size(ui_rem(13.0))
+        .line_height(ui_rem(16.0))
         .child(value)
         .into_any_element()
 }
@@ -203,9 +204,9 @@ fn archive_message(message: impl Into<gpui::SharedString>, color: gpui::Hsla) ->
         .w_full()
         .self_stretch()
         .min_w_0()
-        .min_h(px(68.0))
-        .px(px(20.0))
-        .py(px(13.0))
+        .min_h(ui_rem(68.0))
+        .px(ui_rem(20.0))
+        .py(ui_rem(13.0))
         .flex()
         .items_center()
         .text_sm()

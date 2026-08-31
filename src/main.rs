@@ -151,8 +151,9 @@ fn window_titlebar_is_reachable(
 pub(crate) fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: bool) {
     set_app_shell_menus(
         cx,
-        AppShellMenus::new("Locus")
-            .labels(AppShellMenuLabels {
+        AppShellMenus::new(
+            "Locus",
+            AppShellMenuLabels {
                 about: language.text("menu.application.about").into(),
                 close_window: language.text("menu.window.close").into(),
                 developer: language.text("menu.developer.title").into(),
@@ -166,12 +167,13 @@ pub(crate) fn set_app_menus(cx: &mut App, language: Language, can_reload_current
                 toggle_full_screen: language.text("menu.view.enter_full_screen").into(),
                 view: language.text("menu.view.title").into(),
                 window: language.text("menu.window.title").into(),
-            })
-            .view_items_before_panels([MenuItem::action(
-                language.text("menu.view.reload_current_note"),
-                ReloadCurrentNote,
-            )
-            .disabled(!can_reload_current_note)]),
+            },
+        )
+        .view_items_before_panels([MenuItem::action(
+            language.text("menu.view.reload_current_note"),
+            ReloadCurrentNote,
+        )
+        .disabled(!can_reload_current_note)]),
     );
 }
 

@@ -21,7 +21,8 @@ pub use self::parser::{
 use self::selection::{LinkHandler, SelectableText};
 pub use self::selection::{MarkdownSelection, SelectableCodeStyle, selectable_code_text};
 use gpui_component::{
-    Icon, IconName, Theme,
+    Icon, IconName, Sizable as _, Theme,
+    button::{Button, ButtonVariants as _},
     text::{TextView, TextViewStyle},
 };
 
@@ -51,16 +52,6 @@ pub struct MarkdownLabels {
     pub expand_code: SharedString,
 }
 
-impl Default for MarkdownLabels {
-    fn default() -> Self {
-        Self {
-            copy_code: "Copy code".into(),
-            collapse_code: "Collapse code".into(),
-            expand_code: "Expand code".into(),
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct MarkdownDocument {
     source: Arc<str>,
@@ -85,6 +76,15 @@ impl MarkdownDocument {
 
     pub fn is_empty(&self) -> bool {
         self.blocks.is_empty()
+    }
+
+    pub fn synchronize_interaction_state(
+        &self,
+        selection: &MarkdownSelection,
+        code_blocks: &MarkdownCodeBlocks,
+    ) {
+        selection.set_document(self.selection_text.clone());
+        code_blocks.set_document(self.source.clone());
     }
 }
 
@@ -112,16 +112,26 @@ pub struct MarkdownTypography<'a> {
     pub code_text_size: f32,
 }
 
+pub struct MarkdownPresentation<'a> {
+    pub theme: Theme,
+    pub typography: MarkdownTypography<'a>,
+    pub labels: MarkdownLabels,
+}
+
 impl<'a> Markdown<'a> {
     pub fn new(
         document: &'a MarkdownDocument,
         base_directory: &'a Path,
-        theme: Theme,
-        typography: MarkdownTypography<'a>,
+        presentation: MarkdownPresentation<'a>,
         selection: MarkdownSelection,
         focus: FocusHandle,
         notify_entity: gpui::EntityId,
     ) -> Self {
+        let MarkdownPresentation {
+            theme,
+            typography,
+            labels,
+        } = presentation;
         Self {
             document,
             base_directory,
@@ -130,7 +140,7 @@ impl<'a> Markdown<'a> {
             text_size: typography.text_size,
             code_font_family: typography.code_font_family,
             code_text_size: typography.code_text_size,
-            labels: MarkdownLabels::default(),
+            labels,
             extensions: None,
             selection,
             code_blocks: MarkdownCodeBlocks::default(),
@@ -138,11 +148,6 @@ impl<'a> Markdown<'a> {
             notify_entity,
             link_handler: None,
         }
-    }
-
-    pub fn with_labels(mut self, labels: MarkdownLabels) -> Self {
-        self.labels = labels;
-        self
     }
 
     pub fn with_extensions(mut self, extensions: &'a dyn MarkdownExtensions) -> Self {
@@ -164,9 +169,6 @@ impl<'a> Markdown<'a> {
     }
 
     pub fn render(self) -> AnyElement {
-        self.selection
-            .set_document(self.document.selection_text.clone());
-        self.code_blocks.set_document(self.document.source.clone());
         let mut context = RenderContext {
             base_directory: self.base_directory,
             theme: self.theme,
@@ -827,8 +829,7 @@ impl RenderContext<'_> {
         let body_height = if language.is_some() { 168.0 } else { 200.0 };
         let maximum_content_height = body_height - 16.0;
         let copy_label = self.labels.copy_code.clone();
-        let click_code = code.to_owned();
-        let keyboard_code = click_code.clone();
+        let copied_code = code.to_owned();
         let code_source = text_view_code_source(language.as_deref(), code);
         let highlighted_code = TextView::markdown(
             SharedString::from(format!("markdown-code-text-view-{code_id}")),
@@ -860,39 +861,13 @@ impl RenderContext<'_> {
             selection_range.clone(),
             Vec::new(),
         );
-        let copy_button = div()
-            .id(SharedString::from(format!("copy-code-{code_id}")))
-            .role(Role::Button)
-            .aria_label(copy_label)
-            .tab_index(0)
-            .tab_stop(true)
-            .size(px(24.0))
-            .flex_none()
-            .rounded(px(5.0))
-            .flex()
-            .items_center()
-            .justify_center()
-            .cursor_default()
-            .focus_visible(|style| style.border_1().border_color(self.theme.ring))
-            .hover(|style| style.bg(self.theme.accent))
-            .active(|style| style.bg(self.theme.accent))
-            .child(
-                Icon::new(IconName::Copy)
-                    .size(px(13.0))
-                    .text_color(self.theme.muted_foreground),
-            )
-            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        let copy_button = Button::new(SharedString::from(format!("copy-code-{code_id}")))
+            .ghost()
+            .xsmall()
+            .icon(IconName::Copy)
+            .accessibility_label(copy_label)
             .on_click(move |_, _, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(click_code.clone()));
-                cx.stop_propagation();
-            })
-            .on_key_down(move |event: &KeyDownEvent, _, cx| {
-                if !event.keystroke.modifiers.modified()
-                    && matches!(event.keystroke.key.as_str(), "enter" | "space")
-                {
-                    cx.write_to_clipboard(ClipboardItem::new_string(keyboard_code.clone()));
-                    cx.stop_propagation();
-                }
+                cx.write_to_clipboard(ClipboardItem::new_string(copied_code.clone()));
             });
 
         let measured_code_blocks = self.code_blocks.clone();
