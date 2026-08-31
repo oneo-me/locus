@@ -8,9 +8,9 @@ use std::sync::Arc;
 
 use gpui::{
     AnyElement, ClipboardItem, FocusHandle, FontStyle, FontWeight, KeyDownEvent, MouseButton,
-    ObjectFit, Role, SharedString, StrikethroughStyle, StyledImage, StyledText, TextRun,
-    Transformation, UnderlineStyle, div, font, img, linear_color_stop, linear_gradient, prelude::*,
-    px, radians, relative,
+    ObjectFit, Role, SharedString, StrikethroughStyle, StyleRefinement, StyledImage, StyledText,
+    TextRun, Transformation, UnderlineStyle, div, font, img, linear_color_stop, linear_gradient,
+    prelude::*, px, radians, relative,
 };
 
 pub use self::code_blocks::MarkdownCodeBlocks;
@@ -20,7 +20,10 @@ pub use self::parser::{
 };
 use self::selection::{LinkHandler, SelectableText};
 pub use self::selection::{MarkdownSelection, SelectableCodeStyle, selectable_code_text};
-use gpui_component::{Icon, IconName, Theme};
+use gpui_component::{
+    Icon, IconName, Theme,
+    text::{TextView, TextViewStyle},
+};
 
 pub trait MarkdownExtensions {
     fn render_code_block(
@@ -826,14 +829,32 @@ impl RenderContext<'_> {
         let copy_label = self.labels.copy_code.clone();
         let click_code = code.to_owned();
         let keyboard_code = click_code.clone();
+        let code_source = text_view_code_source(language.as_deref(), code);
+        let highlighted_code = TextView::markdown(
+            SharedString::from(format!("markdown-code-text-view-{code_id}")),
+            code_source,
+        )
+        .style(
+            TextViewStyle::default().code_block(
+                StyleRefinement::default()
+                    .p_0()
+                    .bg(self.theme.transparent)
+                    .font_family(self.code_font_family)
+                    .text_size(px(self.code_text_size))
+                    .line_height(px((self.code_text_size * 1.5).round()))
+                    .whitespace_normal(),
+            ),
+        )
+        .w_full()
+        .min_w_0();
         let mut code_font = font(self.code_font_family);
         code_font.weight = FontWeight::NORMAL;
-        let code_element = self.selectable_text(
+        let selection_overlay = self.selectable_text(
             SharedString::from(code.to_owned()),
             vec![TextRun {
                 len: code.len(),
                 font: code_font,
-                color: self.theme.muted_foreground,
+                color: self.theme.transparent,
                 ..Default::default()
             }],
             selection_range.clone(),
@@ -896,7 +917,26 @@ impl RenderContext<'_> {
                     cx.notify(notify_entity);
                 }
             })
-            .child(code_element);
+            .child(
+                div()
+                    .relative()
+                    .w_full()
+                    .min_w_0()
+                    .child(highlighted_code)
+                    .child(
+                        div()
+                            .absolute()
+                            .top_0()
+                            .right_0()
+                            .bottom_0()
+                            .left_0()
+                            .font_family(self.code_font_family)
+                            .text_size(px(self.code_text_size))
+                            .line_height(px((self.code_text_size * 1.5).round()))
+                            .whitespace_normal()
+                            .child(selection_overlay),
+                    ),
+            );
         if !expanded {
             code_body = code_body.max_h(px(body_height));
         }
@@ -1106,6 +1146,26 @@ impl RenderContext<'_> {
     }
 }
 
+fn text_view_code_source(language: Option<&str>, code: &str) -> SharedString {
+    let language = language
+        .and_then(|language| language.split_whitespace().next())
+        .unwrap_or_default();
+    let longest_tilde_run = code
+        .bytes()
+        .fold((0usize, 0usize), |(longest, current), byte| {
+            if byte == b'~' {
+                let current = current + 1;
+                (longest.max(current), current)
+            } else {
+                (longest, 0)
+            }
+        })
+        .0;
+    let fence = "~".repeat((longest_tilde_run + 1).max(3));
+    let trailing_newline = if code.ends_with('\n') { "" } else { "\n" };
+    format!("{fence}{language}\n{code}{trailing_newline}{fence}").into()
+}
+
 fn image_path(base_directory: &Path, url: &str) -> PathBuf {
     if let Some(path) = url.strip_prefix("file://") {
         return PathBuf::from(path);
@@ -1209,6 +1269,22 @@ mod tests {
         assert_eq!(
             image_path(Path::new("/notes/article"), "diagram.png"),
             PathBuf::from("/notes/article/diagram.png")
+        );
+    }
+
+    #[test]
+    fn text_view_code_source_preserves_code_and_language() {
+        assert_eq!(
+            text_view_code_source(Some("rust"), "fn main() {}\n").as_ref(),
+            "~~~rust\nfn main() {}\n~~~"
+        );
+    }
+
+    #[test]
+    fn text_view_code_source_uses_a_fence_longer_than_the_code() {
+        assert_eq!(
+            text_view_code_source(Some("rust extra"), "let marker = \"~~~~\";").as_ref(),
+            "~~~~~rust\nlet marker = \"~~~~\";\n~~~~~"
         );
     }
 
