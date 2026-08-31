@@ -6,7 +6,7 @@ use std::{
 use gpui::{
     AnyElement, App, AvailableSpace, Bounds, Element, ElementId, GlobalElementId,
     InspectorElementId, IntoElement, LayoutId, LineFragment, Pixels, SharedString, Size,
-    StyledText, TextRun, TextStyle, WhiteSpace, Window, point, size,
+    StyledText, TextRun, TextStyle, WhiteSpace, Window, point, px, size,
 };
 
 use crate::selection::{SelectableText, TextInteraction};
@@ -408,9 +408,6 @@ fn line_ranges(
         return hard_lines;
     };
     let font_size = text_style.font_size.to_pixels(window.rem_size());
-    let mut wrapper = window
-        .text_system()
-        .line_wrapper(text_style.font(), font_size);
     let mut ranges = Vec::new();
 
     for hard_line in hard_lines {
@@ -444,23 +441,107 @@ fn line_ranges(
                 fragment
             })
             .collect::<Vec<_>>();
-        let boundaries = wrapper
-            .wrap_line(&fragments, wrap_width)
-            .map(|boundary| hard_line.start + boundary.ix.min(hard_line.len()))
-            .collect::<Vec<_>>();
-        let mut start = hard_line.start;
-        for end in boundaries {
-            if start < end {
-                ranges.push(start..end);
+        let mut candidate_width = wrap_width;
+        loop {
+            let mut wrapper = window
+                .text_system()
+                .line_wrapper(text_style.font(), font_size);
+            let boundaries = wrapper
+                .wrap_line(&fragments, candidate_width)
+                .map(|boundary| hard_line.start + boundary.ix.min(hard_line.len()))
+                .collect::<Vec<_>>();
+            let candidate_ranges = ranges_from_boundaries(hard_line.clone(), boundaries);
+            // LineWrapper estimates every text fragment with the inherited font, while the
+            // painted fragments use their own TextRuns. Accept only ranges that fit after shaping.
+            let widest_line = candidate_ranges
+                .iter()
+                .map(|range| {
+                    measured_range_width(
+                        items,
+                        element_sizes,
+                        range.clone(),
+                        font_size,
+                        wrap_width,
+                        window,
+                    )
+                })
+                .fold(Pixels::ZERO, Pixels::max);
+
+            if widest_line <= wrap_width || candidate_width <= px(1.0) {
+                ranges.extend(candidate_ranges);
+                break;
             }
-            start = end;
-        }
-        if start < hard_line.end || hard_line.is_empty() {
-            ranges.push(start..hard_line.end);
+
+            let next_width = candidate_width * (wrap_width / widest_line) - px(0.5);
+            candidate_width = next_width.min(candidate_width - px(1.0)).max(px(1.0));
         }
     }
 
     ranges
+}
+
+fn ranges_from_boundaries(hard_line: Range<usize>, boundaries: Vec<usize>) -> Vec<Range<usize>> {
+    let mut ranges = Vec::new();
+    let mut start = hard_line.start;
+    for end in boundaries {
+        if start < end {
+            ranges.push(start..end);
+        }
+        start = end;
+    }
+    if start < hard_line.end || hard_line.is_empty() {
+        ranges.push(start..hard_line.end);
+    }
+    ranges
+}
+
+fn measured_range_width(
+    items: &[MeasureItem],
+    element_sizes: &[Option<Size<Pixels>>],
+    range: Range<usize>,
+    font_size: Pixels,
+    wrap_width: Pixels,
+    window: &mut Window,
+) -> Pixels {
+    let mut width = Pixels::ZERO;
+    let mut item_start = 0;
+    for (item_index, item) in items.iter().enumerate() {
+        let item_end = item_start + item.len();
+        if item_end <= range.start {
+            item_start = item_end;
+            continue;
+        }
+        if item_start >= range.end {
+            break;
+        }
+        match item {
+            MeasureItem::Text { text, runs } => {
+                let start = range.start.max(item_start) - item_start;
+                let end = range.end.min(item_end) - item_start;
+                if start < end {
+                    width += window
+                        .text_system()
+                        .shape_line(
+                            SharedString::from(text[start..end].to_owned()),
+                            font_size,
+                            &slice_runs(runs, start..end),
+                            None,
+                        )
+                        .width();
+                }
+            }
+            MeasureItem::Element => {
+                if range.start <= item_start && item_end <= range.end {
+                    width += element_sizes[item_index]
+                        .unwrap_or_default()
+                        .width
+                        .min(wrap_width);
+                }
+            }
+        }
+        item_start = item_end;
+    }
+    width
 }
 
 fn slice_runs(runs: &[TextRun], range: Range<usize>) -> Vec<TextRun> {
@@ -497,6 +578,50 @@ fn slice_ranges(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gpui::{FontWeight, Render, TestAppContext, div, font, px};
+
+    struct TestView;
+
+    impl Render for TestView {
+        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+            div()
+        }
+    }
+
+    #[gpui::test]
+    fn wrapped_lines_fit_their_actual_text_runs(cx: &mut TestAppContext) {
+        let window = cx.open_window(size(px(100.0), px(100.0)), |_, _| TestView);
+        window
+            .update(cx, |_, window, _| {
+                window.set_rem_size(px(16.0));
+                let text = SharedString::from("WWWWWWWWWWWWWWWW");
+                let mut actual_font = font(".SystemUIFont");
+                actual_font.weight = FontWeight::BOLD;
+                let items = vec![MeasureItem::Text {
+                    text: text.clone(),
+                    runs: vec![TextRun {
+                        len: text.len(),
+                        font: actual_font,
+                        ..Default::default()
+                    }],
+                }];
+                let mut text_style = TextStyle::default();
+                text_style.font_family = "Menlo".into();
+                text_style.font_size = px(16.0).into();
+                let wrap_width = px(80.0);
+
+                let layout = layout_flow(&items, &[None], &text_style, Some(wrap_width), window);
+
+                assert!(layout.fragments.len() > 1);
+                for fragment in layout.fragments {
+                    let PositionedFragment::Text { origin, size, .. } = fragment else {
+                        continue;
+                    };
+                    assert!(origin.x + size.width <= wrap_width);
+                }
+            })
+            .unwrap();
+    }
 
     #[test]
     fn slices_text_runs_at_fragment_boundaries() {
