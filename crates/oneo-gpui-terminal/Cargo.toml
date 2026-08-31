@@ -6,5 +6,5 @@ edition = "2024"
 [dependencies]
 alacritty_terminal = { version = "0.26", default-features = false }
 gpui.workspace = true
-oneo-gpui-ui = { path = "../oneo-gpui-ui" }
+gpui-component.workspace = true
 serde = { version = "1", features = ["derive"] }

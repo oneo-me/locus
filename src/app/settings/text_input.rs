@@ -537,7 +537,10 @@ impl Element for TextElement {
         let input = self.input.read(cx);
         let style = window.text_style();
         let (text, color) = if input.content.is_empty() {
-            (input.placeholder.clone(), Theme::current(cx).text_tertiary)
+            (
+                input.placeholder.clone(),
+                Theme::global(cx).muted_foreground,
+            )
         } else {
             (input.content.clone(), style.color)
         };
@@ -582,7 +585,7 @@ impl Element for TextElement {
             None,
         );
         let cursor_x = line.x_for_index(input.cursor_offset());
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let (selection, cursor) = if input.selected_range.is_empty() {
             (
                 None,
@@ -591,7 +594,7 @@ impl Element for TextElement {
                         point(bounds.left() + cursor_x, bounds.top() + px(6.0)),
                         size(px(1.0), bounds.size.height - px(12.0)),
                     ),
-                    theme.text,
+                    theme.caret,
                 )),
             )
         } else {
@@ -607,7 +610,7 @@ impl Element for TextElement {
                             bounds.bottom(),
                         ),
                     ),
-                    theme.control_selected,
+                    theme.selection,
                 )),
                 None,
             )
@@ -662,7 +665,7 @@ impl Element for TextElement {
 
 impl Render for TextInput {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         div()
             .id(self.id.clone())
             .key_context("SettingsTextInput")
@@ -692,12 +695,12 @@ impl Render for TextInput {
             .overflow_hidden()
             .rounded(px(7.0))
             .border_1()
-            .border_color(theme.border_strong)
-            .bg(theme.surface)
+            .border_color(theme.input)
+            .bg(theme.background)
             .px(px(10.0))
             .text_sm()
             .line_height(px(30.0))
-            .focus_visible(|style| style.border_color(theme.focus))
+            .focus_visible(|style| style.border_color(theme.ring))
             .child(TextElement { input: cx.entity() })
     }
 }

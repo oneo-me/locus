@@ -50,7 +50,7 @@ impl Locus {
         side: PanelSide,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.language(cx);
         let (focus, id, label) = match side {
             PanelSide::Left => (
@@ -73,7 +73,7 @@ impl Locus {
             ),
         };
 
-        panel_toggle_button(id, label, focus, side, theme)
+        panel_toggle_button(id, label, focus, side, &theme)
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_activation(cx, move |this, window, cx| {
                 this.toggle_panel(side, window, cx)
@@ -85,7 +85,7 @@ impl Locus {
         direction: NavigationDirection,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.language(cx);
         let (id, label, focus, icon_kind, enabled) = match direction {
             NavigationDirection::Back => (
@@ -121,16 +121,16 @@ impl Locus {
                     .track_focus(focus)
                     .tab_index(0)
                     .tab_stop(true)
-                    .focus_visible(|style| style.border_1().border_color(theme.focus))
-                    .hover(|style| style.bg(theme.control_hover))
-                    .active(|style| style.bg(theme.control_active))
+                    .focus_visible(|style| style.border_1().border_color(theme.ring))
+                    .hover(|style| style.bg(theme.accent))
+                    .active(|style| style.bg(theme.accent))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                     .on_activation(cx, move |this, _, cx| match direction {
                         NavigationDirection::Back => this.navigate_back(cx),
                         NavigationDirection::Forward => this.navigate_forward(cx),
                     })
             })
-            .child(icon(icon_kind, 14.0, theme.text_secondary))
+            .child(icon(icon_kind, 14.0, theme.muted_foreground))
     }
 
     pub(super) fn render_left_titlebar(
@@ -203,11 +203,11 @@ impl Locus {
     }
 
     pub(super) fn render_fps_counter(&self, cx: &mut Context<Self>) -> Div {
-        oneo_gpui_app_shell::fps_counter(self.app_shell.fps_counter(), Theme::current(cx))
+        oneo_gpui_app_shell::fps_counter(self.app_shell.fps_counter(), Theme::global(cx))
     }
 
     pub(super) fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let label = self.language(cx).text("终端", "Terminal");
         div()
             .h(px(TITLEBAR_HEIGHT))
@@ -235,11 +235,11 @@ impl Locus {
                             .max_w(px(176.0))
                             .px(px(8.0))
                             .rounded(px(6.0))
-                            .bg(theme.control_selected)
+                            .bg(theme.accent)
                             .flex()
                             .items_center()
                             .gap(px(6.0))
-                            .child(icon(Icon::Terminal, 13.0, theme.text_secondary))
+                            .child(icon(Icon::SquareTerminal, 13.0, theme.muted_foreground))
                             .text_size(px(12.5))
                             .font_weight(FontWeight::MEDIUM)
                             .child(
@@ -247,7 +247,7 @@ impl Locus {
                                     .min_w_0()
                                     .flex_1()
                                     .truncate()
-                                    .text_color(theme.text)
+                                    .text_color(theme.foreground)
                                     .child(label),
                             ),
                     ),
@@ -255,14 +255,14 @@ impl Locus {
     }
 
     pub(super) fn render_settings_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let label = self.language(cx).text("设置", "Settings");
         toolbar_icon_button(
             "open-settings",
             label,
             &self.settings_focus,
             Icon::Settings,
-            theme,
+            &theme,
         )
         .size(px(28.0))
         .aria_keyshortcuts("Meta+,")
@@ -270,16 +270,16 @@ impl Locus {
     }
 
     pub(super) fn render_mcp_status(&self, cx: &mut Context<Self>) -> Stateful<Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.language(cx);
         let state = self.mcp_server.state();
         let (status, color) = match &state {
             McpServerState::Stopped { .. } => {
-                (language.text("已停止", "Stopped"), theme.text_tertiary)
+                (language.text("已停止", "Stopped"), theme.muted_foreground)
             }
             McpServerState::Running { .. } => (language.text("运行中", "Running"), theme.success),
             McpServerState::Failed { .. } => {
-                (language.text("启动失败", "Failed to start"), theme.error)
+                (language.text("启动失败", "Failed to start"), theme.danger)
             }
         };
         let endpoint = state.endpoint().to_owned();
@@ -294,7 +294,7 @@ impl Locus {
         let (icon_kind, icon_color) = if self.mcp_status_copied {
             (Icon::Check, theme.success)
         } else {
-            (Icon::Plug, color)
+            (Icon::Network, color)
         };
 
         div()
@@ -311,9 +311,9 @@ impl Locus {
             .items_center()
             .justify_center()
             .cursor_default()
-            .focus_visible(|style| style.border_1().border_color(theme.focus))
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
+            .focus_visible(|style| style.border_1().border_color(theme.ring))
+            .hover(|style| style.bg(theme.accent))
+            .active(|style| style.bg(theme.accent))
             .child(icon(icon_kind, 14.0, icon_color))
             .on_activation(cx, move |this, _, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string(endpoint.clone()));

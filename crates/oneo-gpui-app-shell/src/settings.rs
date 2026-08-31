@@ -3,7 +3,7 @@ use gpui::{
     AnyElement, Div, FocusHandle, FontWeight, Role, SharedString, Stateful, div, prelude::*, px,
     rems,
 };
-use oneo_gpui_ui::{Icon, Theme, icon};
+use gpui_component::{Icon, IconName, Sizable as _, Theme};
 
 pub fn settings_sidebar_header(
     left_control_clearance: f32,
@@ -34,7 +34,7 @@ pub fn settings_sidebar_header(
 pub fn settings_navigation_group<E>(
     label: impl Into<SharedString>,
     rows: impl IntoIterator<Item = E>,
-    theme: Theme,
+    theme: &Theme,
 ) -> Div
 where
     E: IntoElement,
@@ -48,7 +48,7 @@ where
                 .items_center()
                 .text_size(rems(11.0 / 16.0))
                 .font_weight(FontWeight::MEDIUM)
-                .text_color(theme.text_tertiary)
+                .text_color(theme.muted_foreground)
                 .child(label.into()),
         ),
         |group, row| group.child(row),
@@ -58,10 +58,10 @@ where
 pub fn settings_navigation_row(
     id: &'static str,
     label: &'static str,
-    icon_kind: Icon,
+    icon_kind: IconName,
     focus: &FocusHandle,
     selected: bool,
-    theme: Theme,
+    theme: &Theme,
 ) -> Stateful<Div> {
     div()
         .id(id)
@@ -79,23 +79,19 @@ pub fn settings_navigation_row(
         .cursor_default()
         .text_size(rems(13.0 / 16.0))
         .text_color(if selected {
-            theme.text
+            theme.foreground
         } else {
-            theme.text_secondary
+            theme.muted_foreground
         })
-        .when(selected, |row| row.bg(theme.control_selected))
-        .hover(|style| style.bg(theme.control_selected))
-        .active(|style| style.bg(theme.control_selected))
-        .focus_visible(|style| style.border_1().border_color(theme.focus))
-        .child(icon(
-            icon_kind,
-            15.0,
-            if selected {
-                theme.text_secondary
-            } else {
-                theme.text_tertiary
-            },
-        ))
+        .when(selected, |row| row.bg(theme.accent))
+        .hover(|style| style.bg(theme.accent))
+        .active(|style| style.bg(theme.accent))
+        .focus_visible(|style| style.border_1().border_color(theme.ring))
+        .child(
+            Icon::new(icon_kind)
+                .small()
+                .text_color(theme.muted_foreground),
+        )
         .child(label)
 }
 
@@ -103,7 +99,7 @@ pub fn settings_back_button(
     id: &'static str,
     label: &'static str,
     focus: &FocusHandle,
-    theme: Theme,
+    theme: &Theme,
 ) -> Stateful<Div> {
     div()
         .id(id)
@@ -119,12 +115,16 @@ pub fn settings_back_button(
         .items_center()
         .cursor_default()
         .text_size(rems(13.0 / 16.0))
-        .text_color(theme.text_secondary)
-        .hover(|style| style.bg(theme.control_hover))
-        .active(|style| style.bg(theme.control_active))
-        .focus_visible(|style| style.border_1().border_color(theme.focus))
+        .text_color(theme.muted_foreground)
+        .hover(|style| style.bg(theme.accent))
+        .active(|style| style.bg(theme.accent))
+        .focus_visible(|style| style.border_1().border_color(theme.ring))
         .gap(px(9.0))
-        .child(icon(Icon::ArrowLeft, 15.0, theme.text_tertiary))
+        .child(
+            Icon::new(IconName::ArrowLeft)
+                .small()
+                .text_color(theme.muted_foreground),
+        )
         .child(label)
 }
 
@@ -171,8 +171,8 @@ impl SettingsShell {
         div()
             .size_full()
             .flex()
-            .bg(self.theme.surface)
-            .text_color(self.theme.text)
+            .bg(self.theme.background)
+            .text_color(self.theme.foreground)
             .child(
                 div()
                     .w(px(self.sidebar_width))
@@ -197,7 +197,7 @@ impl SettingsShell {
                     .flex_1()
                     .flex()
                     .flex_col()
-                    .bg(self.theme.surface)
+                    .bg(self.theme.background)
                     .child(
                         div()
                             .h(px(self.titlebar_height))

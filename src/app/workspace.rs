@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::time::Duration;
 
 mod navigation;
@@ -33,8 +32,8 @@ use crate::state::{
 };
 use crate::theme::Theme;
 use crate::ui::{
-    ActivationExt, Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection, ScrollbarState,
-    icon, toolbar_icon_button,
+    ActivationExt, Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection, icon,
+    toolbar_icon_button,
 };
 use crate::{
     CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleFullScreen,
@@ -131,7 +130,6 @@ pub struct Locus {
     note_load_generation: u64,
     note_load_task: Option<Task<()>>,
     library_scroll_handle: ScrollHandle,
-    library_scrollbar_state: Rc<ScrollbarState>,
     selected_library_scroll_anchor: ScrollAnchor,
     scroll_to_selected_library_node: bool,
     note_copy_focus: FocusHandle,
@@ -150,7 +148,6 @@ pub struct Locus {
     mcp_status_copied: bool,
     mcp_status_copy_generation: u64,
     note_scroll_handle: ScrollHandle,
-    note_scrollbar_state: Rc<ScrollbarState>,
     window_bounds: Option<Bounds<Pixels>>,
     window_bounds_save_task: Option<Task<()>>,
 }
@@ -198,7 +195,6 @@ impl Locus {
             })
             .unwrap_or_default();
         let library_scroll_handle = ScrollHandle::new();
-        let library_scrollbar_state = ScrollbarState::new();
         let selected_library_scroll_anchor =
             ScrollAnchor::for_handle(library_scroll_handle.clone());
         let scroll_to_selected_library_node = selected_library_node.is_some();
@@ -259,6 +255,7 @@ impl Locus {
                     this.reload_library_projection(cx);
                 }
                 SettingsEvent::LanguageChanged(language) => {
+                    gpui_component::set_locale(language.locale());
                     crate::set_app_menus(cx, *language, this.can_reload_current_note());
                     if let Some(terminal) = &this.terminal {
                         terminal.update(cx, |terminal, cx| {
@@ -374,7 +371,6 @@ impl Locus {
             note_load_generation,
             note_load_task,
             library_scroll_handle,
-            library_scrollbar_state,
             selected_library_scroll_anchor,
             scroll_to_selected_library_node,
             note_copy_focus: cx.focus_handle(),
@@ -394,7 +390,6 @@ impl Locus {
             mcp_status_copied: false,
             mcp_status_copy_generation: 0,
             note_scroll_handle: ScrollHandle::new(),
-            note_scrollbar_state: ScrollbarState::new(),
             window_bounds: interface_state.window_bounds,
             window_bounds_save_task: None,
         }
@@ -547,7 +542,6 @@ impl Locus {
         self.clear_library_selection();
         self.expanded_library_nodes.clear();
         self.scroll_to_selected_library_node = false;
-        self.library_scrollbar_state.reset_visibility();
         self.save_interface_state();
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
@@ -651,7 +645,6 @@ impl Locus {
         self.note_code_blocks.reset();
         self.note_scroll_handle
             .set_offset(gpui::point(px(0.0), px(0.0)));
-        self.note_scrollbar_state.reset_visibility();
     }
 
     fn begin_selected_note_load(&mut self, cx: &mut Context<Self>) {
@@ -804,7 +797,7 @@ impl Locus {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        oneo_gpui_ui::close_main_window(window, cx);
+        oneo_gpui_app_shell::close_main_window(window, cx);
     }
 
     fn reload_current_note_action(
@@ -837,7 +830,7 @@ impl Locus {
     }
 
     fn render_panel_resize_handle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let active = self.app_shell.workspace().resize_active(side);
 
         panel_resize_handle(
@@ -847,7 +840,7 @@ impl Locus {
             },
             side,
             active,
-            theme,
+            &theme,
         )
         .on_mouse_down(
             MouseButton::Left,
@@ -954,7 +947,7 @@ impl Locus {
         content_width: f32,
         cx: &mut Context<Self>,
     ) -> Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let selected_note = self
             .selected_library_node
             .as_deref()
@@ -967,7 +960,7 @@ impl Locus {
             .size_full()
             .flex()
             .flex_col()
-            .bg(theme.surface)
+            .bg(theme.background)
             .when_some(selected_note, |content, node| {
                 content.child(self.render_note(
                     node,
@@ -985,7 +978,7 @@ impl Locus {
     }
 
     fn render_right_sidebar(&self, width: f32, show_resize: bool, cx: &mut Context<Self>) -> Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.language(cx);
 
         div()
@@ -996,7 +989,7 @@ impl Locus {
             .flex()
             .flex_col()
             .min_w_0()
-            .bg(theme.surface)
+            .bg(theme.background)
             .child(self.render_right_titlebar(cx))
             .child(
                 div()
@@ -1009,7 +1002,7 @@ impl Locus {
                             .justify_center()
                             .px(px(24.0))
                             .text_sm()
-                            .text_color(theme.text_secondary)
+                            .text_color(theme.muted_foreground)
                             .child(language.text(
                                 "请先在设置中选择文档库",
                                 "Choose a library in Settings first",
@@ -1059,7 +1052,7 @@ impl Locus {
 
 impl Render for Locus {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let ui_font_family = self
             .settings
             .read(cx)
@@ -1093,7 +1086,6 @@ impl Render for Locus {
         }
         if panels.left > 0.0 && self.scroll_to_selected_library_node {
             self.selected_library_scroll_anchor.scroll_to(window, cx);
-            self.library_scrollbar_state.reset_visibility();
             self.scroll_to_selected_library_node = false;
         }
 
@@ -1148,9 +1140,9 @@ impl Render for Locus {
             .size_full()
             .relative()
             .flex()
-            .bg(theme.window_background)
+            .bg(crate::theme::workspace_background(&theme))
             .font_family(ui_font_family)
-            .text_color(theme.text)
+            .text_color(theme.foreground)
             .when(self.app_shell.is_settings_open(), |root| {
                 root.child(
                     self.settings

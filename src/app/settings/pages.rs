@@ -8,7 +8,7 @@ impl Settings {
         control: impl IntoElement,
         cx: &App,
     ) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let title = title.into();
         let description = description.into();
         div()
@@ -27,7 +27,7 @@ impl Settings {
                         div()
                             .mt(px(4.0))
                             .text_xs()
-                            .text_color(theme.text_secondary)
+                            .text_color(theme.muted_foreground)
                             .child(description),
                     ),
             )
@@ -35,7 +35,7 @@ impl Settings {
     }
 
     pub(super) fn render_general(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let path = self
             .preferences
@@ -60,8 +60,8 @@ impl Settings {
             .h(px(32.0))
             .rounded(px(7.0))
             .border_1()
-            .border_color(theme.border_strong)
-            .bg(theme.surface)
+            .border_color(theme.input)
+            .bg(theme.background)
             .overflow_hidden()
             .flex()
             .items_center()
@@ -74,7 +74,7 @@ impl Settings {
                     .whitespace_nowrap()
                     .text_ellipsis()
                     .text_sm()
-                    .text_color(theme.text_secondary)
+                    .text_color(theme.muted_foreground)
                     .child(path.to_string()),
             )
             .child(
@@ -89,15 +89,15 @@ impl Settings {
                     .px(px(11.0))
                     .rounded_r(px(6.0))
                     .border_l_1()
-                    .border_color(theme.border_strong)
+                    .border_color(theme.input)
                     .flex()
                     .items_center()
                     .text_sm()
-                    .text_color(theme.text_secondary)
+                    .text_color(theme.muted_foreground)
                     .cursor_default()
-                    .hover(|style| style.bg(theme.control_hover))
-                    .active(|style| style.bg(theme.control_active))
-                    .focus_visible(|style| style.border_1().border_color(theme.focus))
+                    .hover(|style| style.bg(theme.accent))
+                    .active(|style| style.bg(theme.accent))
+                    .focus_visible(|style| style.border_1().border_color(theme.ring))
                     .child(choose_label)
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                     .on_activation(cx, |this, _, cx| this.choose_library(cx)),
@@ -135,7 +135,7 @@ impl Settings {
     }
 
     pub(super) fn render_appearance(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let theme_choices = [
             (language.text("跟随系统", "System"), ThemePreference::System),
@@ -268,7 +268,7 @@ impl Settings {
     }
 
     pub(super) fn render_terminal(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let font_size_choices = FONT_SIZES
             .into_iter()

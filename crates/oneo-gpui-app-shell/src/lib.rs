@@ -1,5 +1,8 @@
+mod activation;
+mod button;
 mod fps;
 mod menu;
+mod platform;
 mod settings;
 mod workspace;
 
@@ -7,6 +10,9 @@ pub const TITLEBAR_HEIGHT: f32 = 48.0;
 pub const TITLEBAR_CONTROL_INSET: f32 = 11.0;
 pub const TITLEBAR_CONTROL_SIZE: f32 = 26.0;
 pub const MACOS_TRAFFIC_LIGHT_CLEARANCE: f32 = 86.0;
+
+pub use activation::ActivationExt;
+pub use button::toolbar_icon_button;
 
 pub fn titlebar_left_control_offset(fullscreen: bool) -> f32 {
     if cfg!(target_os = "macos") && !fullscreen {
@@ -28,6 +34,10 @@ pub use fps::{FpsCounterState, fps_counter};
 pub use menu::{
     About, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit, ToggleFpsCounter,
     ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
+};
+pub use platform::{
+    close_main_window, configure_main_window_close_behavior, configure_sidebar_material,
+    init_reduce_motion,
 };
 pub use settings::{
     SettingsShell, settings_back_button, settings_navigation_group, settings_navigation_row,

@@ -18,7 +18,9 @@ use crate::preferences::{
     terminal_color_scheme_label, terminal_cursor_style_label,
 };
 use crate::theme::{self, Theme, ThemePreference};
-use crate::ui::{ActivationExt, Icon, MarkdownSelection, icon, selectable_code_text};
+use crate::ui::{
+    ActivationExt, Icon, MarkdownSelection, SelectableCodeStyle, icon, selectable_code_text,
+};
 use gpui::{
     App, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, Focusable, FontWeight,
     KeyDownEvent, MouseButton, PathPromptOptions, Render, Role, Stateful,
@@ -572,7 +574,7 @@ impl Settings {
     }
 
     fn render_sidebar_header(&self, fullscreen: bool, cx: &mut Context<Self>) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let back_label = language.text("返回", "Back");
         let traffic_light_clearance = if cfg!(target_os = "macos") && !fullscreen {
@@ -589,7 +591,7 @@ impl Settings {
                 "settings-back",
                 back_label,
                 &self.controls[FOCUS_BACK],
-                theme,
+                &theme,
             )
             .on_activation(cx, |this, window, cx| this.close(window, cx))
             .into_any_element(),
@@ -598,7 +600,7 @@ impl Settings {
 
     fn render_sidebar(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
         let language = self.preferences.language;
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         div()
             .id("settings-sidebar-scroll")
             .size_full()
@@ -623,7 +625,7 @@ impl Settings {
                     self.render_navigation_row(
                         "settings-appearance",
                         SettingsPage::Appearance.label(language),
-                        Icon::Appearance,
+                        Icon::Palette,
                         SettingsPage::Appearance,
                         FOCUS_APPEARANCE_PAGE,
                         cx,
@@ -631,37 +633,37 @@ impl Settings {
                     self.render_navigation_row(
                         "settings-terminal",
                         SettingsPage::Terminal.label(language),
-                        Icon::Terminal,
+                        Icon::SquareTerminal,
                         SettingsPage::Terminal,
                         FOCUS_TERMINAL_PAGE,
                         cx,
                     ),
                 ],
-                theme,
+                &theme,
             ))
             .child(settings_navigation_group(
                 language.text("文档库", "Library"),
                 vec![self.render_navigation_row(
                     "settings-archive",
                     SettingsPage::Archive.label(language),
-                    Icon::Archive,
+                    Icon::Inbox,
                     SettingsPage::Archive,
                     FOCUS_ARCHIVE_PAGE,
                     cx,
                 )],
-                theme,
+                &theme,
             ))
             .child(settings_navigation_group(
                 language.text("连接", "Connections"),
                 vec![self.render_navigation_row(
                     "settings-mcp",
                     SettingsPage::Mcp.label(language),
-                    Icon::Plug,
+                    Icon::Network,
                     SettingsPage::Mcp,
                     FOCUS_MCP_PAGE,
                     cx,
                 )],
-                theme,
+                &theme,
             ))
     }
 
@@ -674,7 +676,7 @@ impl Settings {
         focus_index: usize,
         cx: &mut Context<Self>,
     ) -> Stateful<gpui::Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let selected = self.page == page;
         settings_navigation_row(
             id,
@@ -682,7 +684,7 @@ impl Settings {
             icon_kind,
             &self.controls[focus_index],
             selected,
-            theme,
+            &theme,
         )
         .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
             if matches!(event.keystroke.key.as_str(), "enter" | "space") {
@@ -708,7 +710,7 @@ impl Settings {
     }
 
     fn render_content(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let content = match self.page {
             SettingsPage::General => self.render_general(cx),
             SettingsPage::Archive => self.render_archive(cx),
@@ -735,11 +737,11 @@ impl Settings {
                                 .mt(px(14.0))
                                 .rounded(px(8.0))
                                 .border_1()
-                                .border_color(theme.error)
+                                .border_color(theme.danger)
                                 .px(px(12.0))
                                 .py(px(9.0))
                                 .text_sm()
-                                .text_color(theme.error)
+                                .text_color(theme.danger)
                                 .child(error.clone()),
                         )
                     })
@@ -747,7 +749,7 @@ impl Settings {
                         div()
                             .mt(px(15.0))
                             .rounded(px(13.0))
-                            .bg(theme.raised)
+                            .bg(theme.secondary)
                             .child(content),
                     ),
             )
@@ -769,7 +771,7 @@ fn font_size_label(value: f32) -> &'static str {
 
 impl Render for Settings {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         div()
             .key_context("Settings")
             .track_focus(&self.focus)
@@ -792,8 +794,8 @@ impl Render for Settings {
             )
             .size_full()
             .flex()
-            .bg(theme.surface)
-            .text_color(theme.text)
+            .bg(theme.background)
+            .text_color(theme.foreground)
             .font_family(self.preferences.resolved_ui_font_family().to_owned())
             .child(
                 SettingsShell::new(

@@ -23,4 +23,11 @@ impl Language {
             Self::English => english,
         }
     }
+
+    pub fn locale(self) -> &'static str {
+        match self {
+            Self::Chinese => "zh-CN",
+            Self::English => "en",
+        }
+    }
 }

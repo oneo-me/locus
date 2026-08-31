@@ -33,36 +33,37 @@ impl<'a> LocusMarkdownExtensions<'a> {
 }
 
 impl MarkdownExtensions for LocusMarkdownExtensions<'_> {
-    fn render_code_block(&self, language: &str, source: &str, theme: Theme) -> Option<AnyElement> {
+    fn render_code_block(&self, language: &str, source: &str, theme: &Theme) -> Option<AnyElement> {
         match language {
             "gallery" => Some(attachment_views::render_gallery(
                 source,
                 self.attachments,
-                theme,
+                theme.clone(),
                 self.language,
             )),
             "attachments" => Some(attachment_views::render_attachments(
                 source,
                 self.attachments,
-                theme,
+                theme.clone(),
                 self.language,
             )),
             _ => None,
         }
     }
 
-    fn render_image(&self, url: &str, theme: Theme) -> Option<AnyElement> {
+    fn render_image(&self, url: &str, theme: &Theme) -> Option<AnyElement> {
         extension_syntax::find_image_attachment(self.attachments, url)
-            .map(|attachment| attachment_views::render_thumbnail_image(attachment, theme))
+            .map(|attachment| attachment_views::render_thumbnail_image(attachment, theme.clone()))
     }
 
-    fn render_link_icon(&self, url: &str, theme: Theme) -> Option<AnyElement> {
+    fn render_link_icon(&self, url: &str, theme: &Theme) -> Option<AnyElement> {
         if let Some(path) = library_reference_path(url) {
             let Some(node) = self.library_tree.node(path) else {
                 return Some(generic_link_icon(theme));
             };
             if let Some(source) = node.icon_image.as_ref() {
                 let fallback_icon = node.icon.clone();
+                let fallback_theme = theme.clone();
                 return Some(
                     document_icon_image(source)
                         .size(px(13.0))
@@ -72,7 +73,7 @@ impl MarkdownExtensions for LocusMarkdownExtensions<'_> {
                             fallback_icon
                                 .clone()
                                 .map(emoji_link_icon)
-                                .unwrap_or_else(|| generic_link_icon(theme))
+                                .unwrap_or_else(|| generic_link_icon(&fallback_theme))
                         })
                         .into_any_element(),
                 );
@@ -85,13 +86,15 @@ impl MarkdownExtensions for LocusMarkdownExtensions<'_> {
             );
         }
         if url.starts_with("http://") || url.starts_with("https://") {
+            let loading_theme = theme.clone();
+            let fallback_theme = theme.clone();
             return Some(
                 remote_link_icon(url)
                     .size(px(13.0))
                     .rounded(px(3.0))
                     .object_fit(ObjectFit::Cover)
-                    .with_loading(move || generic_link_icon(theme))
-                    .with_fallback(move || generic_link_icon(theme))
+                    .with_loading(move || generic_link_icon(&loading_theme))
+                    .with_fallback(move || generic_link_icon(&fallback_theme))
                     .into_any_element(),
             );
         }

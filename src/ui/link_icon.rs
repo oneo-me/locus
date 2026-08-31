@@ -209,8 +209,8 @@ fn prepare_icon(bytes: &[u8], renderer: gpui::SvgRenderer) -> Result<Arc<RenderI
         image
     };
     let mut pixels = image.into_rgba8();
-    for pixel in pixels.as_mut().as_chunks_mut::<4>().0 {
-        pixel.swap(0, 2);
+    for pixel in pixels.pixels_mut() {
+        pixel.0.swap(0, 2);
     }
     Ok(Arc::new(RenderImage::new(vec![image::Frame::new(pixels)])))
 }

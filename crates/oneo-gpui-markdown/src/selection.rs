@@ -319,26 +319,30 @@ impl SelectableText {
     }
 }
 
+pub struct SelectableCodeStyle {
+    pub font_family: SharedString,
+    pub font_size: f32,
+    pub line_height: f32,
+    pub color: Hsla,
+    pub selection_color: Hsla,
+}
+
 pub fn selectable_code_text(
     id: &'static str,
     value: SharedString,
-    font_family: SharedString,
-    font_size: f32,
-    line_height: f32,
-    color: Hsla,
-    selection_color: Hsla,
+    style: SelectableCodeStyle,
     selection: MarkdownSelection,
     focus: FocusHandle,
     notify_entity: EntityId,
 ) -> AnyElement {
     selection.set_document(Arc::from(value.to_string()));
     let len = value.len();
-    let mut code_font = font(font_family);
+    let mut code_font = font(style.font_family);
     code_font.weight = FontWeight::NORMAL;
     let text = StyledText::new(value.clone()).with_runs(vec![TextRun {
         len,
         font: code_font,
-        color,
+        color: style.color,
         ..Default::default()
     }]);
     let selectable = SelectableText::new(
@@ -347,7 +351,7 @@ pub fn selectable_code_text(
         text,
         0..len,
         Vec::new(),
-        selection_color,
+        style.selection_color,
         TextInteraction {
             selection: selection.clone(),
             focus: focus.clone(),
@@ -398,8 +402,8 @@ pub fn selectable_code_text(
         })
         .w_full()
         .min_w_0()
-        .text_size(px(font_size))
-        .line_height(px(line_height))
+        .text_size(px(style.font_size))
+        .line_height(px(style.line_height))
         .child(selectable)
         .into_any_element()
 }

@@ -172,7 +172,7 @@ impl Settings {
         focus_index: usize,
         cx: &mut Context<Self>,
     ) -> Stateful<gpui::Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         div()
             .id(id)
             .role(Role::Switch)
@@ -185,18 +185,18 @@ impl Settings {
             .h(px(20.0))
             .p(px(3.0))
             .rounded(px(10.0))
-            .bg(if checked {
-                theme.focus
-            } else {
-                theme.border_strong
-            })
+            .bg(if checked { theme.primary } else { theme.muted })
             .cursor_default()
-            .focus_visible(|style| style.border_1().border_color(theme.text))
+            .focus_visible(|style| style.border_1().border_color(theme.foreground))
             .child(
                 div()
                     .size(px(14.0))
                     .rounded(px(7.0))
-                    .bg(theme.surface)
+                    .bg(if checked {
+                        theme.primary_foreground
+                    } else {
+                        theme.background
+                    })
                     .when(checked, |knob| knob.ml(px(14.0))),
             )
             .on_activation(cx, move |this, _, cx| this.toggle_mcp(local_network, cx))
@@ -210,7 +210,7 @@ impl Settings {
         cx: &mut Context<Self>,
         action: impl Fn(&mut Self, &mut Context<Self>) + 'static,
     ) -> Stateful<gpui::Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         div()
             .id(id)
             .role(Role::Button)
@@ -222,16 +222,16 @@ impl Settings {
             .px(px(10.0))
             .rounded(px(7.0))
             .border_1()
-            .border_color(theme.border_strong)
-            .bg(theme.raised)
+            .border_color(theme.input)
+            .bg(theme.secondary)
             .flex()
             .items_center()
             .text_sm()
-            .text_color(theme.text_secondary)
+            .text_color(theme.muted_foreground)
             .cursor_default()
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
-            .focus_visible(|style| style.border_color(theme.focus))
+            .hover(|style| style.bg(theme.accent))
+            .active(|style| style.bg(theme.accent))
+            .focus_visible(|style| style.border_color(theme.ring))
             .child(label)
             .on_activation(cx, move |this, _, cx| action(this, cx))
     }
@@ -241,7 +241,7 @@ impl Settings {
         client: McpClient,
         cx: &mut Context<Self>,
     ) -> Stateful<gpui::Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let selected = self.mcp_client == client;
         let label = client.label(language);
@@ -258,7 +258,11 @@ impl Settings {
             .flex()
             .items_center()
             .border_b_2()
-            .border_color(if selected { theme.focus } else { theme.border })
+            .border_color(if selected {
+                theme.primary
+            } else {
+                theme.border
+            })
             .cursor_default()
             .text_xs()
             .font_weight(if selected {
@@ -267,12 +271,12 @@ impl Settings {
                 FontWeight::NORMAL
             })
             .text_color(if selected {
-                theme.text
+                theme.foreground
             } else {
-                theme.text_secondary
+                theme.muted_foreground
             })
-            .hover(|style| style.text_color(theme.text))
-            .focus_visible(|style| style.border_color(theme.focus))
+            .hover(|style| style.text_color(theme.foreground))
+            .focus_visible(|style| style.border_color(theme.ring))
             .child(label)
             .on_activation(cx, move |this, _, cx| this.select_mcp_client(client, cx))
     }
@@ -283,7 +287,7 @@ impl Settings {
         code: String,
         cx: &mut Context<Self>,
     ) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let key = client.copy_key();
         let code_font_size = self.preferences.code_font_size;
@@ -308,13 +312,13 @@ impl Settings {
             .items_center()
             .justify_center()
             .cursor_default()
-            .focus_visible(|style| style.border_1().border_color(theme.focus))
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
+            .focus_visible(|style| style.border_1().border_color(theme.ring))
+            .hover(|style| style.bg(theme.accent))
+            .active(|style| style.bg(theme.accent))
             .child(icon(
                 if copied { Icon::Check } else { Icon::Copy },
                 13.0,
-                theme.text_tertiary,
+                theme.muted_foreground,
             ))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_activation(cx, move |this, _, cx| {
@@ -328,7 +332,7 @@ impl Settings {
             .rounded(px(8.0))
             .border_1()
             .border_color(theme.border)
-            .bg(theme.raised)
+            .bg(theme.secondary)
             .overflow_hidden()
             .child(
                 div()
@@ -341,7 +345,7 @@ impl Settings {
                     .flex()
                     .items_center()
                     .text_xs()
-                    .text_color(theme.text_tertiary)
+                    .text_color(theme.muted_foreground)
                     .child(
                         div()
                             .min_w_0()
@@ -363,14 +367,17 @@ impl Settings {
                     .child(selectable_code_text(
                         "mcp-client-code-text",
                         code.into(),
-                        self.preferences
-                            .resolved_code_font_family()
-                            .to_owned()
-                            .into(),
-                        code_font_size,
-                        (code_font_size * 1.5).round(),
-                        theme.text_secondary,
-                        theme.focus.opacity(if theme.is_dark { 0.34 } else { 0.24 }),
+                        SelectableCodeStyle {
+                            font_family: self
+                                .preferences
+                                .resolved_code_font_family()
+                                .to_owned()
+                                .into(),
+                            font_size: code_font_size,
+                            line_height: (code_font_size * 1.5).round(),
+                            color: theme.muted_foreground,
+                            selection_color: theme.selection,
+                        },
                         self.mcp_code_selection.clone(),
                         self.controls[FOCUS_MCP_GUIDE_CODE].clone(),
                         cx.entity_id(),
@@ -379,7 +386,7 @@ impl Settings {
     }
 
     fn render_mcp_guide(&self, endpoint: &str, cx: &mut Context<Self>) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let client = self.mcp_client;
         let tabs = McpClient::ALL.into_iter().fold(
@@ -408,14 +415,14 @@ impl Settings {
                 div()
                     .mt(px(12.0))
                     .text_xs()
-                    .text_color(theme.text_secondary)
+                    .text_color(theme.muted_foreground)
                     .child(client.description(language)),
             )
             .child(self.render_mcp_code(client, client.code(endpoint), cx))
     }
 
     pub(super) fn render_mcp(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let endpoint = self.mcp_server_state.endpoint().to_owned();
         let endpoint_copy = endpoint.clone();
@@ -494,7 +501,7 @@ impl Settings {
                         .px(px(20.0))
                         .pb(px(12.0))
                         .text_xs()
-                        .text_color(theme.error)
+                        .text_color(theme.danger)
                         .child(error.clone()),
                 )
             })
@@ -528,7 +535,7 @@ impl Settings {
                     .px(px(20.0))
                     .pb(px(18.0))
                     .text_xs()
-                    .text_color(theme.text_secondary)
+                    .text_color(theme.muted_foreground)
                     .child(language.text(
                         "服务仅提供 list_articles、search_articles、resolve_article；正文与附件由 Agent 使用本地文件工具维护。",
                         "The server only provides list_articles, search_articles, and resolve_article; Agents maintain content and attachments with local file tools.",

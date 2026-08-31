@@ -6,13 +6,14 @@ use crate::document_library::{LIBRARY_REFERENCE_SCHEME, LibraryNode, library_ref
 use crate::theme::Theme;
 use crate::ui::{
     ActivationExt, Icon, LocusMarkdownExtensions, Markdown, MarkdownLabels, MarkdownTypography,
-    document_icon_image, toolbar_icon_button, vertical_scrollbar,
+    document_icon_image, toolbar_icon_button,
 };
 use gpui::{
     AnyElement, BorderStyle, Bounds, ClipboardItem, Div, Edges, FontWeight, MouseButton, ObjectFit,
     PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, linear_color_stop,
     linear_gradient, point, prelude::*, px, quad, transparent_black,
 };
+use gpui_component::scroll::Scrollbar;
 use oneo_gpui_app_shell::PanelSide;
 const NOTE_MAX_WIDTH: f32 = 832.0;
 const ATMOSPHERE_HEIGHT: f32 = 268.0;
@@ -27,17 +28,17 @@ impl Locus {
         content_width: f32,
         cx: &mut gpui::Context<Self>,
     ) -> Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let preferences = self.settings.read(cx).preferences();
         let markdown_text_font_family = preferences.resolved_ui_font_family().to_owned();
         let markdown_text_size = preferences.ui_font_size;
         let markdown_code_font_family = preferences.resolved_code_font_family().to_owned();
         let markdown_code_text_size = preferences.code_font_size;
         let language = preferences.language;
-        let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark);
+        let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark());
         let locus = cx.weak_entity();
         let titlebar =
-            self.render_note_titlebar(node, left_control_clearance, content_width, theme, cx);
+            self.render_note_titlebar(node, left_control_clearance, content_width, &theme, cx);
         let selected_note = selected_note.filter(|note| note.path == node.path);
 
         let mut article = div()
@@ -51,7 +52,7 @@ impl Locus {
             .flex()
             .flex_col()
             .gap(px(22.0));
-        if let Some(metadata) = note_metadata(node, atmosphere.panel, theme) {
+        if let Some(metadata) = note_metadata(node, atmosphere.panel, &theme) {
             article = article.child(metadata);
         }
         if let Some(error) = selected_note.and_then(|note| note.error.as_deref()) {
@@ -59,11 +60,11 @@ impl Locus {
                 div()
                     .rounded(px(8.0))
                     .border_1()
-                    .border_color(theme.error.opacity(0.35))
+                    .border_color(theme.danger.opacity(0.35))
                     .px(px(12.0))
                     .py(px(9.0))
                     .text_sm()
-                    .text_color(theme.error)
+                    .text_color(theme.danger)
                     .child(format!(
                         "{}：{error}",
                         language.text("无法读取笔记", "Could not read note")
@@ -155,11 +156,7 @@ impl Locus {
             .overflow_hidden()
             .child(scroll)
             .child(titlebar)
-            .child(vertical_scrollbar(
-                &self.note_scroll_handle,
-                &self.note_scrollbar_state,
-                super::TITLEBAR_HEIGHT,
-            ))
+            .child(Scrollbar::vertical(&self.note_scroll_handle))
     }
 
     fn open_library_reference(&mut self, path: &str, cx: &mut gpui::Context<Self>) {
@@ -183,9 +180,9 @@ impl Locus {
         node: &LibraryNode,
         left_control_clearance: f32,
         content_width: f32,
-        theme: Theme,
+        theme: &Theme,
         cx: &mut gpui::Context<Self>,
-    ) -> impl IntoElement {
+    ) -> impl IntoElement + use<> {
         let reference = format!("{LIBRARY_REFERENCE_SCHEME}{}", node.path);
         let copied = self.copied_library_node.as_deref() == Some(node.path.as_str());
         let editor = self.settings.read(cx).preferences().editor;
@@ -234,7 +231,7 @@ impl Locus {
             "edit-note",
             language.text("编辑笔记", "Edit note"),
             &self.note_edit_focus,
-            Icon::Edit,
+            Icon::File,
             theme,
         )
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -282,7 +279,7 @@ impl Locus {
             .items_center()
             .child(note_titlebar_background(
                 self.note_scroll_handle.clone(),
-                theme.surface,
+                theme.background,
                 theme.border,
             ))
             .child(
@@ -339,7 +336,7 @@ fn note_titlebar_padding(
     (left, right)
 }
 
-fn note_metadata(node: &LibraryNode, panel_color: gpui::Hsla, theme: Theme) -> Option<Div> {
+fn note_metadata(node: &LibraryNode, panel_color: gpui::Hsla, theme: &Theme) -> Option<Div> {
     let summary = node
         .summary
         .as_ref()
@@ -384,7 +381,7 @@ fn note_metadata(node: &LibraryNode, panel_color: gpui::Hsla, theme: Theme) -> O
                             .px(px(14.0))
                             .py(px(6.0))
                             .font_weight(FontWeight::MEDIUM)
-                            .text_color(theme.text_secondary)
+                            .text_color(theme.muted_foreground)
                             .whitespace_normal()
                             .child(key.clone()),
                     )
@@ -394,7 +391,7 @@ fn note_metadata(node: &LibraryNode, panel_color: gpui::Hsla, theme: Theme) -> O
                             .flex_1()
                             .px(px(14.0))
                             .py(px(6.0))
-                            .text_color(theme.text)
+                            .text_color(theme.foreground)
                             .whitespace_normal()
                             .child(format_yaml_metadata_value(value)),
                     ),

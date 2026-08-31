@@ -13,7 +13,8 @@ use crate::document_library::{ChangeStatus, LibraryNode};
 use crate::localization::Language;
 use crate::sidebar_order::reorder_siblings;
 use crate::theme::Theme;
-use crate::ui::{Icon, document_icon_image, icon, vertical_scrollbar};
+use crate::ui::{Icon, document_icon_image, icon};
+use gpui_component::scroll::Scrollbar;
 
 const TREE_ROW_HEIGHT: f32 = 30.0;
 const TREE_LEVEL_INDENT: f32 = 16.0;
@@ -31,15 +32,15 @@ impl Locus {
         language: Language,
         cx: &mut gpui::Context<Self>,
     ) -> Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         if self.settings.read(cx).preferences().library_path.is_none() {
             return sidebar_message(
                 language.text("尚未打开文档库", "No library selected"),
-                theme.text_secondary,
+                theme.muted_foreground,
             );
         }
         if let Some(error) = &self.library_tree.error {
-            return sidebar_message(error.clone(), theme.error);
+            return sidebar_message(error.clone(), theme.danger);
         }
 
         let mut body = div()
@@ -59,9 +60,9 @@ impl Locus {
                     .py(px(7.0))
                     .rounded(px(6.0))
                     .border_1()
-                    .border_color(theme.error.opacity(0.35))
+                    .border_color(theme.danger.opacity(0.35))
                     .text_xs()
-                    .text_color(theme.error)
+                    .text_color(theme.danger)
                     .child(format!(
                         "{}：{error}",
                         language.text("Git 状态不可用", "Git status unavailable")
@@ -83,7 +84,7 @@ impl Locus {
                         .px(px(8.0))
                         .py(px(4.0))
                         .text_sm()
-                        .text_color(theme.text_secondary)
+                        .text_color(theme.muted_foreground)
                         .child(message),
                 ),
             );
@@ -97,9 +98,9 @@ impl Locus {
                     .py(px(7.0))
                     .rounded(px(6.0))
                     .border_1()
-                    .border_color(theme.error.opacity(0.35))
+                    .border_color(theme.danger.opacity(0.35))
                     .text_xs()
-                    .text_color(theme.error)
+                    .text_color(theme.danger)
                     .child(format!(
                         "{}：{error}",
                         language.text("文件观察不可用", "File watching unavailable")
@@ -114,11 +115,7 @@ impl Locus {
             .relative()
             .size_full()
             .child(body)
-            .child(vertical_scrollbar(
-                &self.library_scroll_handle,
-                &self.library_scrollbar_state,
-                0.0,
-            ))
+            .child(Scrollbar::vertical(&self.library_scroll_handle))
     }
 
     fn render_library_node(
@@ -127,7 +124,7 @@ impl Locus {
         depth: usize,
         cx: &mut gpui::Context<Self>,
     ) -> AnyElement {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let has_children = !node.children.is_empty();
         let expanded = self.expanded_library_nodes.contains(&node.path);
         let selected = self.selected_library_node.as_deref() == Some(node.path.as_str());
@@ -151,15 +148,15 @@ impl Locus {
             .flex()
             .items_center()
             .cursor_default()
-            .when(selected, |row| row.bg(theme.control_selected))
+            .when(selected, |row| row.bg(theme.accent))
             .when(selected, |row| {
                 row.anchor_scroll(Some(self.selected_library_scroll_anchor.clone()))
             })
             .when(!selected, |row| {
-                row.hover(|style| style.bg(theme.control_hover))
-                    .active(|style| style.bg(theme.control_active))
+                row.hover(|style| style.bg(theme.accent))
+                    .active(|style| style.bg(theme.accent))
             })
-            .when(dragged, |row| row.bg(theme.raised))
+            .when(dragged, |row| row.bg(theme.secondary))
             .child(library_node_content(node, expanded, theme))
             .on_drag(drag, |_, _, _, cx| cx.new(|_| gpui::Empty))
             .on_drag_move::<DraggedLibraryNode>(cx.listener({
@@ -298,7 +295,6 @@ impl Locus {
             self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
             self.note_scroll_handle
                 .set_offset(gpui::point(gpui::px(0.0), gpui::px(0.0)));
-            self.note_scrollbar_state.reset_visibility();
         }
         self.selected_library_node = Some(path.clone());
         self.expanded_library_nodes = expanded_paths_for_selection(&path, has_children);
@@ -422,7 +418,7 @@ fn library_node_content(node: &LibraryNode, expanded: bool, theme: Theme) -> Div
             .items_center()
             .justify_center()
             .child(
-                icon(Icon::ChevronDown, 13.0, theme.text_tertiary).with_transformation(
+                icon(Icon::ChevronDown, 13.0, theme.muted_foreground).transform(
                     Transformation::rotate(radians(if expanded {
                         0.0
                     } else {
@@ -467,7 +463,7 @@ fn library_node_content(node: &LibraryNode, expanded: bool, theme: Theme) -> Div
                         div()
                             .flex_none()
                             .text_xs()
-                            .text_color(theme.text_tertiary)
+                            .text_color(theme.muted_foreground)
                             .child(node.attachments.len().to_string()),
                     )
                 })

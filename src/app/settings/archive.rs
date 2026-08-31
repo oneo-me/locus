@@ -45,7 +45,7 @@ impl Settings {
     }
 
     pub(super) fn render_archive(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         if self.preferences.library_path.is_none() {
             return archive_message(
@@ -53,7 +53,7 @@ impl Settings {
                     "请先在通用设置中选择文档库。",
                     "Choose a library in General settings first.",
                 ),
-                theme.text_secondary,
+                theme.muted_foreground,
             );
         }
         if let Some(error) = &self.archive_load_error {
@@ -62,13 +62,13 @@ impl Settings {
                     "{}：{error}",
                     language.text("无法读取归档", "Could not read archives")
                 ),
-                theme.error,
+                theme.danger,
             );
         }
         if self.archived_notes.is_empty() {
             return archive_message(
                 language.text("暂无归档笔记。", "No archived notes."),
-                theme.text_secondary,
+                theme.muted_foreground,
             );
         }
 
@@ -86,11 +86,11 @@ impl Settings {
                     .mb(px(13.0))
                     .rounded(px(8.0))
                     .border_1()
-                    .border_color(theme.error)
+                    .border_color(theme.danger)
                     .px(px(12.0))
                     .py(px(9.0))
                     .text_sm()
-                    .text_color(theme.error)
+                    .text_color(theme.danger)
                     .child(format!(
                         "{}：{error}",
                         language.text("无法移出归档", "Could not remove from archive")
@@ -105,7 +105,7 @@ impl Settings {
         note: ArchivedNote,
         cx: &mut Context<Self>,
     ) -> gpui::Div {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let pending = self.restoring_archive.as_ref() == Some(&note.document_path);
         let disabled = self.restoring_archive.is_some();
@@ -126,26 +126,18 @@ impl Settings {
             .px(px(10.0))
             .rounded(px(7.0))
             .border_1()
-            .border_color(if disabled {
-                theme.border
-            } else {
-                theme.border_strong
-            })
-            .bg(theme.raised)
+            .border_color(if disabled { theme.border } else { theme.input })
+            .bg(theme.secondary)
             .flex()
             .items_center()
             .text_sm()
-            .text_color(if disabled {
-                theme.text_tertiary
-            } else {
-                theme.text_secondary
-            })
+            .text_color(theme.muted_foreground)
             .cursor_default()
-            .focus_visible(|style| style.border_color(theme.focus))
+            .focus_visible(|style| style.border_color(theme.ring))
             .when(!disabled, |button| {
                 button
-                    .hover(|style| style.bg(theme.control_hover))
-                    .active(|style| style.bg(theme.control_active))
+                    .hover(|style| style.bg(theme.accent))
+                    .active(|style| style.bg(theme.accent))
                     .on_activation(cx, move |this, _, cx| {
                         this.restore_archive(action_note.clone(), cx)
                     })
@@ -169,7 +161,7 @@ impl Settings {
                             .flex()
                             .items_center()
                             .gap(px(8.0))
-                            .child(archive_note_icon(&note, theme))
+                            .child(archive_note_icon(&note, &theme))
                             .child(
                                 div()
                                     .min_w_0()
@@ -184,7 +176,7 @@ impl Settings {
                             .mt(px(4.0))
                             .truncate()
                             .text_xs()
-                            .text_color(theme.text_secondary)
+                            .text_color(theme.muted_foreground)
                             .child(note.path),
                     ),
             )
@@ -192,25 +184,27 @@ impl Settings {
     }
 }
 
-fn archive_note_icon(note: &ArchivedNote, theme: Theme) -> AnyElement {
+fn archive_note_icon(note: &ArchivedNote, theme: &Theme) -> AnyElement {
     if let Some(image) = &note.icon_image {
         let fallback = note.icon.clone();
+        let muted_foreground = theme.muted_foreground;
         return document_icon_image(image)
             .size(px(16.0))
             .flex_none()
             .rounded(px(3.0))
             .object_fit(ObjectFit::Cover)
             .with_fallback(move || {
-                fallback.clone().map(emoji_icon).unwrap_or_else(|| {
-                    icon(Icon::File, 15.0, theme.text_tertiary).into_any_element()
-                })
+                fallback
+                    .clone()
+                    .map(emoji_icon)
+                    .unwrap_or_else(|| icon(Icon::File, 15.0, muted_foreground).into_any_element())
             })
             .into_any_element();
     }
     note.icon
         .clone()
         .map(emoji_icon)
-        .unwrap_or_else(|| icon(Icon::File, 15.0, theme.text_tertiary).into_any_element())
+        .unwrap_or_else(|| icon(Icon::File, 15.0, theme.muted_foreground).into_any_element())
 }
 
 fn emoji_icon(value: String) -> AnyElement {

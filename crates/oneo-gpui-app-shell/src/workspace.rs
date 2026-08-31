@@ -5,7 +5,9 @@ use gpui::{
     AnyElement, Div, FocusHandle, Hsla, Stateful, Window, div, ease_out_quint, prelude::*, px,
     transparent_black,
 };
-use oneo_gpui_ui::{Icon, Theme, toolbar_icon_button};
+use gpui_component::{IconName, Theme};
+
+use crate::toolbar_icon_button;
 
 const PANEL_SLIDE_DURATION: Duration = Duration::from_millis(200);
 
@@ -554,11 +556,11 @@ pub fn panel_toggle_button(
     label: &'static str,
     focus: &FocusHandle,
     side: PanelSide,
-    theme: Theme,
+    theme: &Theme,
 ) -> Stateful<Div> {
     let icon = match side {
-        PanelSide::Left => Icon::PanelLeft,
-        PanelSide::Right => Icon::PanelRight,
+        PanelSide::Left => IconName::PanelLeft,
+        PanelSide::Right => IconName::PanelRight,
     };
     toolbar_icon_button(id, label, focus, icon, theme)
 }
@@ -567,7 +569,7 @@ pub fn panel_resize_handle(
     id: &'static str,
     side: PanelSide,
     active: bool,
-    theme: Theme,
+    theme: &Theme,
 ) -> Stateful<Div> {
     let handle = match side {
         PanelSide::Left => div().right(px(-5.0)).w(px(10.0)),
@@ -580,7 +582,7 @@ pub fn panel_resize_handle(
         .top_0()
         .h_full()
         .bg(if active && side == PanelSide::Left {
-            theme.resize_handle
+            theme.drag_border
         } else {
             transparent_black()
         });

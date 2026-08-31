@@ -1,5 +1,6 @@
-use gpui::{App, Window, WindowAppearance};
-pub use oneo_gpui_ui::Theme;
+use gpui::{App, Hsla, Window, WindowAppearance, rgb};
+pub use gpui_component::Theme;
+use gpui_component::ThemeMode;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -8,6 +9,18 @@ pub enum ThemePreference {
     System,
     Light,
     Dark,
+}
+
+pub fn workspace_background(theme: &Theme) -> Hsla {
+    if cfg!(target_os = "macos") {
+        window_material_tint(theme.is_dark())
+    } else {
+        theme.sidebar
+    }
+}
+
+fn window_material_tint(dark: bool) -> Hsla {
+    Hsla::from(if dark { rgb(0x181818) } else { rgb(0xf3f3f3) }).alpha(0.92)
 }
 
 pub fn resolves_to_dark(preference: ThemePreference, appearance: WindowAppearance) -> bool {
@@ -30,13 +43,12 @@ pub fn apply_preference(preference: ThemePreference, window: &mut Window, cx: &m
             ThemePreference::Dark => Some(true),
         },
     );
-    let theme = if resolves_to_dark(preference, cx.window_appearance()) {
-        Theme::dark()
+    let mode = if resolves_to_dark(preference, cx.window_appearance()) {
+        ThemeMode::Dark
     } else {
-        Theme::light()
+        ThemeMode::Light
     };
-    oneo_gpui_ui::set_theme(theme, cx);
-    window.refresh();
+    Theme::change(mode, Some(window), cx);
 }
 
 #[cfg(test)]
@@ -53,5 +65,17 @@ mod tests {
             ThemePreference::Dark,
             WindowAppearance::Light
         ));
+    }
+
+    #[test]
+    fn window_tints_match_the_existing_material_colors() {
+        assert_eq!(
+            window_material_tint(false),
+            Hsla::from(rgb(0xf3f3f3)).alpha(0.92)
+        );
+        assert_eq!(
+            window_material_tint(true),
+            Hsla::from(rgb(0x181818)).alpha(0.92)
+        );
     }
 }

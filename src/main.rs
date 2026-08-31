@@ -20,16 +20,17 @@ use config::{
     WINDOW_HEIGHT, WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH, WINDOW_TITLEBAR_HEIGHT, WINDOW_WIDTH,
 };
 use gpui::{
-    App, AppContext, Bounds, KeyBinding, MenuItem, Pixels, TitlebarOptions,
+    App, AppContext, Bounds, KeyBinding, MenuItem, Pixels, Styled as _, TitlebarOptions,
     WindowBackgroundAppearance, WindowBounds, WindowOptions, actions, point, px, size,
 };
+use gpui_component::{Root, Theme};
 use gpui_platform::application;
 use localization::Language;
 use oneo_gpui_app_shell::{
     About, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit, ToggleFpsCounter,
     ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
 };
-use oneo_gpui_ui::{
+use oneo_gpui_app_shell::{
     configure_main_window_close_behavior, configure_sidebar_material, init_reduce_motion,
 };
 use preferences::Preferences;
@@ -41,9 +42,10 @@ const MIN_VISIBLE_TITLEBAR_HEIGHT: f32 = 24.0;
 actions!(locus, [ReloadCurrentNote]);
 
 fn main() {
-    let main_window: Rc<RefCell<Option<gpui::WindowHandle<Locus>>>> = Rc::new(RefCell::new(None));
+    let main_window: Rc<RefCell<Option<gpui::WindowHandle<Root>>>> = Rc::new(RefCell::new(None));
+    let locus_view = Rc::new(RefCell::new(None));
     let reopen_window = main_window.clone();
-    let platform_application = application();
+    let platform_application = application().with_assets(gpui_component_assets::Assets);
     platform_application.on_reopen(move |cx| {
         if let Some(window) = *reopen_window.borrow() {
             window
@@ -54,6 +56,7 @@ fn main() {
     });
 
     platform_application.run(move |cx: &mut App| {
+        gpui_component::init(cx);
         init_reduce_motion(cx);
         app::bind_keys(cx);
         bind_app_shell_keys(cx);
@@ -66,6 +69,7 @@ fn main() {
             eprintln!("{error}");
         }
         let language = preferences.language;
+        gpui_component::set_locale(language.locale());
 
         let bounds = restored_window_bounds(interface_state.window_bounds, cx);
 
@@ -91,14 +95,23 @@ fn main() {
                     configure_main_window_close_behavior(window, cx);
                     configure_sidebar_material(window)
                         .expect("failed to install macOS sidebar material");
-                    cx.new(|cx| Locus::new(window, preferences, load_error, interface_state, cx))
+                    let view = cx
+                        .new(|cx| Locus::new(window, preferences, load_error, interface_state, cx));
+                    *locus_view.borrow_mut() = Some(view.clone());
+                    cx.new(|cx| {
+                        Root::new(view, window, cx)
+                            .bordered(false)
+                            .bg(Theme::global(cx).transparent)
+                    })
                 },
             )
             .expect("failed to open Locus window");
         *main_window.borrow_mut() = Some(window);
 
-        let can_reload_current_note = window
-            .update(cx, |locus, _, _| locus.can_reload_current_note())
+        let can_reload_current_note = locus_view
+            .borrow()
+            .as_ref()
+            .map(|view| view.read(cx).can_reload_current_note())
             .unwrap_or(false);
         set_app_menus(cx, language, can_reload_current_note);
         cx.activate(true);

@@ -11,7 +11,7 @@ impl Locus {
     pub(super) fn render_note_menu(
         &self,
         node: &LibraryNode,
-        theme: Theme,
+        theme: &Theme,
         cx: &mut Context<Self>,
     ) -> gpui::Div {
         let language = self.language(cx);
@@ -28,11 +28,11 @@ impl Locus {
             if pending {
                 Icon::Loader
             } else {
-                Icon::MoreHorizontal
+                Icon::Ellipsis
             },
             theme,
         )
-        .when(open, |button| button.bg(theme.control_selected))
+        .when(open, |button| button.bg(theme.accent))
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_activation(cx, move |this, window, cx| {
             if this.note_action_pending {
@@ -67,11 +67,11 @@ impl Locus {
             .gap(px(9.0))
             .cursor_default()
             .text_sm()
-            .text_color(theme.text_secondary)
-            .focus_visible(|style| style.border_1().border_color(theme.focus))
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
-            .child(icon(Icon::Upload, 14.0, theme.text_tertiary))
+            .text_color(theme.muted_foreground)
+            .focus_visible(|style| style.border_1().border_color(theme.ring))
+            .hover(|style| style.bg(theme.accent))
+            .active(|style| style.bg(theme.accent))
+            .child(icon(Icon::ArrowUp, 14.0, theme.muted_foreground))
             .child(language.text("上传图标", "Upload icon"))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_activation(cx, move |this, window, cx| {
@@ -92,11 +92,11 @@ impl Locus {
             .gap(px(9.0))
             .cursor_default()
             .text_sm()
-            .text_color(theme.text_secondary)
-            .focus_visible(|style| style.border_1().border_color(theme.focus))
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
-            .child(icon(Icon::Archive, 14.0, theme.text_tertiary))
+            .text_color(theme.muted_foreground)
+            .focus_visible(|style| style.border_1().border_color(theme.ring))
+            .hover(|style| style.bg(theme.accent))
+            .active(|style| style.bg(theme.accent))
+            .child(icon(Icon::Inbox, 14.0, theme.muted_foreground))
             .child(language.text("归档笔记", "Archive note"))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_activation(cx, move |this, window, cx| {
@@ -109,13 +109,13 @@ impl Locus {
             .p(px(4.0))
             .rounded(px(9.0))
             .border_1()
-            .border_color(theme.border_strong)
-            .bg(theme.raised)
+            .border_color(theme.input)
+            .bg(theme.secondary)
             .shadow_lg()
             .occlude()
             .flex()
             .flex_col()
-            .text_color(theme.text)
+            .text_color(theme.foreground)
             .child(upload)
             .child(div().h(px(1.0)).my(px(4.0)).bg(theme.border))
             .child(archive)

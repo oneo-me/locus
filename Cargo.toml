@@ -8,13 +8,14 @@ members = [
     "crates/oneo-gpui-app-shell",
     "crates/oneo-gpui-markdown",
     "crates/oneo-gpui-terminal",
-    "crates/oneo-gpui-ui",
 ]
 default-members = ["."]
 resolver = "3"
 
 [workspace.dependencies]
-gpui = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284" }
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui-component = { git = "https://github.com/longbridge/gpui-component", rev = "a8d1d2650493bbb01eb39412dea823173e1ea94c" }
+gpui-component-assets = { git = "https://github.com/longbridge/gpui-component", rev = "a8d1d2650493bbb01eb39412dea823173e1ea94c" }
 
 [dependencies]
 async-channel = "2.5"
@@ -22,18 +23,19 @@ axum = "0.8"
 dirs = "6"
 futures = "0.3"
 gpui.workspace = true
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284", features = ["font-kit", "runtime_shaders"] }
-oneo-gpui-ui = { path = "crates/oneo-gpui-ui" }
+gpui-component.workspace = true
+gpui-component-assets.workspace = true
+gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit", "runtime_shaders"] }
 oneo-gpui-app-shell = { path = "crates/oneo-gpui-app-shell" }
 oneo-gpui-markdown = { path = "crates/oneo-gpui-markdown" }
 oneo-gpui-terminal = { path = "crates/oneo-gpui-terminal" }
-http_client = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284" }
+http_client = { git = "https://github.com/zed-industries/zed" }
 image = "0.25"
 libc = "0.2"
 notify = "8.2"
 percent-encoding = "2"
 regex = "1"
-reqwest_client = { git = "https://github.com/zed-industries/zed", rev = "c8dfe26a7e554a378241186533f1aa9bd6522284" }
+reqwest_client = { git = "https://github.com/zed-industries/zed" }
 rmcp = { version = "3", features = ["macros", "schemars", "server", "transport-streamable-http-server"] }
 schemars = "1"
 serde = { version = "1", features = ["derive"] }

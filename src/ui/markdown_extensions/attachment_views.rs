@@ -53,8 +53,8 @@ pub fn render_gallery(
                 .flex_shrink_1()
                 .overflow_hidden()
                 .rounded(px(10.0))
-                .bg(theme.raised)
-                .child(thumbnail::gallery_thumbnail(&attachment, index, theme))
+                .bg(theme.secondary)
+                .child(thumbnail::gallery_thumbnail(&attachment, index, &theme))
                 .into_any_element()
         })
         .collect::<Vec<_>>();
@@ -110,10 +110,10 @@ pub fn render_attachments(
                 .when(index < last, |row| {
                     row.border_b_1().border_color(theme.border)
                 })
-                .focus_visible(|style| style.bg(theme.control_active))
-                .hover(|style| style.bg(theme.control_hover))
-                .active(|style| style.bg(theme.control_active))
-                .child(icon(Icon::File, 15.0, theme.text_tertiary))
+                .focus_visible(|style| style.bg(theme.accent))
+                .hover(|style| style.bg(theme.accent))
+                .active(|style| style.bg(theme.accent))
+                .child(icon(Icon::File, 15.0, theme.muted_foreground))
                 .child(
                     attachment_name(attachment.name)
                         .text_size(px(14.0))
@@ -141,8 +141,8 @@ pub fn render_attachments(
         .overflow_hidden()
         .rounded(px(8.0))
         .border_1()
-        .border_color(theme.border_strong)
-        .bg(theme.surface)
+        .border_color(theme.input)
+        .bg(theme.background)
         .flex()
         .flex_col()
         .children(rows)
@@ -158,7 +158,7 @@ pub fn render_thumbnail_image(attachment: &Attachment, theme: Theme) -> AnyEleme
         .max_w_full()
         .overflow_hidden()
         .rounded(px(10.0))
-        .child(thumbnail::inline_thumbnail(attachment, theme))
+        .child(thumbnail::inline_thumbnail(attachment, &theme))
         .into_any_element()
 }
 
@@ -209,8 +209,8 @@ fn extension_error(title: &str, message: String, theme: Theme) -> AnyElement {
         .min_w_0()
         .rounded(px(8.0))
         .border_1()
-        .border_color(theme.error.opacity(0.35))
-        .bg(theme.error.opacity(0.08))
+        .border_color(theme.danger.opacity(0.35))
+        .bg(theme.danger.opacity(0.08))
         .px(px(12.0))
         .py(px(10.0))
         .flex()
@@ -223,7 +223,7 @@ fn extension_error(title: &str, message: String, theme: Theme) -> AnyElement {
                 .font_weight(gpui::FontWeight::SEMIBOLD)
                 .child(title.to_owned()),
         )
-        .child(div().text_color(theme.text_secondary).child(message))
+        .child(div().text_color(theme.muted_foreground).child(message))
         .into_any_element()
 }
 

@@ -65,7 +65,7 @@ impl Settings {
         trigger_focus_index: usize,
         cx: &mut Context<Self>,
     ) -> Stateful<gpui::Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let open = self.open_dropdown == Some(dropdown);
         let trigger = div()
             .id(format!("{id}-trigger"))
@@ -79,22 +79,18 @@ impl Settings {
             .px(px(10.0))
             .rounded(px(7.0))
             .border_1()
-            .border_color(theme.border_strong)
-            .bg(if open {
-                theme.control_selected
-            } else {
-                theme.raised
-            })
+            .border_color(theme.input)
+            .bg(if open { theme.accent } else { theme.secondary })
             .flex()
             .items_center()
             .justify_between()
             .gap(px(6.0))
             .cursor_default()
             .text_sm()
-            .text_color(theme.text_secondary)
-            .focus_visible(|style| style.border_color(theme.focus))
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
+            .text_color(theme.muted_foreground)
+            .focus_visible(|style| style.border_color(theme.ring))
+            .hover(|style| style.bg(theme.accent))
+            .active(|style| style.bg(theme.accent))
             .child(
                 div()
                     .min_w_0()
@@ -102,7 +98,7 @@ impl Settings {
                     .whitespace_nowrap()
                     .child(label),
             )
-            .child(icon(Icon::ChevronDown, 10.5, theme.text_tertiary))
+            .child(icon(Icon::ChevronDown, 10.5, theme.muted_foreground))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_activation(cx, move |this, window, cx| {
                 this.toggle_dropdown(dropdown, window, cx)
@@ -118,8 +114,8 @@ impl Settings {
                 .p(px(4.0))
                 .rounded(px(9.0))
                 .border_1()
-                .border_color(theme.border_strong)
-                .bg(theme.raised)
+                .border_color(theme.input)
+                .bg(theme.secondary)
                 .shadow_lg()
                 .occlude()
                 .flex()
@@ -143,16 +139,16 @@ impl Settings {
                         .cursor_default()
                         .text_sm()
                         .text_color(if selected {
-                            theme.text
+                            theme.foreground
                         } else {
-                            theme.text_secondary
+                            theme.muted_foreground
                         })
-                        .hover(|style| style.bg(theme.control_hover))
-                        .active(|style| style.bg(theme.control_active))
-                        .focus_visible(|style| style.border_1().border_color(theme.focus))
+                        .hover(|style| style.bg(theme.accent))
+                        .active(|style| style.bg(theme.accent))
+                        .focus_visible(|style| style.border_1().border_color(theme.ring))
                         .child(item_label)
                         .child(div().w(px(12.0)).when(selected, |mark| {
-                            mark.child(icon(Icon::Check, 11.0, theme.text_tertiary))
+                            mark.child(icon(Icon::Check, 11.0, theme.muted_foreground))
                         }))
                         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                         .on_activation(cx, move |this, window, cx| {
@@ -178,7 +174,7 @@ impl Settings {
         kind: FontKind,
         cx: &mut Context<Self>,
     ) -> Stateful<gpui::Div> {
-        let theme = Theme::current(cx);
+        let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let dropdown = kind.dropdown();
         let id = kind.id();
@@ -205,22 +201,18 @@ impl Settings {
             .px(px(10.0))
             .rounded(px(7.0))
             .border_1()
-            .border_color(theme.border_strong)
-            .bg(if open {
-                theme.control_selected
-            } else {
-                theme.raised
-            })
+            .border_color(theme.input)
+            .bg(if open { theme.accent } else { theme.secondary })
             .flex()
             .items_center()
             .justify_between()
             .gap(px(6.0))
             .cursor_default()
             .text_sm()
-            .text_color(theme.text_secondary)
-            .focus_visible(|style| style.border_color(theme.focus))
-            .hover(|style| style.bg(theme.control_hover))
-            .active(|style| style.bg(theme.control_active))
+            .text_color(theme.muted_foreground)
+            .focus_visible(|style| style.border_color(theme.ring))
+            .hover(|style| style.bg(theme.accent))
+            .active(|style| style.bg(theme.accent))
             .child(
                 div()
                     .min_w_0()
@@ -229,7 +221,7 @@ impl Settings {
                     .font_family(selected.clone())
                     .child(selected),
             )
-            .child(icon(Icon::ChevronDown, 10.5, theme.text_tertiary))
+            .child(icon(Icon::ChevronDown, 10.5, theme.muted_foreground))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_activation(cx, move |this, window, cx| {
                 this.toggle_dropdown(dropdown, window, cx)
@@ -266,13 +258,13 @@ impl Settings {
                         .cursor_default()
                         .text_sm()
                         .text_color(if is_selected {
-                            theme.text
+                            theme.foreground
                         } else {
-                            theme.text_secondary
+                            theme.muted_foreground
                         })
-                        .hover(|style| style.bg(theme.control_hover))
-                        .active(|style| style.bg(theme.control_active))
-                        .focus_visible(|style| style.border_1().border_color(theme.focus))
+                        .hover(|style| style.bg(theme.accent))
+                        .active(|style| style.bg(theme.accent))
+                        .focus_visible(|style| style.border_1().border_color(theme.ring))
                         .child(
                             div()
                                 .min_w_0()
@@ -282,7 +274,7 @@ impl Settings {
                                 .child(family.clone()),
                         )
                         .child(div().w(px(12.0)).when(is_selected, |mark| {
-                            mark.child(icon(Icon::Check, 11.0, theme.text_tertiary))
+                            mark.child(icon(Icon::Check, 11.0, theme.muted_foreground))
                         }))
                         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                         .on_activation(cx, move |this, window, cx| {
@@ -299,8 +291,8 @@ impl Settings {
             .w(px(328.0))
             .rounded(px(9.0))
             .border_1()
-            .border_color(theme.border_strong)
-            .bg(theme.raised)
+            .border_color(theme.input)
+            .bg(theme.secondary)
             .shadow_lg()
             .occlude()
             .flex()
@@ -314,7 +306,7 @@ impl Settings {
                         .px(px(12.0))
                         .py(px(10.0))
                         .text_sm()
-                        .text_color(theme.text_secondary)
+                        .text_color(theme.muted_foreground)
                         .child(language.text("没有可用字体", "No fonts available")),
                 )
             })
@@ -326,7 +318,7 @@ impl Settings {
                             .px(px(12.0))
                             .py(px(10.0))
                             .text_sm()
-                            .text_color(theme.text_secondary)
+                            .text_color(theme.muted_foreground)
                             .child(language.text("没有匹配字体", "No matching fonts")),
                     )
                 },

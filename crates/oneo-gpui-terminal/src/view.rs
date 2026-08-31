@@ -36,7 +36,7 @@ pub(super) struct TerminalPalette {
 impl TerminalPalette {
     fn resolve(color_scheme: TerminalColorScheme, app_theme: Theme) -> Self {
         let dark = match color_scheme {
-            TerminalColorScheme::Auto => app_theme.is_dark,
+            TerminalColorScheme::Auto => app_theme.is_dark(),
             TerminalColorScheme::Light => false,
             TerminalColorScheme::Dark => true,
         };
@@ -562,7 +562,8 @@ impl Focusable for TerminalView {
 
 impl Render for TerminalView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let palette = TerminalPalette::resolve(self.configuration.color_scheme, Theme::current(cx));
+        let palette =
+            TerminalPalette::resolve(self.configuration.color_scheme, Theme::global(cx).clone());
         let terminal_font = font(self.configuration.font_family.clone());
         let font_size = self.configuration.font_size;
         let cell_height = terminal_cell_height(font_size);
@@ -716,7 +717,7 @@ impl Render for TerminalView {
                     .text_size(px(font_size))
                     .line_height(px(cell_height))
                     .text_color(if self.error.is_some() {
-                        Theme::current(cx).error
+                        Theme::global(cx).danger
                     } else {
                         palette.foreground
                     })

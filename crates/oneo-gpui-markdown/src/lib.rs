@@ -17,24 +17,24 @@ pub use self::parser::{
     Block, InlineRun, InlineStyle, ListItem, TableAlign, parse as parse_blocks,
 };
 use self::selection::{LinkHandler, SelectableText};
-pub use self::selection::{MarkdownSelection, selectable_code_text};
-use oneo_gpui_ui::{Icon, Theme, icon};
+pub use self::selection::{MarkdownSelection, SelectableCodeStyle, selectable_code_text};
+use gpui_component::{Icon, IconName, Theme};
 
 pub trait MarkdownExtensions {
     fn render_code_block(
         &self,
         _language: &str,
         _source: &str,
-        _theme: Theme,
+        _theme: &Theme,
     ) -> Option<AnyElement> {
         None
     }
 
-    fn render_image(&self, _url: &str, _theme: Theme) -> Option<AnyElement> {
+    fn render_image(&self, _url: &str, _theme: &Theme) -> Option<AnyElement> {
         None
     }
 
-    fn render_link_icon(&self, _url: &str, _theme: Theme) -> Option<AnyElement> {
+    fn render_link_icon(&self, _url: &str, _theme: &Theme) -> Option<AnyElement> {
         None
     }
 }
@@ -310,7 +310,7 @@ impl RenderContext<'_> {
                             .w(px(2.0))
                             .flex_none()
                             .rounded_full()
-                            .bg(self.theme.border_strong),
+                            .bg(self.theme.input),
                     )
                     .child(
                         div()
@@ -319,7 +319,7 @@ impl RenderContext<'_> {
                             .flex()
                             .flex_col()
                             .gap(px(self.block_gap()))
-                            .text_color(self.theme.text_secondary)
+                            .text_color(self.theme.muted_foreground)
                             .children(children),
                     )
                     .into_any_element()
@@ -337,7 +337,7 @@ impl RenderContext<'_> {
                 .w_full()
                 .h(px(1.0))
                 .my(px(4.0))
-                .bg(self.theme.border_strong)
+                .bg(self.theme.input)
                 .into_any_element(),
         }
     }
@@ -433,19 +433,15 @@ impl RenderContext<'_> {
             .rounded_full()
             .border_1()
             .border_color(self.theme.border)
-            .bg(self.theme.raised)
+            .bg(self.theme.secondary)
             .font_family(self.code_font_family)
             .text_size(px(self.code_text_size))
             .line_height(px((self.code_text_size * 1.4).round()))
-            .text_color(self.theme.text)
+            .text_color(self.theme.foreground)
             .cursor_pointer()
-            .focus_visible(|style| style.border_color(self.theme.focus))
-            .hover(|style| {
-                style
-                    .bg(self.theme.control_hover)
-                    .border_color(self.theme.border_strong)
-            })
-            .active(|style| style.bg(self.theme.control_active))
+            .focus_visible(|style| style.border_color(self.theme.ring))
+            .hover(|style| style.bg(self.theme.accent).border_color(self.theme.input))
+            .active(|style| style.bg(self.theme.accent))
             .child(self.render_link_icon(url))
             .child(div().min_w_0().truncate().child(title))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -467,11 +463,11 @@ impl RenderContext<'_> {
     fn render_link_icon(&self, url: &str) -> AnyElement {
         if let Some(icon) = self
             .extensions
-            .and_then(|extensions| extensions.render_link_icon(url, self.theme))
+            .and_then(|extensions| extensions.render_link_icon(url, &self.theme))
         {
             return icon;
         }
-        generic_link_icon(self.theme)
+        generic_link_icon(&self.theme)
     }
 
     fn inline_code(&mut self, run: &InlineRun, base_weight: FontWeight) -> AnyElement {
@@ -484,16 +480,16 @@ impl RenderContext<'_> {
         let text_run = TextRun {
             len: run.text.len(),
             font: run_font,
-            color: self.theme.text,
+            color: self.theme.foreground,
             background_color: None,
             underline: run.style.link.is_some().then_some(UnderlineStyle {
-                color: Some(self.theme.focus),
+                color: Some(self.theme.link),
                 thickness: px(1.0),
                 wavy: false,
             }),
             strikethrough: run.style.strikethrough.then_some(StrikethroughStyle {
                 thickness: px(1.0),
-                color: Some(self.theme.text_tertiary),
+                color: Some(self.theme.muted_foreground),
             }),
         };
         let links = run
@@ -516,11 +512,11 @@ impl RenderContext<'_> {
             .rounded(px(4.0))
             .border_1()
             .border_color(self.theme.border)
-            .bg(self.theme.control_selected)
+            .bg(self.theme.accent)
             .font_family(self.code_font_family)
             .text_size(px(self.code_text_size))
             .line_height(px((self.code_text_size * 1.8).round()))
-            .text_color(self.theme.text)
+            .text_color(self.theme.foreground)
             .whitespace_normal()
             .child(element)
             .into_any_element()
@@ -563,19 +559,19 @@ impl RenderContext<'_> {
                 len: run.text.len(),
                 font: run_font,
                 color: if run.style.link.is_some() {
-                    self.theme.focus
+                    self.theme.link
                 } else {
-                    self.theme.text
+                    self.theme.foreground
                 },
                 background_color: None,
                 underline: run.style.link.is_some().then_some(UnderlineStyle {
-                    color: Some(self.theme.focus),
+                    color: Some(self.theme.link),
                     thickness: px(1.0),
                     wavy: false,
                 }),
                 strikethrough: run.style.strikethrough.then_some(StrikethroughStyle {
                     thickness: px(1.0),
-                    color: Some(self.theme.text_tertiary),
+                    color: Some(self.theme.muted_foreground),
                 }),
             });
         }
@@ -604,9 +600,7 @@ impl RenderContext<'_> {
             styled,
             document_range,
             links,
-            self.theme
-                .focus
-                .opacity(if self.theme.is_dark { 0.34 } else { 0.24 }),
+            self.theme.selection,
             selection::TextInteraction {
                 selection: self.selection.clone(),
                 focus: self.focus.clone(),
@@ -670,7 +664,7 @@ impl RenderContext<'_> {
             .flex_none()
             .text_size(px(self.text_size))
             .line_height(px((self.text_size * 1.55).round()))
-            .text_color(self.theme.text_tertiary)
+            .text_color(self.theme.muted_foreground)
             .child(SharedString::from(text))
             .into_any_element()
     }
@@ -687,11 +681,11 @@ impl RenderContext<'_> {
                     .rounded(px(3.0))
                     .border_1()
                     .border_color(if checked {
-                        self.theme.focus
+                        self.theme.primary
                     } else {
-                        self.theme.border_strong
+                        self.theme.input
                     })
-                    .when(checked, |element| element.bg(self.theme.focus))
+                    .when(checked, |element| element.bg(self.theme.primary))
                     .flex()
                     .items_center()
                     .justify_center()
@@ -700,7 +694,7 @@ impl RenderContext<'_> {
                             div()
                                 .text_size(px((size - 3.0).max(9.0)))
                                 .line_height(px(size))
-                                .text_color(self.theme.surface)
+                                .text_color(self.theme.primary_foreground)
                                 .child("✓"),
                         )
                     }),
@@ -718,7 +712,7 @@ impl RenderContext<'_> {
             (!alt.trim().is_empty()).then(|| self.caption_text(alt, alt_selection_range.clone()));
         if let Some(image) = self
             .extensions
-            .and_then(|extensions| extensions.render_image(url, self.theme))
+            .and_then(|extensions| extensions.render_image(url, &self.theme))
         {
             return div()
                 .w_full()
@@ -758,7 +752,7 @@ impl RenderContext<'_> {
         let run = TextRun {
             len: alt.len(),
             font: run_font,
-            color: self.theme.text_tertiary,
+            color: self.theme.muted_foreground,
             ..Default::default()
         };
         div()
@@ -766,7 +760,7 @@ impl RenderContext<'_> {
             .min_w_0()
             .text_size(px((self.text_size - 2.0).max(12.0)))
             .line_height(px((self.text_size * 1.35).round()))
-            .text_color(self.theme.text_tertiary)
+            .text_color(self.theme.muted_foreground)
             .child(self.selectable_text(
                 SharedString::from(alt.to_owned()),
                 vec![run],
@@ -784,7 +778,7 @@ impl RenderContext<'_> {
     ) -> AnyElement {
         if let Some(element) = language.as_deref().and_then(|language| {
             self.extensions
-                .and_then(|extensions| extensions.render_code_block(language, code, self.theme))
+                .and_then(|extensions| extensions.render_code_block(language, code, &self.theme))
         }) {
             return element;
         }
@@ -804,7 +798,7 @@ impl RenderContext<'_> {
             vec![TextRun {
                 len: code.len(),
                 font: code_font,
-                color: self.theme.text_secondary,
+                color: self.theme.muted_foreground,
                 ..Default::default()
             }],
             selection_range.clone(),
@@ -823,10 +817,14 @@ impl RenderContext<'_> {
             .items_center()
             .justify_center()
             .cursor_default()
-            .focus_visible(|style| style.border_1().border_color(self.theme.focus))
-            .hover(|style| style.bg(self.theme.control_hover))
-            .active(|style| style.bg(self.theme.control_active))
-            .child(icon(Icon::Copy, 13.0, self.theme.text_tertiary))
+            .focus_visible(|style| style.border_1().border_color(self.theme.ring))
+            .hover(|style| style.bg(self.theme.accent))
+            .active(|style| style.bg(self.theme.accent))
+            .child(
+                Icon::new(IconName::Copy)
+                    .size(px(13.0))
+                    .text_color(self.theme.muted_foreground),
+            )
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_click(move |_, _, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string(click_code.clone()));
@@ -853,7 +851,7 @@ impl RenderContext<'_> {
             .font_family(self.code_font_family)
             .text_size(px(self.code_text_size))
             .line_height(px((self.code_text_size * 1.5).round()))
-            .text_color(self.theme.text_secondary)
+            .text_color(self.theme.muted_foreground)
             .whitespace_normal()
             .on_children_prepainted(move |bounds, _, cx| {
                 let overflowing = bounds
@@ -877,7 +875,7 @@ impl RenderContext<'_> {
             .rounded(px(8.0))
             .border_1()
             .border_color(self.theme.border)
-            .bg(self.theme.raised)
+            .bg(self.theme.secondary)
             .overflow_hidden()
             .when_some(language.as_ref(), |element, language| {
                 element.child(
@@ -892,7 +890,7 @@ impl RenderContext<'_> {
                         .items_center()
                         .text_size(px(12.0))
                         .line_height(px(16.0))
-                        .text_color(self.theme.text_tertiary)
+                        .text_color(self.theme.muted_foreground)
                         .child(
                             div()
                                 .min_w_0()
@@ -933,7 +931,7 @@ impl RenderContext<'_> {
             .flex()
             .justify_center()
             .cursor_pointer()
-            .focus_visible(|style| style.border_1().border_color(self.theme.focus));
+            .focus_visible(|style| style.border_1().border_color(self.theme.ring));
         control = if expanded {
             control.items_center()
         } else {
@@ -946,19 +944,20 @@ impl RenderContext<'_> {
                 .pb(px(7.0))
                 .bg(linear_gradient(
                     180.0,
-                    linear_color_stop(self.theme.raised.opacity(0.0), 0.0),
-                    linear_color_stop(self.theme.raised, 0.72),
+                    linear_color_stop(self.theme.secondary.opacity(0.0), 0.0),
+                    linear_color_stop(self.theme.secondary, 0.72),
                 ))
         };
         control
             .child(
-                icon(Icon::ChevronDown, 16.0, self.theme.text_secondary).with_transformation(
-                    Transformation::rotate(radians(if expanded {
+                Icon::new(IconName::ChevronDown)
+                    .size(px(16.0))
+                    .text_color(self.theme.muted_foreground)
+                    .transform(Transformation::rotate(radians(if expanded {
                         std::f32::consts::PI
                     } else {
                         0.0
-                    })),
-                ),
+                    }))),
             )
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_click(move |_, _, cx| {
@@ -998,7 +997,7 @@ impl RenderContext<'_> {
             .min_w_0()
             .rounded(px(8.0))
             .border_1()
-            .border_color(self.theme.border_strong)
+            .border_color(self.theme.input)
             .overflow_hidden()
             .flex()
             .flex_col();
@@ -1013,7 +1012,7 @@ impl RenderContext<'_> {
                 )
                 .when(rows.is_empty(), |row| row.rounded(px(7.0)))
                 .when(!rows.is_empty(), |row| row.rounded_t(px(7.0)))
-                .bg(self.theme.control_selected),
+                .bg(self.theme.accent),
             );
         }
         for (index, row) in rows.iter().enumerate() {
@@ -1095,8 +1094,11 @@ fn activate_link(
     }
 }
 
-pub fn generic_link_icon(theme: Theme) -> AnyElement {
-    icon(Icon::Link, 12.0, theme.text_tertiary).into_any_element()
+pub fn generic_link_icon(theme: &Theme) -> AnyElement {
+    Icon::new(IconName::ExternalLink)
+        .size(px(12.0))
+        .text_color(theme.muted_foreground)
+        .into_any_element()
 }
 
 fn column_widths(
