@@ -1,5 +1,9 @@
 use super::*;
 use crate::mcp::McpServerState;
+use gpui_component::{
+    Icon as ComponentIcon,
+    tab::{Tab, TabBar},
+};
 
 impl Locus {
     pub(super) fn toggle_panel(
@@ -225,30 +229,20 @@ impl Locus {
                     .flex()
                     .items_center()
                     .child(
-                        div()
-                            .id("terminal-tab")
-                            .role(gpui::Role::Tab)
-                            .aria_selected(true)
-                            .aria_label(label)
-                            .h(px(28.0))
-                            .min_w(px(100.0))
-                            .max_w(px(176.0))
-                            .px(px(8.0))
-                            .rounded(px(6.0))
-                            .bg(theme.accent)
-                            .flex()
-                            .items_center()
-                            .gap(px(6.0))
-                            .child(icon(Icon::SquareTerminal, 13.0, theme.muted_foreground))
-                            .text_size(px(12.5))
-                            .font_weight(FontWeight::MEDIUM)
+                        TabBar::new("right-sidebar-tabs")
+                            .pill()
+                            .selected_index(0)
+                            .max_width(px(176.0))
                             .child(
-                                div()
-                                    .min_w_0()
-                                    .flex_1()
-                                    .truncate()
-                                    .text_color(theme.foreground)
-                                    .child(label),
+                                Tab::new().aria_label(label).child(
+                                    div()
+                                        .min_w_0()
+                                        .flex()
+                                        .items_center()
+                                        .gap(px(6.0))
+                                        .child(ComponentIcon::new(Icon::SquareTerminal))
+                                        .child(div().min_w_0().flex_1().truncate().child(label)),
+                                ),
                             ),
                     ),
             )

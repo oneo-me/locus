@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -8,6 +9,7 @@ mod note_atmosphere;
 mod note_menu;
 mod pane;
 mod sidebar;
+mod terminal_tabs;
 mod window_chrome;
 
 use gpui::{
@@ -19,6 +21,7 @@ use gpui::{
 
 use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
+use self::terminal_tabs::TerminalTab;
 use super::settings::{Settings, SettingsEvent};
 use crate::config::{DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_MIN_WIDTH};
 use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
@@ -36,8 +39,8 @@ use crate::ui::{
     toolbar_icon_button,
 };
 use crate::{
-    CloseWindow, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleFullScreen,
-    ToggleLeftPanel, ToggleRightPanel,
+    CloseTerminalTab, CloseWindow, NewTerminal, OpenSettings, ReloadCurrentNote, ToggleFpsCounter,
+    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
 };
 use oneo_gpui_app_shell::{
     AppShellState, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
@@ -113,8 +116,12 @@ pub struct Locus {
     content_pane: Entity<LocusPane>,
     right_pane: Entity<LocusPane>,
     mcp_server: McpServerController,
-    terminal: Option<Entity<TerminalView>>,
-    terminal_needs_restart: bool,
+    terminal_tabs: Vec<TerminalTab>,
+    selected_terminal_id: Option<u64>,
+    next_terminal_id: u64,
+    terminal_tab_scroll_handle: ScrollHandle,
+    last_scrolled_terminal_id: Cell<Option<u64>>,
+    terminals_need_restart: bool,
     library_tree: LibraryTree,
     library_watcher: Option<LibraryWatcher>,
     library_watch_task: Option<Task<()>>,
@@ -222,10 +229,6 @@ impl Locus {
                     })
             })
             .unwrap_or((None, None));
-        let terminal_configuration = terminal_configuration(&preferences);
-        let terminal = library_path
-            .clone()
-            .map(|path| cx.new(|cx| TerminalView::new(path, terminal_configuration.clone(), cx)));
         let mcp_server = McpServerController::new(&preferences);
         let mcp_server_state = mcp_server.state();
         let archived_notes = library_tree.archived_notes.clone();
@@ -246,8 +249,8 @@ impl Locus {
             |this, _, event: &SettingsEvent, cx| match event {
                 SettingsEvent::Close => {
                     this.app_shell.close_settings();
-                    if this.terminal_needs_restart {
-                        this.restart_terminal(cx);
+                    if this.terminals_need_restart {
+                        this.restart_terminals(cx);
                     }
                     cx.notify();
                 }
@@ -257,8 +260,8 @@ impl Locus {
                 SettingsEvent::LanguageChanged(language) => {
                     gpui_component::set_locale(language.locale());
                     crate::set_app_menus(cx, *language, this.can_reload_current_note());
-                    if let Some(terminal) = &this.terminal {
-                        terminal.update(cx, |terminal, cx| {
+                    for tab in &this.terminal_tabs {
+                        tab.terminal.update(cx, |terminal, cx| {
                             terminal.set_labels(terminal_labels(*language), cx);
                         });
                     }
@@ -266,22 +269,22 @@ impl Locus {
                 }
                 SettingsEvent::LibraryChanged(path) => {
                     this.change_library(path, cx);
-                    this.restart_terminal(cx);
+                    this.restart_terminals(cx);
                     this.restart_mcp_server(cx);
                 }
                 SettingsEvent::TerminalLaunchChanged => {
-                    this.terminal_needs_restart = true;
+                    this.terminals_need_restart = true;
                 }
                 SettingsEvent::TerminalColorSchemeChanged(color_scheme) => {
-                    if let Some(terminal) = &this.terminal {
-                        terminal.update(cx, |terminal, cx| {
+                    for tab in &this.terminal_tabs {
+                        tab.terminal.update(cx, |terminal, cx| {
                             terminal.set_color_scheme(*color_scheme, cx);
                         });
                     }
                 }
                 SettingsEvent::TerminalCursorStyleChanged(cursor_style) => {
-                    if let Some(terminal) = &this.terminal {
-                        terminal.update(cx, |terminal, cx| {
+                    for tab in &this.terminal_tabs {
+                        tab.terminal.update(cx, |terminal, cx| {
                             terminal.set_cursor_style(*cursor_style, cx);
                         });
                     }
@@ -290,8 +293,8 @@ impl Locus {
                     cx.notify();
                 }
                 SettingsEvent::TerminalFontChanged(family, size) => {
-                    if let Some(terminal) = &this.terminal {
-                        terminal.update(cx, |terminal, cx| {
+                    for tab in &this.terminal_tabs {
+                        tab.terminal.update(cx, |terminal, cx| {
                             terminal.set_font(family.clone(), *size, cx);
                         });
                     }
@@ -354,8 +357,12 @@ impl Locus {
             content_pane,
             right_pane,
             mcp_server,
-            terminal,
-            terminal_needs_restart: false,
+            terminal_tabs: Vec::new(),
+            selected_terminal_id: None,
+            next_terminal_id: 1,
+            terminal_tab_scroll_handle: ScrollHandle::new(),
+            last_scrolled_terminal_id: Cell::new(None),
+            terminals_need_restart: false,
             library_tree,
             library_watcher,
             library_watch_task,
@@ -544,16 +551,6 @@ impl Locus {
         self.scroll_to_selected_library_node = false;
         self.save_interface_state();
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
-        cx.notify();
-    }
-
-    fn restart_terminal(&mut self, cx: &mut Context<Self>) {
-        let preferences = self.settings.read(cx).preferences().clone();
-        self.terminal = preferences.library_path.clone().map(|path| {
-            let configuration = terminal_configuration(&preferences);
-            cx.new(|cx| TerminalView::new(path, configuration, cx))
-        });
-        self.terminal_needs_restart = false;
         cx.notify();
     }
 
@@ -979,7 +976,6 @@ impl Locus {
 
     fn render_right_sidebar(&self, width: f32, show_resize: bool, cx: &mut Context<Self>) -> Div {
         let theme = Theme::global(cx).clone();
-        let language = self.language(cx);
 
         div()
             .relative()
@@ -991,24 +987,7 @@ impl Locus {
             .min_w_0()
             .bg(theme.background)
             .child(self.render_right_titlebar(cx))
-            .child(
-                div()
-                    .min_h_0()
-                    .flex_1()
-                    .when_some(self.terminal.clone(), |body, terminal| body.child(terminal))
-                    .when(self.terminal.is_none(), |body| {
-                        body.flex()
-                            .items_center()
-                            .justify_center()
-                            .px(px(24.0))
-                            .text_sm()
-                            .text_color(theme.muted_foreground)
-                            .child(language.text(
-                                "请先在设置中选择文档库",
-                                "Choose a library in Settings first",
-                            ))
-                    }),
-            )
+            .child(self.render_terminal_panel(cx))
             .when(show_resize, |panel| {
                 panel.child(self.render_panel_resize_handle(PanelSide::Right, cx))
             })
@@ -1067,11 +1046,14 @@ impl Render for Locus {
             panels.left,
             self.app_shell.workspace().visible(PanelSide::Left),
         );
-        if let Some(terminal) = &self.terminal {
-            terminal.update(cx, |terminal, _| {
+        for tab in &self.terminal_tabs {
+            tab.terminal.update(cx, |terminal, _| {
                 terminal.set_available_size(
                     panels.right_content,
-                    (f32::from(window.viewport_size().height) - TITLEBAR_HEIGHT).max(120.0),
+                    (f32::from(window.viewport_size().height)
+                        - TITLEBAR_HEIGHT
+                        - terminal_tabs::TERMINAL_TAB_BAR_HEIGHT)
+                        .max(120.0),
                 );
             });
         }
@@ -1127,7 +1109,9 @@ impl Render for Locus {
         div()
             .key_context("Locus")
             .track_focus(&self.root_focus)
+            .on_action(cx.listener(Self::close_terminal_tab_action))
             .on_action(cx.listener(Self::close_window_action))
+            .on_action(cx.listener(Self::new_terminal_action))
             .on_action(cx.listener(Self::open_settings_action))
             .on_action(cx.listener(Self::reload_current_note_action))
             .on_action(cx.listener(Self::toggle_fps_counter_action))

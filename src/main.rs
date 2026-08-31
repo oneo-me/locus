@@ -38,8 +38,9 @@ use state::InterfaceState;
 
 const MIN_VISIBLE_TITLEBAR_WIDTH: f32 = 120.0;
 const MIN_VISIBLE_TITLEBAR_HEIGHT: f32 = 24.0;
+const NEW_TERMINAL_KEY: &str = "secondary-`";
 
-actions!(locus, [ReloadCurrentNote]);
+actions!(locus, [CloseTerminalTab, NewTerminal, ReloadCurrentNote]);
 
 fn main() {
     let main_window: Rc<RefCell<Option<gpui::WindowHandle<Root>>>> = Rc::new(RefCell::new(None));
@@ -60,7 +61,11 @@ fn main() {
         init_reduce_motion(cx);
         app::bind_keys(cx);
         bind_app_shell_keys(cx);
-        cx.bind_keys([KeyBinding::new("secondary-r", ReloadCurrentNote, None)]);
+        cx.bind_keys([
+            KeyBinding::new("secondary-w", CloseTerminalTab, Some("Terminal")),
+            KeyBinding::new(NEW_TERMINAL_KEY, NewTerminal, None),
+            KeyBinding::new("secondary-r", ReloadCurrentNote, None),
+        ]);
         cx.on_action(|_: &About, _| platform::show_about_panel());
         cx.on_action(|_: &Quit, cx| cx.quit());
         let (preferences, load_error) = Preferences::load();
@@ -180,5 +185,15 @@ mod tests {
 
         assert!(window_titlebar_is_reachable(reachable, display));
         assert!(!window_titlebar_is_reachable(unreachable, display));
+    }
+
+    #[test]
+    fn new_terminal_shortcut_is_a_valid_key_binding() {
+        KeyBinding::new(NEW_TERMINAL_KEY, NewTerminal, None);
+    }
+
+    #[test]
+    fn terminal_close_shortcut_is_a_valid_contextual_key_binding() {
+        KeyBinding::new("secondary-w", CloseTerminalTab, Some("Terminal"));
     }
 }
