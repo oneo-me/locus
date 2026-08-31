@@ -4808,6 +4808,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "oneo-gpui-tabbed-app-shell"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui-component",
+ "objc2 0.6.4",
+ "objc2-app-kit 0.3.2",
+ "raw-window-handle",
+]
+
+[[package]]
 name = "oneo-gpui-terminal"
 version = "0.1.0"
 dependencies = [

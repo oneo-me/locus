@@ -1,0 +1,22 @@
+[package]
+name = "oneo-gpui-tabbed-app-shell"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gpui.workspace = true
+gpui-component.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+    "std",
+    "NSAccessibility",
+    "NSColor",
+    "NSResponder",
+    "NSView",
+    "NSVisualEffectView",
+    "NSWindow",
+    "NSWorkspace",
+] }
+raw-window-handle = "0.6"

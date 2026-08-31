@@ -1,0 +1,60 @@
+use std::time::{Duration, Instant};
+
+use gpui::{Div, Window, div, prelude::*, px};
+use gpui_component::Theme;
+
+pub struct FpsCounterState {
+    visible: bool,
+    frame_count: u32,
+    value: u32,
+    last_frame: Instant,
+}
+
+impl FpsCounterState {
+    pub fn new(visible: bool) -> Self {
+        Self {
+            visible,
+            frame_count: 0,
+            value: 0,
+            last_frame: Instant::now(),
+        }
+    }
+
+    pub fn visible(&self) -> bool {
+        self.visible
+    }
+
+    pub fn toggle(&mut self) {
+        self.visible = !self.visible;
+        self.frame_count = 0;
+        self.value = 0;
+        self.last_frame = Instant::now();
+    }
+
+    pub fn tick(&mut self, window: &Window) {
+        if !self.visible {
+            return;
+        }
+
+        let now = Instant::now();
+        self.frame_count = self.frame_count.saturating_add(1);
+        let elapsed = now.duration_since(self.last_frame);
+        if elapsed >= Duration::from_secs(1) {
+            self.value = (self.frame_count as f32 / elapsed.as_secs_f32()).round() as u32;
+            self.frame_count = 0;
+            self.last_frame = now;
+        }
+        window.request_animation_frame();
+    }
+}
+
+pub fn fps_counter(state: &FpsCounterState, theme: &Theme) -> Div {
+    div()
+        .h(px(28.0))
+        .flex()
+        .items_center()
+        .px(px(6.0))
+        .text_xs()
+        .text_color(theme.muted_foreground)
+        .child(format!("{} FPS", state.value))
+}
