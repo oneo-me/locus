@@ -25,26 +25,6 @@ cargo run
 
 构建前需要安装最新版稳定 Rust、Xcode 和 Xcode Command Line Tools。
 
-`old_react/` 保留 React Router SPA、Hono 服务端和 TypeScript workspace 组成的旧版实现及其独立工程配置，不代表原生应用的架构。
-
-## 旧版 React 实现
-
-`old_react/` 包含旧版的完整代码：
-
-- `apps/web`：React Router SPA。
-- `apps/server`：Hono 服务端、MCP、本机文件与 Agent runtime 边界。
-- `packages/*`：文档库、Markdown、画布、Agent 和共享界面模块。
-
-如需运行旧版，请在该目录安装依赖并启动开发服务：
-
-```bash
-cd old_react
-pnpm install
-pnpm dev
-```
-
-旧版要求 Node.js 22、pnpm 11.20 或更高版本。它通过 `link:../../../../shellweb/packages/shellweb` 使用同级 Shellweb 仓库；需要联调终端时，Shellweb 也必须位于对应路径。
-
 ## 项目文档
 
 产品定义、设计语义、架构和模块边界以 `locus://projects/locus` 下的项目笔记为准。

@@ -1,8 +1,0 @@
-{
-  "npm.scriptRunner": "pnpm",
-  "editor.defaultFormatter": "oxc.oxc-vscode",
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll.oxc": "always"
-  }
-}
