@@ -1,11 +1,11 @@
 mod fps;
 mod platform;
 
-use std::{cell::Cell, rc::Rc};
+use std::rc::Rc;
 
 use gpui::{
     AnyElement, App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    RenderOnce, Role, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
+    RenderOnce, Role, SharedString, Stateful, StatefulInteractiveElement, Styled, Window, div, px,
     transparent_black,
 };
 use gpui_component::{
@@ -21,6 +21,21 @@ pub use platform::{
     close_main_window, configure_main_window_close_behavior, configure_window_material,
     init_reduce_motion,
 };
+
+pub fn titlebar_drag_region(id: impl Into<ElementId>) -> Stateful<gpui::Div> {
+    div()
+        .id(id)
+        .h_full()
+        .window_control_area(gpui::WindowControlArea::Drag)
+        .on_mouse_down(MouseButton::Left, |_, window, _| {
+            window.start_window_move();
+        })
+        .on_click(|event, window, _| {
+            if event.click_count() == 2 {
+                window.titlebar_double_click();
+            }
+        })
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AppShellTab {
@@ -202,6 +217,7 @@ impl RenderOnce for TabbedAppShell {
             .collect::<Vec<_>>();
         let mut tabs = TabBar::new("app-shell-tabs")
             .h(px(TITLEBAR_HEIGHT))
+            .w_auto()
             .bg(transparent_black())
             .max_width(px(220.0))
             .selected_index(self.selected_index)
@@ -209,11 +225,6 @@ impl RenderOnce for TabbedAppShell {
         if let Some(handler) = self.on_select {
             tabs = tabs.on_click(move |index, window, cx| handler(index, window, cx));
         }
-        let drag_armed = Rc::new(Cell::new(false));
-        let drag_armed_on_down = drag_armed.clone();
-        let drag_armed_on_up = drag_armed.clone();
-        let drag_armed_on_out = drag_armed.clone();
-
         div()
             .size_full()
             .flex()
@@ -230,20 +241,15 @@ impl RenderOnce for TabbedAppShell {
                     .items_center()
                     .border_b_1()
                     .border_color(theme.border)
-                    .on_mouse_down_out(move |_, _, _| drag_armed_on_out.set(false))
-                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                        drag_armed_on_down.set(true)
-                    })
-                    .on_mouse_up(MouseButton::Left, move |_, _, _| {
-                        drag_armed_on_up.set(false)
-                    })
-                    .on_mouse_move(move |_, window, _| {
-                        if drag_armed.replace(false) {
-                            window.start_window_move();
-                        }
-                    })
                     .child(self.titlebar_prefix)
-                    .child(div().h_full().min_w_0().flex_shrink_1().child(tabs))
+                    .child(
+                        div()
+                            .h_full()
+                            .w_auto()
+                            .min_w_0()
+                            .flex_shrink_1()
+                            .child(tabs),
+                    )
                     .child(self.titlebar_drag_region)
                     .child(
                         div()
