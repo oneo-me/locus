@@ -237,10 +237,8 @@ impl RenderOnce for TabbedAppShell {
                     .on_mouse_up(MouseButton::Left, move |_, _, _| {
                         drag_armed_on_up.set(false)
                     })
-                    .on_mouse_move(move |event, window, _| {
-                        if event.pressed_button == Some(MouseButton::Left)
-                            && drag_armed.replace(false)
-                        {
+                    .on_mouse_move(move |_, window, _| {
+                        if drag_armed.replace(false) {
                             window.start_window_move();
                         }
                     })
