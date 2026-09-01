@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 mod command_palette;
+mod knowledge_graph;
 mod navigation;
 mod note;
 mod note_atmosphere;
@@ -20,12 +21,15 @@ use gpui::{
 };
 use gpui_component::{ElementExt as _, Root};
 
+use self::knowledge_graph::{KnowledgeGraph, KnowledgeGraphEvent};
 use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
 use self::terminal_tabs::TerminalTab;
 use super::settings::{Settings, SettingsEvent, SettingsInit};
 use crate::config::{DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_MIN_WIDTH};
-use crate::document_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
+use crate::document_library::{
+    DocumentGraph, LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note,
+};
 use crate::localization::Language;
 use crate::mcp::McpServerController;
 use crate::preferences::Preferences;
@@ -39,8 +43,8 @@ use crate::ui::{
     Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection, toolbar_icon_button,
 };
 use crate::{
-    CloseTerminalTab, CloseWindow, NewTerminal, OpenSettings, ReloadCurrentNote, ToggleFpsCounter,
-    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
+    CloseTerminalTab, CloseWindow, NewTerminal, OpenKnowledgeGraph, OpenSettings,
+    ReloadCurrentNote, ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
 };
 use oneo_gpui_app_shell::{
     AppShellState, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
@@ -99,6 +103,27 @@ struct SelectedNote {
     error: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RightSidebarTab {
+    Terminal,
+    KnowledgeGraph,
+}
+
+impl RightSidebarTab {
+    const ORDER: [Self; 2] = [Self::KnowledgeGraph, Self::Terminal];
+
+    fn at(index: usize) -> Option<Self> {
+        Self::ORDER.get(index).copied()
+    }
+
+    fn index(self) -> usize {
+        Self::ORDER
+            .iter()
+            .position(|tab| *tab == self)
+            .expect("right sidebar tab must be present in its display order")
+    }
+}
+
 pub struct Locus {
     root_focus: FocusHandle,
     app_shell: AppShellState,
@@ -108,6 +133,8 @@ pub struct Locus {
     content_pane: Entity<LocusPane>,
     right_pane: Entity<LocusPane>,
     mcp_server: McpServerController,
+    knowledge_graph: Entity<KnowledgeGraph>,
+    selected_right_sidebar_tab: RightSidebarTab,
     terminal_tabs: Vec<TerminalTab>,
     selected_terminal_id: Option<u64>,
     next_terminal_id: u64,
@@ -138,7 +165,7 @@ pub struct Locus {
     command_palette_state: command_palette::CommandPaletteState,
     command_palette_close_generation: u64,
     command_palette_previous_focus: Option<WeakFocusHandle>,
-    note_action_pending: bool,
+    pending_note_action: Option<PathBuf>,
     copied_library_node: Option<String>,
     note_copy_generation: u64,
     mcp_status_copied: bool,
@@ -175,6 +202,15 @@ impl Locus {
         if let Some(path) = library_path.as_deref() {
             sidebar_order.apply(path, &mut library_tree.nodes);
         }
+        let document_graph = DocumentGraph::from_tree(&library_tree);
+        let knowledge_graph = cx.new(|cx| {
+            KnowledgeGraph::new(
+                document_graph,
+                preferences.show_graph_attachments,
+                preferences.language,
+                cx,
+            )
+        });
         let selected_library_node = interface_state
             .selected_library_node
             .clone()
@@ -257,6 +293,9 @@ impl Locus {
                             terminal.set_labels(terminal_labels(*language), cx);
                         });
                     }
+                    this.knowledge_graph.update(cx, |graph, cx| {
+                        graph.set_language(*language, cx);
+                    });
                     cx.notify();
                 }
                 SettingsEvent::LibraryChanged(path) => {
@@ -293,6 +332,17 @@ impl Locus {
                 }
                 SettingsEvent::McpConfigurationChanged => {
                     this.restart_mcp_server(cx);
+                }
+            },
+        )
+        .detach();
+        cx.subscribe(
+            &knowledge_graph,
+            |this, _, event: &KnowledgeGraphEvent, cx| match event {
+                KnowledgeGraphEvent::OpenNote(path) => {
+                    if let Some(node) = this.library_tree.node(path) {
+                        this.select_library_node(path.clone(), !node.children.is_empty(), cx);
+                    }
                 }
             },
         )
@@ -345,6 +395,8 @@ impl Locus {
             content_pane,
             right_pane,
             mcp_server,
+            knowledge_graph,
+            selected_right_sidebar_tab: RightSidebarTab::Terminal,
             terminal_tabs: Vec::new(),
             selected_terminal_id: None,
             next_terminal_id: 1,
@@ -375,7 +427,7 @@ impl Locus {
             command_palette_state: command_palette::CommandPaletteState::Hidden,
             command_palette_close_generation: 0,
             command_palette_previous_focus: None,
-            note_action_pending: false,
+            pending_note_action: None,
             copied_library_node: None,
             note_copy_generation: 0,
             mcp_status_copied: false,
@@ -434,8 +486,12 @@ impl Locus {
                 }
 
                 let scan_root = task_root.clone();
-                let tree = cx
-                    .background_spawn(async move { LibraryTree::load(Some(&scan_root)) })
+                let (tree, graph) = cx
+                    .background_spawn(async move {
+                        let tree = LibraryTree::load(Some(&scan_root));
+                        let graph = DocumentGraph::from_tree(&tree);
+                        (tree, graph)
+                    })
                     .await;
                 let _ = this.update(cx, |this, cx| {
                     if this.current_library_path(cx) != Some(task_root.as_path()) {
@@ -460,7 +516,7 @@ impl Locus {
                                 rescan_all,
                             )
                         });
-                    this.apply_library_tree(tree, reload_selected_note, cx);
+                    this.apply_library_tree(tree, graph, reload_selected_note, cx);
                 });
             }
         });
@@ -532,6 +588,10 @@ impl Locus {
         self.library_watch_task = task;
         self.library_watcher_error = watcher_error;
         self.library_tree = LibraryTree::load(Some(path));
+        let graph = DocumentGraph::from_tree(&self.library_tree);
+        self.knowledge_graph.update(cx, |knowledge_graph, cx| {
+            knowledge_graph.replace_graph(graph, cx)
+        });
         self.settings.update(cx, |settings, cx| {
             settings.set_archive_state(
                 self.library_tree.archived_notes.clone(),
@@ -560,6 +620,7 @@ impl Locus {
     fn apply_library_tree(
         &mut self,
         mut tree: LibraryTree,
+        graph: DocumentGraph,
         reload_selected_note: bool,
         cx: &mut Context<Self>,
     ) {
@@ -577,6 +638,9 @@ impl Locus {
             settings.set_archive_state(tree.archived_notes.clone(), tree.error.clone(), cx);
         });
         self.library_tree = tree;
+        self.knowledge_graph.update(cx, |knowledge_graph, cx| {
+            knowledge_graph.set_graph(graph, cx)
+        });
         self.library_navigation
             .retain(|path| self.library_tree.node(path).is_some());
 
@@ -613,12 +677,16 @@ impl Locus {
         };
         cx.spawn(async move |this, cx| {
             let scan_root = root.clone();
-            let tree = cx
-                .background_spawn(async move { LibraryTree::load(Some(&scan_root)) })
+            let (tree, graph) = cx
+                .background_spawn(async move {
+                    let tree = LibraryTree::load(Some(&scan_root));
+                    let graph = DocumentGraph::from_tree(&tree);
+                    (tree, graph)
+                })
                 .await;
             let _ = this.update(cx, |this, cx| {
                 if this.current_library_path(cx) == Some(root.as_path()) {
-                    this.apply_library_tree(tree, false, cx);
+                    this.apply_library_tree(tree, graph, false, cx);
                 }
             });
         })
@@ -722,6 +790,28 @@ impl Locus {
         cx: &mut Context<Self>,
     ) {
         self.toggle_panel(PanelSide::Right, window, cx);
+    }
+
+    fn open_knowledge_graph_action(
+        &mut self,
+        _: &OpenKnowledgeGraph,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.app_shell.is_settings_open() {
+            self.app_shell.close_settings();
+            if self.terminals_need_restart {
+                self.restart_terminals(cx);
+            }
+        }
+        self.selected_right_sidebar_tab = RightSidebarTab::KnowledgeGraph;
+        if !self.app_shell.workspace().visible(PanelSide::Right) {
+            self.toggle_panel(PanelSide::Right, window, cx);
+        } else {
+            cx.notify();
+        }
+        let focus = self.knowledge_graph.read(cx).focus_handle();
+        window.focus(&focus, cx);
     }
 
     fn navigate_back(&mut self, cx: &mut Context<Self>) {
@@ -970,6 +1060,12 @@ impl Locus {
 
     fn render_right_sidebar(&self, width: f32, show_resize: bool, cx: &mut Context<Self>) -> Div {
         let theme = Theme::global(cx).clone();
+        let body = match self.selected_right_sidebar_tab {
+            RightSidebarTab::Terminal => self.render_terminal_panel(cx),
+            RightSidebarTab::KnowledgeGraph => {
+                div().min_h_0().flex_1().child(self.knowledge_graph.clone())
+            }
+        };
 
         div()
             .relative()
@@ -981,7 +1077,7 @@ impl Locus {
             .min_w_0()
             .bg(theme.background)
             .child(self.render_right_titlebar(cx))
-            .child(self.render_terminal_panel(cx))
+            .child(body)
             .when(show_resize, |panel| {
                 panel.child(self.render_panel_resize_handle(PanelSide::Right, cx))
             })
@@ -1020,6 +1116,16 @@ impl Locus {
             cx,
         )
         .into_any_element()
+    }
+
+    fn select_right_sidebar_tab(&mut self, index: usize, _: &mut Window, cx: &mut Context<Self>) {
+        let Some(tab) = RightSidebarTab::at(index) else {
+            return;
+        };
+        if self.selected_right_sidebar_tab != tab {
+            self.selected_right_sidebar_tab = tab;
+            cx.notify();
+        }
     }
 
     fn advance_render_lifecycle(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -1115,6 +1221,7 @@ impl Render for Locus {
             .on_action(cx.listener(Self::close_window_action))
             .on_action(cx.listener(Self::new_terminal_action))
             .on_action(cx.listener(Self::open_command_palette_action))
+            .on_action(cx.listener(Self::open_knowledge_graph_action))
             .on_action(cx.listener(Self::open_note_action))
             .on_action(cx.listener(Self::open_settings_action))
             .on_action(cx.listener(Self::copy_current_note_reference_action))
@@ -1222,6 +1329,16 @@ fn navigation_left_offset(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn knowledge_graph_is_the_first_right_sidebar_tab() {
+        assert_eq!(
+            RightSidebarTab::at(0),
+            Some(RightSidebarTab::KnowledgeGraph)
+        );
+        assert_eq!(RightSidebarTab::KnowledgeGraph.index(), 0);
+        assert_eq!(RightSidebarTab::Terminal.index(), 1);
+    }
 
     #[test]
     fn fullscreen_left_toggle_uses_the_window_inset() {

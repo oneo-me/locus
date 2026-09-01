@@ -54,6 +54,7 @@ actions!(
         NewTerminal,
         OpenCommandPalette,
         OpenCurrentNoteDirectory,
+        OpenKnowledgeGraph,
         ReloadCurrentNote
     ]
 );

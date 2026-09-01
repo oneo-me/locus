@@ -489,6 +489,19 @@ impl Settings {
         &self.preferences
     }
 
+    pub fn set_show_graph_attachments(
+        &mut self,
+        show_graph_attachments: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if self.preferences.show_graph_attachments == show_graph_attachments {
+            return;
+        }
+        self.preferences.show_graph_attachments = show_graph_attachments;
+        self.persist();
+        cx.notify();
+    }
+
     pub fn focus(&self, window: &mut Window, cx: &mut App) {
         window.focus(&self.focus, cx);
     }

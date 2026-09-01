@@ -232,7 +232,8 @@ impl Locus {
         .on_click(|_, window, cx| {
             window.dispatch_action(Box::new(crate::OpenCurrentNoteDirectory), cx)
         });
-        let note_menu = self.render_note_menu(theme, cx);
+        let note_menu =
+            self.render_note_menu(node, format!("note-menu-page-{}", node.path), theme, cx);
 
         self.window_drag_region("note-titlebar-region", cx)
             .occlude()

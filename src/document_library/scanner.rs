@@ -18,6 +18,7 @@ struct DocumentMetadata {
     icon: Option<String>,
     summary: Option<String>,
     archived: bool,
+    excluded_from_graph: bool,
     additional: Vec<(String, serde_json::Value)>,
 }
 
@@ -125,6 +126,7 @@ pub(super) fn scan_children(
             icon: metadata.icon,
             icon_image,
             summary: metadata.summary,
+            included_in_graph: !metadata.excluded_from_graph,
             additional_metadata: metadata.additional,
             attachments,
             change,
@@ -250,6 +252,7 @@ fn parse_frontmatter_metadata(frontmatter: &str) -> DocumentMetadata {
             "icon" => metadata.icon = optional_string(Some(value)),
             "summary" => metadata.summary = optional_string(Some(value)),
             "archived" => metadata.archived = value == serde_json::Value::Bool(true),
+            "graph" => metadata.excluded_from_graph = value == serde_json::Value::Bool(false),
             _ => metadata.additional.push((key, value)),
         }
     }
@@ -311,11 +314,13 @@ mod tests {
 
     #[test]
     fn reads_sidebar_metadata_from_frontmatter() {
-        let document = "---\ntitle: 'Locus: Notes'\nicon: 🧭\narchived: true\n---\nBody";
+        let document =
+            "---\ntitle: 'Locus: Notes'\nicon: 🧭\narchived: true\ngraph: false\n---\nBody";
         let metadata = parse_frontmatter_metadata(frontmatter_parts(document).unwrap().0);
         assert_eq!(metadata.title.as_deref(), Some("Locus: Notes"));
         assert_eq!(metadata.icon.as_deref(), Some("🧭"));
         assert!(metadata.archived);
+        assert!(metadata.excluded_from_graph);
     }
 
     #[test]

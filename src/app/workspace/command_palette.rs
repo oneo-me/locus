@@ -17,8 +17,8 @@ use crate::document_library::{DocumentIcon, LIBRARY_REFERENCE_SCHEME, LibraryNod
 use crate::ui::{Icon, document_icon_image};
 use crate::{
     ArchiveCurrentNote, ChooseCurrentNoteIcon, CopyCurrentNoteReference, EditCurrentNote,
-    NewTerminal, OpenCommandPalette, OpenCurrentNoteDirectory, OpenSettings, ReloadCurrentNote,
-    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
+    NewTerminal, OpenCommandPalette, OpenCurrentNoteDirectory, OpenKnowledgeGraph, OpenSettings,
+    ReloadCurrentNote, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
 };
 
 const COMMAND_PALETTE_TRANSITION: Duration = Duration::from_millis(240);
@@ -98,6 +98,13 @@ impl Locus {
             )
             .item(
                 CommandItem::new()
+                    .label(language.text("workspace.graph.open"))
+                    .icon(Icon::Network)
+                    .keywords(["knowledge graph", "graph", "network", "relationships"])
+                    .action(Box::new(OpenKnowledgeGraph)),
+            )
+            .item(
+                CommandItem::new()
                     .label(language.text("menu.view.toggle_left_sidebar"))
                     .icon(Icon::PanelLeft)
                     .keywords(["left sidebar", "navigation"])
@@ -156,7 +163,7 @@ impl Locus {
                         .icon(Icon::ArrowUp)
                         .keywords(["upload", "icon", "image"])
                         .action(Box::new(ChooseCurrentNoteIcon))
-                        .disabled(self.note_action_pending),
+                        .disabled(self.pending_note_action.is_some()),
                 )
                 .item(
                     CommandItem::new()
@@ -164,7 +171,7 @@ impl Locus {
                         .icon(Icon::Inbox)
                         .keywords(["archive"])
                         .action(Box::new(ArchiveCurrentNote))
-                        .disabled(self.note_action_pending),
+                        .disabled(self.pending_note_action.is_some()),
                 );
             command = command.separator().group(current_note);
         }
@@ -563,6 +570,7 @@ mod tests {
             icon: None,
             icon_image: None,
             summary: None,
+            included_in_graph: true,
             additional_metadata: Vec::new(),
             attachments: Vec::new(),
             change: None,

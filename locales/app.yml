@@ -212,6 +212,30 @@ workspace.sidebar.show_right:
 workspace.terminal.title:
   en: Terminal
   zh-CN: 终端
+workspace.graph.title:
+  en: Knowledge Graph
+  zh-CN: 知识图谱
+workspace.graph.open:
+  en: Open Knowledge Graph
+  zh-CN: 打开知识图谱
+workspace.graph.settings:
+  en: Knowledge graph settings
+  zh-CN: 知识图谱设置
+workspace.graph.show_attachments:
+  en: Show attachments
+  zh-CN: 显示附件
+workspace.graph.show_attachments_description:
+  en: Show files stored alongside each note as graph nodes.
+  zh-CN: 在知识图谱中显示笔记同目录的附件节点。
+workspace.graph.empty:
+  en: Add a note to the library to build the knowledge graph.
+  zh-CN: 在文档库中加入笔记后，这里会自动生成知识图谱。
+workspace.graph.loading:
+  en: Building knowledge graph…
+  zh-CN: 正在生成知识图谱…
+workspace.graph.accessibility:
+  en: Knowledge graph with %{nodes} nodes and %{edges} relationships. Double-click a note to open it. Drag to pan or move a node, and scroll or pinch to zoom.
+  zh-CN: 知识图谱包含 %{nodes} 个节点和 %{edges} 条关系。双击笔记可打开，拖动画布可平移，拖动节点可调整位置，滚动或双指捏合可缩放。
 workspace.terminal.close_tab:
   en: Close terminal %{id}
   zh-CN: 关闭终端 %{id}
@@ -281,12 +305,18 @@ workspace.note_menu.choose_icon:
 workspace.note_menu.choose_icon_error:
   en: Could not choose icon
   zh-CN: 无法选择图标
+workspace.note_menu.include_in_graph:
+  en: Include in Knowledge Graph
+  zh-CN: 参与知识图谱
 workspace.note_menu.title:
   en: Note menu
   zh-CN: 笔记菜单
 workspace.note_menu.update_icon_error:
   en: Could not update icon
   zh-CN: 无法更新图标
+workspace.note_menu.update_graph_error:
+  en: Could not update knowledge graph participation
+  zh-CN: 无法更新知识图谱参与状态
 workspace.note_menu.updating:
   en: Updating note
   zh-CN: 正在更新笔记

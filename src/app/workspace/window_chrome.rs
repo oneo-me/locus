@@ -3,6 +3,8 @@ use crate::mcp::McpServerState;
 use gpui_component::{
     Disableable as _, Icon as ComponentIcon, Sizable as _,
     button::{Button, ButtonVariants as _},
+    popover::Popover,
+    switch::Switch,
     tab::{Tab, TabBar},
 };
 
@@ -196,7 +198,9 @@ impl Locus {
 
     pub(super) fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {
         let theme = Theme::global(cx).clone();
-        let label = self.language(cx).text("workspace.terminal.title");
+        let terminal_label = self.language(cx).text("workspace.terminal.title");
+        let graph_label = self.language(cx).text("workspace.graph.title");
+        let selected_index = self.selected_right_sidebar_tab.index();
         div()
             .h(px(TITLEBAR_HEIGHT))
             .flex_none()
@@ -215,20 +219,107 @@ impl Locus {
                     .child(
                         TabBar::new("right-sidebar-tabs")
                             .pill()
-                            .selected_index(0)
-                            .max_width(px(176.0))
+                            .selected_index(selected_index)
+                            .max_width(px(260.0))
+                            .on_click(cx.listener(|this, index: &usize, window, cx| {
+                                this.select_right_sidebar_tab(*index, window, cx);
+                            }))
                             .child(
-                                Tab::new().aria_label(label.clone()).child(
+                                Tab::new().aria_label(graph_label.clone()).child(
+                                    div()
+                                        .min_w_0()
+                                        .flex()
+                                        .items_center()
+                                        .gap(px(6.0))
+                                        .child(ComponentIcon::new(Icon::Network))
+                                        .child(
+                                            div().min_w_0().flex_1().truncate().child(graph_label),
+                                        ),
+                                ),
+                            )
+                            .child(
+                                Tab::new().aria_label(terminal_label.clone()).child(
                                     div()
                                         .min_w_0()
                                         .flex()
                                         .items_center()
                                         .gap(px(6.0))
                                         .child(ComponentIcon::new(Icon::SquareTerminal))
-                                        .child(div().min_w_0().flex_1().truncate().child(label)),
+                                        .child(
+                                            div()
+                                                .min_w_0()
+                                                .flex_1()
+                                                .truncate()
+                                                .child(terminal_label),
+                                        ),
                                 ),
                             ),
                     ),
+            )
+            .when(
+                self.selected_right_sidebar_tab == RightSidebarTab::KnowledgeGraph,
+                |header| {
+                    let settings_label = self.language(cx).text("workspace.graph.settings");
+                    let attachments_label =
+                        self.language(cx).text("workspace.graph.show_attachments");
+                    let attachments_description = self
+                        .language(cx)
+                        .text("workspace.graph.show_attachments_description");
+                    let checked = self.settings.read(cx).preferences().show_graph_attachments;
+                    header.child(
+                        Popover::new("knowledge-graph-settings")
+                            .w(px(260.0))
+                            .trigger(
+                                Button::new("open-knowledge-graph-settings")
+                                    .ghost()
+                                    .xsmall()
+                                    .icon(Icon::Ellipsis)
+                                    .accessibility_label(settings_label.clone())
+                                    .tooltip(settings_label),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_start()
+                                    .justify_between()
+                                    .gap_3()
+                                    .child(
+                                        div()
+                                            .min_w_0()
+                                            .flex_1()
+                                            .flex()
+                                            .flex_col()
+                                            .gap_1()
+                                            .child(div().text_sm().child(attachments_label.clone()))
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(theme.muted_foreground)
+                                                    .child(attachments_description),
+                                            ),
+                                    )
+                                    .child(
+                                        Switch::new("show-knowledge-graph-attachments")
+                                            .small()
+                                            .checked(checked)
+                                            .accessibility_label(attachments_label)
+                                            .on_click(cx.listener(
+                                                |this, checked: &bool, _, cx| {
+                                                    this.settings.update(cx, |settings, cx| {
+                                                        settings.set_show_graph_attachments(
+                                                            *checked, cx,
+                                                        );
+                                                    });
+                                                    this.knowledge_graph.update(cx, |graph, cx| {
+                                                        graph.set_show_attachments(*checked, cx);
+                                                    });
+                                                    cx.notify();
+                                                },
+                                            )),
+                                    ),
+                            ),
+                    )
+                },
             )
     }
 

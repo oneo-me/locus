@@ -6,9 +6,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::{
     DEFAULT_CODE_FONT_FAMILY, DEFAULT_CODE_FONT_SIZE, DEFAULT_LANGUAGE, DEFAULT_LIBRARY_PATH,
-    DEFAULT_MCP_ENABLED, DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT, DEFAULT_TERMINAL_COMMAND,
-    DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_TERMINAL_FONT_SIZE, DEFAULT_TERMINAL_SHELL,
-    DEFAULT_THEME, DEFAULT_UI_FONT_FAMILY, DEFAULT_UI_FONT_SIZE, SETTINGS_FILE,
+    DEFAULT_MCP_ENABLED, DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT,
+    DEFAULT_SHOW_GRAPH_ATTACHMENTS, DEFAULT_TERMINAL_COMMAND, DEFAULT_TERMINAL_FONT_FAMILY,
+    DEFAULT_TERMINAL_FONT_SIZE, DEFAULT_TERMINAL_SHELL, DEFAULT_THEME, DEFAULT_UI_FONT_FAMILY,
+    DEFAULT_UI_FONT_SIZE, SETTINGS_FILE,
 };
 use crate::localization::Language;
 use crate::storage::data_directory;
@@ -70,6 +71,7 @@ pub struct Preferences {
     pub mcp_enabled: bool,
     pub mcp_local_network: bool,
     pub mcp_port: u16,
+    pub show_graph_attachments: bool,
 }
 
 impl Default for Preferences {
@@ -92,6 +94,7 @@ impl Default for Preferences {
             mcp_enabled: DEFAULT_MCP_ENABLED,
             mcp_local_network: DEFAULT_MCP_LOCAL_NETWORK,
             mcp_port: DEFAULT_MCP_PORT,
+            show_graph_attachments: DEFAULT_SHOW_GRAPH_ATTACHMENTS,
         }
     }
 }
@@ -202,6 +205,7 @@ mod tests {
             mcp_enabled: true,
             mcp_local_network: true,
             mcp_port: 43123,
+            show_graph_attachments: false,
         };
         let json = serde_json::to_string(&preferences).unwrap();
         let restored: Preferences = serde_json::from_str(&json).unwrap();
@@ -232,6 +236,10 @@ mod tests {
         assert_eq!(restored.mcp_enabled, preferences.mcp_enabled);
         assert_eq!(restored.mcp_local_network, preferences.mcp_local_network);
         assert_eq!(restored.mcp_port, preferences.mcp_port);
+        assert_eq!(
+            restored.show_graph_attachments,
+            preferences.show_graph_attachments
+        );
     }
 
     #[test]

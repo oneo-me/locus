@@ -47,8 +47,15 @@ fn terminal_tab_scroll_item(tab_index: usize) -> usize {
     tab_index + 1
 }
 
-fn should_hide_terminal_panel(remaining_tabs: usize) -> bool {
-    remaining_tabs == 0
+fn right_sidebar_tab_after_terminal_close(
+    remaining_tabs: usize,
+    current: RightSidebarTab,
+) -> RightSidebarTab {
+    if remaining_tabs == 0 {
+        RightSidebarTab::KnowledgeGraph
+    } else {
+        current
+    }
 }
 
 impl Locus {
@@ -69,6 +76,7 @@ impl Locus {
             terminal,
             _title_subscription: title_subscription,
         });
+        self.selected_right_sidebar_tab = RightSidebarTab::Terminal;
         self.selected_terminal_id = Some(id);
         self.scroll_to_terminal_tab(id);
         window.focus(&focus, cx);
@@ -98,6 +106,7 @@ impl Locus {
             return;
         };
         let focus = tab.terminal.read(cx).focus_handle(cx);
+        self.selected_right_sidebar_tab = RightSidebarTab::Terminal;
         self.selected_terminal_id = Some(tab.id);
         self.scroll_to_terminal_tab(tab.id);
         window.focus(&focus, cx);
@@ -124,13 +133,11 @@ impl Locus {
                 window.focus(&self.root_focus, cx);
             }
         }
-        if should_hide_terminal_panel(self.terminal_tabs.len())
-            && self.app_shell.workspace().visible(PanelSide::Right)
-        {
-            self.toggle_panel(PanelSide::Right, window, cx);
-        } else {
-            cx.notify();
-        }
+        self.selected_right_sidebar_tab = right_sidebar_tab_after_terminal_close(
+            self.terminal_tabs.len(),
+            self.selected_right_sidebar_tab,
+        );
+        cx.notify();
     }
 
     pub(super) fn close_terminal_tab_action(
@@ -294,8 +301,8 @@ impl Locus {
 #[cfg(test)]
 mod tests {
     use super::{
-        adjacent_tab_after_close, should_hide_terminal_panel, terminal_tab_scroll_item,
-        terminal_tab_title,
+        RightSidebarTab, adjacent_tab_after_close, right_sidebar_tab_after_terminal_close,
+        terminal_tab_scroll_item, terminal_tab_title,
     };
     use crate::localization::Language;
 
@@ -314,9 +321,15 @@ mod tests {
     }
 
     #[test]
-    fn terminal_panel_hides_only_after_the_last_tab_closes() {
-        assert!(!should_hide_terminal_panel(1));
-        assert!(should_hide_terminal_panel(0));
+    fn last_terminal_reveals_the_knowledge_graph_tab() {
+        assert_eq!(
+            right_sidebar_tab_after_terminal_close(1, RightSidebarTab::Terminal),
+            RightSidebarTab::Terminal
+        );
+        assert_eq!(
+            right_sidebar_tab_after_terminal_close(0, RightSidebarTab::Terminal),
+            RightSidebarTab::KnowledgeGraph
+        );
     }
 
     #[test]

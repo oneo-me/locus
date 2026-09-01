@@ -22,6 +22,7 @@ pub const DEFAULT_TERMINAL_COMMAND: &str = "";
 pub const DEFAULT_MCP_ENABLED: bool = false;
 pub const DEFAULT_MCP_LOCAL_NETWORK: bool = false;
 pub const DEFAULT_MCP_PORT: u16 = 2301;
+pub const DEFAULT_SHOW_GRAPH_ATTACHMENTS: bool = true;
 
 pub const DEFAULT_LEFT_SIDEBAR_VISIBLE: bool = true;
 pub const DEFAULT_RIGHT_SIDEBAR_VISIBLE: bool = true;

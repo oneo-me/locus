@@ -1,13 +1,17 @@
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+mod graph;
 mod mutations;
 mod reference;
 mod repository;
 mod scanner;
 mod watcher;
 
-pub use mutations::{archive_note, restore_archived_note, update_note_icon};
+pub use graph::{DocumentGraph, DocumentGraphEdgeKind, DocumentGraphNode, DocumentGraphNodeKind};
+pub use mutations::{
+    archive_note, restore_archived_note, set_note_graph_included, update_note_icon,
+};
 pub use reference::{LIBRARY_REFERENCE_SCHEME, library_reference_path};
 pub use scanner::load_note;
 pub use watcher::{LibraryWatchEvent, LibraryWatcher};
@@ -34,6 +38,7 @@ pub struct LibraryNode {
     pub icon: Option<String>,
     pub icon_image: Option<DocumentIcon>,
     pub summary: Option<String>,
+    pub included_in_graph: bool,
     pub additional_metadata: Vec<(String, serde_json::Value)>,
     pub attachments: Vec<Attachment>,
     pub change: Option<ChangeStatus>,
@@ -171,6 +176,7 @@ mod tests {
         let node = tree.node("notes").unwrap();
         assert_eq!(node.title, "Notes");
         assert_eq!(node.summary.as_deref(), Some("Metadata only."));
+        assert!(node.included_in_graph);
         assert_eq!(
             node.additional_metadata,
             vec![

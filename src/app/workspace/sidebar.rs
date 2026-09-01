@@ -14,7 +14,7 @@ use crate::localization::Language;
 use crate::sidebar_order::reorder_siblings;
 use crate::theme::Theme;
 use crate::ui::{Icon, document_icon_image, icon};
-use gpui_component::scroll::Scrollbar;
+use gpui_component::{menu::ContextMenuExt as _, scroll::Scrollbar};
 
 const TREE_ROW_HEIGHT: f32 = 30.0;
 const TREE_LEVEL_INDENT: f32 = 16.0;
@@ -126,11 +126,31 @@ impl Locus {
             path: path.clone(),
             parent: parent.clone(),
         };
+        let select_path = path.clone();
+        let content = div()
+            .id(format!("library-node-action-{}", node.path))
+            .role(Role::Button)
+            .aria_label(node.title.clone())
+            .h_full()
+            .min_w_0()
+            .flex_1()
+            .child(library_node_content(node, expanded, theme.clone()))
+            .on_drag(drag, |_, _, _, cx| cx.new(|_| gpui::Empty))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.select_library_node(select_path.clone(), has_children, cx);
+                cx.stop_propagation();
+                cx.notify();
+            }));
+        let content = if node.document_path.is_some() {
+            content
+                .context_menu(self.note_popup_menu(node, cx))
+                .into_any_element()
+        } else {
+            content.into_any_element()
+        };
 
         let row = div()
             .id(format!("library-node-{}", node.path))
-            .role(Role::Button)
-            .aria_label(node.title.clone())
             .h(px(TREE_ROW_HEIGHT))
             .w_full()
             .min_w_0()
@@ -151,8 +171,7 @@ impl Locus {
                     .active(|style| style.bg(theme.sidebar_accent))
             })
             .when(dragged, |row| row.bg(theme.secondary))
-            .child(library_node_content(node, expanded, theme))
-            .on_drag(drag, |_, _, _, cx| cx.new(|_| gpui::Empty))
+            .child(content)
             .on_drag_move::<DraggedLibraryNode>(cx.listener({
                 let target_path = path.clone();
                 let target_parent = parent.clone();
@@ -182,11 +201,6 @@ impl Locus {
                         this.reorder_library_node(&dragged.path, &target_path, &target_parent, cx);
                     }
                 }
-            }))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                this.select_library_node(path.clone(), has_children, cx);
-                cx.stop_propagation();
-                cx.notify();
             }));
 
         let mut branch = div().w_full().min_w_0().flex().flex_col().child(row);
