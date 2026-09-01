@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -25,7 +26,7 @@ use alacritty_terminal::vte::ansi::{
 use gpui::{
     App, Bounds, ClipboardItem, Context, ElementInputHandler, EntityInputHandler, EventEmitter,
     FocusHandle, Focusable, FontStyle, FontWeight, Hsla, IntoElement, KeyDownEvent, Keystroke,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render, Role,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render, Rgba, Role,
     ScrollDelta, ScrollWheelEvent, SharedString, StrikethroughStyle, StyledText, TextRun,
     UTF16Selection, UnderlineStyle, Window, canvas, div, font, point, prelude::*, px, rgb, size,
 };
@@ -185,6 +186,34 @@ mod tests {
             Some(CursorPaint::Outline)
         );
         assert_eq!(cursor_paint(AlacrittyCursorShape::Hidden, true), None);
+    }
+
+    #[test]
+    fn dynamic_color_queries_return_terminal_foreground_and_background() {
+        assert_eq!(
+            terminal_rgb(NamedColor::Foreground as usize, true),
+            Rgb {
+                r: 0xe5,
+                g: 0xe5,
+                b: 0xe5,
+            }
+        );
+        assert_eq!(
+            terminal_rgb(NamedColor::Background as usize, true),
+            Rgb {
+                r: 0x17,
+                g: 0x17,
+                b: 0x17,
+            }
+        );
+        assert_eq!(
+            terminal_rgb(NamedColor::Background as usize, false),
+            Rgb {
+                r: 0xfa,
+                g: 0xfa,
+                b: 0xfa,
+            }
+        );
     }
 
     #[test]

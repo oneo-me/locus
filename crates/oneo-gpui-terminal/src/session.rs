@@ -265,6 +265,7 @@ impl TerminalSession {
         let cursor_column = content.cursor.point.column.0;
         let cursor_paint = cursor_paint(content.cursor.shape, focused);
         let mut cells = vec![TerminalCell::blank(palette); columns * rows];
+        let mut readable_colors = HashMap::new();
 
         for indexed in content.display_iter {
             let row = indexed.point.line.0 + content.display_offset as i32;
@@ -293,6 +294,9 @@ impl TerminalSession {
                 background = palette.selection;
                 foreground = palette.foreground;
             }
+            foreground = *readable_colors
+                .entry((foreground, background))
+                .or_insert_with(|| readable_foreground(foreground, background, palette.foreground));
             if cursor_paint == Some(CursorPaint::Block)
                 && row == cursor_row
                 && column == cursor_column
