@@ -37,10 +37,11 @@ pub fn titlebar_drag_region(id: impl Into<ElementId>) -> Stateful<gpui::Div> {
         })
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct AppShellTab {
     id: SharedString,
     label: SharedString,
+    icon: Option<IconName>,
 }
 
 impl AppShellTab {
@@ -50,6 +51,20 @@ impl AppShellTab {
 
     pub fn label(&self) -> &str {
         &self.label
+    }
+
+    pub fn icon(&self) -> Option<&IconName> {
+        self.icon.as_ref()
+    }
+}
+
+impl std::fmt::Debug for AppShellTab {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppShellTab")
+            .field("id", &self.id)
+            .field("label", &self.label)
+            .field("icon", &self.icon.as_ref().map(|_| "<icon>"))
+            .finish()
     }
 }
 
@@ -65,9 +80,15 @@ impl AppShellState {
             tabs: vec![AppShellTab {
                 id: HOME_TAB_ID.into(),
                 label: home_label.into(),
+                icon: None,
             }],
             selected_index: 0,
         }
+    }
+
+    pub fn with_home_icon(mut self, icon: IconName) -> Self {
+        self.tabs[0].icon = Some(icon);
+        self
     }
 
     pub fn tabs(&self) -> &[AppShellTab] {
@@ -99,6 +120,29 @@ impl AppShellState {
         self.tabs.push(AppShellTab {
             id,
             label: label.into(),
+            icon: None,
+        });
+        self.selected_index = self.tabs.len() - 1;
+    }
+
+    pub fn open_tab_with_icon(
+        &mut self,
+        id: impl Into<SharedString>,
+        label: impl Into<SharedString>,
+        icon: IconName,
+    ) {
+        let id = id.into();
+        if let Some(index) = self.tabs.iter().position(|tab| tab.id == id) {
+            self.tabs[index].label = label.into();
+            self.tabs[index].icon = Some(icon);
+            self.selected_index = index;
+            return;
+        }
+
+        self.tabs.push(AppShellTab {
+            id,
+            label: label.into(),
+            icon: Some(icon),
         });
         self.selected_index = self.tabs.len() - 1;
     }
@@ -185,7 +229,12 @@ impl RenderOnce for TabbedAppShell {
             .enumerate()
             .map(|(index, tab)| {
                 let tab_id = tab.id.clone();
+                let icon = tab.icon;
                 let tab = Tab::new().label(tab.label).min_h(px(TITLEBAR_HEIGHT));
+                let tab = match icon {
+                    Some(icon) => tab.prefix(div().pl(px(12.0)).mr(px(-8.0)).child(Icon::new(icon))),
+                    None => tab,
+                };
                 if index == 0 {
                     return tab;
                 }
