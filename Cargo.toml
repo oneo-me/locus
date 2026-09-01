@@ -10,8 +10,8 @@ resolver = "3"
 
 [workspace.dependencies]
 gpui = { git = "https://github.com/zed-industries/zed" }
-gpui-component = { git = "https://github.com/longbridge/gpui-component", rev = "a8d1d2650493bbb01eb39412dea823173e1ea94c" }
-gpui-component-assets = { git = "https://github.com/longbridge/gpui-component", rev = "a8d1d2650493bbb01eb39412dea823173e1ea94c" }
+gpui-component = { git = "https://github.com/longbridge/gpui-component" }
+gpui-component-assets = { git = "https://github.com/longbridge/gpui-component" }
 
 [dependencies]
 async-channel = "2.5"
