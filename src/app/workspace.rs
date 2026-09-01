@@ -14,8 +14,8 @@ mod terminal_tabs;
 mod window_chrome;
 
 use gpui::{
-    AnyElement, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
+    AnyElement, App, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
     ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Subscription, Task, WeakFocusHandle,
     Window, div, prelude::*, px, transparent_black,
 };
@@ -47,7 +47,7 @@ use crate::{
     ReloadCurrentNote, ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
 };
 use oneo_gpui_app_shell::{
-    AppShellState, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
+    AppShellState, FpsCounter, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
     TITLEBAR_HEIGHT, WorkspaceShell, WorkspaceShellConfig, WorkspaceShellState,
     panel_resize_handle, panel_toggle_button, titlebar_content_left_padding,
     titlebar_left_control_offset,
@@ -103,9 +103,10 @@ struct SelectedNote {
     error: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 enum RightSidebarTab {
     Terminal,
+    #[default]
     KnowledgeGraph,
 }
 
@@ -128,6 +129,7 @@ pub struct Locus {
     root_focus: FocusHandle,
     app_shell: AppShellState,
     header_drag_armed: bool,
+    fps_counter: Entity<FpsCounter>,
     settings: Entity<Settings>,
     left_pane: Entity<LocusPane>,
     content_pane: Entity<LocusPane>,
@@ -189,6 +191,12 @@ impl Locus {
         let content_pane = LocusPane::new(&locus, Locus::content_pane_content, cx);
         let right_pane = LocusPane::new(&locus, Locus::right_pane_content, cx);
         let command_palette = cx.new(|cx| gpui_component::command::CommandState::new(window, cx));
+        let fps_counter = cx.new(|_| {
+            FpsCounter::new(
+                interface_state.fps_counter_visible,
+                preferences.language.text("workspace.fps.label"),
+            )
+        });
         window.focus(&root_focus, cx);
         crate::theme::apply_preference(preferences.theme, preferences.ui_font_size, window, cx);
         let library_path = preferences.library_path.clone();
@@ -288,6 +296,9 @@ impl Locus {
                 SettingsEvent::LanguageChanged(language) => {
                     language.activate();
                     crate::set_app_menus(cx, *language, this.can_reload_current_note());
+                    this.fps_counter.update(cx, |counter, cx| {
+                        counter.set_label(language.text("workspace.fps.label"), cx);
+                    });
                     for tab in &this.terminal_tabs {
                         tab.terminal.update(cx, |terminal, cx| {
                             terminal.set_labels(terminal_labels(*language), cx);
@@ -363,18 +374,18 @@ impl Locus {
                     cx.background_executor()
                         .timer(WINDOW_BOUNDS_SAVE_DEBOUNCE)
                         .await;
-                    this.update(cx, |this, _| {
+                    this.update(cx, |this, cx| {
                         this.window_bounds_save_task.take();
-                        this.save_interface_state();
+                        this.save_interface_state(cx);
                     })
                     .ok();
                 }));
             }
         })
         .detach();
-        cx.on_app_quit(|this, _| {
+        cx.on_app_quit(|this, cx| {
             this.window_bounds_save_task.take();
-            this.save_interface_state();
+            this.save_interface_state(cx);
             async {}
         })
         .detach();
@@ -387,16 +398,16 @@ impl Locus {
                 interface_state.right_sidebar_visible,
                 interface_state.left_sidebar_width,
                 interface_state.right_sidebar_width,
-            ))
-            .with_fps_counter_visible(interface_state.fps_counter_visible),
+            )),
             header_drag_armed: false,
+            fps_counter,
             settings,
             left_pane,
             content_pane,
             right_pane,
             mcp_server,
             knowledge_graph,
-            selected_right_sidebar_tab: RightSidebarTab::Terminal,
+            selected_right_sidebar_tab: RightSidebarTab::default(),
             terminal_tabs: Vec::new(),
             selected_terminal_id: None,
             next_terminal_id: 1,
@@ -604,7 +615,7 @@ impl Locus {
         self.clear_library_selection();
         self.expanded_library_nodes.clear();
         self.scroll_to_selected_library_node = false;
-        self.save_interface_state();
+        self.save_interface_state(cx);
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
     }
@@ -665,7 +676,7 @@ impl Locus {
         } else if selected_path.is_some() {
             self.clear_library_selection();
             self.expanded_library_nodes.clear();
-            self.save_interface_state();
+            self.save_interface_state(cx);
         }
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
@@ -755,21 +766,21 @@ impl Locus {
         }
     }
 
-    fn interface_state(&self) -> InterfaceState {
+    fn interface_state(&self, cx: &App) -> InterfaceState {
         let shell = self.app_shell.workspace().snapshot();
         InterfaceState {
             left_sidebar_width: shell.left_width,
             right_sidebar_width: shell.right_width,
             left_sidebar_visible: shell.left_visible,
             right_sidebar_visible: shell.right_visible,
-            fps_counter_visible: self.app_shell.fps_counter().visible(),
+            fps_counter_visible: self.fps_counter.read(cx).visible(),
             selected_library_node: self.selected_library_node.clone(),
             window_bounds: self.window_bounds,
         }
     }
 
-    fn save_interface_state(&self) {
-        if let Err(error) = self.interface_state().save() {
+    fn save_interface_state(&self, cx: &App) {
+        if let Err(error) = self.interface_state(cx).save() {
             eprintln!("无法保存界面状态：{error}");
         }
     }
@@ -896,8 +907,9 @@ impl Locus {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.app_shell.fps_counter_mut().toggle();
-        self.save_interface_state();
+        self.fps_counter
+            .update(cx, |counter, cx| counter.toggle(cx));
+        self.save_interface_state(cx);
         cx.notify();
     }
 
@@ -946,7 +958,7 @@ impl Locus {
             PanelSide::Right => DEFAULT_RIGHT_SIDEBAR_WIDTH,
         };
         self.app_shell.workspace_mut().reset_width(side, width);
-        self.save_interface_state();
+        self.save_interface_state(cx);
         cx.notify();
     }
 
@@ -976,7 +988,7 @@ impl Locus {
         let panel_resized = self.app_shell.workspace_mut().finish_resize();
         let library_drag_ended = self.dragged_library_node.take().is_some();
         if panel_resized {
-            self.save_interface_state();
+            self.save_interface_state(cx);
         }
         if panel_resized || library_drag_ended {
             cx.notify();
@@ -1062,9 +1074,11 @@ impl Locus {
         let theme = Theme::global(cx).clone();
         let body = match self.selected_right_sidebar_tab {
             RightSidebarTab::Terminal => self.render_terminal_panel(cx),
-            RightSidebarTab::KnowledgeGraph => {
-                div().min_h_0().flex_1().child(self.knowledge_graph.clone())
-            }
+            RightSidebarTab::KnowledgeGraph => div().min_h_0().flex_1().child(
+                self.knowledge_graph
+                    .clone()
+                    .cached(StyleRefinement::default().size_full()),
+            ),
         };
 
         div()
@@ -1147,9 +1161,6 @@ impl Locus {
         }
         if layout.right_transition_finished {
             self.right_pane.update(cx, |_, cx| cx.notify());
-        }
-        if !self.app_shell.is_settings_open() && self.app_shell.fps_counter_mut().tick(window) {
-            self.content_pane.update(cx, |_, cx| cx.notify());
         }
         if panels.left > 0.0 && self.scroll_to_selected_library_node {
             self.selected_library_scroll_anchor.scroll_to(window, cx);
@@ -1338,6 +1349,11 @@ mod tests {
         );
         assert_eq!(RightSidebarTab::KnowledgeGraph.index(), 0);
         assert_eq!(RightSidebarTab::Terminal.index(), 1);
+    }
+
+    #[test]
+    fn knowledge_graph_is_the_default_right_sidebar_tab() {
+        assert_eq!(RightSidebarTab::default(), RightSidebarTab::KnowledgeGraph);
     }
 
     #[test]

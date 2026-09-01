@@ -15,6 +15,7 @@ use crate::sidebar_order::reorder_siblings;
 use crate::theme::Theme;
 use crate::ui::{Icon, document_icon_image, icon};
 use gpui_component::{menu::ContextMenuExt as _, scroll::Scrollbar};
+use oneo_gpui_app_shell::sidebar_selection_background;
 
 const TREE_ROW_HEIGHT: f32 = 30.0;
 const TREE_LEVEL_INDENT: f32 = 16.0;
@@ -160,15 +161,16 @@ impl Locus {
             .items_center()
             .cursor_default()
             .when(selected, |row| {
-                row.bg(theme.sidebar_accent)
-                    .text_color(theme.sidebar_accent_foreground)
+                row.bg(sidebar_selection_background(&theme))
+                    .text_color(theme.foreground)
             })
             .when(selected, |row| {
                 row.anchor_scroll(Some(self.selected_library_scroll_anchor.clone()))
             })
             .when(!selected, |row| {
-                row.hover(|style| style.bg(theme.sidebar_accent))
-                    .active(|style| style.bg(theme.sidebar_accent))
+                let selection_background = sidebar_selection_background(&theme);
+                row.hover(move |style| style.bg(selection_background))
+                    .active(move |style| style.bg(selection_background))
             })
             .when(dragged, |row| row.bg(theme.secondary))
             .child(content)
@@ -305,7 +307,7 @@ impl Locus {
         }
         self.selected_library_node = Some(path.clone());
         self.expanded_library_nodes = expanded_paths_for_selection(&path, has_children);
-        self.save_interface_state();
+        self.save_interface_state(cx);
         if selection_changed {
             self.begin_selected_note_load(cx);
             self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);

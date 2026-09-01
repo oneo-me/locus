@@ -279,9 +279,7 @@ impl Locus {
                                     .child(node.title.clone()),
                             ),
                     )
-                    .when(self.app_shell.fps_counter().visible(), |header| {
-                        header.child(self.render_fps_counter(cx))
-                    })
+                    .child(self.fps_counter.clone())
                     .child(copy_button)
                     .child(edit_button)
                     .child(open_directory_button)

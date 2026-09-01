@@ -18,7 +18,7 @@ impl Locus {
         self.app_shell
             .workspace_mut()
             .toggle(side, window, cx.reduce_motion(), WINDOW_MIN_WIDTH);
-        self.save_interface_state();
+        self.save_interface_state(cx);
         cx.notify();
     }
 
@@ -182,18 +182,8 @@ impl Locus {
                 self.window_drag_region("content-center-drag-region", cx)
                     .flex_1(),
             )
-            .when(self.app_shell.fps_counter().visible(), |header| {
-                header.child(self.render_fps_counter(cx))
-            })
+            .child(self.fps_counter.clone())
             .child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
-    }
-
-    pub(super) fn render_fps_counter(&self, cx: &mut Context<Self>) -> Div {
-        oneo_gpui_app_shell::fps_counter(
-            self.app_shell.fps_counter(),
-            self.language(cx).text("workspace.fps.label"),
-            Theme::global(cx),
-        )
     }
 
     pub(super) fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {

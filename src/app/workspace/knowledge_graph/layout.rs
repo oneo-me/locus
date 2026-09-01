@@ -195,26 +195,79 @@ pub(super) fn advance_layout(
     positions: &mut [GraphPoint],
     velocity: &mut [GraphPoint],
     pinned: Option<usize>,
-    mut alpha: f32,
+    alpha: f32,
     alpha_target: f32,
     iterations: usize,
 ) -> f32 {
+    advance_layout_with_options(
+        edges,
+        positions,
+        velocity,
+        alpha,
+        AdvanceLayoutOptions {
+            pinned,
+            alpha_target,
+            iterations,
+            time_scale: 1.0,
+        },
+    )
+}
+
+pub(super) fn advance_layout_scaled(
+    edges: &[LayoutEdge],
+    positions: &mut [GraphPoint],
+    velocity: &mut [GraphPoint],
+    alpha: f32,
+    time_scale: f32,
+) -> f32 {
+    advance_layout_with_options(
+        edges,
+        positions,
+        velocity,
+        alpha,
+        AdvanceLayoutOptions {
+            pinned: None,
+            alpha_target: 0.0,
+            iterations: 1,
+            time_scale,
+        },
+    )
+}
+
+struct AdvanceLayoutOptions {
+    pinned: Option<usize>,
+    alpha_target: f32,
+    iterations: usize,
+    time_scale: f32,
+}
+
+fn advance_layout_with_options(
+    edges: &[LayoutEdge],
+    positions: &mut [GraphPoint],
+    velocity: &mut [GraphPoint],
+    mut alpha: f32,
+    options: AdvanceLayoutOptions,
+) -> f32 {
     debug_assert_eq!(velocity.len(), positions.len());
-    for _ in 0..iterations {
-        alpha += (alpha_target - alpha) * ALPHA_DECAY;
-        apply_position_force(positions, velocity, alpha);
-        apply_link_force(edges, positions, velocity, alpha);
-        apply_many_body_force(positions, velocity, alpha);
-        apply_collision_force(positions, velocity);
+    let time_scale = options.time_scale.max(f32::EPSILON);
+    let alpha_decay = 1.0 - (1.0 - ALPHA_DECAY).powf(time_scale);
+    let velocity_decay = 0.6_f32.powf(time_scale);
+    for _ in 0..options.iterations {
+        alpha += (options.alpha_target - alpha) * alpha_decay;
+        let scaled_alpha = alpha * time_scale;
+        apply_position_force(positions, velocity, scaled_alpha);
+        apply_link_force(edges, positions, velocity, scaled_alpha);
+        apply_many_body_force(positions, velocity, scaled_alpha);
+        apply_collision_force(positions, velocity, time_scale);
         for index in 0..positions.len() {
-            if pinned == Some(index) {
+            if options.pinned == Some(index) {
                 velocity[index] = GraphPoint::default();
                 continue;
             }
-            velocity[index].x *= 0.6;
-            velocity[index].y *= 0.6;
-            positions[index].x += velocity[index].x;
-            positions[index].y += velocity[index].y;
+            velocity[index].x *= velocity_decay;
+            velocity[index].y *= velocity_decay;
+            positions[index].x += velocity[index].x * time_scale;
+            positions[index].y += velocity[index].y * time_scale;
         }
     }
     alpha
@@ -276,14 +329,14 @@ fn apply_many_body_force(positions: &[GraphPoint], velocity: &mut [GraphPoint], 
     }
 }
 
-fn apply_collision_force(positions: &[GraphPoint], velocity: &mut [GraphPoint]) {
+fn apply_collision_force(positions: &[GraphPoint], velocity: &mut [GraphPoint], time_scale: f32) {
     const DIAMETER: f32 = COLLISION_RADIUS * 2.0;
     let anticipated = positions
         .iter()
         .zip(velocity.iter())
         .map(|(position, velocity)| GraphPoint {
-            x: position.x + velocity.x,
-            y: position.y + velocity.y,
+            x: position.x + velocity.x * time_scale,
+            y: position.y + velocity.y * time_scale,
         })
         .collect::<Vec<_>>();
     let mut cells = HashMap::<(i32, i32), Vec<usize>>::new();
@@ -312,7 +365,8 @@ fn apply_collision_force(positions: &[GraphPoint], velocity: &mut [GraphPoint]) 
                     if distance >= DIAMETER {
                         continue;
                     }
-                    let scale = (DIAMETER - distance) / distance * COLLISION_STRENGTH * 0.5;
+                    let scale =
+                        (DIAMETER - distance) / distance * COLLISION_STRENGTH * 0.5 * time_scale;
                     let force_x = delta_x * scale;
                     let force_y = delta_y * scale;
                     velocity[source].x -= force_x;
@@ -551,5 +605,37 @@ mod tests {
         assert!(frames > 100);
         assert!(alpha <= ALPHA_MIN);
         assert_ne!(positions, first_frame);
+    }
+
+    #[test]
+    fn frame_scaled_alpha_decay_is_refresh_rate_independent() {
+        let mut full_frame_positions = [GraphPoint::default()];
+        let mut full_frame_velocity = [GraphPoint::default()];
+        let full_frame_alpha = advance_layout_scaled(
+            &[],
+            &mut full_frame_positions,
+            &mut full_frame_velocity,
+            0.4,
+            1.0,
+        );
+
+        let mut half_frame_positions = [GraphPoint::default()];
+        let mut half_frame_velocity = [GraphPoint::default()];
+        let half_frame_alpha = advance_layout_scaled(
+            &[],
+            &mut half_frame_positions,
+            &mut half_frame_velocity,
+            0.4,
+            0.5,
+        );
+        let half_frame_alpha = advance_layout_scaled(
+            &[],
+            &mut half_frame_positions,
+            &mut half_frame_velocity,
+            half_frame_alpha,
+            0.5,
+        );
+
+        assert!((full_frame_alpha - half_frame_alpha).abs() < 0.000_001);
     }
 }

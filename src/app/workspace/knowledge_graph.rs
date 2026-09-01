@@ -1,12 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use gpui::{
-    BorderStyle, Bounds, Context, Edges, EventEmitter, FocusHandle, FontWeight, Hsla, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PathBuilder, PinchEvent, Pixels, Point, Render,
-    Role, ScrollDelta, ScrollWheelEvent, SharedString, Task, TextAlign, TextRun, Window, canvas,
-    div, font, hsla, point, prelude::*, px, quad, rgb, size,
+    BorderStyle, Bounds, ColorSpace, Context, Edges, EventEmitter, FocusHandle, FontWeight, Hsla,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PathBuilder, PinchEvent, Pixels,
+    Point, Render, Role, ScrollDelta, ScrollWheelEvent, SharedString, Task, TextAlign, TextRun,
+    Window, canvas, div, font, hsla, linear_color_stop, linear_gradient, point, prelude::*, px,
+    quad, rgb, size,
 };
 use gpui_component::ElementExt as _;
 use rust_i18n::t;
@@ -20,8 +21,8 @@ use crate::theme::Theme;
 mod layout;
 
 use self::layout::{
-    ALPHA_MIN, GraphPoint, LayoutEdge, advance_layout, graph_bounds, graph_node_radius,
-    layout_graph, top_level_directory,
+    ALPHA_MIN, GraphPoint, LayoutEdge, advance_layout, advance_layout_scaled, graph_bounds,
+    graph_node_radius, layout_graph, top_level_directory,
 };
 
 const MIN_ZOOM: f32 = 1.0 / 128.0;
@@ -34,6 +35,7 @@ const CLICK_MOVE_TOLERANCE: f32 = 4.0;
 const MOUSE_WHEEL_ZOOM_DISTANCE: f32 = 120.0;
 const LAYOUT_TRANSITION_DURATION_MS: usize = 260;
 const LAYOUT_TRANSITION_FRAME_MS: usize = 16;
+const PHYSICS_FRAME_TIME_MS: f32 = 16.0;
 
 #[derive(Clone, Copy, Debug)]
 struct GraphCamera {
@@ -130,7 +132,8 @@ pub(super) struct KnowledgeGraph {
     pointer: Option<PointerInteraction>,
     layout_generation: u64,
     layout_task: Option<Task<()>>,
-    settle_task: Option<Task<()>>,
+    settle_generation: u64,
+    settle_last_frame: Option<Instant>,
     user_moved_camera: bool,
 }
 
@@ -160,7 +163,8 @@ impl KnowledgeGraph {
             pointer: None,
             layout_generation: 0,
             layout_task: None,
-            settle_task: None,
+            settle_generation: 0,
+            settle_last_frame: None,
             user_moved_camera: false,
         };
         this.schedule_layout(cx);
@@ -190,7 +194,7 @@ impl KnowledgeGraph {
         self.camera = GraphCamera::default();
         self.hovered_node = None;
         self.pointer = None;
-        self.settle_task = None;
+        self.cancel_settle();
         self.user_moved_camera = false;
         self.schedule_layout(cx);
     }
@@ -216,7 +220,7 @@ impl KnowledgeGraph {
     }
 
     fn schedule_layout_with_alpha(&mut self, alpha: f32, cx: &mut Context<Self>) {
-        self.settle_task = None;
+        self.cancel_settle();
         self.layout_generation = self.layout_generation.wrapping_add(1);
         let generation = self.layout_generation;
         let graph = if self.show_attachments {
@@ -328,44 +332,53 @@ impl KnowledgeGraph {
         }));
     }
 
-    fn settle_after_node_release(&mut self, cx: &mut Context<Self>) {
-        self.settle_task = None;
+    fn settle_after_node_release(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_settle();
         self.physics_alpha = self.physics_alpha.max(0.4);
-        let generation = self.layout_generation;
-        self.settle_task = Some(cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_millis(LAYOUT_TRANSITION_FRAME_MS as u64))
-                    .await;
-                let keep_running = this
-                    .update(cx, |this, cx| {
-                        if this.layout_generation != generation {
-                            return false;
-                        }
-                        this.physics_alpha = advance_layout(
-                            &this.edges,
-                            &mut this.positions,
-                            &mut this.physics_velocity,
-                            None,
-                            this.physics_alpha,
-                            0.0,
-                            1,
-                        );
-                        let keep_running = this.physics_alpha > ALPHA_MIN;
-                        if !keep_running {
-                            this.physics_alpha = 0.0;
-                            this.physics_velocity.fill(GraphPoint::default());
-                            this.settle_task = None;
-                        }
-                        cx.notify();
-                        keep_running
-                    })
-                    .unwrap_or(false);
-                if !keep_running {
-                    break;
-                }
+        self.settle_last_frame = Some(Instant::now());
+        let generation = self.settle_generation;
+        self.schedule_settle_frame(generation, window, cx);
+    }
+
+    fn schedule_settle_frame(
+        &mut self,
+        generation: u64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        cx.on_next_frame(window, move |this, window, cx| {
+            if this.settle_generation != generation {
+                return;
             }
-        }));
+            let now = Instant::now();
+            let elapsed = this
+                .settle_last_frame
+                .replace(now)
+                .map(|previous| now.duration_since(previous))
+                .unwrap_or(Duration::from_millis(LAYOUT_TRANSITION_FRAME_MS as u64));
+            let time_scale =
+                (elapsed.as_secs_f32() * 1_000.0 / PHYSICS_FRAME_TIME_MS).clamp(0.25, 2.0);
+            this.physics_alpha = advance_layout_scaled(
+                &this.edges,
+                &mut this.positions,
+                &mut this.physics_velocity,
+                this.physics_alpha,
+                time_scale,
+            );
+            if this.physics_alpha > ALPHA_MIN {
+                this.schedule_settle_frame(generation, window, cx);
+            } else {
+                this.physics_alpha = 0.0;
+                this.physics_velocity.fill(GraphPoint::default());
+                this.settle_last_frame = None;
+            }
+            cx.notify();
+        });
+    }
+
+    fn cancel_settle(&mut self) {
+        self.settle_generation = self.settle_generation.wrapping_add(1);
+        self.settle_last_frame = None;
     }
 
     fn fit_graph(&mut self) {
@@ -435,7 +448,7 @@ impl KnowledgeGraph {
         });
         if matches!(target, PointerTarget::Node(_)) {
             self.layout_task = None;
-            self.settle_task = None;
+            self.cancel_settle();
             self.physics_alpha = self.physics_alpha.max(0.4);
         }
         window.focus(&self.focus_handle, cx);
@@ -503,7 +516,12 @@ impl KnowledgeGraph {
         }
     }
 
-    fn handle_mouse_up(&mut self, event: &MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
+    fn handle_mouse_up(
+        &mut self,
+        event: &MouseUpEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let pointer = self.pointer.take();
         let released_node = matches!(
             pointer,
@@ -524,7 +542,7 @@ impl KnowledgeGraph {
             cx.emit(KnowledgeGraphEvent::OpenNote(node.path.clone()));
         }
         if released_node {
-            self.settle_after_node_release(cx);
+            self.settle_after_node_release(window, cx);
         } else {
             cx.notify();
         }
@@ -737,7 +755,19 @@ impl Render for KnowledgeGraph {
                             .iter()
                             .map(|node| {
                                 let opacity = node.opacity * label_opacity;
-                                if opacity <= 0.0 {
+                                let center = graph_screen_position(
+                                    node.position,
+                                    snapshot_for_prepaint.camera,
+                                    bounds,
+                                );
+                                if opacity <= 0.0
+                                    || !node_is_visible(
+                                        center,
+                                        node.radius,
+                                        LABEL_MAX_WIDTH / 2.0,
+                                        bounds,
+                                    )
+                                {
                                     return None;
                                 }
                                 Some(shape_graph_label(
@@ -768,17 +798,6 @@ fn paint_graph(
     window: &mut Window,
     cx: &mut gpui::App,
 ) {
-    let screen_position = |position: GraphPoint| {
-        point(
-            bounds.origin.x
-                + bounds.size.width / 2.0
-                + px(snapshot.camera.x + position.x * snapshot.camera.zoom),
-            bounds.origin.y
-                + bounds.size.height / 2.0
-                + px(snapshot.camera.y + position.y * snapshot.camera.zoom),
-        )
-    };
-
     for edge in &snapshot.edges {
         let Some(source) = snapshot.nodes.get(edge.source) else {
             continue;
@@ -786,16 +805,24 @@ fn paint_graph(
         let Some(target) = snapshot.nodes.get(edge.target) else {
             continue;
         };
+        let source = graph_screen_position(source.position, snapshot.camera, bounds);
+        let target = graph_screen_position(target.position, snapshot.camera, bounds);
+        if !segment_may_cross_bounds(source, target, bounds) {
+            continue;
+        }
         let mut builder = PathBuilder::stroke(px(edge.width));
-        builder.move_to(screen_position(source.position));
-        builder.line_to(screen_position(target.position));
+        builder.move_to(source);
+        builder.line_to(target);
         if let Ok(path) = builder.build() {
             window.paint_path(path, edge.color.opacity(edge.opacity));
         }
     }
 
     for (index, node) in snapshot.nodes.iter().enumerate() {
-        let center = screen_position(node.position);
+        let center = graph_screen_position(node.position, snapshot.camera, bounds);
+        if !node_is_visible(center, node.radius, 0.0, bounds) {
+            continue;
+        }
         paint_graph_node_gradient(
             center,
             node.radius,
@@ -822,7 +849,6 @@ fn paint_graph_node_gradient(
     background: Hsla,
     window: &mut Window,
 ) {
-    const LAYERS: usize = 10;
     let highlight = mix_hsla(
         fill,
         Hsla {
@@ -843,33 +869,60 @@ fn paint_graph_node_gradient(
         },
         0.08,
     );
-    for layer in 0..LAYERS {
-        let progress = layer as f32 / (LAYERS - 1) as f32;
-        let layer_radius = radius * (1.0 - progress * 0.9);
-        let offset = radius * progress * 0.34;
-        let color = if progress <= 0.52 {
-            mix_hsla(rim, fill, progress / 0.52)
-        } else {
-            mix_hsla(fill, highlight, (progress - 0.52) / 0.48)
-        };
-        let color = background.blend(color.opacity(opacity));
-        let layer_center = point(center.x - px(offset * 0.94), center.y - px(offset));
-        let diameter = layer_radius * 2.0;
-        window.paint_quad(quad(
-            Bounds::new(
-                point(
-                    layer_center.x - px(layer_radius),
-                    layer_center.y - px(layer_radius),
-                ),
-                size(px(diameter), px(diameter)),
-            ),
-            px(layer_radius),
-            color,
-            Edges::default(),
-            hsla(0.0, 0.0, 0.0, 0.0),
-            BorderStyle::default(),
-        ));
-    }
+    let highlight = background.blend(highlight.opacity(opacity));
+    let rim = background.blend(rim.opacity(opacity));
+    let diameter = radius * 2.0;
+    window.paint_quad(quad(
+        Bounds::new(
+            point(center.x - px(radius), center.y - px(radius)),
+            size(px(diameter), px(diameter)),
+        ),
+        px(radius),
+        linear_gradient(
+            135.0,
+            linear_color_stop(highlight, 0.0),
+            linear_color_stop(rim, 1.0),
+        )
+        .color_space(ColorSpace::Oklab),
+        Edges::default(),
+        hsla(0.0, 0.0, 0.0, 0.0),
+        BorderStyle::default(),
+    ));
+}
+
+fn graph_screen_position(
+    position: GraphPoint,
+    camera: GraphCamera,
+    bounds: Bounds<Pixels>,
+) -> Point<Pixels> {
+    point(
+        bounds.origin.x + bounds.size.width / 2.0 + px(camera.x + position.x * camera.zoom),
+        bounds.origin.y + bounds.size.height / 2.0 + px(camera.y + position.y * camera.zoom),
+    )
+}
+
+fn node_is_visible(
+    center: Point<Pixels>,
+    radius: f32,
+    padding: f32,
+    bounds: Bounds<Pixels>,
+) -> bool {
+    let extent = radius + padding;
+    bounds.intersects(&Bounds::new(
+        point(center.x - px(extent), center.y - px(extent)),
+        size(px(extent * 2.0), px(extent * 2.0)),
+    ))
+}
+
+fn segment_may_cross_bounds(
+    source: Point<Pixels>,
+    target: Point<Pixels>,
+    bounds: Bounds<Pixels>,
+) -> bool {
+    !((source.x < bounds.left() && target.x < bounds.left())
+        || (source.x > bounds.right() && target.x > bounds.right())
+        || (source.y < bounds.top() && target.y < bounds.top())
+        || (source.y > bounds.bottom() && target.y > bounds.bottom()))
 }
 
 fn mix_hsla(start: Hsla, end: Hsla, amount: f32) -> Hsla {
@@ -1083,6 +1136,29 @@ mod tests {
             interpolate_graph_point(start, target, 0.5),
             GraphPoint { x: 30.0, y: 50.0 }
         );
+    }
+
+    #[test]
+    fn paint_culling_keeps_only_visible_or_crossing_geometry() {
+        let bounds = Bounds::new(point(px(0.0), px(0.0)), size(px(100.0), px(100.0)));
+
+        assert!(node_is_visible(point(px(50.0), px(50.0)), 5.0, 0.0, bounds));
+        assert!(!node_is_visible(
+            point(px(120.0), px(50.0)),
+            5.0,
+            0.0,
+            bounds
+        ));
+        assert!(segment_may_cross_bounds(
+            point(px(-20.0), px(50.0)),
+            point(px(120.0), px(50.0)),
+            bounds
+        ));
+        assert!(!segment_may_cross_bounds(
+            point(px(-20.0), px(20.0)),
+            point(px(-10.0), px(80.0)),
+            bounds
+        ));
     }
 
     #[test]

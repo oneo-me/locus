@@ -28,7 +28,7 @@ pub fn titlebar_content_left_padding(
     (control_clearance - rendered_left_width).max(content_inset)
 }
 
-pub use fps::{FpsCounterState, fps_counter};
+pub use fps::FpsCounter;
 pub use menu::{
     About, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit, ToggleFpsCounter,
     ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
@@ -39,7 +39,7 @@ pub use platform::{
 };
 pub use settings::{
     SettingsShell, settings_back_button, settings_navigation_group, settings_navigation_row,
-    settings_sidebar_header,
+    settings_sidebar_header, sidebar_selection_background,
 };
 pub use workspace::{
     AppShellMode, AppShellState, PanelFrame, PanelSide, PanelSize, WorkspaceShell,

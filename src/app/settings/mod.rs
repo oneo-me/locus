@@ -803,11 +803,11 @@ impl Settings {
         cx: &mut Context<Self>,
     ) -> gpui_component::button::Button {
         let selected = self.page == page;
-        settings_navigation_row(id, label, icon_kind, selected, Theme::global(cx)).on_click(
-            cx.listener(move |this, _, window, cx| {
+        settings_navigation_row(id, label, icon_kind, selected, cx).on_click(cx.listener(
+            move |this, _, window, cx| {
                 this.apply_choice(Choice::Page(page), window, cx);
-            }),
-        )
+            },
+        ))
     }
 
     fn render_content_header(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {

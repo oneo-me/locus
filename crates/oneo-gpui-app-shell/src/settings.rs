@@ -1,13 +1,17 @@
 use super::TITLEBAR_HEIGHT;
-use gpui::{AnyElement, Div, FontWeight, SharedString, div, prelude::*, px, rems};
+use gpui::{AnyElement, App, Div, FontWeight, Hsla, SharedString, div, prelude::*, px, rems};
 use gpui_component::{Icon, IconName, Sizable as _, Theme};
 use gpui_component::{
     Selectable as _,
-    button::{Button, ButtonVariants as _},
+    button::{Button, ButtonCustomVariant, ButtonVariants as _},
 };
 
 fn ui_rem(value: f32) -> gpui::Rems {
     rems(value / 16.0)
+}
+
+pub fn sidebar_selection_background(theme: &Theme) -> Hsla {
+    theme.foreground.opacity(0.05)
 }
 
 pub fn settings_sidebar_header(
@@ -65,24 +69,34 @@ pub fn settings_navigation_row(
     label: impl Into<SharedString>,
     icon_kind: IconName,
     selected: bool,
-    theme: &Theme,
+    cx: &App,
 ) -> Button {
     let label = label.into();
+    let theme = Theme::global(cx);
+    let selection_background = sidebar_selection_background(theme);
     Button::new(id)
-        .ghost()
+        .custom(
+            ButtonCustomVariant::new(cx)
+                .foreground(if selected {
+                    theme.foreground
+                } else {
+                    theme.muted_foreground
+                })
+                .hover(selection_background)
+                .active(selection_background),
+        )
         .small()
         .w_full()
         .h(ui_rem(36.0))
         .px(ui_rem(11.0))
         .text_size(rems(13.0 / 16.0))
         .text_color(if selected {
-            theme.sidebar_accent_foreground
+            theme.foreground
         } else {
             theme.muted_foreground
         })
         .accessibility_label(label.clone())
         .selected(selected)
-        .when(selected, |button| button.bg(theme.sidebar_accent))
         .child(
             div()
                 .w_full()
@@ -90,11 +104,11 @@ pub fn settings_navigation_row(
                 .flex()
                 .items_center()
                 .gap(ui_rem(10.0))
-                .child(
-                    Icon::new(icon_kind)
-                        .small()
-                        .text_color(theme.muted_foreground),
-                )
+                .child(Icon::new(icon_kind).small().text_color(if selected {
+                    theme.foreground
+                } else {
+                    theme.muted_foreground
+                }))
                 .child(div().min_w_0().truncate().child(label)),
         )
 }
@@ -210,5 +224,41 @@ impl SettingsShell {
                     )
                     .child(div().min_h_0().flex_1().child(self.content)),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui::{Context, Render, TestAppContext, Window};
+
+    struct SettingsNavigationHarness;
+
+    impl Render for SettingsNavigationHarness {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            div()
+                .size(px(300.0))
+                .child(settings_navigation_row(
+                    "unselected-settings-row",
+                    "General",
+                    IconName::Settings,
+                    false,
+                    cx,
+                ))
+                .child(settings_navigation_row(
+                    "selected-settings-row",
+                    "Appearance",
+                    IconName::Eye,
+                    true,
+                    cx,
+                ))
+        }
+    }
+
+    #[gpui::test]
+    fn settings_navigation_rows_render_in_all_selection_states(cx: &mut TestAppContext) {
+        cx.update(gpui_component::init);
+        let (_, cx) = cx.add_window_view(|_, _| SettingsNavigationHarness);
+        cx.update(|window, cx| window.draw(cx).clear(cx));
     }
 }

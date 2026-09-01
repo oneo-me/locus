@@ -1,6 +1,5 @@
 use std::time::{Duration, Instant};
 
-use super::FpsCounterState;
 use gpui::{
     AnyElement, Div, Hsla, Stateful, Window, div, ease_out_quint, prelude::*, px, transparent_black,
 };
@@ -97,7 +96,6 @@ struct PanelResizeDrag {
 pub struct AppShellState {
     mode: AppShellMode,
     workspace: WorkspaceShellState,
-    fps_counter: FpsCounterState,
 }
 
 pub struct WorkspaceShellState {
@@ -119,13 +117,7 @@ impl AppShellState {
         Self {
             mode: AppShellMode::Workspace,
             workspace,
-            fps_counter: FpsCounterState::new(false),
         }
-    }
-
-    pub fn with_fps_counter_visible(mut self, visible: bool) -> Self {
-        self.fps_counter = FpsCounterState::new(visible);
-        self
     }
 
     pub fn mode(&self) -> AppShellMode {
@@ -150,14 +142,6 @@ impl AppShellState {
 
     pub fn workspace_mut(&mut self) -> &mut WorkspaceShellState {
         &mut self.workspace
-    }
-
-    pub fn fps_counter(&self) -> &FpsCounterState {
-        &self.fps_counter
-    }
-
-    pub fn fps_counter_mut(&mut self) -> &mut FpsCounterState {
-        &mut self.fps_counter
     }
 }
 
