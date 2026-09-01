@@ -40,9 +40,23 @@ use state::InterfaceState;
 
 const MIN_VISIBLE_TITLEBAR_WIDTH: f32 = 120.0;
 const MIN_VISIBLE_TITLEBAR_HEIGHT: f32 = 24.0;
+const COMMAND_PALETTE_KEY: &str = "secondary-e";
 const NEW_TERMINAL_KEY: &str = "secondary-`";
 
-actions!(locus, [CloseTerminalTab, NewTerminal, ReloadCurrentNote]);
+actions!(
+    locus,
+    [
+        ArchiveCurrentNote,
+        ChooseCurrentNoteIcon,
+        CloseTerminalTab,
+        CopyCurrentNoteReference,
+        EditCurrentNote,
+        NewTerminal,
+        OpenCommandPalette,
+        OpenCurrentNoteDirectory,
+        ReloadCurrentNote
+    ]
+);
 
 fn main() {
     let main_window: Rc<RefCell<Option<gpui::WindowHandle<Root>>>> = Rc::new(RefCell::new(None));
@@ -64,6 +78,7 @@ fn main() {
         init_reduce_motion(cx);
         bind_app_shell_keys(cx);
         cx.bind_keys([
+            KeyBinding::new(COMMAND_PALETTE_KEY, OpenCommandPalette, None),
             KeyBinding::new("secondary-w", CloseTerminalTab, Some("Terminal")),
             KeyBinding::new(NEW_TERMINAL_KEY, NewTerminal, None),
             KeyBinding::new("secondary-r", ReloadCurrentNote, None),
@@ -169,11 +184,17 @@ pub(crate) fn set_app_menus(cx: &mut App, language: Language, can_reload_current
                 window: language.text("menu.window.title").into(),
             },
         )
-        .view_items_before_panels([MenuItem::action(
-            language.text("menu.view.reload_current_note"),
-            ReloadCurrentNote,
-        )
-        .disabled(!can_reload_current_note)]),
+        .view_items_before_panels([
+            MenuItem::action(
+                language.text("menu.view.command_palette"),
+                OpenCommandPalette,
+            ),
+            MenuItem::action(
+                language.text("menu.view.reload_current_note"),
+                ReloadCurrentNote,
+            )
+            .disabled(!can_reload_current_note),
+        ]),
     );
 }
 
@@ -194,6 +215,11 @@ mod tests {
     #[test]
     fn new_terminal_shortcut_is_a_valid_key_binding() {
         KeyBinding::new(NEW_TERMINAL_KEY, NewTerminal, None);
+    }
+
+    #[test]
+    fn command_palette_shortcut_is_a_valid_key_binding() {
+        KeyBinding::new(COMMAND_PALETTE_KEY, OpenCommandPalette, None);
     }
 
     #[test]

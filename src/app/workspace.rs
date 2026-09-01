@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+mod command_palette;
 mod navigation;
 mod note;
 mod note_atmosphere;
@@ -14,8 +15,8 @@ mod window_chrome;
 use gpui::{
     AnyElement, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
     MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
-    ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Subscription, Task, Window, div,
-    prelude::*, px, transparent_black,
+    ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Subscription, Task, WeakFocusHandle,
+    Window, div, prelude::*, px, transparent_black,
 };
 use gpui_component::{ElementExt as _, Root};
 
@@ -132,6 +133,11 @@ pub struct Locus {
     note_text_focus: FocusHandle,
     note_text_selection: MarkdownSelection,
     note_code_blocks: MarkdownCodeBlocks,
+    command_palette: Entity<gpui_component::command::CommandState>,
+    command_palette_overlay_focus: FocusHandle,
+    command_palette_state: command_palette::CommandPaletteState,
+    command_palette_close_generation: u64,
+    command_palette_previous_focus: Option<WeakFocusHandle>,
     note_action_pending: bool,
     copied_library_node: Option<String>,
     note_copy_generation: u64,
@@ -155,6 +161,7 @@ impl Locus {
         let left_pane = LocusPane::new(&locus, Locus::left_pane_content, cx);
         let content_pane = LocusPane::new(&locus, Locus::content_pane_content, cx);
         let right_pane = LocusPane::new(&locus, Locus::right_pane_content, cx);
+        let command_palette = cx.new(|cx| gpui_component::command::CommandState::new(window, cx));
         window.focus(&root_focus, cx);
         crate::theme::apply_preference(preferences.theme, preferences.ui_font_size, window, cx);
         let library_path = preferences.library_path.clone();
@@ -363,6 +370,11 @@ impl Locus {
             note_text_focus: cx.focus_handle(),
             note_text_selection: MarkdownSelection::default(),
             note_code_blocks: MarkdownCodeBlocks::default(),
+            command_palette,
+            command_palette_overlay_focus: cx.focus_handle(),
+            command_palette_state: command_palette::CommandPaletteState::Hidden,
+            command_palette_close_generation: 0,
+            command_palette_previous_focus: None,
             note_action_pending: false,
             copied_library_node: None,
             note_copy_generation: 0,
@@ -1045,6 +1057,7 @@ impl Render for Locus {
         let sheet_layer = Root::render_sheet_layer(window, cx);
         let dialog_layer = Root::render_dialog_layer(window, cx);
         let notification_layer = Root::render_notification_layer(window, cx);
+        let command_palette_overlay = self.render_command_palette_overlay(window, cx);
         let theme = Theme::global(cx).clone();
         let ui_font_family = self
             .settings
@@ -1101,7 +1114,14 @@ impl Render for Locus {
             .on_action(cx.listener(Self::close_terminal_tab_action))
             .on_action(cx.listener(Self::close_window_action))
             .on_action(cx.listener(Self::new_terminal_action))
+            .on_action(cx.listener(Self::open_command_palette_action))
+            .on_action(cx.listener(Self::open_note_action))
             .on_action(cx.listener(Self::open_settings_action))
+            .on_action(cx.listener(Self::copy_current_note_reference_action))
+            .on_action(cx.listener(Self::edit_current_note_action))
+            .on_action(cx.listener(Self::open_current_note_directory_action))
+            .on_action(cx.listener(Self::choose_current_note_icon_action))
+            .on_action(cx.listener(Self::archive_current_note_action))
             .on_action(cx.listener(Self::reload_current_note_action))
             .on_action(cx.listener(Self::toggle_fps_counter_action))
             .on_action(cx.listener(Self::toggle_full_screen_action))
@@ -1132,6 +1152,7 @@ impl Render for Locus {
                 root.child(workspace)
             })
             .children(sheet_layer)
+            .children(command_palette_overlay)
             .children(dialog_layer)
             .children(notification_layer)
     }

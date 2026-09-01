@@ -9,9 +9,9 @@ use crate::ui::{
     MarkdownTypography, document_icon_image, toolbar_icon_button,
 };
 use gpui::{
-    AnyElement, BorderStyle, Bounds, ClipboardItem, Div, Edges, FontWeight, MouseButton, ObjectFit,
-    PathBuilder, Pixels, PromptLevel, ScrollHandle, Window, canvas, div, linear_color_stop,
-    linear_gradient, point, prelude::*, px, quad, transparent_black,
+    AnyElement, BorderStyle, Bounds, Div, Edges, FontWeight, MouseButton, ObjectFit, PathBuilder,
+    Pixels, ScrollHandle, Window, canvas, div, linear_color_stop, linear_gradient, point,
+    prelude::*, px, quad, transparent_black,
 };
 use gpui_component::scroll::Scrollbar;
 use oneo_gpui_app_shell::PanelSide;
@@ -169,7 +169,7 @@ impl Locus {
             )
     }
 
-    fn open_library_reference(&mut self, path: &str, cx: &mut gpui::Context<Self>) {
+    pub(super) fn open_library_reference(&mut self, path: &str, cx: &mut gpui::Context<Self>) {
         let Some((has_children, is_note)) = self
             .library_tree
             .node(path)
@@ -193,9 +193,7 @@ impl Locus {
         theme: &Theme,
         cx: &mut gpui::Context<Self>,
     ) -> impl IntoElement + use<> {
-        let reference = format!("{LIBRARY_REFERENCE_SCHEME}{}", node.path);
         let copied = self.copied_library_node.as_deref() == Some(node.path.as_str());
-        let editor = self.settings.read(cx).preferences().editor;
         let language = self.language(cx);
         let (left_padding, right_padding) = note_titlebar_padding(
             content_width,
@@ -213,29 +211,9 @@ impl Locus {
             theme,
         )
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .on_click(cx.listener(move |this, _, _, cx| {
-            cx.write_to_clipboard(ClipboardItem::new_string(reference.clone()));
-            this.copied_library_node = this.selected_library_node.clone();
-            this.note_copy_generation = this.note_copy_generation.wrapping_add(1);
-            let generation = this.note_copy_generation;
-            cx.spawn(async move |this, cx| {
-                cx.background_executor()
-                    .timer(super::COPY_FEEDBACK_DURATION)
-                    .await;
-                let _ = this.update(cx, |this, cx| {
-                    if this.note_copy_generation == generation {
-                        this.copied_library_node = None;
-                        cx.notify();
-                    }
-                });
-            })
-            .detach();
-            cx.notify();
-        }));
-        let document_path = node
-            .document_path
-            .clone()
-            .expect("note has a document path");
+        .on_click(|_, window, cx| {
+            window.dispatch_action(Box::new(crate::CopyCurrentNoteReference), cx)
+        });
         let edit_button = toolbar_icon_button(
             "edit-note",
             language.text("workspace.note.edit"),
@@ -243,22 +221,7 @@ impl Locus {
             theme,
         )
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .on_click(move |_, window, cx| {
-            if let Err(error) = crate::platform::open_in_editor(&document_path, editor) {
-                eprintln!("{error}");
-                let title = language.text("workspace.note.edit_error");
-                let detail = language.text("common.file_action_error_detail");
-                let confirmation = language.text("common.ok");
-                drop(window.prompt(
-                    PromptLevel::Critical,
-                    &title,
-                    Some(&detail),
-                    &[confirmation.as_str()],
-                    cx,
-                ));
-            }
-        });
-        let directory = node.directory.clone();
+        .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::EditCurrentNote), cx));
         let open_directory_button = toolbar_icon_button(
             "open-note-directory",
             language.text("workspace.note.open_directory"),
@@ -266,22 +229,10 @@ impl Locus {
             theme,
         )
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .on_click(move |_, window, cx| {
-            if let Err(error) = crate::platform::open_directory(&directory) {
-                eprintln!("{error}");
-                let title = language.text("workspace.note.open_directory_error");
-                let detail = language.text("common.file_action_error_detail");
-                let confirmation = language.text("common.ok");
-                drop(window.prompt(
-                    PromptLevel::Critical,
-                    &title,
-                    Some(&detail),
-                    &[confirmation.as_str()],
-                    cx,
-                ));
-            }
+        .on_click(|_, window, cx| {
+            window.dispatch_action(Box::new(crate::OpenCurrentNoteDirectory), cx)
         });
-        let note_menu = self.render_note_menu(node, theme, cx);
+        let note_menu = self.render_note_menu(theme, cx);
 
         self.window_drag_region("note-titlebar-region", cx)
             .occlude()

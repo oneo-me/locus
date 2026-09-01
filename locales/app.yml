@@ -29,6 +29,9 @@ menu.file.title:
 menu.view.enter_full_screen:
   en: Enter Full Screen
   zh-CN: 进入全屏幕
+menu.view.command_palette:
+  en: Command Palette…
+  zh-CN: 命令面板…
 menu.view.reload_current_note:
   en: Reload Current Note
   zh-CN: 重新载入当前笔记
@@ -173,6 +176,21 @@ workspace.navigation.back:
 workspace.navigation.forward:
   en: Forward
   zh-CN: 前进
+workspace.command_palette.application:
+  en: Application
+  zh-CN: 应用
+workspace.command_palette.current_note:
+  en: Current Note
+  zh-CN: 当前笔记
+workspace.command_palette.no_matches:
+  en: No matching notes or commands
+  zh-CN: 没有匹配的笔记或命令
+workspace.command_palette.notes:
+  en: Notes
+  zh-CN: 笔记
+workspace.command_palette.placeholder:
+  en: Search notes or type a command…
+  zh-CN: 搜索笔记或输入命令…
 workspace.note.no_selection:
   en: No note selected
   zh-CN: 未选择笔记
