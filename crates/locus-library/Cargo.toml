@@ -1,0 +1,15 @@
+[package]
+name = "locus-library"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-channel.workspace = true
+image.workspace = true
+notify.workspace = true
+percent-encoding.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde-saphyr.workspace = true

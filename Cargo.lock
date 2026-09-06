@@ -3838,35 +3838,111 @@ dependencies = [
 name = "locus"
 version = "0.1.0"
 dependencies = [
- "async-channel",
- "axum",
- "dirs",
- "futures",
  "gpui",
  "gpui-component",
  "gpui-component-assets",
  "gpui_platform",
- "http_client",
- "image",
- "libc",
- "notify 8.2.0",
+ "locus-preferences",
+ "locus-workspace",
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",
  "oneo-gpui",
- "oneo-gpui-markdown",
- "oneo-gpui-terminal",
+]
+
+[[package]]
+name = "locus-library"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "image",
+ "notify 8.2.0",
  "percent-encoding",
- "raw-window-handle",
  "regex",
- "reqwest_client",
- "rmcp",
- "rust-i18n",
- "schemars",
  "serde",
  "serde-saphyr 1.2.0",
  "serde_json",
+]
+
+[[package]]
+name = "locus-mcp"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "libc",
+ "locus-library",
+ "rmcp",
+ "schemars",
+ "serde",
+ "serde_json",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "locus-preferences"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "gpui",
+ "gpui-component",
+ "objc2 0.6.4",
+ "objc2-app-kit 0.3.2",
+ "oneo-gpui-terminal",
+ "raw-window-handle",
+ "rust-i18n",
+ "serde",
+ "serde-saphyr 1.2.0",
+ "serde_json",
+]
+
+[[package]]
+name = "locus-settings"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui-component",
+ "locus-library",
+ "locus-mcp",
+ "locus-preferences",
+ "locus-ui",
+ "oneo-gpui",
+]
+
+[[package]]
+name = "locus-ui"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "gpui",
+ "gpui-component",
+ "http_client",
+ "image",
+ "locus-library",
+ "locus-preferences",
+ "oneo-gpui",
+ "oneo-gpui-markdown",
+ "percent-encoding",
+ "regex",
+ "reqwest_client",
+]
+
+[[package]]
+name = "locus-workspace"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "gpui",
+ "gpui-component",
+ "locus-library",
+ "locus-mcp",
+ "locus-preferences",
+ "locus-settings",
+ "locus-ui",
+ "oneo-gpui",
+ "oneo-gpui-graph",
+ "oneo-gpui-terminal",
+ "serde",
+ "serde_json",
  "unicode-segmentation",
 ]
 
@@ -4826,6 +4902,15 @@ dependencies = [
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",
  "raw-window-handle",
+]
+
+[[package]]
+name = "oneo-gpui-graph"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui-component",
+ "gpui_platform",
 ]
 
 [[package]]

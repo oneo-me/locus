@@ -1,0 +1,29 @@
+[package]
+name = "locus-preferences"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dirs.workspace = true
+gpui.workspace = true
+gpui-component.workspace = true
+oneo-gpui-terminal.workspace = true
+rust-i18n.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+serde-saphyr.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSAppearance",
+  "NSApplication",
+  "NSResponder",
+  "NSView",
+  "NSWindow",
+] }
+raw-window-handle = "0.6"

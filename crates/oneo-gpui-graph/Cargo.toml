@@ -1,0 +1,12 @@
+[package]
+name = "oneo-gpui-graph"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gpui.workspace = true
+gpui-component.workspace = true
+
+[dev-dependencies]
+gpui_platform.workspace = true
+gpui = { workspace = true, features = ["test-support"] }

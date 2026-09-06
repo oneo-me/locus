@@ -27,7 +27,7 @@ esac
 cargo_target_dir="${CARGO_TARGET_DIR:-target}"
 version="$(awk -F ' *= *' '$1 == "version" { gsub(/"/, "", $2); print $2; exit }' Cargo.toml)"
 
-cargo build $cargo_flags
+cargo build -p locus $cargo_flags
 
 bundle="$cargo_target_dir/$profile/$app_name.app"
 contents="$bundle/Contents"

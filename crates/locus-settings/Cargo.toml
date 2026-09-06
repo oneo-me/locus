@@ -1,0 +1,14 @@
+[package]
+name = "locus-settings"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+gpui.workspace = true
+gpui-component.workspace = true
+locus-library.workspace = true
+locus-mcp.workspace = true
+locus-preferences.workspace = true
+locus-ui.workspace = true
+oneo-gpui.workspace = true

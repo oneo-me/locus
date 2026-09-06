@@ -1,0 +1,21 @@
+[package]
+name = "locus-workspace"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-channel.workspace = true
+gpui.workspace = true
+gpui-component.workspace = true
+locus-library.workspace = true
+locus-mcp.workspace = true
+locus-preferences.workspace = true
+locus-settings.workspace = true
+locus-ui.workspace = true
+oneo-gpui.workspace = true
+oneo-gpui-graph.workspace = true
+oneo-gpui-terminal.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+unicode-segmentation.workspace = true

@@ -14,6 +14,14 @@ Locus 使用 Rust 和 GPUI 构建原生桌面应用。当前基础应用会打�
 cargo run
 ```
 
+应用入口位于 `crates/locus`，产品能力按 crate 开发，边界见 [工程定义](locus://projects/locus/engineering)。检查和测试整个 workspace：
+
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+```
+
 构建并签名 macOS 应用包：
 
 ```bash
