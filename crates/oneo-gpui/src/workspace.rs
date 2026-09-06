@@ -902,4 +902,33 @@ mod tests {
         assert!(sidebar_divider_visible(1.0));
         assert!(sidebar_divider_visible(520.0));
     }
+
+    #[gpui::test]
+    fn left_sidebar_can_reopen_after_returning_from_settings(cx: &mut gpui::TestAppContext) {
+        struct Workspace;
+        impl gpui::Render for Workspace {
+            fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+                div()
+            }
+        }
+
+        let (_, cx) = cx.add_window_view(|_, _| Workspace);
+        cx.update(|window, _| {
+            let mut shell =
+                AppShellState::new(WorkspaceShellState::new(CONFIG, true, true, 300.0, 520.0));
+            shell
+                .workspace_mut()
+                .toggle(PanelSide::Left, window, true, 980.0);
+            assert_eq!(shell.workspace().frame(window).left, 0.0);
+            shell.open_settings();
+            shell.close_settings();
+            assert!(!shell.workspace().visible(PanelSide::Left));
+            shell
+                .workspace_mut()
+                .toggle(PanelSide::Left, window, true, 980.0);
+            assert!(shell.workspace().frame(window).left > 0.0);
+            assert_eq!(shell.workspace().snapshot().left_width, 300.0);
+            assert!(shell.workspace().visible(PanelSide::Right));
+        });
+    }
 }

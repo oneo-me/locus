@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["crates/oneo-gpui-app-shell", "crates/oneo-gpui-markdown", "crates/oneo-gpui-tabbed-app-shell", "crates/oneo-gpui-terminal"]
+members = ["crates/oneo-gpui", "crates/oneo-gpui-markdown", "crates/oneo-gpui-terminal"]
 default-members = ["."]
 resolver = "3"
 
@@ -25,7 +25,7 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", features = [
   "font-kit",
   "runtime_shaders",
 ] }
-oneo-gpui-app-shell = { path = "crates/oneo-gpui-app-shell" }
+oneo-gpui = { path = "crates/oneo-gpui" }
 oneo-gpui-markdown = { path = "crates/oneo-gpui-markdown" }
 oneo-gpui-terminal = { path = "crates/oneo-gpui-terminal" }
 http_client = { git = "https://github.com/zed-industries/zed" }

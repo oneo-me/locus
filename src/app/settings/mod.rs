@@ -28,7 +28,7 @@ use gpui_component::{
     input::{Input, InputEvent, InputState},
     select::{SearchableVec, SelectEvent, SelectItem, SelectState},
 };
-use oneo_gpui_app_shell::{
+use oneo_gpui::{
     SettingsShell, settings_back_button, settings_navigation_group, settings_navigation_row,
     settings_sidebar_header,
 };

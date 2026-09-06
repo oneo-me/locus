@@ -3,6 +3,7 @@ mod fps;
 mod menu;
 mod platform;
 mod settings;
+mod titlebar;
 mod workspace;
 
 pub const TITLEBAR_HEIGHT: f32 = 48.0;
@@ -41,6 +42,7 @@ pub use settings::{
     SettingsShell, settings_back_button, settings_navigation_group, settings_navigation_row,
     settings_sidebar_header, sidebar_selection_background,
 };
+pub use titlebar::titlebar_drag_region;
 pub use workspace::{
     AppShellMode, AppShellState, PanelFrame, PanelSide, PanelSize, WorkspaceShell,
     WorkspaceShellConfig, WorkspaceShellLayout, WorkspaceShellSnapshot, WorkspaceShellState,

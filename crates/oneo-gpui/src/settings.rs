@@ -261,4 +261,53 @@ mod tests {
         let (_, cx) = cx.add_window_view(|_, _| SettingsNavigationHarness);
         cx.update(|window, cx| window.draw(cx).clear(cx));
     }
+
+    struct SettingsReturnHarness {
+        returned: bool,
+        workspace_focus: gpui::FocusHandle,
+    }
+
+    impl Render for SettingsReturnHarness {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let theme = Theme::global(cx).clone();
+            if self.returned {
+                return div().track_focus(&self.workspace_focus).into_any_element();
+            }
+            let header = settings_sidebar_header(
+                0.0,
+                div().into_any_element(),
+                settings_back_button("return-to-workspace", "Back", &theme)
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.returned = true;
+                        window.focus(&this.workspace_focus, cx);
+                        cx.notify();
+                    }))
+                    .into_any_element(),
+            );
+            SettingsShell::new(
+                header.into_any_element(),
+                div().into_any_element(),
+                div().child("General").into_any_element(),
+                div().child("Settings content").into_any_element(),
+                theme,
+            )
+            .into_element()
+            .into_any_element()
+        }
+    }
+
+    #[gpui::test]
+    fn settings_header_return_activates_and_restores_workspace_focus(cx: &mut TestAppContext) {
+        cx.update(gpui_component::init);
+        let (view, cx) = cx.add_window_view(|_, cx| SettingsReturnHarness {
+            returned: false,
+            workspace_focus: cx.focus_handle(),
+        });
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        cx.simulate_click(gpui::point(px(40.0), px(24.0)), Default::default());
+        cx.update(|window, cx| {
+            assert!(view.read(cx).returned);
+            assert!(view.read(cx).workspace_focus.is_focused(window));
+        });
+    }
 }

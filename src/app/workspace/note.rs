@@ -14,7 +14,7 @@ use gpui::{
     prelude::*, px, quad, transparent_black,
 };
 use gpui_component::scroll::Scrollbar;
-use oneo_gpui_app_shell::PanelSide;
+use oneo_gpui::PanelSide;
 const NOTE_MAX_WIDTH: f32 = 832.0;
 const ATMOSPHERE_HEIGHT: f32 = 268.0;
 const SHAPE_HEIGHT: f32 = 208.0;

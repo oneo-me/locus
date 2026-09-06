@@ -28,11 +28,11 @@ use gpui::{
 use gpui_component::{Root, Theme};
 use gpui_platform::application;
 use localization::Language;
-use oneo_gpui_app_shell::{
+use oneo_gpui::{
     About, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit, ToggleFpsCounter,
     ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, bind_app_shell_keys, set_app_shell_menus,
 };
-use oneo_gpui_app_shell::{
+use oneo_gpui::{
     configure_main_window_close_behavior, configure_sidebar_material, init_reduce_motion,
 };
 use preferences::Preferences;
@@ -77,7 +77,7 @@ fn main() {
         rust_i18n::extend!(gpui_component);
         gpui_component::init(cx);
         init_reduce_motion(cx);
-        bind_app_shell_keys(cx);
+        bind_app_shell_keys(cx, true);
         cx.bind_keys([
             KeyBinding::new(COMMAND_PALETTE_KEY, OpenCommandPalette, None),
             KeyBinding::new("secondary-w", CloseTerminalTab, Some("Terminal")),

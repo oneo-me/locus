@@ -46,7 +46,7 @@ use crate::{
     CloseTerminalTab, CloseWindow, NewTerminal, OpenKnowledgeGraph, OpenSettings,
     ReloadCurrentNote, ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
 };
-use oneo_gpui_app_shell::{
+use oneo_gpui::{
     AppShellState, FpsCounter, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
     TITLEBAR_HEIGHT, WorkspaceShell, WorkspaceShellConfig, WorkspaceShellState,
     panel_resize_handle, panel_toggle_button, titlebar_content_left_padding,
@@ -889,7 +889,7 @@ impl Locus {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        oneo_gpui_app_shell::close_main_window(window, cx);
+        oneo_gpui::close_main_window(window, cx);
     }
 
     fn reload_current_note_action(

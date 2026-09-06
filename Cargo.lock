@@ -3852,7 +3852,7 @@ dependencies = [
  "notify 8.2.0",
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",
- "oneo-gpui-app-shell",
+ "oneo-gpui",
  "oneo-gpui-markdown",
  "oneo-gpui-terminal",
  "percent-encoding",
@@ -4818,7 +4818,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
-name = "oneo-gpui-app-shell"
+name = "oneo-gpui"
 version = "0.1.0"
 dependencies = [
  "gpui",
@@ -4836,17 +4836,6 @@ dependencies = [
  "gpui-component",
  "pulldown-cmark",
  "regex",
-]
-
-[[package]]
-name = "oneo-gpui-tabbed-app-shell"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "gpui-component",
- "objc2 0.6.4",
- "objc2-app-kit 0.3.2",
- "raw-window-handle",
 ]
 
 [[package]]

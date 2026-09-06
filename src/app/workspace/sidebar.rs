@@ -15,7 +15,7 @@ use crate::sidebar_order::reorder_siblings;
 use crate::theme::Theme;
 use crate::ui::{Icon, document_icon_image, icon};
 use gpui_component::{menu::ContextMenuExt as _, scroll::Scrollbar};
-use oneo_gpui_app_shell::sidebar_selection_background;
+use oneo_gpui::sidebar_selection_background;
 
 const TREE_ROW_HEIGHT: f32 = 30.0;
 const TREE_LEVEL_INDENT: f32 = 16.0;
