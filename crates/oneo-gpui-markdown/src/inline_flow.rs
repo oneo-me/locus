@@ -605,9 +605,11 @@ mod tests {
                         ..Default::default()
                     }],
                 }];
-                let mut text_style = TextStyle::default();
-                text_style.font_family = "Menlo".into();
-                text_style.font_size = px(16.0).into();
+                let text_style = TextStyle {
+                    font_family: "Menlo".into(),
+                    font_size: px(16.0).into(),
+                    ..Default::default()
+                };
                 let wrap_width = px(80.0);
 
                 let layout = layout_flow(&items, &[None], &text_style, Some(wrap_width), window);
