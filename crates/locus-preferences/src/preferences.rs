@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::PathBuf;
 
 pub use oneo_gpui_terminal::{TerminalColorScheme, TerminalCursorStyle};
@@ -9,10 +8,10 @@ use crate::config::{
     DEFAULT_MCP_ENABLED, DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT,
     DEFAULT_SHOW_GRAPH_ATTACHMENTS, DEFAULT_TERMINAL_COMMAND, DEFAULT_TERMINAL_FONT_FAMILY,
     DEFAULT_TERMINAL_FONT_SIZE, DEFAULT_TERMINAL_SHELL, DEFAULT_THEME, DEFAULT_UI_FONT_FAMILY,
-    DEFAULT_UI_FONT_SIZE, SETTINGS_FILE,
+    DEFAULT_UI_FONT_SIZE,
 };
 use crate::localization::Language;
-use crate::storage::data_directory;
+use crate::storage::settings_store;
 use crate::theme::ThemePreference;
 
 pub const FONT_SIZES: [f32; 7] = [12.0, 14.0, 15.0, 16.0, 17.0, 18.0, 20.0];
@@ -101,19 +100,9 @@ impl Default for Preferences {
 
 impl Preferences {
     pub fn load() -> (Self, Option<String>) {
-        let path = match settings_path() {
-            Ok(path) => path,
-            Err(error) => return (Self::default(), Some(error)),
-        };
-        if !path.exists() {
-            return (Self::default(), None);
-        }
-
-        match fs::read(&path)
-            .map_err(|error| error.to_string())
-            .and_then(|bytes| {
-                serde_json::from_slice::<Self>(&bytes).map_err(|error| error.to_string())
-            }) {
+        match settings_store()
+            .and_then(|store| store.load::<Self>().map_err(|error| format!("{error:#}")))
+        {
             Ok(mut preferences) => {
                 preferences.normalize();
                 (preferences, None)
@@ -123,11 +112,9 @@ impl Preferences {
     }
 
     pub fn save(&self) -> Result<(), String> {
-        let path = settings_path()?;
-        let directory = path.parent().ok_or_else(|| "设置路径无效".to_string())?;
-        fs::create_dir_all(directory).map_err(|error| error.to_string())?;
-        let data = serde_json::to_vec_pretty(self).map_err(|error| error.to_string())?;
-        fs::write(path, data).map_err(|error| error.to_string())
+        settings_store()?
+            .save(self)
+            .map_err(|error| format!("{error:#}"))
     }
 
     fn normalize(&mut self) {
@@ -177,10 +164,6 @@ fn resolved_font_family<'a>(family: &'a str, default: &'static str) -> &'a str {
     if family.is_empty() { default } else { family }
 }
 
-fn settings_path() -> Result<PathBuf, String> {
-    data_directory().map(|directory| directory.join(SETTINGS_FILE))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -207,8 +190,11 @@ mod tests {
             mcp_port: 43123,
             show_graph_attachments: false,
         };
-        let json = serde_json::to_string(&preferences).unwrap();
-        let restored: Preferences = serde_json::from_str(&json).unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let store =
+            oneo_gpui::SettingsStore::at_path(directory.path().join("settings.toml")).unwrap();
+        store.save(&preferences).unwrap();
+        let restored: Preferences = store.load().unwrap();
 
         assert_eq!(restored.library_path, preferences.library_path);
         assert_eq!(restored.editor, preferences.editor);

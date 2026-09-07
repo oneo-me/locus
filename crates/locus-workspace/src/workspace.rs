@@ -31,8 +31,8 @@ use crate::state::{
     RIGHT_SIDEBAR_MIN_WIDTH,
 };
 use crate::{
-    CloseTerminalTab, CloseWindow, NewTerminal, OpenKnowledgeGraph, OpenSettings,
-    ReloadCurrentNote, ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
+    CloseTerminalTab, NewTerminal, OpenKnowledgeGraph, OpenSettings, ReloadCurrentNote,
+    ToggleFpsCounter, ToggleLeftPanel, ToggleRightPanel,
 };
 use locus_library::{DocumentGraph, LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use locus_mcp::{McpConfiguration, McpServerController};
@@ -897,15 +897,6 @@ impl Locus {
         self.open_settings(window, cx);
     }
 
-    fn close_window_action(
-        &mut self,
-        _: &CloseWindow,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        oneo_gpui::close_main_window(window, cx);
-    }
-
     fn reload_current_note_action(
         &mut self,
         _: &ReloadCurrentNote,
@@ -925,15 +916,6 @@ impl Locus {
             .update(cx, |counter, cx| counter.toggle(cx));
         self.save_interface_state(cx);
         cx.notify();
-    }
-
-    fn toggle_full_screen_action(
-        &mut self,
-        _: &ToggleFullScreen,
-        window: &mut Window,
-        _: &mut Context<Self>,
-    ) {
-        window.toggle_fullscreen();
     }
 
     fn render_panel_resize_handle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
@@ -1243,7 +1225,6 @@ impl Render for Locus {
             .key_context("Locus")
             .track_focus(&self.root_focus)
             .on_action(cx.listener(Self::close_terminal_tab_action))
-            .on_action(cx.listener(Self::close_window_action))
             .on_action(cx.listener(Self::new_terminal_action))
             .on_action(cx.listener(Self::open_command_palette_action))
             .on_action(cx.listener(Self::open_knowledge_graph_action))
@@ -1256,7 +1237,6 @@ impl Render for Locus {
             .on_action(cx.listener(Self::archive_current_note_action))
             .on_action(cx.listener(Self::reload_current_note_action))
             .on_action(cx.listener(Self::toggle_fps_counter_action))
-            .on_action(cx.listener(Self::toggle_full_screen_action))
             .on_action(cx.listener(Self::toggle_left_sidebar_action))
             .on_action(cx.listener(Self::toggle_right_sidebar_action))
             .capture_any_mouse_down(cx.listener(Self::navigation_mouse_down))

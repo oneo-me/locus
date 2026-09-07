@@ -3,16 +3,31 @@ name = "oneo-gpui"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["shell"]
+shell = ["dep:gpui", "dep:gpui-component", "dep:gpui-component-assets", "dep:gpui_platform", "dep:objc2", "dep:objc2-app-kit", "dep:raw-window-handle"]
+
+[[example]]
+name = "minimal"
+required-features = ["shell"]
+
 [dependencies]
-gpui.workspace = true
-gpui-component.workspace = true
+anyhow.workspace = true
+dirs.workspace = true
+serde.workspace = true
+tempfile.workspace = true
+toml.workspace = true
+gpui_platform = { workspace = true, optional = true }
+gpui-component-assets = { workspace = true, optional = true }
+gpui = { workspace = true, optional = true }
+gpui-component = { workspace = true, optional = true }
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6"
-objc2-app-kit = { version = "0.3", default-features = false, features = [
+objc2 = { version = "0.6", optional = true }
+objc2-app-kit = { version = "0.3", optional = true, default-features = false, features = [
     "std",
     "NSAccessibility",
     "NSColor",
@@ -22,4 +37,4 @@ objc2-app-kit = { version = "0.3", default-features = false, features = [
     "NSWindow",
     "NSWorkspace",
 ] }
-raw-window-handle = "0.6"
+raw-window-handle = { version = "0.6", optional = true }

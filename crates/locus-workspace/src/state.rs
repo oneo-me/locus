@@ -1,4 +1,4 @@
-use std::fs;
+use oneo_gpui::SettingsStore;
 
 use gpui::{Bounds, Pixels, px, size};
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,7 @@ pub const RIGHT_SIDEBAR_MIN_WIDTH: f32 = 280.0;
 pub const RIGHT_SIDEBAR_MAX_WIDTH: f32 = 1000.0;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct InterfaceState {
     pub left_sidebar_width: f32,
     pub right_sidebar_width: f32,
@@ -42,19 +43,9 @@ impl Default for InterfaceState {
 
 impl InterfaceState {
     pub fn load() -> (Self, Option<String>) {
-        let path = match state_path() {
-            Ok(path) => path,
-            Err(error) => return (Self::default(), Some(error)),
-        };
-        if !path.exists() {
-            return (Self::default(), None);
-        }
-
-        match fs::read(&path)
-            .map_err(|error| error.to_string())
-            .and_then(|bytes| {
-                serde_json::from_slice::<Self>(&bytes).map_err(|error| error.to_string())
-            }) {
+        match state_store()
+            .and_then(|store| store.load::<Self>().map_err(|error| format!("{error:#}")))
+        {
             Ok(mut state) => {
                 state.normalize();
                 (state, None)
@@ -64,13 +55,9 @@ impl InterfaceState {
     }
 
     pub fn save(&self) -> Result<(), String> {
-        let path = state_path()?;
-        let directory = path
-            .parent()
-            .ok_or_else(|| "界面状态路径无效".to_string())?;
-        fs::create_dir_all(directory).map_err(|error| error.to_string())?;
-        let data = serde_json::to_vec_pretty(self).map_err(|error| error.to_string())?;
-        fs::write(path, data).map_err(|error| error.to_string())
+        state_store()?
+            .save(self)
+            .map_err(|error| format!("{error:#}"))
     }
 
     fn normalize(&mut self) {
@@ -114,8 +101,9 @@ impl InterfaceState {
     }
 }
 
-fn state_path() -> Result<std::path::PathBuf, String> {
-    data_directory().map(|directory| directory.join(INTERFACE_STATE_FILE))
+fn state_store() -> Result<SettingsStore, String> {
+    let path = data_directory()?.join(INTERFACE_STATE_FILE);
+    SettingsStore::at_path(path).map_err(|error| format!("{error:#}"))
 }
 
 #[cfg(test)]
@@ -137,8 +125,10 @@ mod tests {
             )),
         };
 
-        let json = serde_json::to_string(&state).unwrap();
-        let restored: InterfaceState = serde_json::from_str(&json).unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let store = SettingsStore::at_path(directory.path().join("state.toml")).unwrap();
+        store.save(&state).unwrap();
+        let restored: InterfaceState = store.load().unwrap();
 
         assert_eq!(restored, state);
     }

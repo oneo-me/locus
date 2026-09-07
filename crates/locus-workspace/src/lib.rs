@@ -9,6 +9,5 @@ pub use state::InterfaceState;
 pub use workspace::Locus;
 
 use oneo_gpui::{
-    CloseWindow, OpenSettings, ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel,
-    ToggleRightPanel,
+    OpenSettings, ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
 };

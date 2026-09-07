@@ -1,6 +1,6 @@
+use oneo_gpui::SettingsStore;
 use std::collections::{BTreeMap, HashMap};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
@@ -20,19 +20,9 @@ struct LibraryOrder {
 
 impl SidebarOrderState {
     pub fn load() -> (Self, Option<String>) {
-        let path = match state_path() {
-            Ok(path) => path,
-            Err(error) => return (Self::default(), Some(error)),
-        };
-        if !path.exists() {
-            return (Self::default(), None);
-        }
-
-        match fs::read(&path)
-            .map_err(|error| error.to_string())
-            .and_then(|bytes| {
-                serde_json::from_slice::<Self>(&bytes).map_err(|error| error.to_string())
-            }) {
+        match state_store()
+            .and_then(|store| store.load::<Self>().map_err(|error| format!("{error:#}")))
+        {
             Ok(state) => (state, None),
             Err(error) => (
                 Self::default(),
@@ -42,13 +32,9 @@ impl SidebarOrderState {
     }
 
     pub fn save(&self) -> Result<(), String> {
-        let path = state_path()?;
-        let directory = path
-            .parent()
-            .ok_or_else(|| "侧边栏顺序路径无效".to_string())?;
-        fs::create_dir_all(directory).map_err(|error| error.to_string())?;
-        let data = serde_json::to_vec_pretty(self).map_err(|error| error.to_string())?;
-        fs::write(path, data).map_err(|error| error.to_string())
+        state_store()?
+            .save(self)
+            .map_err(|error| format!("{error:#}"))
     }
 
     pub fn apply(&self, library_path: &Path, nodes: &mut [LibraryNode]) {
@@ -128,13 +114,15 @@ fn library_key(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
-fn state_path() -> Result<PathBuf, String> {
-    data_directory().map(|directory| directory.join(SIDEBAR_ORDER_FILE))
+fn state_store() -> Result<SettingsStore, String> {
+    let path = data_directory()?.join(SIDEBAR_ORDER_FILE);
+    SettingsStore::at_path(path).map_err(|error| format!("{error:#}"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     fn node(path: &str, children: Vec<LibraryNode>) -> LibraryNode {
         LibraryNode {
@@ -177,7 +165,12 @@ mod tests {
             node("new", vec![]),
         ];
 
-        state.apply(library, &mut nodes);
+        let directory = tempfile::tempdir().unwrap();
+        let store = SettingsStore::at_path(directory.path().join("sidebar-order.toml")).unwrap();
+        store.save(&state).unwrap();
+        let restored: SidebarOrderState = store.load().unwrap();
+        assert_eq!(restored, state);
+        restored.apply(library, &mut nodes);
 
         assert_eq!(paths(&nodes), vec!["beta", "alpha", "new"]);
         assert_eq!(paths(&nodes[1].children), vec!["alpha/two", "alpha/one"]);

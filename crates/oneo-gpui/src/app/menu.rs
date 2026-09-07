@@ -87,7 +87,7 @@ impl AppShellMenus {
     }
 }
 
-pub fn bind_app_shell_keys(cx: &mut App, left_panel_toggle: bool) {
+pub(super) fn bind_app_shell_keys(cx: &mut App, left_panel_toggle: bool) {
     cx.bind_keys([
         KeyBinding::new("secondary-q", Quit, None),
         KeyBinding::new("secondary-w", CloseWindow, None),

@@ -1,9 +1,19 @@
 use std::path::PathBuf;
 
-use crate::config::DATA_DIRECTORY;
+use oneo_gpui::SettingsStore;
+
+use crate::config::PROJECT_NAME;
+
+pub fn settings_store() -> Result<SettingsStore, String> {
+    SettingsStore::for_project(PROJECT_NAME).map_err(|error| format!("{error:#}"))
+}
 
 pub fn data_directory() -> Result<PathBuf, String> {
-    dirs::home_dir()
-        .map(|home| home.join(DATA_DIRECTORY))
-        .ok_or_else(|| "无法确定用户主目录".to_string())
+    settings_store().map(|store| {
+        store
+            .path()
+            .parent()
+            .expect("absolute settings path has a parent")
+            .to_path_buf()
+    })
 }
