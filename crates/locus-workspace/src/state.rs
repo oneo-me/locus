@@ -12,7 +12,7 @@ use locus_preferences::storage::data_directory;
 
 pub const LEFT_SIDEBAR_MIN_WIDTH: f32 = DEFAULT_LEFT_SIDEBAR_WIDTH;
 pub const LEFT_SIDEBAR_MAX_WIDTH: f32 = 420.0;
-pub const RIGHT_SIDEBAR_MIN_WIDTH: f32 = 280.0;
+pub const RIGHT_SIDEBAR_MIN_WIDTH: f32 = oneo_gpui::RIGHT_SIDEBAR_MIN_WIDTH;
 pub const RIGHT_SIDEBAR_MAX_WIDTH: f32 = 1000.0;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

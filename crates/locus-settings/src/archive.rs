@@ -42,7 +42,7 @@ impl Settings {
                         this.archive_action_error = Some(
                             t!(
                                 "settings.archive.restore_error",
-                                locale = this.preferences.language.locale()
+                                locale = this.preferences.appearance.language.locale()
                             )
                             .into_owned(),
                         );
@@ -56,7 +56,7 @@ impl Settings {
 
     pub(super) fn render_archive(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
-        let language = self.preferences.language;
+        let language = self.preferences.appearance.language;
         if self.preferences.library_path.is_none() {
             return archive_message(
                 t!(
@@ -112,7 +112,7 @@ impl Settings {
 
     fn render_archive_row(&self, note: ArchivedNote, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
-        let language = self.preferences.language;
+        let language = self.preferences.appearance.language;
         let pending = self.restoring_archive.as_ref() == Some(&note.document_path);
         let disabled = self.restoring_archive.is_some();
         let button_label = if pending {

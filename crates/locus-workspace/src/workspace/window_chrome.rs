@@ -50,37 +50,6 @@ impl Locus {
             }))
     }
 
-    pub(super) fn render_panel_toggle(
-        &self,
-        side: PanelSide,
-        cx: &mut Context<Self>,
-    ) -> gpui_kit::component::button::Button {
-        let theme = Theme::global(cx).clone();
-        let language = self.language(cx);
-        let (id, label) = match side {
-            PanelSide::Left => (
-                "toggle-left-sidebar",
-                if self.app_shell.workspace().visible(PanelSide::Left) {
-                    t!("workspace.sidebar.hide_left", locale = language.locale()).into_owned()
-                } else {
-                    t!("workspace.sidebar.show_left", locale = language.locale()).into_owned()
-                },
-            ),
-            PanelSide::Right => (
-                "toggle-right-sidebar",
-                if self.app_shell.workspace().visible(PanelSide::Right) {
-                    t!("workspace.sidebar.hide_right", locale = language.locale()).into_owned()
-                } else {
-                    t!("workspace.sidebar.show_right", locale = language.locale()).into_owned()
-                },
-            ),
-        };
-
-        panel_toggle_button(id, label, side, &theme)
-            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .on_click(cx.listener(move |this, _, window, cx| this.toggle_panel(side, window, cx)))
-    }
-
     pub(super) fn render_history_button(
         &self,
         direction: NavigationDirection,
@@ -103,42 +72,13 @@ impl Locus {
             ),
         };
 
-        Button::new(id)
-            .ghost()
-            .small()
-            .size(px(TITLEBAR_CONTROL_SIZE))
-            .icon(icon_kind)
-            .text_color(theme.muted_foreground)
+        oneo_gpui::toolbar_icon_button(id, label, icon_kind, &theme)
             .when(!enabled, |button| button.opacity(0.35))
             .disabled(!enabled)
-            .accessibility_label(label.clone())
-            .tooltip(label)
             .on_click(cx.listener(move |this, _, _, cx| match direction {
                 NavigationDirection::Back => this.navigate_back(cx),
                 NavigationDirection::Forward => this.navigate_forward(cx),
             }))
-    }
-
-    pub(super) fn render_left_titlebar(
-        &self,
-        left_control_clearance: f32,
-        cx: &mut Context<Self>,
-    ) -> Div {
-        div()
-            .h(px(TITLEBAR_HEIGHT))
-            .flex_none()
-            .flex()
-            .items_center()
-            .child(
-                self.window_drag_region("left-control-clearance-region", cx)
-                    .w(px(left_control_clearance))
-                    .flex_none(),
-            )
-            .child(
-                self.window_drag_region("left-title-region", cx)
-                    .min_w_0()
-                    .flex_1(),
-            )
     }
 
     pub(super) fn render_content_titlebar(
@@ -194,20 +134,6 @@ impl Locus {
                 .w_full()
                 .child(self.render_right_tab_bar(cx)),
         )
-    }
-
-    pub(super) fn render_settings_button(
-        &self,
-        cx: &mut Context<Self>,
-    ) -> gpui_kit::component::button::Button {
-        let label = t!(
-            "workspace.settings.open",
-            locale = self.language(cx).locale()
-        )
-        .into_owned();
-        toolbar_icon_button("open-settings", label, Icon::Settings, Theme::global(cx))
-            .size(px(28.0))
-            .on_click(cx.listener(|this, _, window, cx| this.open_settings(window, cx)))
     }
 
     pub(super) fn render_mcp_status(&self, cx: &mut Context<Self>) -> Button {

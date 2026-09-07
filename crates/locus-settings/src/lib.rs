@@ -8,32 +8,30 @@ mod controls;
 mod mcp;
 mod pages;
 
+use gpui_kit::component::Theme;
 use gpui_kit::component::{
     IndexPath,
     input::{Input, InputEvent, InputState},
     select::{SearchableVec, SelectEvent, SelectItem, SelectState},
 };
 use gpui_kit::{
-    App, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, FontWeight, MouseButton,
-    PathPromptOptions, Render, Role, Stateful, StatefulInteractiveElement, Window, div, prelude::*,
-    px,
+    App, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, FontWeight, PathPromptOptions,
+    Render, Role, Stateful, StatefulInteractiveElement, Window, div, prelude::*, px,
 };
 use locus_library::ArchivedNote;
 use locus_mcp::McpServerState;
 use locus_preferences::config::{
-    DEFAULT_CODE_FONT_FAMILY, DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_TERMINAL_FONT_FAMILY,
-    DEFAULT_UI_FONT_FAMILY, WINDOW_TITLEBAR_HEIGHT, WINDOW_TRAFFIC_LIGHT_CLEARANCE,
+    DEFAULT_CODE_FONT_FAMILY, DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY,
 };
-use locus_preferences::localization::Language;
-use locus_preferences::theme::{self, Theme, ThemePreference};
 use locus_preferences::{
-    EditorPreference, FONT_SIZES, Preferences, TerminalColorScheme, TerminalCursorStyle,
+    EditorPreference, Preferences, TerminalColorScheme, TerminalCursorStyle,
     terminal_color_scheme_label, terminal_cursor_style_label,
 };
 use locus_ui::{Icon, MarkdownSelection, SelectableCodeStyle, icon, selectable_code_text};
+use oneo_gpui::Language;
+use oneo_gpui::{AppearanceChange, AppearanceControls, FONT_SIZES};
 use oneo_gpui::{
-    SettingsShell, settings_back_button, settings_navigation_group, settings_navigation_row,
-    settings_sidebar_header,
+    SettingsGroup, SettingsItem, SettingsShell, settings_navigation_group, settings_navigation_row,
 };
 
 fn ui_rem(value: f32) -> gpui_kit::Rems {
@@ -42,7 +40,6 @@ fn ui_rem(value: f32) -> gpui_kit::Rems {
 
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 720.0;
 const SETTINGS_CONTROL_WIDTH_REM: f32 = 20.0;
-const SETTINGS_TITLEBAR_CONTROL_INSET: f32 = 11.0;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 enum SettingsPage {
@@ -72,9 +69,6 @@ impl SettingsPage {
 enum Choice {
     Page(SettingsPage),
     Editor(EditorPreference),
-    Theme(ThemePreference),
-    Language(Language),
-    UiFontSize(f32),
     CodeFontSize(f32),
     TerminalFontSize(f32),
     TerminalColorScheme(TerminalColorScheme),
@@ -86,21 +80,7 @@ impl Choice {
         match self {
             Self::Page(page) => page.label(language),
             Self::Editor(editor) => editor.label(language),
-            Self::Theme(ThemePreference::System) => t!(
-                "settings.appearance.theme.system",
-                locale = language.locale()
-            )
-            .into_owned(),
-            Self::Theme(ThemePreference::Light) => t!(
-                "settings.appearance.theme.light",
-                locale = language.locale()
-            )
-            .into_owned(),
-            Self::Theme(ThemePreference::Dark) => {
-                t!("settings.appearance.theme.dark", locale = language.locale()).into_owned()
-            }
-            Self::Language(language) => language.label(),
-            Self::UiFontSize(size) | Self::CodeFontSize(size) | Self::TerminalFontSize(size) => {
+            Self::CodeFontSize(size) | Self::TerminalFontSize(size) => {
                 font_size_label(size).to_owned()
             }
             Self::TerminalColorScheme(scheme) => terminal_color_scheme_label(scheme, language),
@@ -123,9 +103,6 @@ fn choice_items(dropdown: Dropdown, language: Language) -> Vec<ChoiceItem> {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum Dropdown {
     Editor,
-    Theme,
-    Language,
-    UiFontSize,
     CodeFontSize,
     TerminalFontSize,
     TerminalColorScheme,
@@ -133,11 +110,8 @@ enum Dropdown {
 }
 
 impl Dropdown {
-    const ALL: [Self; 8] = [
+    const ALL: [Self; 5] = [
         Self::Editor,
-        Self::Theme,
-        Self::Language,
-        Self::UiFontSize,
         Self::CodeFontSize,
         Self::TerminalFontSize,
         Self::TerminalColorScheme,
@@ -147,9 +121,6 @@ impl Dropdown {
     fn label(self, language: Language) -> String {
         let key = match self {
             Self::Editor => "settings.editor.label",
-            Self::Theme => "settings.appearance.theme.label",
-            Self::Language => "settings.appearance.language.label",
-            Self::UiFontSize => "settings.appearance.interface_font_size.label",
             Self::CodeFontSize => "settings.appearance.code_font_size.label",
             Self::TerminalFontSize => "settings.terminal.font_size.label",
             Self::TerminalColorScheme => "settings.terminal.color_scheme.label",
@@ -164,16 +135,6 @@ impl Dropdown {
                 .into_iter()
                 .map(Choice::Editor)
                 .collect(),
-            Self::Theme => [
-                ThemePreference::System,
-                ThemePreference::Light,
-                ThemePreference::Dark,
-            ]
-            .into_iter()
-            .map(Choice::Theme)
-            .collect(),
-            Self::Language => Language::ALL.into_iter().map(Choice::Language).collect(),
-            Self::UiFontSize => FONT_SIZES.into_iter().map(Choice::UiFontSize).collect(),
             Self::CodeFontSize => FONT_SIZES.into_iter().map(Choice::CodeFontSize).collect(),
             Self::TerminalFontSize => FONT_SIZES
                 .into_iter()
@@ -193,9 +154,6 @@ impl Dropdown {
     fn selected(self, preferences: &Preferences) -> Choice {
         match self {
             Self::Editor => Choice::Editor(preferences.editor),
-            Self::Theme => Choice::Theme(preferences.theme),
-            Self::Language => Choice::Language(preferences.language),
-            Self::UiFontSize => Choice::UiFontSize(preferences.ui_font_size),
             Self::CodeFontSize => Choice::CodeFontSize(preferences.code_font_size),
             Self::TerminalFontSize => Choice::TerminalFontSize(preferences.terminal_font_size),
             Self::TerminalColorScheme => {
@@ -314,6 +272,7 @@ pub struct Settings {
     choice_selects: std::collections::HashMap<Dropdown, Entity<ChoiceSelect>>,
     font_selects: std::collections::HashMap<FontKind, Entity<FontSelect>>,
     preferences: Preferences,
+    appearance_controls: AppearanceControls,
     terminal_shell_input: Entity<InputState>,
     terminal_command_input: Entity<InputState>,
     mcp_port_input: Entity<InputState>,
@@ -328,7 +287,6 @@ pub struct Settings {
     archive_action_error: Option<String>,
     restoring_archive: Option<std::path::PathBuf>,
     error: Option<String>,
-    titlebar_drag_armed: bool,
 }
 
 impl EventEmitter<SettingsEvent> for Settings {}
@@ -355,7 +313,7 @@ impl Settings {
             archived_notes,
             archive_load_error,
         } = init;
-        let language = preferences.language;
+        let language = preferences.appearance.language;
         let settings_error = load_error.map(|error| {
             eprintln!("{error}");
             t!("settings.load_error", locale = language.locale()).into_owned()
@@ -496,7 +454,10 @@ impl Settings {
             cx.notify();
         })
         .detach();
+        let appearance_controls =
+            AppearanceControls::new(preferences.appearance, window, cx, Self::change_appearance);
         Self {
+            appearance_controls,
             focus: cx.focus_handle(),
             return_focus,
             mcp_code_focus: cx.focus_handle(),
@@ -518,7 +479,6 @@ impl Settings {
             archive_action_error: None,
             restoring_archive: None,
             error: settings_error,
-            titlebar_drag_armed: false,
         }
     }
 
@@ -555,7 +515,7 @@ impl Settings {
     }
 
     fn persist(&mut self) {
-        let language = self.preferences.language;
+        let language = self.preferences.appearance.language;
         self.error = match self.preferences.save() {
             Ok(()) => None,
             Err(error) => {
@@ -571,7 +531,7 @@ impl Settings {
     }
 
     fn choose_library(&mut self, cx: &mut Context<Self>) {
-        let language = self.preferences.language;
+        let language = self.preferences.appearance.language;
         let receiver = cx.prompt_for_paths(PathPromptOptions {
             files: false,
             directories: true,
@@ -598,7 +558,7 @@ impl Settings {
     }
 
     fn sync_choice_selects(&self, window: &mut Window, cx: &mut Context<Self>) {
-        let language = self.preferences.language;
+        let language = self.preferences.appearance.language;
         for dropdown in Dropdown::ALL {
             let items = choice_items(dropdown, language);
             let selected = dropdown.selected(&self.preferences);
@@ -609,31 +569,19 @@ impl Settings {
         }
     }
 
-    fn apply_choice(&mut self, choice: Choice, window: &mut Window, cx: &mut Context<Self>) {
-        match choice {
-            Choice::Page(page) => {
-                self.page = page;
-                cx.notify();
-                return;
-            }
-            Choice::Editor(editor) => {
-                if self.preferences.editor == editor {
-                    return;
-                }
-                self.preferences.editor = editor;
-            }
-            Choice::Theme(preference) => {
-                if self.preferences.theme == preference {
-                    return;
-                }
-                self.preferences.theme = preference;
-                theme::apply_preference(preference, self.preferences.ui_font_size, window, cx);
-            }
-            Choice::Language(language) => {
-                if self.preferences.language == language {
-                    return;
-                }
-                self.preferences.language = language;
+    fn change_appearance(
+        &mut self,
+        change: AppearanceChange,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !change.apply(&mut self.preferences.appearance, window, cx) {
+            return;
+        }
+        self.appearance_controls
+            .sync(self.preferences.appearance, window, cx);
+        match change {
+            AppearanceChange::Language(language) => {
                 self.terminal_shell_input.update(cx, |input, cx| {
                     input.set_placeholder(
                         t!(
@@ -667,13 +615,25 @@ impl Settings {
                 self.sync_choice_selects(window, cx);
                 cx.emit(SettingsEvent::LanguageChanged(language));
             }
-            Choice::UiFontSize(size) => {
-                if self.preferences.ui_font_size == size {
+            AppearanceChange::FontSize(_) => cx.emit(SettingsEvent::UiFontChanged),
+            AppearanceChange::Theme(_) => {}
+        }
+        self.persist();
+        cx.notify();
+    }
+
+    fn apply_choice(&mut self, choice: Choice, _window: &mut Window, cx: &mut Context<Self>) {
+        match choice {
+            Choice::Page(page) => {
+                self.page = page;
+                cx.notify();
+                return;
+            }
+            Choice::Editor(editor) => {
+                if self.preferences.editor == editor {
                     return;
                 }
-                self.preferences.ui_font_size = size;
-                theme::apply_ui_font_size(size, window, cx);
-                cx.emit(SettingsEvent::UiFontChanged);
+                self.preferences.editor = editor;
             }
             Choice::CodeFontSize(size) => {
                 if self.preferences.code_font_size == size {
@@ -711,64 +671,8 @@ impl Settings {
         cx.notify();
     }
 
-    fn render_titlebar_drag_region(
-        &self,
-        id: &'static str,
-        cx: &mut Context<Self>,
-    ) -> Stateful<gpui_kit::Div> {
-        div()
-            .id(id)
-            .h_full()
-            .on_click(|event, window, _| {
-                if event.click_count() == 2 {
-                    window.titlebar_double_click();
-                }
-            })
-            .on_mouse_down_out(cx.listener(|this, _, _, _| {
-                this.titlebar_drag_armed = false;
-            }))
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|this, _, _, _| {
-                    this.titlebar_drag_armed = true;
-                }),
-            )
-            .on_mouse_up(
-                MouseButton::Left,
-                cx.listener(|this, _, _, _| {
-                    this.titlebar_drag_armed = false;
-                }),
-            )
-            .on_mouse_move(cx.listener(|this, _, window, _| {
-                if this.titlebar_drag_armed {
-                    this.titlebar_drag_armed = false;
-                    window.start_window_move();
-                }
-            }))
-    }
-
-    fn render_sidebar_header(&self, fullscreen: bool, cx: &mut Context<Self>) -> gpui_kit::Div {
-        let theme = Theme::global(cx).clone();
-        let language = self.preferences.language;
-        let back_label = t!("settings.navigation.back", locale = language.locale()).into_owned();
-        let traffic_light_clearance = if cfg!(target_os = "macos") && !fullscreen {
-            WINDOW_TRAFFIC_LIGHT_CLEARANCE
-        } else {
-            SETTINGS_TITLEBAR_CONTROL_INSET
-        };
-
-        settings_sidebar_header(
-            traffic_light_clearance,
-            self.render_titlebar_drag_region("settings-sidebar-traffic-light-drag-region", cx)
-                .into_any_element(),
-            settings_back_button("settings-back", back_label, &theme)
-                .on_click(cx.listener(|this, _, window, cx| this.close(window, cx)))
-                .into_any_element(),
-        )
-    }
-
     fn render_sidebar(&self, cx: &mut Context<Self>) -> Stateful<gpui_kit::Div> {
-        let language = self.preferences.language;
+        let language = self.preferences.appearance.language;
         let theme = Theme::global(cx).clone();
         div()
             .id("settings-sidebar-scroll")
@@ -855,18 +759,6 @@ impl Settings {
         ))
     }
 
-    fn render_content_header(&self, cx: &mut Context<Self>) -> Stateful<gpui_kit::Div> {
-        let title = self.page.label(self.preferences.language);
-        self.render_titlebar_drag_region("settings-content-titlebar", cx)
-            .size_full()
-            .px(ui_rem(32.0))
-            .flex()
-            .items_center()
-            .text_sm()
-            .font_weight(FontWeight::SEMIBOLD)
-            .child(title)
-    }
-
     fn render_content(&self, cx: &mut Context<Self>) -> Stateful<gpui_kit::Div> {
         let theme = Theme::global(cx).clone();
         let content = match self.page {
@@ -882,6 +774,7 @@ impl Settings {
             .size_full()
             .overflow_y_scroll()
             .px(ui_rem(32.0))
+            .pt(ui_rem(32.0))
             .pb(ui_rem(48.0))
             .child(
                 div()
@@ -904,15 +797,7 @@ impl Settings {
                         )
                     })
                     .child(
-                        div()
-                            .w_full()
-                            .min_w_0()
-                            .mt(ui_rem(15.0))
-                            .rounded(ui_rem(13.0))
-                            .bg(theme.muted)
-                            .flex()
-                            .flex_col()
-                            .items_stretch()
+                        SettingsGroup::new(self.page.label(self.preferences.appearance.language))
                             .child(content),
                     ),
             )
@@ -933,11 +818,16 @@ fn font_size_label(value: f32) -> &'static str {
 }
 
 impl Render for Settings {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::global(cx).clone();
         div()
             .key_context("Settings")
             .track_focus(&self.focus)
+            .on_action(
+                cx.listener(|this, _: &oneo_gpui::CloseSettings, window, cx| {
+                    this.close(window, cx)
+                }),
+            )
             .size_full()
             .flex()
             .bg(theme.background)
@@ -945,15 +835,10 @@ impl Render for Settings {
             .font_family(self.preferences.resolved_ui_font_family().to_owned())
             .child(
                 SettingsShell::new(
-                    self.render_sidebar_header(window.is_fullscreen(), cx)
-                        .into_any_element(),
                     self.render_sidebar(cx).into_any_element(),
-                    self.render_content_header(cx).into_any_element(),
                     self.render_content(cx).into_any_element(),
-                    theme,
+                    cx,
                 )
-                .sidebar_width(DEFAULT_LEFT_SIDEBAR_WIDTH)
-                .titlebar_height(WINDOW_TITLEBAR_HEIGHT)
                 .into_element(),
             )
     }

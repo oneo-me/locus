@@ -1,3 +1,5 @@
+mod group;
+mod item;
 use super::TITLEBAR_HEIGHT;
 use gpui_kit::component::{Icon, IconName, Sizable as _, Theme};
 use gpui_kit::component::{
@@ -5,6 +7,19 @@ use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants as _},
 };
 use gpui_kit::{AnyElement, App, Div, FontWeight, Hsla, SharedString, div, prelude::*, px, rems};
+pub use group::SettingsGroup;
+pub use item::SettingsItem;
+
+pub fn settings_button(id: &'static str, theme: &Theme) -> Button {
+    crate::toolbar_icon_button(
+        id,
+        rust_i18n::t!("shell.settings", locale = &gpui_kit::component::locale()).into_owned(),
+        IconName::Settings,
+        theme,
+    )
+    .size_7()
+    .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::OpenSettings), cx))
+}
 
 fn ui_rem(value: f32) -> gpui_kit::Rems {
     rems(value / 16.0)
@@ -12,32 +27,6 @@ fn ui_rem(value: f32) -> gpui_kit::Rems {
 
 pub fn sidebar_selection_background(theme: &Theme) -> Hsla {
     theme.foreground.opacity(0.05)
-}
-
-pub fn settings_sidebar_header(
-    left_control_clearance: f32,
-    drag_region: AnyElement,
-    back_button: AnyElement,
-) -> Div {
-    div()
-        .size_full()
-        .flex()
-        .items_center()
-        .child(
-            div()
-                .w(px(left_control_clearance))
-                .h_full()
-                .flex_none()
-                .child(drag_region),
-        )
-        .child(
-            div()
-                .h_full()
-                .flex_1()
-                .pr(ui_rem(8.0))
-                .py(ui_rem(7.0))
-                .child(back_button),
-        )
 }
 
 pub fn settings_navigation_group<E>(
@@ -113,74 +102,64 @@ pub fn settings_navigation_row(
         )
 }
 
-pub fn settings_back_button(
-    id: &'static str,
-    label: impl Into<SharedString>,
-    theme: &Theme,
-) -> Button {
-    let label = label.into();
-    Button::new(id)
-        .ghost()
-        .small()
-        .w_full()
-        .h_full()
-        .px(ui_rem(9.0))
-        .text_size(rems(13.0 / 16.0))
-        .text_color(theme.muted_foreground)
-        .accessibility_label(label.clone())
-        .child(
-            div()
-                .w_full()
-                .min_w_0()
-                .flex()
-                .items_center()
-                .gap(ui_rem(9.0))
-                .child(
-                    Icon::new(IconName::ArrowLeft)
-                        .small()
-                        .text_color(theme.muted_foreground),
-                )
-                .child(div().min_w_0().truncate().child(label)),
-        )
+pub fn settings_back_button(id: &'static str, label: impl Into<SharedString>, cx: &App) -> Button {
+    settings_navigation_row(id, label, IconName::ArrowLeft, false, cx)
+        .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::CloseSettings), cx))
 }
 
 pub struct SettingsShell {
-    sidebar_header: AnyElement,
     sidebar: AnyElement,
-    content_header: AnyElement,
     content: AnyElement,
-    sidebar_width: f32,
-    titlebar_height: f32,
     theme: Theme,
+    back: Button,
 }
 
 impl SettingsShell {
-    pub fn new(
-        sidebar_header: AnyElement,
-        sidebar: AnyElement,
-        content_header: AnyElement,
-        content: AnyElement,
-        theme: Theme,
-    ) -> Self {
+    pub fn new(sidebar: AnyElement, content: AnyElement, cx: &App) -> Self {
         Self {
-            sidebar_header,
             sidebar,
-            content_header,
             content,
-            sidebar_width: 252.0,
-            titlebar_height: TITLEBAR_HEIGHT,
-            theme,
+            theme: Theme::global(cx).clone(),
+            back: settings_back_button(
+                "settings-back",
+                rust_i18n::t!("shell.back", locale = &gpui_kit::component::locale()).into_owned(),
+                cx,
+            )
+            .debug_selector(|| "settings-back".to_owned()),
         }
     }
 
-    pub fn sidebar_width(mut self, width: f32) -> Self {
-        self.sidebar_width = width;
-        self
-    }
-
-    pub fn titlebar_height(mut self, height: f32) -> Self {
-        self.titlebar_height = height;
-        self
+    pub fn appearance(
+        controls: &crate::AppearanceControls,
+        language: crate::Language,
+        additional: impl IntoElement,
+        cx: &App,
+    ) -> Self {
+        let title = crate::appearance::label("shell.appearance", language);
+        let sidebar = div().p_3().child(settings_navigation_row(
+            "settings-appearance",
+            title.clone(),
+            IconName::Palette,
+            true,
+            cx,
+        ));
+        let content = div()
+            .id("settings-scroll")
+            .size_full()
+            .overflow_y_scroll()
+            .child(
+                div()
+                    .p_5()
+                    .w_full()
+                    .max_w(rems(45.0))
+                    .mx_auto()
+                    .flex()
+                    .flex_col()
+                    .gap_6()
+                    .child(SettingsGroup::new(title).child(controls.render(language, cx)))
+                    .child(additional),
+            );
+        Self::new(sidebar.into_any_element(), content.into_any_element(), cx)
     }
 
     pub fn into_element(self) -> Div {
@@ -191,7 +170,8 @@ impl SettingsShell {
             .text_color(self.theme.foreground)
             .child(
                 div()
-                    .w(ui_rem(self.sidebar_width))
+                    .debug_selector(|| "settings-sidebar".to_owned())
+                    .w(px(crate::DEFAULT_LEFT_SIDEBAR_WIDTH))
                     .h_full()
                     .flex_none()
                     .flex()
@@ -202,27 +182,29 @@ impl SettingsShell {
                     .border_color(self.theme.sidebar_border)
                     .child(
                         div()
-                            .h(px(self.titlebar_height))
+                            .h(px(TITLEBAR_HEIGHT))
                             .flex_none()
-                            .child(self.sidebar_header),
+                            .child(crate::titlebar_drag_region("settings-sidebar-drag").w_full()),
                     )
+                    .child(div().flex_none().px_3().child(self.back))
                     .child(div().min_h_0().flex_1().child(self.sidebar)),
             )
             .child(
                 div()
+                    .debug_selector(|| "settings-content".to_owned())
                     .min_w_0()
                     .h_full()
                     .flex_1()
+                    .bg(self.theme.background)
                     .flex()
                     .flex_col()
-                    .bg(self.theme.background)
                     .child(
-                        div()
-                            .h(px(self.titlebar_height))
-                            .flex_none()
-                            .child(self.content_header),
+                        crate::titlebar_drag_region("settings-content-drag")
+                            .w_full()
+                            .h(px(TITLEBAR_HEIGHT))
+                            .flex_none(),
                     )
-                    .child(div().min_h_0().flex_1().child(self.content)),
+                    .child(div().flex_1().min_h_0().child(self.content)),
             )
     }
 }
@@ -269,42 +251,42 @@ mod tests {
 
     impl Render for SettingsReturnHarness {
         fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-            let theme = Theme::global(cx).clone();
             if self.returned {
                 return div().track_focus(&self.workspace_focus).into_any_element();
             }
-            let header = settings_sidebar_header(
-                0.0,
-                div().into_any_element(),
-                settings_back_button("return-to-workspace", "Back", &theme)
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        this.returned = true;
-                        window.focus(&this.workspace_focus, cx);
-                        cx.notify();
-                    }))
-                    .into_any_element(),
-            );
             SettingsShell::new(
-                header.into_any_element(),
                 div().into_any_element(),
-                div().child("General").into_any_element(),
                 div().child("Settings content").into_any_element(),
-                theme,
+                cx,
             )
             .into_element()
+            .track_focus(&self.workspace_focus)
+            .on_action(cx.listener(|this, _: &crate::CloseSettings, window, cx| {
+                this.returned = true;
+                window.focus(&this.workspace_focus, cx);
+                cx.notify();
+            }))
             .into_any_element()
         }
     }
 
     #[gpui_kit::test]
-    fn settings_header_return_activates_and_restores_workspace_focus(cx: &mut TestAppContext) {
+    fn settings_top_return_activates_and_restores_workspace_focus(cx: &mut TestAppContext) {
         cx.update(gpui_kit::component::init);
-        let (view, cx) = cx.add_window_view(|_, cx| SettingsReturnHarness {
-            returned: false,
-            workspace_focus: cx.focus_handle(),
+        let (view, cx) = cx.add_window_view(|window, cx| {
+            let workspace_focus = cx.focus_handle();
+            window.focus(&workspace_focus, cx);
+            SettingsReturnHarness {
+                returned: false,
+                workspace_focus,
+            }
         });
         cx.update(|window, cx| window.draw(cx).clear(cx));
-        cx.simulate_click(gpui_kit::point(px(40.0), px(24.0)), Default::default());
+        let back = cx.debug_bounds("settings-back").unwrap();
+        let sidebar = cx.debug_bounds("settings-sidebar").unwrap();
+        assert_eq!(sidebar.size.width, px(crate::DEFAULT_LEFT_SIDEBAR_WIDTH));
+        assert_eq!(back.top(), sidebar.top() + px(TITLEBAR_HEIGHT));
+        cx.simulate_click(back.center(), Default::default());
         cx.update(|window, cx| {
             assert!(view.read(cx).returned);
             assert!(view.read(cx).workspace_focus.is_focused(window));

@@ -1,8 +1,8 @@
 mod menu;
 
 pub use menu::{
-    About, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit, ToggleFpsCounter,
-    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, set_app_shell_menus,
+    About, AppShellMenuLabels, AppShellMenus, CloseSettings, CloseWindow, OpenSettings, Quit,
+    ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, set_app_shell_menus,
 };
 
 use std::cell::Cell;
@@ -18,7 +18,7 @@ use menu::bind_app_shell_keys;
 /// Owns framework initialization and reactivation of the application's main window.
 pub struct AppShell {
     application: Application,
-    left_panel_toggle: bool,
+    right_panel_toggle: bool,
 }
 
 impl Default for AppShell {
@@ -31,7 +31,7 @@ impl AppShell {
     pub fn new() -> Self {
         Self {
             application: gpui_kit::application().with_assets(gpui_kit::assets::Assets),
-            left_panel_toggle: true,
+            right_panel_toggle: true,
         }
     }
 
@@ -40,8 +40,8 @@ impl AppShell {
         self
     }
 
-    pub fn left_panel_toggle(mut self, enabled: bool) -> Self {
-        self.left_panel_toggle = enabled;
+    pub fn right_panel_toggle(mut self, enabled: bool) -> Self {
+        self.right_panel_toggle = enabled;
         self
     }
 
@@ -59,7 +59,7 @@ impl AppShell {
         self.application.run(move |cx| {
             gpui_kit::init(cx);
             init_reduce_motion(cx);
-            bind_app_shell_keys(cx, self.left_panel_toggle);
+            bind_app_shell_keys(cx, self.right_panel_toggle);
             bind_window_actions(cx);
             match initialize(cx) {
                 Ok(window) => {

@@ -2,7 +2,7 @@ use rust_i18n::t;
 use std::path::{Component, Path};
 
 use locus_library::Attachment;
-use locus_preferences::localization::Language;
+use oneo_gpui::Language;
 use oneo_gpui_markdown::{Block, InlineRun, parse_blocks};
 
 #[derive(Clone)]

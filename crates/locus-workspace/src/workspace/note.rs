@@ -2,14 +2,14 @@ use super::note_atmosphere::{
     AtmosphereBackdrop, AtmosphereShape, NoteAtmosphere, Pattern, derive_note_atmosphere,
 };
 use super::{Locus, SelectedNote};
+use gpui_kit::component::Theme;
 use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::{
-    AnyElement, BorderStyle, Bounds, Div, Edges, FontWeight, MouseButton, ObjectFit, PathBuilder,
-    Pixels, ScrollHandle, Window, canvas, div, linear_color_stop, linear_gradient, point,
-    prelude::*, px, quad, transparent_black,
+    AnyElement, BorderStyle, Bounds, Div, Edges, FontWeight, ObjectFit, PathBuilder, Pixels,
+    ScrollHandle, Window, canvas, div, linear_color_stop, linear_gradient, point, prelude::*, px,
+    quad, transparent_black,
 };
 use locus_library::{LIBRARY_REFERENCE_SCHEME, LibraryNode, library_reference_path};
-use locus_preferences::theme::Theme;
 use locus_ui::{
     Icon, LocusMarkdownExtensions, Markdown, MarkdownLabels, MarkdownPresentation,
     MarkdownTypography, document_icon_image, toolbar_icon_button,
@@ -32,10 +32,10 @@ impl Locus {
         let theme = Theme::global(cx).clone();
         let preferences = self.settings.read(cx).preferences();
         let markdown_text_font_family = preferences.resolved_ui_font_family().to_owned();
-        let markdown_text_size = preferences.ui_font_size;
+        let markdown_text_size = preferences.appearance.ui_font_size;
         let markdown_code_font_family = preferences.resolved_code_font_family().to_owned();
         let markdown_code_text_size = preferences.code_font_size;
-        let language = preferences.language;
+        let language = preferences.appearance.language;
         let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark());
         let locus = cx.weak_entity();
         let titlebar =
@@ -223,7 +223,6 @@ impl Locus {
             if copied { Icon::Check } else { Icon::Copy },
             theme,
         )
-        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_click(|_, window, cx| {
             window.dispatch_action(Box::new(crate::CopyCurrentNoteReference), cx)
         });
@@ -233,7 +232,6 @@ impl Locus {
             Icon::File,
             theme,
         )
-        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::EditCurrentNote), cx));
         let open_directory_button = toolbar_icon_button(
             "open-note-directory",
@@ -241,7 +239,6 @@ impl Locus {
             Icon::FolderOpen,
             theme,
         )
-        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_click(|_, window, cx| {
             window.dispatch_action(Box::new(crate::OpenCurrentNoteDirectory), cx)
         });

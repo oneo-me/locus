@@ -282,7 +282,7 @@ impl Locus {
 #[cfg(test)]
 mod tests {
     use super::{selected_tab_after_close, terminal_tab_scroll_item, terminal_tab_title};
-    use locus_preferences::localization::Language;
+    use oneo_gpui::Language;
 
     #[test]
     fn closing_the_selected_tab_selects_its_neighbor() {

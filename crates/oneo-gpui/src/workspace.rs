@@ -145,6 +145,40 @@ impl AppShellState {
     }
 }
 
+impl Default for WorkspaceShellConfig {
+    fn default() -> Self {
+        Self {
+            content_min_width: 360.0,
+            left: PanelSize {
+                min: crate::LEFT_SIDEBAR_MIN_WIDTH,
+                max: 420.0,
+            },
+            right: PanelSize {
+                min: crate::RIGHT_SIDEBAR_MIN_WIDTH,
+                max: 1000.0,
+            },
+        }
+    }
+}
+
+impl Default for WorkspaceShellState {
+    fn default() -> Self {
+        Self::new(
+            WorkspaceShellConfig::default(),
+            true,
+            true,
+            crate::DEFAULT_LEFT_SIDEBAR_WIDTH,
+            crate::DEFAULT_RIGHT_SIDEBAR_WIDTH,
+        )
+    }
+}
+
+impl Default for AppShellState {
+    fn default() -> Self {
+        Self::new(WorkspaceShellState::default())
+    }
+}
+
 impl WorkspaceShellState {
     pub fn new(
         config: WorkspaceShellConfig,
@@ -631,6 +665,7 @@ pub struct WorkspaceShell {
     left_toggle_offset: f32,
     control_inset: f32,
     sidebar_divider_color: Option<Hsla>,
+    right_panel_toggle: bool,
 }
 
 impl WorkspaceShell {
@@ -639,9 +674,31 @@ impl WorkspaceShell {
         left: AnyElement,
         content: AnyElement,
         right: AnyElement,
-        left_toggle: AnyElement,
-        right_toggle: AnyElement,
+        window: &Window,
+        cx: &gpui_kit::App,
     ) -> Self {
+        let theme = gpui_kit::component::Theme::global(cx);
+        let left_toggle = panel_toggle_button(
+            "toggle-left-sidebar",
+            rust_i18n::t!("shell.toggle_left", locale = &gpui_kit::component::locale())
+                .into_owned(),
+            PanelSide::Left,
+            theme,
+        )
+        .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::ToggleLeftPanel), cx))
+        .into_any_element();
+        let right_toggle = panel_toggle_button(
+            "toggle-right-sidebar",
+            rust_i18n::t!(
+                "shell.toggle_right",
+                locale = &gpui_kit::component::locale()
+            )
+            .into_owned(),
+            PanelSide::Right,
+            theme,
+        )
+        .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::ToggleRightPanel), cx))
+        .into_any_element();
         Self {
             frame,
             left,
@@ -649,10 +706,16 @@ impl WorkspaceShell {
             right,
             left_toggle,
             right_toggle,
-            left_toggle_offset: 11.0,
-            control_inset: 11.0,
-            sidebar_divider_color: None,
+            left_toggle_offset: crate::titlebar_left_control_offset(window.is_fullscreen()),
+            control_inset: crate::TITLEBAR_CONTROL_INSET,
+            sidebar_divider_color: Some(theme.sidebar_border),
+            right_panel_toggle: true,
         }
+    }
+
+    pub fn right_panel_toggle(mut self, enabled: bool) -> Self {
+        self.right_panel_toggle = enabled;
+        self
     }
 
     pub fn left_toggle_offset(mut self, offset: f32) -> Self {
@@ -671,7 +734,10 @@ impl WorkspaceShell {
     }
 
     pub fn into_element(self) -> Div {
-        let frame = self.frame;
+        let mut frame = self.frame;
+        if !self.right_panel_toggle {
+            frame.right = 0.0;
+        }
         let sidebar_divider_color = self.sidebar_divider_color;
         div()
             .size_full()
@@ -750,17 +816,21 @@ impl WorkspaceShell {
             .child(
                 div()
                     .absolute()
+                    .debug_selector(|| "workspace-left-toggle".to_owned())
                     .top(px(self.control_inset))
                     .left(px(self.left_toggle_offset))
                     .child(self.left_toggle),
             )
-            .child(
-                div()
-                    .absolute()
-                    .top(px(self.control_inset))
-                    .right(px(right_toggle_offset(frame.right, self.control_inset)))
-                    .child(self.right_toggle),
-            )
+            .when(self.right_panel_toggle, |root| {
+                root.child(
+                    div()
+                        .absolute()
+                        .debug_selector(|| "workspace-right-toggle".to_owned())
+                        .top(px(self.control_inset))
+                        .right(px(right_toggle_offset(frame.right, self.control_inset)))
+                        .child(self.right_toggle),
+                )
+            })
     }
 }
 
@@ -781,6 +851,37 @@ fn width_at(from: f32, target: f32, elapsed: Duration) -> Option<f32> {
 mod tests {
     use super::*;
 
+    #[gpui_kit::test]
+    fn optional_right_sidebar_does_not_remove_left_controls(cx: &mut gpui_kit::TestAppContext) {
+        struct Harness;
+        impl gpui_kit::Render for Harness {
+            fn render(
+                &mut self,
+                window: &mut Window,
+                cx: &mut gpui_kit::Context<Self>,
+            ) -> impl IntoElement {
+                WorkspaceShell::new(
+                    WorkspaceShellState::default().frame(window),
+                    div().into_any_element(),
+                    div().into_any_element(),
+                    div()
+                        .debug_selector(|| "optional-right-content".to_owned())
+                        .into_any_element(),
+                    window,
+                    cx,
+                )
+                .right_panel_toggle(false)
+                .into_element()
+            }
+        }
+        cx.update(gpui_kit::component::init);
+        let (_, cx) = cx.add_window_view(|_, _| Harness);
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        assert!(cx.debug_bounds("workspace-left-toggle").is_some());
+        assert!(cx.debug_bounds("workspace-right-toggle").is_none());
+        assert!(cx.debug_bounds("optional-right-content").is_none());
+    }
+
     const CONFIG: WorkspaceShellConfig = WorkspaceShellConfig {
         content_min_width: 360.0,
         left: PanelSize {
@@ -792,6 +893,15 @@ mod tests {
             max: 1000.0,
         },
     };
+
+    #[test]
+    fn default_right_sidebar_starts_at_its_minimum_width() {
+        let mut state = WorkspaceShellState::default();
+        assert_eq!(state.snapshot().right_width, 320.0);
+        assert_eq!(WorkspaceShellConfig::default().right.min, 320.0);
+        state.reset_width(PanelSide::Right, 200.0);
+        assert_eq!(state.snapshot().right_width, 320.0);
+    }
 
     #[test]
     fn panel_widths_preserve_the_content_minimum() {

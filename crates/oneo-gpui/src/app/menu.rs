@@ -4,6 +4,7 @@ actions!(
     app_shell,
     [
         About,
+        CloseSettings,
         CloseWindow,
         OpenSettings,
         Quit,
@@ -38,7 +39,7 @@ pub struct AppShellMenus {
     pub file_items: Vec<MenuItem>,
     pub view_items_before_panels: Vec<MenuItem>,
     pub view_items_after_panels: Vec<MenuItem>,
-    left_panel_toggle: bool,
+    right_panel_toggle: bool,
 }
 
 impl AppShellMenus {
@@ -52,7 +53,7 @@ impl AppShellMenus {
             file_items: Vec::new(),
             view_items_before_panels: Vec::new(),
             view_items_after_panels: Vec::new(),
-            left_panel_toggle: true,
+            right_panel_toggle: true,
         }
     }
 
@@ -81,21 +82,21 @@ impl AppShellMenus {
         self
     }
 
-    pub fn left_panel_toggle(mut self, enabled: bool) -> Self {
-        self.left_panel_toggle = enabled;
+    pub fn right_panel_toggle(mut self, enabled: bool) -> Self {
+        self.right_panel_toggle = enabled;
         self
     }
 }
 
-pub(super) fn bind_app_shell_keys(cx: &mut App, left_panel_toggle: bool) {
+pub(super) fn bind_app_shell_keys(cx: &mut App, right_panel_toggle: bool) {
     cx.bind_keys([
         KeyBinding::new("secondary-q", Quit, None),
         KeyBinding::new("secondary-w", CloseWindow, None),
         KeyBinding::new("secondary-,", OpenSettings, None),
-        KeyBinding::new("secondary-shift-b", ToggleRightPanel, None),
+        KeyBinding::new("secondary-b", ToggleLeftPanel, None),
     ]);
-    if left_panel_toggle {
-        cx.bind_keys([KeyBinding::new("secondary-b", ToggleLeftPanel, None)]);
+    if right_panel_toggle {
+        cx.bind_keys([KeyBinding::new("secondary-shift-b", ToggleRightPanel, None)]);
     }
     #[cfg(target_os = "macos")]
     cx.bind_keys([KeyBinding::new("ctrl-cmd-f", ToggleFullScreen, None)]);
@@ -131,13 +132,13 @@ pub fn set_app_shell_menus(cx: &mut App, menus: AppShellMenus) {
     if !view_items.is_empty() {
         view_items.push(MenuItem::separator());
     }
-    if menus.left_panel_toggle {
-        view_items.push(MenuItem::action(labels.toggle_left_panel, ToggleLeftPanel));
+    view_items.push(MenuItem::action(labels.toggle_left_panel, ToggleLeftPanel));
+    if menus.right_panel_toggle {
+        view_items.push(MenuItem::action(
+            labels.toggle_right_panel,
+            ToggleRightPanel,
+        ));
     }
-    view_items.push(MenuItem::action(
-        labels.toggle_right_panel,
-        ToggleRightPanel,
-    ));
     if !menus.view_items_after_panels.is_empty() {
         view_items.push(MenuItem::separator());
         view_items.extend(menus.view_items_after_panels);
@@ -170,19 +171,19 @@ mod tests {
     use super::*;
 
     #[gpui_kit::test]
-    fn mandatory_left_sidebar_has_no_close_shortcut(cx: &mut gpui_kit::TestAppContext) {
+    fn optional_right_sidebar_can_disable_its_shortcut(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| {
             bind_app_shell_keys(cx, false);
             let bindings = cx.key_bindings();
             let bindings = bindings.borrow();
-            assert_eq!(bindings.bindings_for_action(&ToggleLeftPanel).count(), 0);
-            assert_eq!(bindings.bindings_for_action(&ToggleRightPanel).count(), 1);
+            assert_eq!(bindings.bindings_for_action(&ToggleLeftPanel).count(), 1);
+            assert_eq!(bindings.bindings_for_action(&ToggleRightPanel).count(), 0);
             assert_eq!(bindings.bindings_for_action(&OpenSettings).count(), 1);
         });
     }
 
     #[gpui_kit::test]
-    fn optional_left_sidebar_keeps_its_shortcut(cx: &mut gpui_kit::TestAppContext) {
+    fn left_sidebar_keeps_its_shortcut(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| {
             bind_app_shell_keys(cx, true);
             assert_eq!(

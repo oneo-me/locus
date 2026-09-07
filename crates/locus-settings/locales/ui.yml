@@ -104,33 +104,6 @@ settings.appearance.code_font_size.label:
 settings.appearance.interface_font.description:
   en: Font used by the interface and note text
   zh-CN: 用于界面与笔记正文的字体
-settings.appearance.interface_font_size.description:
-  en: Text size used by the interface and note text
-  zh-CN: 调整界面与笔记正文的文字大小
-settings.appearance.interface_font_size.label:
-  en: Interface font size
-  zh-CN: 软件字号
-settings.appearance.language.description:
-  en: Language used by the interface and application menus
-  zh-CN: 切换界面与系统菜单使用的语言
-settings.appearance.language.label:
-  en: Language
-  zh-CN: 语言
-settings.appearance.theme.dark:
-  en: Dark
-  zh-CN: 暗色
-settings.appearance.theme.description:
-  en: Controls window and content appearance
-  zh-CN: 控制窗口和内容表面的明暗外观
-settings.appearance.theme.label:
-  en: Theme
-  zh-CN: 主题
-settings.appearance.theme.light:
-  en: Light
-  zh-CN: 亮色
-settings.appearance.theme.system:
-  en: System
-  zh-CN: 跟随系统
 settings.editor.description:
   en: External editor used by the note page edit button
   zh-CN: 笔记页面的编辑按钮使用此外部编辑器

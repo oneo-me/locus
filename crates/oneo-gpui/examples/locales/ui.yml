@@ -1,0 +1,19 @@
+_version: 2
+welcome:
+  en: Welcome
+  zh-CN: 欢迎
+navigation:
+  en: Navigation
+  zh-CN: 导航
+inspector:
+  en: Inspector
+  zh-CN: 检查器
+empty:
+  en: No content
+  zh-CN: 暂无内容
+toggle_navigation:
+  en: Toggle navigation
+  zh-CN: 切换导航栏
+toggle_inspector:
+  en: Toggle inspector
+  zh-CN: 切换检查器

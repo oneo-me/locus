@@ -78,7 +78,7 @@ impl Locus {
         locus: gpui_kit::WeakEntity<Self>,
         cx: &gpui_kit::App,
     ) -> Command {
-        let language = self.settings.read(cx).preferences().language;
+        let language = self.settings.read(cx).preferences().appearance.language;
         let locus_for_cancel = locus.clone();
         let application = CommandGroup::new()
             .label(
@@ -501,7 +501,7 @@ impl Locus {
     }
 
     fn show_file_action_error(&self, title_key: &str, window: &mut Window, cx: &mut Context<Self>) {
-        let language = self.settings.read(cx).preferences().language;
+        let language = self.settings.read(cx).preferences().appearance.language;
         let title = t!(title_key, locale = language.locale()).into_owned();
         let detail = t!(
             "common.file_action_error_detail",

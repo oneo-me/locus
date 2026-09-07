@@ -15,7 +15,7 @@ fn main() {
         if let Some(error) = state_load_error {
             eprintln!("{error}");
         }
-        let language = preferences.language;
+        let language = preferences.appearance.language;
         language.activate();
         let mut can_reload_current_note = false;
         let window = ShellWindow::new("Locus")

@@ -1,13 +1,13 @@
 use super::Locus;
 use gpui_kit::component::{
     Disableable as _,
-    menu::{DropdownMenu as _, PopupMenu, PopupMenuItem},
+    menu::{PopupMenu, PopupMenuItem},
 };
 use gpui_kit::{
     Anchor, AnyElement, App, Context, PathPromptOptions, PromptLevel, Window, prelude::*,
 };
 use locus_library::{LibraryNode, archive_note, update_note_icon};
-use locus_ui::{Icon, toolbar_icon_button};
+use locus_ui::Icon;
 use rust_i18n::t;
 
 impl Locus {
@@ -15,7 +15,7 @@ impl Locus {
         &self,
         node: &LibraryNode,
         id: String,
-        theme: &locus_preferences::theme::Theme,
+        theme: &gpui_kit::component::Theme,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let document_path = node
@@ -31,11 +31,16 @@ impl Locus {
             t!("workspace.note_menu.title", locale = language.locale()).into_owned()
         };
         let menu = self.note_popup_menu(node, cx);
-        toolbar_icon_button(id, trigger_label.clone(), Icon::Ellipsis, theme)
-            .loading(pending)
-            .disabled(disabled)
-            .dropdown_menu_with_anchor(Anchor::TopRight, menu)
-            .into_any_element()
+        oneo_gpui::toolbar_dropdown_menu(
+            id,
+            trigger_label.clone(),
+            Icon::Ellipsis,
+            theme,
+            |button| button.loading(pending).disabled(disabled),
+            Anchor::TopRight,
+            menu,
+        )
+        .into_any_element()
     }
 
     pub(super) fn note_popup_menu(

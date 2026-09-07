@@ -11,16 +11,15 @@ use gpui_kit::{
 
 use super::Locus;
 use crate::sidebar_order::reorder_siblings;
+use gpui_kit::component::Theme;
 use gpui_kit::component::{menu::ContextMenuExt as _, scroll::Scrollbar};
 use locus_library::{ChangeStatus, LibraryNode};
-use locus_preferences::localization::Language;
-use locus_preferences::theme::Theme;
 use locus_ui::{Icon, document_icon_image, icon};
+use oneo_gpui::Language;
 use oneo_gpui::sidebar_selection_background;
 
 const TREE_ROW_HEIGHT: f32 = 30.0;
 const TREE_LEVEL_INDENT: f32 = 16.0;
-const TREE_VERTICAL_PADDING: f32 = 12.0;
 
 #[derive(Clone)]
 struct DraggedLibraryNode {
@@ -55,7 +54,7 @@ impl Locus {
             .overflow_y_scroll()
             .track_scroll(&self.library_scroll_handle)
             .px(px(8.0))
-            .py(px(TREE_VERTICAL_PADDING));
+            .pb_3();
         if self.library_tree.repository_error.is_some() {
             body = body.child(
                 div()

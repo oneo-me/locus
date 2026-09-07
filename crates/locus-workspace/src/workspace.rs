@@ -33,22 +33,20 @@ use crate::{
     NewTerminal, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleLeftPanel,
     ToggleRightPanel,
 };
+use gpui_kit::component::Theme;
 use locus_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use locus_mcp::{McpConfiguration, McpServerController};
 use locus_preferences::Preferences;
 use locus_preferences::config::{
     DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_MIN_WIDTH,
 };
-use locus_preferences::localization::Language;
-use locus_preferences::theme::Theme;
 use locus_settings::{Settings, SettingsEvent, SettingsInit};
-use locus_ui::{
-    Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection, toolbar_icon_button,
-};
+use locus_ui::{Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection};
+use oneo_gpui::Language;
 use oneo_gpui::{
     AppShellState, CloseWindow, FpsCounter, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET,
     TITLEBAR_CONTROL_SIZE, TITLEBAR_HEIGHT, WorkspaceShell, WorkspaceShellConfig,
-    WorkspaceShellState, panel_resize_handle, panel_toggle_button, titlebar_content_left_padding,
+    WorkspaceShellState, panel_resize_handle, titlebar_content_left_padding,
     titlebar_left_control_offset,
 };
 use oneo_gpui_terminal::{TerminalConfiguration, TerminalEvent, TerminalLabels, TerminalView};
@@ -94,7 +92,7 @@ fn terminal_configuration(preferences: &Preferences) -> TerminalConfiguration {
             .to_owned()
             .into(),
         font_size: preferences.terminal_font_size,
-        labels: terminal_labels(preferences.language),
+        labels: terminal_labels(preferences.appearance.language),
     }
 }
 const TITLEBAR_NAVIGATION_WIDTH: f32 = TITLEBAR_CONTROL_SIZE * 2.0 + TITLEBAR_NAVIGATION_GAP;
@@ -190,18 +188,13 @@ impl Locus {
                 interface_state.fps_counter_visible,
                 t!(
                     "workspace.fps.label",
-                    locale = preferences.language.locale()
+                    locale = preferences.appearance.language.locale()
                 )
                 .into_owned(),
             )
         });
         window.focus(&root_focus, cx);
-        locus_preferences::theme::apply_preference(
-            preferences.theme,
-            preferences.ui_font_size,
-            window,
-            cx,
-        );
+        preferences.appearance.apply(window, cx);
         let library_path = preferences.library_path.clone();
         let (library_watcher, library_watch_task, library_watcher_error) =
             Self::start_library_watcher(library_path.as_deref(), cx);
@@ -341,13 +334,8 @@ impl Locus {
             },
         )
         .detach();
-        cx.observe_window_appearance(window, |this, window, cx| {
-            let preference = this.settings.read(cx).preferences().theme;
-            if preference == locus_preferences::theme::ThemePreference::System {
-                let ui_font_size = this.settings.read(cx).preferences().ui_font_size;
-                locus_preferences::theme::apply_preference(preference, ui_font_size, window, cx);
-                cx.notify();
-            }
+        oneo_gpui::appearance::observe_appearance(window, cx, |this, cx| {
+            this.settings.read(cx).preferences().appearance
         })
         .detach();
         cx.observe_window_bounds(window, |this, window, cx| {
@@ -808,7 +796,7 @@ impl Locus {
     }
 
     fn language(&self, cx: &Context<Self>) -> Language {
-        self.settings.read(cx).preferences().language
+        self.settings.read(cx).preferences().appearance.language
     }
 
     fn open_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -929,35 +917,19 @@ impl Locus {
         cx: &mut Context<Self>,
     ) -> Div {
         let language = self.language(cx);
-        div()
-            .relative()
-            .w(px(width))
-            .h_full()
-            .flex_none()
-            .flex()
-            .flex_col()
-            .bg(transparent_black())
-            .child(self.render_left_titlebar(left_control_clearance, cx))
-            .child(
-                div()
-                    .min_h_0()
-                    .flex_1()
-                    .child(self.render_library_sidebar(language, cx)),
-            )
-            .child(
-                div()
-                    .h(px(40.0))
-                    .flex_none()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .px(px(10.0))
-                    .child(self.render_mcp_status(cx))
-                    .child(self.render_settings_button(cx)),
-            )
-            .when(show_resize, |panel| {
-                panel.child(self.render_panel_resize_handle(PanelSide::Left, cx))
-            })
+        oneo_gpui::WorkspaceSidebar::new(
+            self.render_library_sidebar(language, cx),
+            Theme::global(cx),
+            left_control_clearance,
+        )
+        .footer_start(self.render_mcp_status(cx))
+        .into_element()
+        .w(px(width))
+        .flex_none()
+        .bg(transparent_black())
+        .when(show_resize, |panel| {
+            panel.child(self.render_panel_resize_handle(PanelSide::Left, cx))
+        })
     }
 
     fn render_content(
@@ -973,48 +945,38 @@ impl Locus {
             .and_then(|path| self.library_tree.node(path))
             .filter(|node| node.document_path.is_some());
 
-        div()
-            .relative()
-            .min_w_0()
-            .size_full()
-            .flex()
-            .flex_col()
-            .bg(theme.background)
-            .when_some(selected_note, |content, node| {
-                content.child(self.render_note(
-                    node,
-                    self.selected_note.as_ref(),
-                    left_control_clearance,
-                    content_width,
-                    cx,
-                ))
-            })
-            .when(selected_note.is_none(), |content| {
-                content
-                    .child(self.render_content_titlebar(left_control_clearance, cx))
-                    .child(div().min_h_0().flex_1())
-            })
+        let panel = if let Some(node) = selected_note {
+            oneo_gpui::WorkspacePanel::new(self.render_note(
+                node,
+                self.selected_note.as_ref(),
+                left_control_clearance,
+                content_width,
+                cx,
+            ))
+        } else {
+            oneo_gpui::WorkspacePanel::new(div().size_full())
+                .header(self.render_content_titlebar(left_control_clearance, cx))
+        };
+        panel.into_element().bg(theme.background)
     }
 
     fn render_right_sidebar(&self, width: f32, show_resize: bool, cx: &mut Context<Self>) -> Div {
         let theme = Theme::global(cx).clone();
 
-        div()
+        let panel = oneo_gpui::WorkspacePanel::new(self.render_terminal_panel(cx));
+        let panel = if self.right_tabs.is_empty() {
+            panel
+        } else {
+            panel.header(self.render_right_titlebar(cx))
+        };
+        panel
+            .into_element()
             .key_context("RightSidebar")
             .on_action(cx.listener(Self::close_right_tab_action))
             .track_focus(&self.right_sidebar_focus)
-            .relative()
             .w(px(width))
-            .h_full()
             .flex_none()
-            .flex()
-            .flex_col()
-            .min_w_0()
             .bg(theme.background)
-            .when(!self.right_tabs.is_empty(), |sidebar| {
-                sidebar.child(self.render_right_titlebar(cx))
-            })
-            .child(self.render_terminal_panel(cx))
             .when(show_resize, |panel| {
                 panel.child(self.render_panel_resize_handle(PanelSide::Right, cx))
             })
@@ -1113,14 +1075,9 @@ impl Render for Locus {
                 .clone()
                 .cached(StyleRefinement::default().size_full())
                 .into_any_element(),
-            self.render_panel_toggle(PanelSide::Left, cx)
-                .into_any_element(),
-            self.render_panel_toggle(PanelSide::Right, cx)
-                .into_any_element(),
+            window,
+            cx,
         )
-        .left_toggle_offset(left_toggle_offset)
-        .control_inset(TITLEBAR_CONTROL_INSET)
-        .sidebar_divider_color(theme.sidebar_border)
         .into_element()
         .child(
             div()
@@ -1162,7 +1119,7 @@ impl Render for Locus {
                     this.advance_render_lifecycle(window, cx);
                 });
             })
-            .bg(locus_preferences::theme::workspace_background(&theme))
+            .bg(oneo_gpui::appearance::theme::workspace_background(&theme))
             .font_family(ui_font_family)
             .text_color(theme.foreground)
             .when(self.app_shell.is_settings_open(), |root| {

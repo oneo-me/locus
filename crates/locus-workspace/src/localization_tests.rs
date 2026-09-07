@@ -21,7 +21,7 @@ fn package_catalog_resolves_every_message_in_both_languages() {
 
 #[test]
 fn empty_sidebar_follows_language_switches() {
-    use locus_preferences::localization::Language;
+    use oneo_gpui::Language;
 
     for (language, expected) in [
         (Language::Chinese, "暂无内容"),

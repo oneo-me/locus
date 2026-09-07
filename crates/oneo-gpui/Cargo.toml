@@ -5,13 +5,15 @@ edition = "2024"
 
 [features]
 default = ["shell"]
-shell = ["dep:gpui-kit", "dep:objc2", "dep:objc2-app-kit", "dep:raw-window-handle"]
+shell = ["dep:gpui-kit", "dep:objc2", "dep:objc2-app-kit", "dep:raw-window-handle", "dep:rust-i18n", "dep:sys-locale"]
 
 [[example]]
 name = "minimal"
 required-features = ["shell"]
 
 [dependencies]
+rust-i18n = { workspace = true, optional = true }
+sys-locale = { version = "0.3", optional = true }
 anyhow.workspace = true
 dirs.workspace = true
 serde.workspace = true
@@ -20,6 +22,8 @@ toml.workspace = true
 gpui-kit = { workspace = true, optional = true }
 
 [dev-dependencies]
+serde_json.workspace = true
+serde-saphyr.workspace = true
 gpui-kit = { workspace = true, features = ["test-support"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -27,6 +31,7 @@ objc2 = { version = "0.6", optional = true }
 objc2-app-kit = { version = "0.3", optional = true, default-features = false, features = [
     "std",
     "NSAccessibility",
+    "NSAppearance",
     "NSColor",
     "NSResponder",
     "NSView",

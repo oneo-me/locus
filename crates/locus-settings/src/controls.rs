@@ -40,7 +40,7 @@ impl Settings {
         dropdown: Dropdown,
         _cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
-        let language = self.preferences.language;
+        let language = self.preferences.appearance.language;
         div().w(gpui_kit::rems(7.25)).flex_none().child(
             Select::new(&self.choice_selects[&dropdown])
                 .w_full()
@@ -53,7 +53,7 @@ impl Settings {
         kind: FontKind,
         _cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
-        let language = self.preferences.language;
+        let language = self.preferences.appearance.language;
         div().w(gpui_kit::rems(20.5)).flex_none().child(
             Select::new(&self.font_selects[&kind])
                 .w_full()

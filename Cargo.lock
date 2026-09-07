@@ -4073,11 +4073,8 @@ name = "locus-preferences"
 version = "0.1.0"
 dependencies = [
  "gpui-kit",
- "objc2 0.6.4",
- "objc2-app-kit 0.3.2",
  "oneo-gpui",
  "oneo-gpui-terminal",
- "raw-window-handle",
  "rust-i18n",
  "serde",
  "serde-saphyr 1.2.0",
@@ -5084,7 +5081,11 @@ dependencies = [
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",
  "raw-window-handle",
+ "rust-i18n",
  "serde",
+ "serde-saphyr 1.2.0",
+ "serde_json",
+ "sys-locale",
  "tempfile",
  "toml 1.1.4+spec-1.1.0",
 ]

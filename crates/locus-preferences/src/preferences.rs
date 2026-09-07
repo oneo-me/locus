@@ -5,16 +5,13 @@ pub use oneo_gpui_terminal::{TerminalColorScheme, TerminalCursorStyle};
 use serde::{Deserialize, Serialize};
 
 use crate::config::{
-    DEFAULT_CODE_FONT_FAMILY, DEFAULT_CODE_FONT_SIZE, DEFAULT_LANGUAGE, DEFAULT_LIBRARY_PATH,
-    DEFAULT_MCP_ENABLED, DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT, DEFAULT_TERMINAL_COMMAND,
+    DEFAULT_CODE_FONT_FAMILY, DEFAULT_CODE_FONT_SIZE, DEFAULT_LIBRARY_PATH, DEFAULT_MCP_ENABLED,
+    DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT, DEFAULT_TERMINAL_COMMAND,
     DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_TERMINAL_FONT_SIZE, DEFAULT_TERMINAL_SHELL,
-    DEFAULT_THEME, DEFAULT_UI_FONT_FAMILY, DEFAULT_UI_FONT_SIZE,
+    DEFAULT_UI_FONT_FAMILY,
 };
-use crate::localization::Language;
 use crate::storage::settings_store;
-use crate::theme::ThemePreference;
-
-pub const FONT_SIZES: [f32; 7] = [12.0, 14.0, 15.0, 16.0, 17.0, 18.0, 20.0];
+use oneo_gpui::{AppearancePreferences, FONT_SIZES, Language};
 
 pub fn terminal_color_scheme_label(value: TerminalColorScheme, language: Language) -> String {
     match value {
@@ -71,10 +68,9 @@ impl EditorPreference {
 pub struct Preferences {
     pub library_path: Option<PathBuf>,
     pub editor: EditorPreference,
-    pub theme: ThemePreference,
-    pub language: Language,
+    #[serde(flatten)]
+    pub appearance: AppearancePreferences,
     pub ui_font_family: String,
-    pub ui_font_size: f32,
     pub code_font_family: String,
     pub code_font_size: f32,
     pub terminal_font_family: String,
@@ -93,10 +89,8 @@ impl Default for Preferences {
         Self {
             library_path: DEFAULT_LIBRARY_PATH.map(PathBuf::from),
             editor: EditorPreference::System,
-            theme: DEFAULT_THEME,
-            language: DEFAULT_LANGUAGE,
+            appearance: AppearancePreferences::default(),
             ui_font_family: DEFAULT_UI_FONT_FAMILY.to_owned(),
-            ui_font_size: DEFAULT_UI_FONT_SIZE,
             code_font_family: DEFAULT_CODE_FONT_FAMILY.to_owned(),
             code_font_size: DEFAULT_CODE_FONT_SIZE,
             terminal_font_family: DEFAULT_TERMINAL_FONT_FAMILY.to_owned(),
@@ -133,9 +127,7 @@ impl Preferences {
 
     fn normalize(&mut self) {
         let defaults = Self::default();
-        if !FONT_SIZES.contains(&self.ui_font_size) {
-            self.ui_font_size = defaults.ui_font_size;
-        }
+        self.appearance.normalize();
         if !FONT_SIZES.contains(&self.code_font_size) {
             self.code_font_size = defaults.code_font_size;
         }
@@ -181,16 +173,19 @@ fn resolved_font_family<'a>(family: &'a str, default: &'static str) -> &'a str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use oneo_gpui::ThemePreference;
 
     #[test]
     fn preferences_round_trip() {
         let preferences = Preferences {
             library_path: Some(PathBuf::from("/tmp/笔记")),
             editor: EditorPreference::VisualStudioCode,
-            theme: ThemePreference::Dark,
-            language: Language::English,
+            appearance: AppearancePreferences {
+                theme: ThemePreference::Dark,
+                language: Language::English,
+                ui_font_size: 18.0,
+            },
             ui_font_family: "Avenir Next".to_owned(),
-            ui_font_size: 18.0,
             code_font_family: "JetBrains Mono".to_owned(),
             code_font_size: 15.0,
             terminal_font_family: "SF Mono".to_owned(),
@@ -211,10 +206,16 @@ mod tests {
 
         assert_eq!(restored.library_path, preferences.library_path);
         assert_eq!(restored.editor, preferences.editor);
-        assert_eq!(restored.theme, preferences.theme);
-        assert_eq!(restored.language, preferences.language);
+        assert_eq!(restored.appearance.theme, preferences.appearance.theme);
+        assert_eq!(
+            restored.appearance.language,
+            preferences.appearance.language
+        );
         assert_eq!(restored.ui_font_family, preferences.ui_font_family);
-        assert_eq!(restored.ui_font_size, preferences.ui_font_size);
+        assert_eq!(
+            restored.appearance.ui_font_size,
+            preferences.appearance.ui_font_size
+        );
         assert_eq!(restored.code_font_family, preferences.code_font_family);
         assert_eq!(restored.code_font_size, preferences.code_font_size);
         assert_eq!(
@@ -238,10 +239,39 @@ mod tests {
     }
 
     #[test]
+    fn flat_appearance_fields_use_shared_defaults_and_explicit_choices() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.toml");
+        let store = oneo_gpui::SettingsStore::at_path(path.clone()).unwrap();
+        std::fs::write(&path, "mcp_enabled = true\n").unwrap();
+        let preferences: Preferences = store.load().unwrap();
+        assert_eq!(preferences.appearance, AppearancePreferences::default());
+        assert!(preferences.mcp_enabled);
+        std::fs::write(
+            &path,
+            r#"theme = "dark"
+language = "chinese"
+ui_font_size = 18.0
+"#,
+        )
+        .unwrap();
+        let preferences: Preferences = store.load().unwrap();
+        assert_eq!(preferences.appearance.theme, ThemePreference::Dark);
+        assert_eq!(preferences.appearance.language, Language::Chinese);
+        assert_eq!(preferences.appearance.ui_font_size, 18.0);
+        store.save(&preferences).unwrap();
+        let saved = std::fs::read_to_string(path).unwrap();
+        assert!(!saved.contains("[appearance]"));
+    }
+
+    #[test]
     fn unsupported_font_sizes_return_to_defaults() {
         let mut preferences = Preferences {
             ui_font_family: " ".to_owned(),
-            ui_font_size: f32::NAN,
+            appearance: AppearancePreferences {
+                ui_font_size: f32::NAN,
+                ..AppearancePreferences::default()
+            },
             code_font_family: "  ".to_owned(),
             code_font_size: 99.0,
             terminal_font_family: "\t".to_owned(),
@@ -253,7 +283,10 @@ mod tests {
         preferences.normalize();
 
         assert_eq!(preferences.ui_font_family, DEFAULT_UI_FONT_FAMILY);
-        assert_eq!(preferences.ui_font_size, DEFAULT_UI_FONT_SIZE);
+        assert_eq!(
+            preferences.appearance.ui_font_size,
+            AppearancePreferences::default().ui_font_size
+        );
         assert_eq!(preferences.code_font_family, DEFAULT_CODE_FONT_FAMILY);
         assert_eq!(preferences.code_font_size, DEFAULT_CODE_FONT_SIZE);
         assert_eq!(

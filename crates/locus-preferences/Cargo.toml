@@ -15,15 +15,3 @@ serde_json.workspace = true
 [dev-dependencies]
 tempfile.workspace = true
 serde-saphyr.workspace = true
-
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6"
-objc2-app-kit = { version = "0.3", default-features = false, features = [
-  "std",
-  "NSAppearance",
-  "NSApplication",
-  "NSResponder",
-  "NSView",
-  "NSWindow",
-] }
-raw-window-handle = "0.6"

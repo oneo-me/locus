@@ -1,15 +1,7 @@
-pub use gpui_kit::component::Theme;
+use super::ThemePreference;
+use gpui_kit::component::Theme;
 use gpui_kit::component::ThemeMode;
 use gpui_kit::{App, Hsla, Window, WindowAppearance, px, rgb};
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ThemePreference {
-    System,
-    Light,
-    Dark,
-}
 
 pub fn workspace_background(theme: &Theme) -> Hsla {
     if cfg!(target_os = "macos") {
@@ -40,7 +32,7 @@ pub fn apply_preference(
     window: &mut Window,
     cx: &mut App,
 ) {
-    crate::platform::set_window_appearance(
+    super::platform::set_window_appearance(
         window,
         match preference {
             ThemePreference::System => None,

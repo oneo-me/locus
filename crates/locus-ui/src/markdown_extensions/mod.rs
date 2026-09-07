@@ -6,9 +6,9 @@ use gpui_kit::{AnyElement, ObjectFit, StyledImage, div, prelude::*, px};
 use oneo_gpui_markdown::{MarkdownExtensions, generic_link_icon};
 
 use crate::{document_icon_image, link_icon::remote_link_icon};
+use gpui_kit::component::Theme;
 use locus_library::{Attachment, LIBRARY_REFERENCE_SCHEME, LibraryTree, library_reference_path};
-use locus_preferences::localization::Language;
-use locus_preferences::theme::Theme;
+use oneo_gpui::Language;
 
 pub struct LocusMarkdownExtensions<'a> {
     attachments: &'a [Attachment],

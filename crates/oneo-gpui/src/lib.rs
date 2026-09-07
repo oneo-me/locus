@@ -1,4 +1,14 @@
 #[cfg(feature = "shell")]
+rust_i18n::i18n!("locales", fallback = "en");
+
+pub mod appearance;
+#[cfg(feature = "shell")]
+pub use appearance::AppearanceControls;
+pub use appearance::{
+    AppearanceChange, AppearancePreferences, FONT_SIZES, Language, ThemePreference,
+};
+
+#[cfg(feature = "shell")]
 pub mod app;
 #[cfg(feature = "shell")]
 mod button;
@@ -11,21 +21,29 @@ mod settings;
 pub mod window;
 #[cfg(feature = "shell")]
 mod workspace;
+#[cfg(feature = "shell")]
+mod workspace_panel;
+#[cfg(feature = "shell")]
+pub use workspace_panel::{
+    DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, LEFT_SIDEBAR_MIN_WIDTH,
+    RIGHT_SIDEBAR_MIN_WIDTH, WorkspacePanel, WorkspaceSidebar,
+};
 
 #[cfg(feature = "shell")]
 pub use app::{
-    About, AppShell, AppShellMenuLabels, AppShellMenus, CloseWindow, OpenSettings, Quit,
-    ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, set_app_shell_menus,
+    About, AppShell, AppShellMenuLabels, AppShellMenus, CloseSettings, CloseWindow, OpenSettings,
+    Quit, ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
+    set_app_shell_menus,
 };
 #[cfg(feature = "shell")]
-pub use button::toolbar_icon_button;
+pub use button::{toolbar_dropdown_menu, toolbar_icon_button};
 pub use config::SettingsStore;
 #[cfg(feature = "shell")]
 pub use fps::FpsCounter;
 #[cfg(feature = "shell")]
 pub use settings::{
-    SettingsShell, settings_back_button, settings_navigation_group, settings_navigation_row,
-    settings_sidebar_header, sidebar_selection_background,
+    SettingsGroup, SettingsItem, SettingsShell, settings_back_button, settings_button,
+    settings_navigation_group, settings_navigation_row, sidebar_selection_background,
 };
 #[cfg(feature = "shell")]
 pub use window::{
@@ -39,3 +57,6 @@ pub use workspace::{
     WorkspaceShellConfig, WorkspaceShellLayout, WorkspaceShellSnapshot, WorkspaceShellState,
     panel_resize_handle, panel_toggle_button,
 };
+
+#[cfg(all(test, feature = "shell"))]
+mod localization_tests;

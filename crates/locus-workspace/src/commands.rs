@@ -1,5 +1,5 @@
 use gpui_kit::{App, KeyBinding, MenuItem, actions};
-use locus_preferences::localization::Language;
+use oneo_gpui::Language;
 use oneo_gpui::{AppShellMenuLabels, AppShellMenus, set_app_shell_menus};
 use rust_i18n::t;
 

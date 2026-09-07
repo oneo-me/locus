@@ -13,10 +13,10 @@ use image::{
 };
 
 use crate::{Icon, icon};
+use gpui_kit::component::Theme;
 use locus_library::Attachment;
 use locus_preferences::config::THUMBNAIL_CACHE_DIRECTORY;
 use locus_preferences::storage::data_directory;
-use locus_preferences::theme::Theme;
 
 const THUMBNAIL_MAX_SIZE: u32 = 640;
 const THUMBNAIL_CACHE_VERSION: u8 = 1;

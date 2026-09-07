@@ -9,9 +9,9 @@ use gpui_kit::{
 use super::extension_syntax;
 use super::thumbnail;
 use crate::{Icon, icon};
+use gpui_kit::component::Theme;
 use locus_library::Attachment;
-use locus_preferences::localization::Language;
-use locus_preferences::theme::Theme;
+use oneo_gpui::Language;
 
 const GALLERY_ROW_HEIGHT: f32 = 180.0;
 
