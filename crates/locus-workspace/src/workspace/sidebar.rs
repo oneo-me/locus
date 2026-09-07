@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -36,12 +37,15 @@ impl Locus {
         let theme = Theme::global(cx).clone();
         if self.settings.read(cx).preferences().library_path.is_none() {
             return sidebar_message(
-                language.text("workspace.library.no_selection"),
+                t!("workspace.library.no_selection", locale = language.locale()).into_owned(),
                 theme.muted_foreground,
             );
         }
         if self.library_tree.error.is_some() {
-            return sidebar_message(language.text("workspace.library.load_error"), theme.danger);
+            return sidebar_message(
+                t!("workspace.library.load_error", locale = language.locale()).into_owned(),
+                theme.danger,
+            );
         }
 
         let mut body = div()
@@ -64,14 +68,20 @@ impl Locus {
                     .border_color(theme.danger.opacity(0.35))
                     .text_xs()
                     .text_color(theme.danger)
-                    .child(language.text("workspace.library.git_unavailable")),
+                    .child(
+                        t!(
+                            "workspace.library.git_unavailable",
+                            locale = language.locale()
+                        )
+                        .into_owned(),
+                    ),
             );
         }
         if self.library_tree.nodes.is_empty() {
             let message = if self.library_tree.archived_notes.is_empty() {
-                language.text("workspace.library.empty")
+                t!("workspace.library.empty", locale = language.locale()).into_owned()
             } else {
-                language.text("workspace.library.all_archived")
+                t!("workspace.library.all_archived", locale = language.locale()).into_owned()
             };
             return div().size_full().child(
                 body.child(
@@ -96,7 +106,13 @@ impl Locus {
                     .border_color(theme.danger.opacity(0.35))
                     .text_xs()
                     .text_color(theme.danger)
-                    .child(language.text("workspace.library.watching_unavailable")),
+                    .child(
+                        t!(
+                            "workspace.library.watching_unavailable",
+                            locale = language.locale()
+                        )
+                        .into_owned(),
+                    ),
             );
         }
 

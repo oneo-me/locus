@@ -1,0 +1,205 @@
+_version: 2
+menu.application.about:
+  en: About Locus
+  zh-CN: 关于 Locus
+menu.application.quit:
+  en: Quit Locus
+  zh-CN: 退出 Locus
+menu.application.settings:
+  en: Settings…
+  zh-CN: 设置…
+menu.developer.show_fps:
+  en: Show FPS
+  zh-CN: 显示帧率
+menu.developer.title:
+  en: Developer
+  zh-CN: 开发
+menu.edit.title:
+  en: Edit
+  zh-CN: 编辑
+menu.file.title:
+  en: File
+  zh-CN: 文件
+menu.view.enter_full_screen:
+  en: Enter Full Screen
+  zh-CN: 进入全屏幕
+menu.view.command_palette:
+  en: Command Palette…
+  zh-CN: 命令面板…
+menu.view.reload_current_note:
+  en: Reload Current Note
+  zh-CN: 重新载入当前笔记
+menu.view.title:
+  en: View
+  zh-CN: 显示
+menu.view.toggle_left_sidebar:
+  en: Toggle Left Sidebar
+  zh-CN: 切换左侧栏
+menu.view.toggle_right_sidebar:
+  en: Toggle Right Sidebar
+  zh-CN: 切换右侧栏
+menu.window.close:
+  en: Close Window
+  zh-CN: 关闭窗口
+menu.window.title:
+  en: Window
+  zh-CN: 窗口
+terminal.accessibility_label:
+  en: Terminal
+  zh-CN: 终端
+terminal.error.could_not_start:
+  en: Could not start terminal
+  zh-CN: 无法启动终端
+terminal.status.process_exited:
+  en: Process exited
+  zh-CN: 进程已退出
+terminal.status.starting:
+  en: Starting terminal…
+  zh-CN: 正在启动终端…
+mcp.status.failed:
+  en: Failed to start
+  zh-CN: 启动失败
+mcp.status.running:
+  en: Running
+  zh-CN: 运行中
+mcp.status.stopped:
+  en: Stopped
+  zh-CN: 已停止
+workspace.mcp.copy_endpoint:
+  en: Copy MCP URL
+  zh-CN: 复制 MCP 地址
+workspace.mcp.endpoint_copied:
+  en: MCP URL copied
+  zh-CN: MCP 地址已复制
+workspace.fps.label:
+  en: FPS
+  zh-CN: 帧/秒
+workspace.navigation.back:
+  en: Back
+  zh-CN: 后退
+workspace.navigation.forward:
+  en: Forward
+  zh-CN: 前进
+workspace.command_palette.application:
+  en: Application
+  zh-CN: 应用
+workspace.command_palette.current_note:
+  en: Current Note
+  zh-CN: 当前笔记
+workspace.command_palette.no_matches:
+  en: No matching notes or commands
+  zh-CN: 没有匹配的笔记或命令
+workspace.command_palette.notes:
+  en: Notes
+  zh-CN: 笔记
+workspace.command_palette.placeholder:
+  en: Search notes or type a command…
+  zh-CN: 搜索笔记或输入命令…
+workspace.note.no_selection:
+  en: No note selected
+  zh-CN: 未选择笔记
+workspace.settings.open:
+  en: Settings
+  zh-CN: 设置
+workspace.sidebar.hide_left:
+  en: Hide left sidebar
+  zh-CN: 隐藏左侧栏
+workspace.sidebar.hide_right:
+  en: Hide right sidebar
+  zh-CN: 隐藏右侧栏
+workspace.sidebar.show_left:
+  en: Show left sidebar
+  zh-CN: 显示左侧栏
+workspace.sidebar.empty:
+  en: No content
+  zh-CN: 暂无内容
+workspace.sidebar.show_right:
+  en: Show right sidebar
+  zh-CN: 显示右侧栏
+workspace.terminal.close_tab:
+  en: Close terminal %{id}
+  zh-CN: 关闭终端 %{id}
+workspace.terminal.new:
+  en: New terminal
+  zh-CN: 新建终端
+workspace.terminal.tab:
+  en: Terminal %{id}
+  zh-CN: 终端 %{id}
+common.ok:
+  en: OK
+  zh-CN: 好
+common.file_action_error_detail:
+  en: Check that the file still exists and that Locus has permission to access it.
+  zh-CN: 请确认文件仍然存在，并且 Locus 有权访问它。
+workspace.note_menu.archive:
+  en: Archive note
+  zh-CN: 归档笔记
+workspace.note_menu.archive_error:
+  en: Could not archive note
+  zh-CN: 无法归档笔记
+workspace.note_menu.choose_icon:
+  en: Choose Icon Image
+  zh-CN: 选择图标图片
+workspace.note_menu.choose_icon_error:
+  en: Could not choose icon
+  zh-CN: 无法选择图标
+workspace.note_menu.title:
+  en: Note menu
+  zh-CN: 笔记菜单
+workspace.note_menu.update_icon_error:
+  en: Could not update icon
+  zh-CN: 无法更新图标
+workspace.note_menu.updating:
+  en: Updating note
+  zh-CN: 正在更新笔记
+workspace.note_menu.upload_icon:
+  en: Upload icon
+  zh-CN: 上传图标
+workspace.library.all_archived:
+  en: All notes are archived. Remove them from Archive in Settings.
+  zh-CN: 所有笔记均已归档。可在设置的归档中移出。
+workspace.library.empty:
+  en: The library is empty.
+  zh-CN: 文档库还是空的。
+workspace.library.git_unavailable:
+  en: Git status is unavailable for this library.
+  zh-CN: 当前文档库的 Git 状态不可用。
+workspace.library.load_error:
+  en: Could not read the library. Check that the folder exists and is accessible.
+  zh-CN: 无法读取文档库。请确认目录存在且可访问。
+workspace.library.no_selection:
+  en: No library selected
+  zh-CN: 尚未打开文档库
+workspace.library.watching_unavailable:
+  en: File watching is unavailable. External changes may not appear automatically.
+  zh-CN: 文件观察不可用，外部修改可能不会自动显示。
+workspace.note.collapse_code:
+  en: Collapse code
+  zh-CN: 折叠代码
+workspace.note.copy_code:
+  en: Copy code
+  zh-CN: 复制代码
+workspace.note.copy_reference:
+  en: Copy note reference
+  zh-CN: 复制笔记引用
+workspace.note.edit:
+  en: Edit note
+  zh-CN: 编辑笔记
+workspace.note.edit_error:
+  en: Could not edit note
+  zh-CN: 无法编辑笔记
+workspace.note.expand_code:
+  en: Expand code
+  zh-CN: 展开代码
+workspace.note.open_directory:
+  en: Open directory
+  zh-CN: 打开目录
+workspace.note.open_directory_error:
+  en: Could not open directory
+  zh-CN: 无法打开目录
+workspace.note.read_error:
+  en: Could not read the note. Check that the file exists and is accessible.
+  zh-CN: 无法读取笔记。请确认文件存在且可访问。
+workspace.note.reference_copied:
+  en: Note reference copied
+  zh-CN: 笔记引用已复制

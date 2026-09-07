@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::path::PathBuf;
 
 pub use oneo_gpui_terminal::{TerminalColorScheme, TerminalCursorStyle};
@@ -5,10 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::{
     DEFAULT_CODE_FONT_FAMILY, DEFAULT_CODE_FONT_SIZE, DEFAULT_LANGUAGE, DEFAULT_LIBRARY_PATH,
-    DEFAULT_MCP_ENABLED, DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT,
-    DEFAULT_SHOW_GRAPH_ATTACHMENTS, DEFAULT_TERMINAL_COMMAND, DEFAULT_TERMINAL_FONT_FAMILY,
-    DEFAULT_TERMINAL_FONT_SIZE, DEFAULT_TERMINAL_SHELL, DEFAULT_THEME, DEFAULT_UI_FONT_FAMILY,
-    DEFAULT_UI_FONT_SIZE,
+    DEFAULT_MCP_ENABLED, DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT, DEFAULT_TERMINAL_COMMAND,
+    DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_TERMINAL_FONT_SIZE, DEFAULT_TERMINAL_SHELL,
+    DEFAULT_THEME, DEFAULT_UI_FONT_FAMILY, DEFAULT_UI_FONT_SIZE,
 };
 use crate::localization::Language;
 use crate::storage::settings_store;
@@ -18,17 +18,31 @@ pub const FONT_SIZES: [f32; 7] = [12.0, 14.0, 15.0, 16.0, 17.0, 18.0, 20.0];
 
 pub fn terminal_color_scheme_label(value: TerminalColorScheme, language: Language) -> String {
     match value {
-        TerminalColorScheme::Auto => language.text("terminal.color_scheme.auto"),
-        TerminalColorScheme::Light => language.text("terminal.color_scheme.light"),
-        TerminalColorScheme::Dark => language.text("terminal.color_scheme.dark"),
+        TerminalColorScheme::Auto => {
+            t!("terminal.color_scheme.auto", locale = language.locale()).into_owned()
+        }
+        TerminalColorScheme::Light => {
+            t!("terminal.color_scheme.light", locale = language.locale()).into_owned()
+        }
+        TerminalColorScheme::Dark => {
+            t!("terminal.color_scheme.dark", locale = language.locale()).into_owned()
+        }
     }
 }
 
 pub fn terminal_cursor_style_label(value: TerminalCursorStyle, language: Language) -> String {
     match value {
-        TerminalCursorStyle::Block => language.text("terminal.cursor_style.block"),
-        TerminalCursorStyle::Underline => language.text("terminal.cursor_style.underline"),
-        TerminalCursorStyle::Bar => language.text("terminal.cursor_style.bar"),
+        TerminalCursorStyle::Block => {
+            t!("terminal.cursor_style.block", locale = language.locale()).into_owned()
+        }
+        TerminalCursorStyle::Underline => t!(
+            "terminal.cursor_style.underline",
+            locale = language.locale()
+        )
+        .into_owned(),
+        TerminalCursorStyle::Bar => {
+            t!("terminal.cursor_style.bar", locale = language.locale()).into_owned()
+        }
     }
 }
 
@@ -44,7 +58,9 @@ impl EditorPreference {
 
     pub fn label(self, language: Language) -> String {
         match self {
-            Self::System => language.text("settings.editor.system_default"),
+            Self::System => {
+                t!("settings.editor.system_default", locale = language.locale()).into_owned()
+            }
             Self::VisualStudioCode => "VS Code".to_owned(),
         }
     }
@@ -70,7 +86,6 @@ pub struct Preferences {
     pub mcp_enabled: bool,
     pub mcp_local_network: bool,
     pub mcp_port: u16,
-    pub show_graph_attachments: bool,
 }
 
 impl Default for Preferences {
@@ -93,7 +108,6 @@ impl Default for Preferences {
             mcp_enabled: DEFAULT_MCP_ENABLED,
             mcp_local_network: DEFAULT_MCP_LOCAL_NETWORK,
             mcp_port: DEFAULT_MCP_PORT,
-            show_graph_attachments: DEFAULT_SHOW_GRAPH_ATTACHMENTS,
         }
     }
 }
@@ -188,7 +202,6 @@ mod tests {
             mcp_enabled: true,
             mcp_local_network: true,
             mcp_port: 43123,
-            show_graph_attachments: false,
         };
         let directory = tempfile::tempdir().unwrap();
         let store =
@@ -222,10 +235,6 @@ mod tests {
         assert_eq!(restored.mcp_enabled, preferences.mcp_enabled);
         assert_eq!(restored.mcp_local_network, preferences.mcp_local_network);
         assert_eq!(restored.mcp_port, preferences.mcp_port);
-        assert_eq!(
-            restored.show_graph_attachments,
-            preferences.show_graph_attachments
-        );
     }
 
     #[test]

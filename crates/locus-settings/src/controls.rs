@@ -1,4 +1,5 @@
 use gpui_component::select::Select;
+use rust_i18n::t;
 
 use super::*;
 
@@ -57,7 +58,9 @@ impl Settings {
             Select::new(&self.font_selects[&kind])
                 .w_full()
                 .menu_width(gpui::rems(20.5))
-                .search_placeholder(language.text("settings.font.search"))
+                .search_placeholder(
+                    t!("settings.font.search", locale = language.locale()).into_owned(),
+                )
                 .accessibility_label(kind.label(language))
                 .empty(move |_, cx| {
                     div()
@@ -67,7 +70,9 @@ impl Settings {
                         .justify_center()
                         .text_sm()
                         .text_color(Theme::global(cx).muted_foreground)
-                        .child(language.text("settings.font.no_matches"))
+                        .child(
+                            t!("settings.font.no_matches", locale = language.locale()).into_owned(),
+                        )
                 }),
         )
     }

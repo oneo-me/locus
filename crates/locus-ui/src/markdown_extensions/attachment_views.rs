@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::path::Path;
 
 use gpui::{
@@ -23,7 +24,11 @@ pub fn render_gallery(
     let items = match extension_syntax::gallery_items(source, attachments, language) {
         Ok(items) => items,
         Err(error) => {
-            return extension_error(language.text("markdown.gallery.render_error"), error, theme);
+            return extension_error(
+                t!("markdown.gallery.render_error", locale = language.locale()).into_owned(),
+                error,
+                theme,
+            );
         }
     };
     let children = items
@@ -76,7 +81,11 @@ pub fn render_attachments(
         Ok(items) => items,
         Err(error) => {
             return extension_error(
-                language.text("markdown.attachments.render_error"),
+                t!(
+                    "markdown.attachments.render_error",
+                    locale = language.locale()
+                )
+                .into_owned(),
                 error,
                 theme,
             );
@@ -190,9 +199,17 @@ fn split_filename(value: &str) -> (String, String) {
 fn open_attachment(path: &Path, language: Language, window: &mut Window, cx: &mut App) {
     if let Err(error) = crate::platform::open_path(path) {
         eprintln!("{error}");
-        let title = language.text("markdown.attachments.open_error");
-        let detail = language.text("common.file_action_error_detail");
-        let confirmation = language.text("common.ok");
+        let title = t!(
+            "markdown.attachments.open_error",
+            locale = language.locale()
+        )
+        .into_owned();
+        let detail = t!(
+            "common.file_action_error_detail",
+            locale = language.locale()
+        )
+        .into_owned();
+        let confirmation = t!("common.ok", locale = language.locale()).into_owned();
         drop(window.prompt(
             PromptLevel::Critical,
             &title,

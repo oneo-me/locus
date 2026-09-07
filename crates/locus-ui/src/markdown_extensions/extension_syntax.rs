@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::path::{Component, Path};
 
 use locus_library::Attachment;
@@ -23,26 +24,38 @@ pub(super) fn gallery_items(
             continue;
         }
         let Block::Image { url, alt, .. } = block else {
-            return Err(language.text("markdown.gallery.local_images_only"));
+            return Err(t!(
+                "markdown.gallery.local_images_only",
+                locale = language.locale()
+            )
+            .into_owned());
         };
         let Some(attachment) = find_image_attachment(attachments, &url) else {
-            return Err(language.text_with(
+            return Err(t!(
                 "markdown.gallery.image_unavailable",
-                &[("url", url.to_string())],
-            ));
+                url = url.to_string(),
+                locale = language.locale()
+            )
+            .into_owned());
         };
         if alt.trim().is_empty() {
-            return Err(language.text_with(
+            return Err(t!(
                 "markdown.gallery.alt_text_required",
-                &[("name", attachment.name.to_string())],
-            ));
+                name = attachment.name.to_string(),
+                locale = language.locale()
+            )
+            .into_owned());
         }
         items.push(GalleryItem {
             attachment: attachment.clone(),
         });
     }
     if items.is_empty() {
-        return Err(language.text("markdown.gallery.image_required"));
+        return Err(t!(
+            "markdown.gallery.image_required",
+            locale = language.locale()
+        )
+        .into_owned());
     }
     Ok(items)
 }
@@ -56,12 +69,20 @@ pub(super) fn attachment_items(
     let mut items = Vec::new();
     for block in blocks {
         let Block::Paragraph { runs } = block else {
-            return Err(language.text("markdown.attachments.local_links_only"));
+            return Err(t!(
+                "markdown.attachments.local_links_only",
+                locale = language.locale()
+            )
+            .into_owned());
         };
         collect_attachment_links(&runs, attachments, language, &mut items)?;
     }
     if items.is_empty() {
-        return Err(language.text("markdown.attachments.link_required"));
+        return Err(t!(
+            "markdown.attachments.link_required",
+            locale = language.locale()
+        )
+        .into_owned());
     }
     Ok(items)
 }
@@ -88,7 +109,11 @@ fn collect_attachment_links(
                 index += 1;
                 continue;
             }
-            return Err(language.text("markdown.attachments.links_only"));
+            return Err(t!(
+                "markdown.attachments.links_only",
+                locale = language.locale()
+            )
+            .into_owned());
         };
         let mut label = String::new();
         while index < runs.len() && runs[index].style.link.as_deref() == Some(target) {
@@ -96,16 +121,20 @@ fn collect_attachment_links(
             index += 1;
         }
         let Some(attachment) = local_attachment(attachments, target) else {
-            return Err(language.text_with(
+            return Err(t!(
                 "markdown.attachments.missing",
-                &[("target", target.to_string())],
-            ));
+                target = target.to_string(),
+                locale = language.locale()
+            )
+            .into_owned());
         };
         if label.trim() != attachment.name {
-            return Err(language.text_with(
+            return Err(t!(
                 "markdown.attachments.label_mismatch",
-                &[("name", attachment.name.to_string())],
-            ));
+                name = attachment.name.to_string(),
+                locale = language.locale()
+            )
+            .into_owned());
         }
         items.push(attachment.clone());
     }

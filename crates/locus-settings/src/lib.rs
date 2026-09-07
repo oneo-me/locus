@@ -1,3 +1,6 @@
+rust_i18n::i18n!("locales", fallback = "en");
+
+use rust_i18n::t;
 use std::path::Path;
 
 mod archive;
@@ -54,10 +57,12 @@ enum SettingsPage {
 impl SettingsPage {
     fn label(self, language: Language) -> String {
         match self {
-            Self::General => language.text("settings.page.general"),
-            Self::Archive => language.text("settings.page.archive"),
-            Self::Appearance => language.text("settings.page.appearance"),
-            Self::Terminal => language.text("settings.page.terminal"),
+            Self::General => t!("settings.page.general", locale = language.locale()).into_owned(),
+            Self::Archive => t!("settings.page.archive", locale = language.locale()).into_owned(),
+            Self::Appearance => {
+                t!("settings.page.appearance", locale = language.locale()).into_owned()
+            }
+            Self::Terminal => t!("settings.page.terminal", locale = language.locale()).into_owned(),
             Self::Mcp => "MCP".to_owned(),
         }
     }
@@ -81,11 +86,19 @@ impl Choice {
         match self {
             Self::Page(page) => page.label(language),
             Self::Editor(editor) => editor.label(language),
-            Self::Theme(ThemePreference::System) => {
-                language.text("settings.appearance.theme.system")
+            Self::Theme(ThemePreference::System) => t!(
+                "settings.appearance.theme.system",
+                locale = language.locale()
+            )
+            .into_owned(),
+            Self::Theme(ThemePreference::Light) => t!(
+                "settings.appearance.theme.light",
+                locale = language.locale()
+            )
+            .into_owned(),
+            Self::Theme(ThemePreference::Dark) => {
+                t!("settings.appearance.theme.dark", locale = language.locale()).into_owned()
             }
-            Self::Theme(ThemePreference::Light) => language.text("settings.appearance.theme.light"),
-            Self::Theme(ThemePreference::Dark) => language.text("settings.appearance.theme.dark"),
             Self::Language(language) => language.label(),
             Self::UiFontSize(size) | Self::CodeFontSize(size) | Self::TerminalFontSize(size) => {
                 font_size_label(size).to_owned()
@@ -142,7 +155,7 @@ impl Dropdown {
             Self::TerminalColorScheme => "settings.terminal.color_scheme.label",
             Self::TerminalCursorStyle => "settings.terminal.cursor_style.label",
         };
-        language.text(key)
+        t!(key, locale = language.locale()).into_owned()
     }
 
     fn choices(self) -> Vec<Choice> {
@@ -254,9 +267,19 @@ type FontSelect = SelectState<SearchableVec<FontItem>>;
 impl FontKind {
     fn label(self, language: Language) -> String {
         match self {
-            Self::Ui => language.text("settings.appearance.interface_font.label"),
-            Self::Code => language.text("settings.appearance.code_font.label"),
-            Self::Terminal => language.text("settings.terminal.font.label"),
+            Self::Ui => t!(
+                "settings.appearance.interface_font.label",
+                locale = language.locale()
+            )
+            .into_owned(),
+            Self::Code => t!(
+                "settings.appearance.code_font.label",
+                locale = language.locale()
+            )
+            .into_owned(),
+            Self::Terminal => {
+                t!("settings.terminal.font.label", locale = language.locale()).into_owned()
+            }
         }
     }
 
@@ -335,7 +358,7 @@ impl Settings {
         let language = preferences.language;
         let settings_error = load_error.map(|error| {
             eprintln!("{error}");
-            language.text("settings.load_error")
+            t!("settings.load_error", locale = language.locale()).into_owned()
         });
         let mut font_names = cx.text_system().all_font_names();
         for family in [
@@ -413,18 +436,32 @@ impl Settings {
         let terminal_shell_input = cx.new(|cx| {
             InputState::new(window, cx)
                 .default_value(preferences.terminal_shell.clone())
-                .placeholder(language.text("settings.terminal.shell.placeholder"))
+                .placeholder(
+                    t!(
+                        "settings.terminal.shell.placeholder",
+                        locale = language.locale()
+                    )
+                    .into_owned(),
+                )
         });
         let terminal_command_input = cx.new(|cx| {
             InputState::new(window, cx)
                 .default_value(preferences.terminal_command.clone())
-                .placeholder(language.text("settings.terminal.command.placeholder"))
+                .placeholder(
+                    t!(
+                        "settings.terminal.command.placeholder",
+                        locale = language.locale()
+                    )
+                    .into_owned(),
+                )
         });
         let mcp_port_draft = preferences.mcp_port.to_string();
         let mcp_port_input = cx.new(|cx| {
             InputState::new(window, cx)
                 .default_value(mcp_port_draft.clone())
-                .placeholder(language.text("settings.mcp.port.placeholder"))
+                .placeholder(
+                    t!("settings.mcp.port.placeholder", locale = language.locale()).into_owned(),
+                )
         });
         cx.subscribe(
             &terminal_shell_input,
@@ -489,19 +526,6 @@ impl Settings {
         &self.preferences
     }
 
-    pub fn set_show_graph_attachments(
-        &mut self,
-        show_graph_attachments: bool,
-        cx: &mut Context<Self>,
-    ) {
-        if self.preferences.show_graph_attachments == show_graph_attachments {
-            return;
-        }
-        self.preferences.show_graph_attachments = show_graph_attachments;
-        self.persist();
-        cx.notify();
-    }
-
     pub fn focus(&self, window: &mut Window, cx: &mut App) {
         window.focus(&self.focus, cx);
     }
@@ -536,7 +560,7 @@ impl Settings {
             Ok(()) => None,
             Err(error) => {
                 eprintln!("{error}");
-                Some(language.text("settings.save_error"))
+                Some(t!("settings.save_error", locale = language.locale()).into_owned())
             }
         };
     }
@@ -552,7 +576,11 @@ impl Settings {
             files: false,
             directories: true,
             multiple: false,
-            prompt: Some(language.text("settings.library.choose_prompt").into()),
+            prompt: Some(
+                t!("settings.library.choose_prompt", locale = language.locale())
+                    .into_owned()
+                    .into(),
+            ),
         });
         cx.spawn(async move |this, cx| {
             if let Ok(Ok(Some(paths))) = receiver.await
@@ -608,21 +636,30 @@ impl Settings {
                 self.preferences.language = language;
                 self.terminal_shell_input.update(cx, |input, cx| {
                     input.set_placeholder(
-                        language.text("settings.terminal.shell.placeholder"),
+                        t!(
+                            "settings.terminal.shell.placeholder",
+                            locale = language.locale()
+                        )
+                        .into_owned(),
                         window,
                         cx,
                     );
                 });
                 self.terminal_command_input.update(cx, |input, cx| {
                     input.set_placeholder(
-                        language.text("settings.terminal.command.placeholder"),
+                        t!(
+                            "settings.terminal.command.placeholder",
+                            locale = language.locale()
+                        )
+                        .into_owned(),
                         window,
                         cx,
                     );
                 });
                 self.mcp_port_input.update(cx, |input, cx| {
                     input.set_placeholder(
-                        language.text("settings.mcp.port.placeholder"),
+                        t!("settings.mcp.port.placeholder", locale = language.locale())
+                            .into_owned(),
                         window,
                         cx,
                     );
@@ -713,7 +750,7 @@ impl Settings {
     fn render_sidebar_header(&self, fullscreen: bool, cx: &mut Context<Self>) -> gpui::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
-        let back_label = language.text("settings.navigation.back");
+        let back_label = t!("settings.navigation.back", locale = language.locale()).into_owned();
         let traffic_light_clearance = if cfg!(target_os = "macos") && !fullscreen {
             WINDOW_TRAFFIC_LIGHT_CLEARANCE
         } else {
@@ -744,7 +781,11 @@ impl Settings {
             .flex_col()
             .gap(ui_rem(14.0))
             .child(settings_navigation_group(
-                language.text("settings.navigation.application"),
+                t!(
+                    "settings.navigation.application",
+                    locale = language.locale()
+                )
+                .into_owned(),
                 vec![
                     self.render_navigation_row(
                         "settings-general",
@@ -771,7 +812,7 @@ impl Settings {
                 &theme,
             ))
             .child(settings_navigation_group(
-                language.text("settings.navigation.library"),
+                t!("settings.navigation.library", locale = language.locale()).into_owned(),
                 vec![self.render_navigation_row(
                     "settings-archive",
                     SettingsPage::Archive.label(language),
@@ -782,7 +823,11 @@ impl Settings {
                 &theme,
             ))
             .child(settings_navigation_group(
-                language.text("settings.navigation.connections"),
+                t!(
+                    "settings.navigation.connections",
+                    locale = language.locale()
+                )
+                .into_owned(),
                 vec![self.render_navigation_row(
                     "settings-mcp",
                     SettingsPage::Mcp.label(language),
@@ -926,3 +971,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod localization_tests;

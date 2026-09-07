@@ -1,3 +1,5 @@
+rust_i18n::i18n!("locales", fallback = "en");
+
 pub mod platform;
 
 mod link_icon;
@@ -20,3 +22,6 @@ pub fn icon(icon: Icon, size: f32, color: gpui::Hsla) -> gpui_component::Icon {
         .size(gpui::px(size))
         .text_color(color)
 }
+
+#[cfg(test)]
+mod localization_tests;

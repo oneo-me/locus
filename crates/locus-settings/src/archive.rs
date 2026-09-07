@@ -1,5 +1,6 @@
 use gpui::{AnyElement, ObjectFit, StyledImage};
 use gpui_component::{Disableable as _, Sizable as _, button::Button};
+use rust_i18n::t;
 
 use super::*;
 use locus_library::restore_archived_note;
@@ -39,9 +40,11 @@ impl Settings {
                     Err(error) => {
                         eprintln!("{error}");
                         this.archive_action_error = Some(
-                            this.preferences
-                                .language
-                                .text("settings.archive.restore_error"),
+                            t!(
+                                "settings.archive.restore_error",
+                                locale = this.preferences.language.locale()
+                            )
+                            .into_owned(),
                         );
                     }
                 }
@@ -56,16 +59,23 @@ impl Settings {
         let language = self.preferences.language;
         if self.preferences.library_path.is_none() {
             return archive_message(
-                language.text("settings.archive.library_required"),
+                t!(
+                    "settings.archive.library_required",
+                    locale = language.locale()
+                )
+                .into_owned(),
                 theme.muted_foreground,
             );
         }
         if self.archive_load_error.is_some() {
-            return archive_message(language.text("settings.archive.load_error"), theme.danger);
+            return archive_message(
+                t!("settings.archive.load_error", locale = language.locale()).into_owned(),
+                theme.danger,
+            );
         }
         if self.archived_notes.is_empty() {
             return archive_message(
-                language.text("settings.archive.empty"),
+                t!("settings.archive.empty", locale = language.locale()).into_owned(),
                 theme.muted_foreground,
             );
         }
@@ -106,9 +116,9 @@ impl Settings {
         let pending = self.restoring_archive.as_ref() == Some(&note.document_path);
         let disabled = self.restoring_archive.is_some();
         let button_label = if pending {
-            language.text("settings.archive.restoring")
+            t!("settings.archive.restoring", locale = language.locale()).into_owned()
         } else {
-            language.text("settings.archive.restore")
+            t!("settings.archive.restore", locale = language.locale()).into_owned()
         };
         let action_note = note.clone();
         let button = Button::new(format!("restore-archive-{}", note.path))

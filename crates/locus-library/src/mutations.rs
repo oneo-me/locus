@@ -23,19 +23,6 @@ pub fn restore_archived_note(path: &Path) -> Result<(), String> {
     write_atomically(path, restored.as_bytes())
 }
 
-pub fn set_note_graph_included(path: &Path, included: bool) -> Result<(), String> {
-    let content = read_regular_document(path)?;
-    let updated = if included {
-        let Some(updated) = remove_frontmatter_boolean(&content, "graph", false)? else {
-            return Ok(());
-        };
-        updated
-    } else {
-        set_frontmatter_scalar(&content, "graph", "false")?
-    };
-    write_atomically(path, updated.as_bytes())
-}
-
 pub fn update_note_icon(document_path: &Path, source_path: &Path) -> Result<(), String> {
     let content = read_regular_document(document_path)?;
     let updated_content = set_frontmatter_scalar(&content, "icon", DOCUMENT_ICON_FILE)?;
@@ -187,12 +174,6 @@ fn set_frontmatter_scalar(content: &str, key: &str, value: &str) -> Result<Strin
                 .get(key)
                 .and_then(serde_json::Value::as_str)
                 == Some(value)
-        }
-        "graph" => {
-            updated_metadata
-                .get(key)
-                .and_then(serde_json::Value::as_bool)
-                == value.parse().ok()
         }
         _ => false,
     };
@@ -381,49 +362,6 @@ mod tests {
             set_frontmatter_scalar("# Notes\n", "icon", "icon.png").unwrap(),
             "---\nicon: icon.png\n---\n# Notes\n"
         );
-    }
-
-    #[test]
-    fn graph_participation_is_opt_out_and_reenabling_removes_the_field() {
-        let document = "---\ntitle: Notes\nsummary: Kept\n---\nBody";
-        let excluded = set_frontmatter_scalar(document, "graph", "false").unwrap();
-        assert_eq!(
-            excluded,
-            "---\ntitle: Notes\nsummary: Kept\ngraph: false\n---\nBody"
-        );
-        assert_eq!(
-            remove_frontmatter_boolean(&excluded, "graph", false)
-                .unwrap()
-                .unwrap(),
-            document
-        );
-        assert_eq!(
-            remove_frontmatter_boolean(document, "graph", false).unwrap(),
-            None
-        );
-    }
-
-    #[test]
-    fn graph_participation_update_preserves_the_document() {
-        let directory = std::env::temp_dir().join(format!(
-            "locus-graph-participation-test-{}-{}",
-            std::process::id(),
-            NEXT_TEMPORARY_FILE.fetch_add(1, Ordering::Relaxed)
-        ));
-        fs::create_dir(&directory).unwrap();
-        let document_path = directory.join("index.md");
-        let document = "\u{feff}---\r\ntitle: Notes\r\nsummary: Kept\r\n---\r\nBody\r\n";
-        fs::write(&document_path, document).unwrap();
-
-        set_note_graph_included(&document_path, false).unwrap();
-        assert_eq!(
-            fs::read_to_string(&document_path).unwrap(),
-            "\u{feff}---\r\ntitle: Notes\r\nsummary: Kept\r\ngraph: false\r\n---\r\nBody\r\n"
-        );
-        set_note_graph_included(&document_path, true).unwrap();
-        assert_eq!(fs::read_to_string(&document_path).unwrap(), document);
-
-        fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]

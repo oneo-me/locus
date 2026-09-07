@@ -15,6 +15,7 @@ use locus_ui::{
     MarkdownTypography, document_icon_image, toolbar_icon_button,
 };
 use oneo_gpui::PanelSide;
+use rust_i18n::t;
 const NOTE_MAX_WIDTH: f32 = 832.0;
 const ATMOSPHERE_HEIGHT: f32 = 268.0;
 const SHAPE_HEIGHT: f32 = 208.0;
@@ -68,7 +69,9 @@ impl Locus {
                     .py(px(9.0))
                     .text_sm()
                     .text_color(theme.danger)
-                    .child(language.text("workspace.note.read_error")),
+                    .child(
+                        t!("workspace.note.read_error", locale = language.locale()).into_owned(),
+                    ),
             );
         }
         if let Some(document) = selected_note
@@ -78,9 +81,15 @@ impl Locus {
             let extensions =
                 LocusMarkdownExtensions::new(&node.attachments, &self.library_tree, language);
             let labels = MarkdownLabels {
-                copy_code: language.text("workspace.note.copy_code").into(),
-                collapse_code: language.text("workspace.note.collapse_code").into(),
-                expand_code: language.text("workspace.note.expand_code").into(),
+                copy_code: t!("workspace.note.copy_code", locale = language.locale())
+                    .into_owned()
+                    .into(),
+                collapse_code: t!("workspace.note.collapse_code", locale = language.locale())
+                    .into_owned()
+                    .into(),
+                expand_code: t!("workspace.note.expand_code", locale = language.locale())
+                    .into_owned()
+                    .into(),
             };
             article = article.child(
                 Markdown::new(
@@ -203,9 +212,13 @@ impl Locus {
         let copy_button = toolbar_icon_button(
             "copy-note-reference",
             if copied {
-                language.text("workspace.note.reference_copied")
+                t!(
+                    "workspace.note.reference_copied",
+                    locale = language.locale()
+                )
+                .into_owned()
             } else {
-                language.text("workspace.note.copy_reference")
+                t!("workspace.note.copy_reference", locale = language.locale()).into_owned()
             },
             if copied { Icon::Check } else { Icon::Copy },
             theme,
@@ -216,7 +229,7 @@ impl Locus {
         });
         let edit_button = toolbar_icon_button(
             "edit-note",
-            language.text("workspace.note.edit"),
+            t!("workspace.note.edit", locale = language.locale()).into_owned(),
             Icon::File,
             theme,
         )
@@ -224,7 +237,7 @@ impl Locus {
         .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::EditCurrentNote), cx));
         let open_directory_button = toolbar_icon_button(
             "open-note-directory",
-            language.text("workspace.note.open_directory"),
+            t!("workspace.note.open_directory", locale = language.locale()).into_owned(),
             Icon::FolderOpen,
             theme,
         )

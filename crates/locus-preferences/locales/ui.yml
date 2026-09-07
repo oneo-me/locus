@@ -1,0 +1,28 @@
+_version: 2
+language.chinese:
+  en: Chinese
+  zh-CN: 中文
+language.english:
+  en: English
+  zh-CN: English
+settings.editor.system_default:
+  en: System default
+  zh-CN: 系统默认
+terminal.color_scheme.auto:
+  en: Auto
+  zh-CN: 自动
+terminal.color_scheme.dark:
+  en: Dark
+  zh-CN: 暗色
+terminal.color_scheme.light:
+  en: Light
+  zh-CN: 亮色
+terminal.cursor_style.bar:
+  en: Bar
+  zh-CN: 竖线
+terminal.cursor_style.block:
+  en: Block
+  zh-CN: 块状
+terminal.cursor_style.underline:
+  en: Underline
+  zh-CN: 下划线

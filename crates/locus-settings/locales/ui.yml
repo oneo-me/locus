@@ -1,0 +1,253 @@
+_version: 2
+settings.font.search:
+  en: Search fonts
+  zh-CN: 搜索字体
+settings.font.no_matches:
+  en: No matching fonts
+  zh-CN: 没有匹配字体
+settings.mcp.port.label:
+  en: MCP port
+  zh-CN: MCP 端口
+settings.mcp.port.placeholder:
+  en: 1 to 65535
+  zh-CN: 1 到 65535
+settings.appearance.code_font.label:
+  en: Code font
+  zh-CN: 代码字体
+settings.appearance.interface_font.label:
+  en: Interface font
+  zh-CN: 软件字体
+settings.library.choose_prompt:
+  en: Choose Library
+  zh-CN: 选择文档库
+settings.navigation.application:
+  en: Application
+  zh-CN: 应用
+settings.navigation.back:
+  en: Back
+  zh-CN: 返回
+settings.navigation.connections:
+  en: Connections
+  zh-CN: 连接
+settings.navigation.library:
+  en: Library
+  zh-CN: 文档库
+settings.page.appearance:
+  en: Appearance
+  zh-CN: 外观
+settings.page.archive:
+  en: Archive
+  zh-CN: 归档
+settings.page.general:
+  en: General
+  zh-CN: 通用
+settings.page.terminal:
+  en: Terminal
+  zh-CN: 终端
+settings.save_error:
+  en: Could not save settings. Check access to the Locus data directory.
+  zh-CN: 无法保存设置。请检查 Locus 数据目录的访问权限。
+settings.load_error:
+  en: Could not read saved settings. Defaults are in use.
+  zh-CN: 无法读取已保存的设置，当前使用默认值。
+settings.terminal.font.label:
+  en: Terminal font
+  zh-CN: 终端字体
+settings.terminal.command.label:
+  en: Default command
+  zh-CN: 默认命令
+settings.terminal.command.placeholder:
+  en: No default command
+  zh-CN: 不执行默认命令
+settings.terminal.shell.label:
+  en: Launch shell
+  zh-CN: 启动 Shell
+settings.terminal.shell.placeholder:
+  en: Use system login shell
+  zh-CN: 使用系统登录 Shell
+mcp.status.failed:
+  en: Failed to start
+  zh-CN: 启动失败
+mcp.status.running:
+  en: Running
+  zh-CN: 运行中
+mcp.status.stopped:
+  en: Stopped
+  zh-CN: 已停止
+settings.appearance.code_font.description:
+  en: Font used for code in notes and settings
+  zh-CN: 用于笔记和设置中的代码内容
+settings.archive.empty:
+  en: No archived notes.
+  zh-CN: 暂无归档笔记。
+settings.archive.library_required:
+  en: Choose a library in General settings first.
+  zh-CN: 请先在通用设置中选择文档库。
+settings.archive.load_error:
+  en: Could not read archives
+  zh-CN: 无法读取归档
+settings.archive.restore:
+  en: Remove from archive
+  zh-CN: 移出归档
+settings.archive.restore_error:
+  en: Could not remove from archive
+  zh-CN: 无法移出归档
+settings.archive.restoring:
+  en: Removing…
+  zh-CN: 正在移出…
+settings.appearance.code_font_size.description:
+  en: Text size used for code in notes and settings
+  zh-CN: 用于笔记和设置中的代码内容
+settings.appearance.code_font_size.label:
+  en: Code font size
+  zh-CN: 代码字号
+settings.appearance.interface_font.description:
+  en: Font used by the interface and note text
+  zh-CN: 用于界面与笔记正文的字体
+settings.appearance.interface_font_size.description:
+  en: Text size used by the interface and note text
+  zh-CN: 调整界面与笔记正文的文字大小
+settings.appearance.interface_font_size.label:
+  en: Interface font size
+  zh-CN: 软件字号
+settings.appearance.language.description:
+  en: Language used by the interface and application menus
+  zh-CN: 切换界面与系统菜单使用的语言
+settings.appearance.language.label:
+  en: Language
+  zh-CN: 语言
+settings.appearance.theme.dark:
+  en: Dark
+  zh-CN: 暗色
+settings.appearance.theme.description:
+  en: Controls window and content appearance
+  zh-CN: 控制窗口和内容表面的明暗外观
+settings.appearance.theme.label:
+  en: Theme
+  zh-CN: 主题
+settings.appearance.theme.light:
+  en: Light
+  zh-CN: 亮色
+settings.appearance.theme.system:
+  en: System
+  zh-CN: 跟随系统
+settings.editor.description:
+  en: External editor used by the note page edit button
+  zh-CN: 笔记页面的编辑按钮使用此外部编辑器
+settings.editor.label:
+  en: Editor
+  zh-CN: 编辑器
+settings.library.choose:
+  en: Choose…
+  zh-CN: 选择…
+settings.library.not_selected:
+  en: Not selected
+  zh-CN: 未选择
+settings.library.path.description:
+  en: Root folder containing Markdown notes and attachments
+  zh-CN: Markdown 笔记与附件所在的根目录
+settings.library.path.label:
+  en: Library path
+  zh-CN: 文档库路径
+settings.terminal.color_scheme.description:
+  en: Auto follows the current Locus appearance
+  zh-CN: 自动跟随 Locus 的当前明暗外观
+settings.terminal.color_scheme.label:
+  en: Color scheme
+  zh-CN: 配色
+settings.terminal.command.description:
+  en: Runs after each terminal starts; leave empty for the shell prompt
+  zh-CN: 每次启动终端后执行，留空则直接进入 Shell
+settings.terminal.cursor_style.description:
+  en: Default used when a terminal program does not set the cursor
+  zh-CN: 作为终端程序未指定光标时的默认样式
+settings.terminal.cursor_style.label:
+  en: Cursor style
+  zh-CN: 光标样式
+settings.terminal.font.description:
+  en: Font used by the terminal in the right sidebar
+  zh-CN: 用于右侧终端会话的字体
+settings.terminal.font_size.description:
+  en: Text size used by the terminal in the right sidebar
+  zh-CN: 用于右侧终端会话的文字大小
+settings.terminal.font_size.label:
+  en: Terminal font size
+  zh-CN: 终端字号
+settings.terminal.shell.description:
+  en: Uses the system login shell when empty
+  zh-CN: 留空时使用系统登录 Shell
+settings.mcp.client.claude.description:
+  en: Adds an HTTP server; run /mcp in Claude Code to verify it.
+  zh-CN: 添加 HTTP 类型服务；进入 Claude Code 后运行 /mcp 检查连接。
+settings.mcp.client.codex.description:
+  en: The CLI and IDE extension share this configuration; run /mcp in Codex to verify it.
+  zh-CN: CLI 与 IDE 扩展共享这项配置；进入 Codex 后运行 /mcp 检查连接。
+settings.mcp.client.connection_parameters:
+  en: Connection parameters
+  zh-CN: 连接参数
+settings.mcp.client.cursor.description:
+  en: Add this to the global MCP configuration, then refresh MCP servers in Cursor.
+  zh-CN: 写入全局 MCP 配置，然后在 Cursor 中刷新 MCP 服务。
+settings.mcp.client.generic:
+  en: Generic
+  zh-CN: 通用
+settings.mcp.client.generic.description:
+  en: Field names vary by client; choose Streamable HTTP, not legacy SSE.
+  zh-CN: 客户端字段名称可能不同；选择 Streamable HTTP，不要选择旧式 SSE。
+settings.mcp.client.opencode.description:
+  en: Add the remote MCP server, then run opencode mcp list to verify it.
+  zh-CN: 添加远程 MCP 服务，再运行 opencode mcp list 检查连接。
+settings.mcp.client.terminal:
+  en: Terminal
+  zh-CN: 终端
+settings.mcp.configuration_copied:
+  en: Configuration copied
+  zh-CN: 配置已复制
+settings.mcp.connect_agent:
+  en: Connect an Agent
+  zh-CN: 配置到 Agent
+settings.mcp.copy_configuration:
+  en: Copy configuration
+  zh-CN: 复制配置
+settings.mcp.endpoint.copied:
+  en: Copied
+  zh-CN: 已复制
+settings.mcp.endpoint.copy:
+  en: Copy URL
+  zh-CN: 复制地址
+settings.mcp.endpoint.label:
+  en: Service URL
+  zh-CN: 服务地址
+settings.mcp.local_network.description:
+  en: No authentication; devices on the same network can search notes and see absolute local file paths
+  zh-CN: 无身份验证；同一网络的设备可检索笔记，并看到本机文件绝对路径
+settings.mcp.local_network.label:
+  en: Share on local network
+  zh-CN: 公开到局域网
+settings.mcp.local_network.toggle:
+  en: Share MCP on local network
+  zh-CN: 公开 MCP 到局域网
+settings.mcp.port.apply:
+  en: Apply
+  zh-CN: 应用
+settings.mcp.port.description:
+  en: Applying a change restarts the MCP service
+  zh-CN: 修改后应用会重启 MCP 服务
+settings.mcp.port.title:
+  en: Port
+  zh-CN: 端口
+settings.mcp.port.validation_error:
+  en: Port must be an integer from 1 to 65535.
+  zh-CN: 端口必须是 1 到 65535 之间的整数。
+settings.mcp.scope_note:
+  en: The server only provides list_articles, search_articles, and resolve_article; Agents maintain content and attachments with local file tools.
+  zh-CN: 服务仅提供 list_articles、search_articles、resolve_article；正文与附件由 Agent 使用本地文件工具维护。
+settings.mcp.service.description:
+  en: Provides three read-only document discovery tools over Streamable HTTP
+  zh-CN: 通过 Streamable HTTP 提供三个只读文档发现工具
+settings.mcp.service.label:
+  en: Start service
+  zh-CN: 启动服务
+settings.mcp.service.toggle:
+  en: Start MCP service
+  zh-CN: 启动 MCP 服务

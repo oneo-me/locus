@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::time::Duration;
 
 use gpui::{
@@ -15,8 +16,8 @@ use gpui_component::{
 use super::Locus;
 use crate::{
     ArchiveCurrentNote, ChooseCurrentNoteIcon, CopyCurrentNoteReference, EditCurrentNote,
-    NewTerminal, OpenCommandPalette, OpenCurrentNoteDirectory, OpenKnowledgeGraph, OpenSettings,
-    ReloadCurrentNote, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
+    NewTerminal, OpenCommandPalette, OpenCurrentNoteDirectory, OpenSettings, ReloadCurrentNote,
+    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
 };
 use locus_library::{DocumentIcon, LIBRARY_REFERENCE_SCHEME, LibraryNode};
 use locus_ui::{Icon, document_icon_image};
@@ -80,17 +81,23 @@ impl Locus {
         let language = self.settings.read(cx).preferences().language;
         let locus_for_cancel = locus.clone();
         let application = CommandGroup::new()
-            .label(language.text("workspace.command_palette.application"))
+            .label(
+                t!(
+                    "workspace.command_palette.application",
+                    locale = language.locale()
+                )
+                .into_owned(),
+            )
             .item(
                 CommandItem::new()
-                    .label(language.text("menu.application.settings"))
+                    .label(t!("menu.application.settings", locale = language.locale()).into_owned())
                     .icon(Icon::Settings)
                     .keywords(["settings", "preferences"])
                     .action(Box::new(OpenSettings)),
             )
             .item(
                 CommandItem::new()
-                    .label(language.text("workspace.terminal.new"))
+                    .label(t!("workspace.terminal.new", locale = language.locale()).into_owned())
                     .icon(Icon::SquareTerminal)
                     .keywords(["terminal", "shell"])
                     .action(Box::new(NewTerminal))
@@ -98,28 +105,29 @@ impl Locus {
             )
             .item(
                 CommandItem::new()
-                    .label(language.text("workspace.graph.open"))
-                    .icon(Icon::Network)
-                    .keywords(["knowledge graph", "graph", "network", "relationships"])
-                    .action(Box::new(OpenKnowledgeGraph)),
-            )
-            .item(
-                CommandItem::new()
-                    .label(language.text("menu.view.toggle_left_sidebar"))
+                    .label(
+                        t!("menu.view.toggle_left_sidebar", locale = language.locale())
+                            .into_owned(),
+                    )
                     .icon(Icon::PanelLeft)
                     .keywords(["left sidebar", "navigation"])
                     .action(Box::new(ToggleLeftPanel)),
             )
             .item(
                 CommandItem::new()
-                    .label(language.text("menu.view.toggle_right_sidebar"))
+                    .label(
+                        t!("menu.view.toggle_right_sidebar", locale = language.locale())
+                            .into_owned(),
+                    )
                     .icon(Icon::PanelRight)
                     .keywords(["right sidebar", "terminal panel"])
                     .action(Box::new(ToggleRightPanel)),
             )
             .item(
                 CommandItem::new()
-                    .label(language.text("menu.view.enter_full_screen"))
+                    .label(
+                        t!("menu.view.enter_full_screen", locale = language.locale()).into_owned(),
+                    )
                     .icon(Icon::Maximize)
                     .keywords(["full screen", "fullscreen"])
                     .action(Box::new(ToggleFullScreen)),
@@ -128,38 +136,59 @@ impl Locus {
         let mut command = Command::new(palette).group(application);
         if self.current_note_node().is_some() {
             let current_note = CommandGroup::new()
-                .label(language.text("workspace.command_palette.current_note"))
+                .label(
+                    t!(
+                        "workspace.command_palette.current_note",
+                        locale = language.locale()
+                    )
+                    .into_owned(),
+                )
                 .item(
                     CommandItem::new()
-                        .label(language.text("workspace.note.copy_reference"))
+                        .label(
+                            t!("workspace.note.copy_reference", locale = language.locale())
+                                .into_owned(),
+                        )
                         .icon(Icon::Copy)
                         .keywords(["copy", "reference", "link", "uri"])
                         .action(Box::new(CopyCurrentNoteReference)),
                 )
                 .item(
                     CommandItem::new()
-                        .label(language.text("workspace.note.edit"))
+                        .label(t!("workspace.note.edit", locale = language.locale()).into_owned())
                         .icon(Icon::File)
                         .keywords(["edit", "editor", "vscode"])
                         .action(Box::new(EditCurrentNote)),
                 )
                 .item(
                     CommandItem::new()
-                        .label(language.text("workspace.note.open_directory"))
+                        .label(
+                            t!("workspace.note.open_directory", locale = language.locale())
+                                .into_owned(),
+                        )
                         .icon(Icon::FolderOpen)
                         .keywords(["directory", "folder", "reveal"])
                         .action(Box::new(OpenCurrentNoteDirectory)),
                 )
                 .item(
                     CommandItem::new()
-                        .label(language.text("menu.view.reload_current_note"))
+                        .label(
+                            t!("menu.view.reload_current_note", locale = language.locale())
+                                .into_owned(),
+                        )
                         .icon(Icon::RotateCw)
                         .keywords(["reload", "refresh"])
                         .action(Box::new(ReloadCurrentNote)),
                 )
                 .item(
                     CommandItem::new()
-                        .label(language.text("workspace.note_menu.upload_icon"))
+                        .label(
+                            t!(
+                                "workspace.note_menu.upload_icon",
+                                locale = language.locale()
+                            )
+                            .into_owned(),
+                        )
                         .icon(Icon::ArrowUp)
                         .keywords(["upload", "icon", "image"])
                         .action(Box::new(ChooseCurrentNoteIcon))
@@ -167,7 +196,10 @@ impl Locus {
                 )
                 .item(
                     CommandItem::new()
-                        .label(language.text("workspace.note_menu.archive"))
+                        .label(
+                            t!("workspace.note_menu.archive", locale = language.locale())
+                                .into_owned(),
+                        )
                         .icon(Icon::Inbox)
                         .keywords(["archive"])
                         .action(Box::new(ArchiveCurrentNote))
@@ -183,10 +215,22 @@ impl Locus {
             .separator()
             .group(
                 CommandGroup::new()
-                    .label(language.text("workspace.command_palette.notes"))
+                    .label(
+                        t!(
+                            "workspace.command_palette.notes",
+                            locale = language.locale()
+                        )
+                        .into_owned(),
+                    )
                     .items(note_items),
             )
-            .placeholder(language.text("workspace.command_palette.placeholder"))
+            .placeholder(
+                t!(
+                    "workspace.command_palette.placeholder",
+                    locale = language.locale()
+                )
+                .into_owned(),
+            )
             .empty(move |_, _, cx| {
                 gpui::div()
                     .w_full()
@@ -194,7 +238,13 @@ impl Locus {
                     .text_center()
                     .text_sm()
                     .text_color(cx.theme().muted_foreground)
-                    .child(language.text("workspace.command_palette.no_matches"))
+                    .child(
+                        t!(
+                            "workspace.command_palette.no_matches",
+                            locale = language.locale()
+                        )
+                        .into_owned(),
+                    )
             })
             .bordered(true)
             .rounded(cx.theme().radius_tokens().xl)
@@ -452,9 +502,13 @@ impl Locus {
 
     fn show_file_action_error(&self, title_key: &str, window: &mut Window, cx: &mut Context<Self>) {
         let language = self.settings.read(cx).preferences().language;
-        let title = language.text(title_key);
-        let detail = language.text("common.file_action_error_detail");
-        let confirmation = language.text("common.ok");
+        let title = t!(title_key, locale = language.locale()).into_owned();
+        let detail = t!(
+            "common.file_action_error_detail",
+            locale = language.locale()
+        )
+        .into_owned();
+        let confirmation = t!("common.ok", locale = language.locale()).into_owned();
         drop(window.prompt(
             gpui::PromptLevel::Critical,
             &title,
@@ -570,7 +624,6 @@ mod tests {
             icon: None,
             icon_image: None,
             summary: None,
-            included_in_graph: true,
             additional_metadata: Vec::new(),
             attachments: Vec::new(),
             change: None,

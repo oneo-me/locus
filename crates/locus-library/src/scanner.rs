@@ -18,7 +18,6 @@ struct DocumentMetadata {
     icon: Option<String>,
     summary: Option<String>,
     archived: bool,
-    excluded_from_graph: bool,
     additional: Vec<(String, serde_json::Value)>,
 }
 
@@ -126,7 +125,6 @@ pub(super) fn scan_children(
             icon: metadata.icon,
             icon_image,
             summary: metadata.summary,
-            included_in_graph: !metadata.excluded_from_graph,
             additional_metadata: metadata.additional,
             attachments,
             change,
@@ -252,7 +250,6 @@ fn parse_frontmatter_metadata(frontmatter: &str) -> DocumentMetadata {
             "icon" => metadata.icon = optional_string(Some(value)),
             "summary" => metadata.summary = optional_string(Some(value)),
             "archived" => metadata.archived = value == serde_json::Value::Bool(true),
-            "graph" => metadata.excluded_from_graph = value == serde_json::Value::Bool(false),
             _ => metadata.additional.push((key, value)),
         }
     }
@@ -320,7 +317,10 @@ mod tests {
         assert_eq!(metadata.title.as_deref(), Some("Locus: Notes"));
         assert_eq!(metadata.icon.as_deref(), Some("🧭"));
         assert!(metadata.archived);
-        assert!(metadata.excluded_from_graph);
+        assert_eq!(
+            metadata.additional,
+            vec![("graph".to_owned(), serde_json::Value::Bool(false))]
+        );
     }
 
     #[test]

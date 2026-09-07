@@ -8,7 +8,6 @@ use oneo_gpui::{About, AppShell, ShellWindow};
 
 fn main() {
     AppShell::new().run(|cx| {
-        locus_preferences::localization::init();
         locus_workspace::bind_keys(cx);
         cx.on_action(|_: &About, _| platform::show_about_panel());
         let (preferences, load_error) = Preferences::load();

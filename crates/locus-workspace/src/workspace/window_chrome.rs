@@ -1,12 +1,10 @@
 use super::*;
 use gpui_component::{
-    Disableable as _, Icon as ComponentIcon, Sizable as _,
+    Disableable as _, Sizable as _,
     button::{Button, ButtonVariants as _},
-    popover::Popover,
-    switch::Switch,
-    tab::{Tab, TabBar},
 };
 use locus_mcp::McpServerState;
+use rust_i18n::t;
 
 impl Locus {
     pub(super) fn toggle_panel(
@@ -63,17 +61,17 @@ impl Locus {
             PanelSide::Left => (
                 "toggle-left-sidebar",
                 if self.app_shell.workspace().visible(PanelSide::Left) {
-                    language.text("workspace.sidebar.hide_left")
+                    t!("workspace.sidebar.hide_left", locale = language.locale()).into_owned()
                 } else {
-                    language.text("workspace.sidebar.show_left")
+                    t!("workspace.sidebar.show_left", locale = language.locale()).into_owned()
                 },
             ),
             PanelSide::Right => (
                 "toggle-right-sidebar",
                 if self.app_shell.workspace().visible(PanelSide::Right) {
-                    language.text("workspace.sidebar.hide_right")
+                    t!("workspace.sidebar.hide_right", locale = language.locale()).into_owned()
                 } else {
-                    language.text("workspace.sidebar.show_right")
+                    t!("workspace.sidebar.show_right", locale = language.locale()).into_owned()
                 },
             ),
         };
@@ -93,13 +91,13 @@ impl Locus {
         let (id, label, icon_kind, enabled) = match direction {
             NavigationDirection::Back => (
                 "navigate-back",
-                language.text("workspace.navigation.back"),
+                t!("workspace.navigation.back", locale = language.locale()).into_owned(),
                 Icon::ArrowLeft,
                 self.library_navigation.can_go_back(),
             ),
             NavigationDirection::Forward => (
                 "navigate-forward",
-                language.text("workspace.navigation.forward"),
+                t!("workspace.navigation.forward", locale = language.locale()).into_owned(),
                 Icon::ArrowRight,
                 self.library_navigation.can_go_forward(),
             ),
@@ -174,7 +172,11 @@ impl Locus {
                             .and_then(|path| self.library_tree.node(path))
                             .map(|node| node.title.clone())
                             .unwrap_or_else(|| {
-                                self.language(cx).text("workspace.note.no_selection")
+                                t!(
+                                    "workspace.note.no_selection",
+                                    locale = self.language(cx).locale()
+                                )
+                                .into_owned()
                             }),
                     ),
             )
@@ -187,137 +189,22 @@ impl Locus {
     }
 
     pub(super) fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {
-        let theme = Theme::global(cx).clone();
-        let terminal_label = self.language(cx).text("workspace.terminal.title");
-        let graph_label = self.language(cx).text("workspace.graph.title");
-        let selected_index = self.selected_right_sidebar_tab.index();
-        div()
-            .h(px(TITLEBAR_HEIGHT))
-            .flex_none()
-            .border_b_1()
-            .border_color(theme.border)
-            .flex()
-            .items_center()
-            .pl(px(10.0))
-            .pr(px(14.0))
-            .child(
-                self.window_drag_region("right-title-region", cx)
-                    .min_w_0()
-                    .flex_1()
-                    .flex()
-                    .items_center()
-                    .child(
-                        TabBar::new("right-sidebar-tabs")
-                            .pill()
-                            .selected_index(selected_index)
-                            .max_width(px(260.0))
-                            .on_click(cx.listener(|this, index: &usize, window, cx| {
-                                this.select_right_sidebar_tab(*index, window, cx);
-                            }))
-                            .child(
-                                Tab::new().aria_label(graph_label.clone()).child(
-                                    div()
-                                        .min_w_0()
-                                        .flex()
-                                        .items_center()
-                                        .gap(px(6.0))
-                                        .child(ComponentIcon::new(Icon::Network))
-                                        .child(
-                                            div().min_w_0().flex_1().truncate().child(graph_label),
-                                        ),
-                                ),
-                            )
-                            .child(
-                                Tab::new().aria_label(terminal_label.clone()).child(
-                                    div()
-                                        .min_w_0()
-                                        .flex()
-                                        .items_center()
-                                        .gap(px(6.0))
-                                        .child(ComponentIcon::new(Icon::SquareTerminal))
-                                        .child(
-                                            div()
-                                                .min_w_0()
-                                                .flex_1()
-                                                .truncate()
-                                                .child(terminal_label),
-                                        ),
-                                ),
-                            ),
-                    ),
-            )
-            .when(
-                self.selected_right_sidebar_tab == RightSidebarTab::KnowledgeGraph,
-                |header| {
-                    let settings_label = self.language(cx).text("workspace.graph.settings");
-                    let attachments_label =
-                        self.language(cx).text("workspace.graph.show_attachments");
-                    let attachments_description = self
-                        .language(cx)
-                        .text("workspace.graph.show_attachments_description");
-                    let checked = self.settings.read(cx).preferences().show_graph_attachments;
-                    header.child(
-                        Popover::new("knowledge-graph-settings")
-                            .w(px(260.0))
-                            .trigger(
-                                Button::new("open-knowledge-graph-settings")
-                                    .ghost()
-                                    .xsmall()
-                                    .icon(Icon::Ellipsis)
-                                    .accessibility_label(settings_label.clone())
-                                    .tooltip(settings_label),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_start()
-                                    .justify_between()
-                                    .gap_3()
-                                    .child(
-                                        div()
-                                            .min_w_0()
-                                            .flex_1()
-                                            .flex()
-                                            .flex_col()
-                                            .gap_1()
-                                            .child(div().text_sm().child(attachments_label.clone()))
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(theme.muted_foreground)
-                                                    .child(attachments_description),
-                                            ),
-                                    )
-                                    .child(
-                                        Switch::new("show-knowledge-graph-attachments")
-                                            .small()
-                                            .checked(checked)
-                                            .accessibility_label(attachments_label)
-                                            .on_click(cx.listener(
-                                                |this, checked: &bool, _, cx| {
-                                                    this.settings.update(cx, |settings, cx| {
-                                                        settings.set_show_graph_attachments(
-                                                            *checked, cx,
-                                                        );
-                                                    });
-                                                    this.knowledge_graph.update(cx, |graph, cx| {
-                                                        graph.set_show_attachments(*checked, cx);
-                                                    });
-                                                    cx.notify();
-                                                },
-                                            )),
-                                    ),
-                            ),
-                    )
-                },
-            )
+        div().h(px(TITLEBAR_HEIGHT)).flex_none().child(
+            self.window_drag_region("right-title-region", cx)
+                .w_full()
+                .child(self.render_right_tab_bar(cx)),
+        )
     }
 
     pub(super) fn render_settings_button(
         &self,
         cx: &mut Context<Self>,
     ) -> gpui_component::button::Button {
-        let label = self.language(cx).text("workspace.settings.open");
+        let label = t!(
+            "workspace.settings.open",
+            locale = self.language(cx).locale()
+        )
+        .into_owned();
         toolbar_icon_button("open-settings", label, Icon::Settings, Theme::global(cx))
             .size(px(28.0))
             .on_click(cx.listener(|this, _, window, cx| this.open_settings(window, cx)))
@@ -328,19 +215,26 @@ impl Locus {
         let language = self.language(cx);
         let state = self.mcp_server.state();
         let (status, color) = match &state {
-            McpServerState::Stopped { .. } => {
-                (language.text("mcp.status.stopped"), theme.muted_foreground)
-            }
-            McpServerState::Running { .. } => (language.text("mcp.status.running"), theme.success),
-            McpServerState::Failed { .. } => (language.text("mcp.status.failed"), theme.danger),
+            McpServerState::Stopped { .. } => (
+                t!("mcp.status.stopped", locale = language.locale()).into_owned(),
+                theme.muted_foreground,
+            ),
+            McpServerState::Running { .. } => (
+                t!("mcp.status.running", locale = language.locale()).into_owned(),
+                theme.success,
+            ),
+            McpServerState::Failed { .. } => (
+                t!("mcp.status.failed", locale = language.locale()).into_owned(),
+                theme.danger,
+            ),
         };
         let endpoint = state.endpoint().to_owned();
         let label = if self.mcp_status_copied {
-            language.text("workspace.mcp.endpoint_copied")
+            t!("workspace.mcp.endpoint_copied", locale = language.locale()).into_owned()
         } else {
             format!(
                 "{status} · {}",
-                language.text("workspace.mcp.copy_endpoint")
+                t!("workspace.mcp.copy_endpoint", locale = language.locale()).into_owned()
             )
         };
         let (icon_kind, icon_color) = if self.mcp_status_copied {

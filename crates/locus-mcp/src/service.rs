@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 
 use locus_library::{LibraryNode, LibraryTree, load_note};
 
-const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path, call resolve_article directly; do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, archived state, and optional graph participation; sibling regular files are attachments. Do not recreate CRUD or attachment tools through MCP.";
+const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path, call resolve_article directly; do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; sibling regular files are attachments. Do not recreate CRUD or attachment tools through MCP.";
 
 #[derive(Clone)]
 pub(super) struct LocusMcp {

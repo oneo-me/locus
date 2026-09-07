@@ -5,6 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+rust-i18n.workspace = true
 futures.workspace = true
 gpui.workspace = true
 gpui-component.workspace = true
@@ -17,3 +18,7 @@ oneo-gpui-markdown.workspace = true
 percent-encoding.workspace = true
 regex.workspace = true
 reqwest_client.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+serde-saphyr.workspace = true

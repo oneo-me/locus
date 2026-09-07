@@ -11,3 +11,6 @@ pub use preferences::{
     EditorPreference, FONT_SIZES, Preferences, TerminalColorScheme, TerminalCursorStyle,
     terminal_color_scheme_label, terminal_cursor_style_label,
 };
+
+#[cfg(test)]
+mod localization_tests;

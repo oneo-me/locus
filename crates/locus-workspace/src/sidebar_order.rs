@@ -133,7 +133,6 @@ mod tests {
             icon: None,
             icon_image: None,
             summary: None,
-            included_in_graph: true,
             additional_metadata: Vec::new(),
             attachments: Vec::new(),
             change: None,

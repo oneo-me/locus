@@ -5,6 +5,7 @@ use gpui_component::{
     switch::Switch,
     tab::{Tab, TabBar},
 };
+use rust_i18n::t;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(super) enum McpClient {
@@ -31,27 +32,53 @@ impl McpClient {
             Self::ClaudeCode => "Claude Code".to_owned(),
             Self::Cursor => "Cursor".to_owned(),
             Self::OpenCode => "OpenCode".to_owned(),
-            Self::Generic => language.text("settings.mcp.client.generic"),
+            Self::Generic => {
+                t!("settings.mcp.client.generic", locale = language.locale()).into_owned()
+            }
         }
     }
 
     fn description(self, language: Language) -> String {
         match self {
-            Self::Codex => language.text("settings.mcp.client.codex.description"),
-            Self::ClaudeCode => language.text("settings.mcp.client.claude.description"),
-            Self::Cursor => language.text("settings.mcp.client.cursor.description"),
-            Self::OpenCode => language.text("settings.mcp.client.opencode.description"),
-            Self::Generic => language.text("settings.mcp.client.generic.description"),
+            Self::Codex => t!(
+                "settings.mcp.client.codex.description",
+                locale = language.locale()
+            )
+            .into_owned(),
+            Self::ClaudeCode => t!(
+                "settings.mcp.client.claude.description",
+                locale = language.locale()
+            )
+            .into_owned(),
+            Self::Cursor => t!(
+                "settings.mcp.client.cursor.description",
+                locale = language.locale()
+            )
+            .into_owned(),
+            Self::OpenCode => t!(
+                "settings.mcp.client.opencode.description",
+                locale = language.locale()
+            )
+            .into_owned(),
+            Self::Generic => t!(
+                "settings.mcp.client.generic.description",
+                locale = language.locale()
+            )
+            .into_owned(),
         }
     }
 
     fn code_label(self, language: Language) -> String {
         match self {
             Self::Codex | Self::ClaudeCode | Self::OpenCode => {
-                language.text("settings.mcp.client.terminal")
+                t!("settings.mcp.client.terminal", locale = language.locale()).into_owned()
             }
             Self::Cursor => "~/.cursor/mcp.json".to_owned(),
-            Self::Generic => language.text("settings.mcp.client.connection_parameters"),
+            Self::Generic => t!(
+                "settings.mcp.client.connection_parameters",
+                locale = language.locale()
+            )
+            .into_owned(),
         }
     }
 
@@ -99,7 +126,13 @@ impl Settings {
         let port = match self.mcp_port_draft.trim().parse::<u16>() {
             Ok(port) if port > 0 => port,
             _ => {
-                self.mcp_port_error = Some(language.text("settings.mcp.port.validation_error"));
+                self.mcp_port_error = Some(
+                    t!(
+                        "settings.mcp.port.validation_error",
+                        locale = language.locale()
+                    )
+                    .into_owned(),
+                );
                 cx.notify();
                 return;
             }
@@ -170,9 +203,17 @@ impl Settings {
         let code_font_size = self.preferences.code_font_size;
         let copied = self.mcp_copied == Some(key);
         let copy_label = if copied {
-            language.text("settings.mcp.configuration_copied")
+            t!(
+                "settings.mcp.configuration_copied",
+                locale = language.locale()
+            )
+            .into_owned()
         } else {
-            language.text("settings.mcp.copy_configuration")
+            t!(
+                "settings.mcp.copy_configuration",
+                locale = language.locale()
+            )
+            .into_owned()
         };
         let copy_value = code.clone();
         let copy_button = Button::new(key)
@@ -273,10 +314,9 @@ impl Settings {
             .px(ui_rem(20.0))
             .py(ui_rem(15.0))
             .child(
-                div()
-                    .text_sm()
-                    .font_weight(FontWeight::MEDIUM)
-                    .child(language.text("settings.mcp.connect_agent")),
+                div().text_sm().font_weight(FontWeight::MEDIUM).child(
+                    t!("settings.mcp.connect_agent", locale = language.locale()).into_owned(),
+                ),
             )
             .child(tabs)
             .child(
@@ -295,13 +335,20 @@ impl Settings {
         let endpoint = self.mcp_server_state.endpoint().to_owned();
         let endpoint_copy = endpoint.clone();
         let status = match &self.mcp_server_state {
-            McpServerState::Stopped { .. } => language.text("mcp.status.stopped"),
-            McpServerState::Running { endpoint } => {
-                format!("{} · {endpoint}", language.text("mcp.status.running"))
+            McpServerState::Stopped { .. } => {
+                t!("mcp.status.stopped", locale = language.locale()).into_owned()
             }
-            McpServerState::Failed { .. } => language.text("mcp.status.failed"),
+            McpServerState::Running { endpoint } => {
+                format!(
+                    "{} · {endpoint}",
+                    t!("mcp.status.running", locale = language.locale()).into_owned()
+                )
+            }
+            McpServerState::Failed { .. } => {
+                t!("mcp.status.failed", locale = language.locale()).into_owned()
+            }
         };
-        let port_button = language.text("settings.mcp.port.apply");
+        let port_button = t!("settings.mcp.port.apply", locale = language.locale()).into_owned();
 
         div()
             .w_full()
@@ -310,36 +357,56 @@ impl Settings {
             .flex()
             .flex_col()
             .items_stretch()
-            .child(self.render_setting_row(
-                language.text("settings.mcp.service.label"),
-                language.text("settings.mcp.service.description"),
-                self.render_mcp_switch(
-                    "mcp-enabled",
-                    language.text("settings.mcp.service.toggle"),
-                    self.preferences.mcp_enabled,
-                    false,
+            .child(
+                self.render_setting_row(
+                    t!("settings.mcp.service.label", locale = language.locale()).into_owned(),
+                    t!(
+                        "settings.mcp.service.description",
+                        locale = language.locale()
+                    )
+                    .into_owned(),
+                    self.render_mcp_switch(
+                        "mcp-enabled",
+                        t!("settings.mcp.service.toggle", locale = language.locale()).into_owned(),
+                        self.preferences.mcp_enabled,
+                        false,
+                        cx,
+                    ),
                     cx,
                 ),
-                cx,
-            ))
-            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
-            .child(self.render_setting_row(
-                language.text("settings.mcp.local_network.label"),
-                language.text("settings.mcp.local_network.description"),
-                self.render_mcp_switch(
-                    "mcp-local-network",
-                    language.text("settings.mcp.local_network.toggle"),
-                    self.preferences.mcp_local_network,
-                    true,
-                    cx,
-                ),
-                cx,
-            ))
+            )
             .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(
                 self.render_setting_row(
-                    language.text("settings.mcp.port.title"),
-                    language.text("settings.mcp.port.description"),
+                    t!(
+                        "settings.mcp.local_network.label",
+                        locale = language.locale()
+                    )
+                    .into_owned(),
+                    t!(
+                        "settings.mcp.local_network.description",
+                        locale = language.locale()
+                    )
+                    .into_owned(),
+                    self.render_mcp_switch(
+                        "mcp-local-network",
+                        t!(
+                            "settings.mcp.local_network.toggle",
+                            locale = language.locale()
+                        )
+                        .into_owned(),
+                        self.preferences.mcp_local_network,
+                        true,
+                        cx,
+                    ),
+                    cx,
+                ),
+            )
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
+            .child(
+                self.render_setting_row(
+                    t!("settings.mcp.port.title", locale = language.locale()).into_owned(),
+                    t!("settings.mcp.port.description", locale = language.locale()).into_owned(),
                     div()
                         .flex_none()
                         .flex()
@@ -348,7 +415,10 @@ impl Settings {
                         .child(
                             Input::new(&self.mcp_port_input)
                                 .w(ui_rem(164.0))
-                                .aria_label(language.text("settings.mcp.port.label")),
+                                .aria_label(
+                                    t!("settings.mcp.port.label", locale = language.locale())
+                                        .into_owned(),
+                                ),
                         )
                         .child(self.render_mcp_button(
                             "mcp-port-apply",
@@ -371,14 +441,14 @@ impl Settings {
             })
             .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(self.render_setting_row(
-                language.text("settings.mcp.endpoint.label"),
+                t!("settings.mcp.endpoint.label", locale = language.locale()).into_owned(),
                 status,
                 self.render_mcp_button(
                     "mcp-endpoint-copy",
                     if self.mcp_copied == Some("mcp-endpoint-copy") {
-                        language.text("settings.mcp.endpoint.copied")
+                        t!("settings.mcp.endpoint.copied", locale = language.locale()).into_owned()
                     } else {
-                        language.text("settings.mcp.endpoint.copy")
+                        t!("settings.mcp.endpoint.copy", locale = language.locale()).into_owned()
                     },
                     cx,
                     move |this, cx| {
@@ -395,7 +465,7 @@ impl Settings {
                     .pb(ui_rem(18.0))
                     .text_xs()
                     .text_color(theme.muted_foreground)
-                    .child(language.text("settings.mcp.scope_note")),
+                    .child(t!("settings.mcp.scope_note", locale = language.locale()).into_owned()),
             )
     }
 }

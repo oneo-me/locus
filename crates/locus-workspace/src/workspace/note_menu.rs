@@ -4,8 +4,9 @@ use gpui_component::{
     Disableable as _,
     menu::{DropdownMenu as _, PopupMenu, PopupMenuItem},
 };
-use locus_library::{LibraryNode, archive_note, set_note_graph_included, update_note_icon};
+use locus_library::{LibraryNode, archive_note, update_note_icon};
 use locus_ui::{Icon, toolbar_icon_button};
+use rust_i18n::t;
 
 impl Locus {
     pub(super) fn render_note_menu(
@@ -23,9 +24,9 @@ impl Locus {
         let pending = self.pending_note_action.as_deref() == Some(document_path.as_path());
         let disabled = self.pending_note_action.is_some();
         let trigger_label = if pending {
-            language.text("workspace.note_menu.updating")
+            t!("workspace.note_menu.updating", locale = language.locale()).into_owned()
         } else {
-            language.text("workspace.note_menu.title")
+            t!("workspace.note_menu.title", locale = language.locale()).into_owned()
         };
         let menu = self.note_popup_menu(node, cx);
         toolbar_icon_button(id, trigger_label.clone(), Icon::Ellipsis, theme)
@@ -45,17 +46,18 @@ impl Locus {
             .clone()
             .expect("note menus require a document");
         let language = self.language(cx);
-        let upload_label = language.text("workspace.note_menu.upload_icon");
-        let graph_label = language.text("workspace.note_menu.include_in_graph");
-        let archive_label = language.text("workspace.note_menu.archive");
-        let included_in_graph = node.included_in_graph;
+        let upload_label = t!(
+            "workspace.note_menu.upload_icon",
+            locale = language.locale()
+        )
+        .into_owned();
+        let archive_label =
+            t!("workspace.note_menu.archive", locale = language.locale()).into_owned();
         let disabled = self.pending_note_action.is_some();
         let locus = cx.weak_entity();
         move |menu, _, _| {
             let choose_locus = locus.clone();
             let choose_path = document_path.clone();
-            let graph_locus = locus.clone();
-            let graph_path = document_path.clone();
             let archive_locus = locus.clone();
             let archive_path = document_path.clone();
             menu.item(
@@ -65,20 +67,6 @@ impl Locus {
                     .on_click(move |_, _, cx| {
                         let _ = choose_locus.update(cx, |this, cx| {
                             this.choose_note_icon(choose_path.clone(), cx);
-                        });
-                    }),
-            )
-            .item(
-                PopupMenuItem::new(graph_label.clone())
-                    .checked(included_in_graph)
-                    .disabled(disabled)
-                    .on_click(move |_, _, cx| {
-                        let _ = graph_locus.update(cx, |this, cx| {
-                            this.set_note_graph_included_at_path(
-                                graph_path.clone(),
-                                !included_in_graph,
-                                cx,
-                            );
                         });
                     }),
             )
@@ -118,46 +106,17 @@ impl Locus {
                     Err(error) => {
                         eprintln!("{error}");
                         show_action_error(
-                            language.text("workspace.note_menu.archive_error"),
-                            language.text("common.file_action_error_detail"),
-                            language.text("common.ok"),
-                            window,
-                            cx,
-                        )
-                    }
-                }
-                cx.notify();
-            });
-        })
-        .detach();
-    }
-
-    pub(super) fn set_note_graph_included_at_path(
-        &mut self,
-        document_path: std::path::PathBuf,
-        included: bool,
-        cx: &mut Context<Self>,
-    ) {
-        if self.pending_note_action.is_some() {
-            return;
-        }
-        self.pending_note_action = Some(document_path.clone());
-        cx.notify();
-        let language = self.language(cx);
-        cx.spawn(async move |this, cx| {
-            let result = cx
-                .background_spawn(async move { set_note_graph_included(&document_path, included) })
-                .await;
-            let _ = this.update_in(cx, |this, window, cx| {
-                this.pending_note_action = None;
-                match result {
-                    Ok(()) => this.reload_library_projection(cx),
-                    Err(error) => {
-                        eprintln!("{error}");
-                        show_action_error(
-                            language.text("workspace.note_menu.update_graph_error"),
-                            language.text("common.file_action_error_detail"),
-                            language.text("common.ok"),
+                            t!(
+                                "workspace.note_menu.archive_error",
+                                locale = language.locale()
+                            )
+                            .into_owned(),
+                            t!(
+                                "common.file_action_error_detail",
+                                locale = language.locale()
+                            )
+                            .into_owned(),
+                            t!("common.ok", locale = language.locale()).into_owned(),
                             window,
                             cx,
                         )
@@ -183,7 +142,14 @@ impl Locus {
             files: true,
             directories: false,
             multiple: false,
-            prompt: Some(language.text("workspace.note_menu.choose_icon").into()),
+            prompt: Some(
+                t!(
+                    "workspace.note_menu.choose_icon",
+                    locale = language.locale()
+                )
+                .into_owned()
+                .into(),
+            ),
         });
         cx.spawn(async move |this, cx| {
             let selected = match receiver.await {
@@ -193,9 +159,17 @@ impl Locus {
                     eprintln!("{error}");
                     let _ = this.update_in(cx, |_, window, cx| {
                         show_action_error(
-                            language.text("workspace.note_menu.choose_icon_error"),
-                            language.text("common.file_action_error_detail"),
-                            language.text("common.ok"),
+                            t!(
+                                "workspace.note_menu.choose_icon_error",
+                                locale = language.locale()
+                            )
+                            .into_owned(),
+                            t!(
+                                "common.file_action_error_detail",
+                                locale = language.locale()
+                            )
+                            .into_owned(),
+                            t!("common.ok", locale = language.locale()).into_owned(),
                             window,
                             cx,
                         )
@@ -229,9 +203,17 @@ impl Locus {
                     Err(error) => {
                         eprintln!("{error}");
                         show_action_error(
-                            language.text("workspace.note_menu.update_icon_error"),
-                            language.text("common.file_action_error_detail"),
-                            language.text("common.ok"),
+                            t!(
+                                "workspace.note_menu.update_icon_error",
+                                locale = language.locale()
+                            )
+                            .into_owned(),
+                            t!(
+                                "common.file_action_error_detail",
+                                locale = language.locale()
+                            )
+                            .into_owned(),
+                            t!("common.ok", locale = language.locale()).into_owned(),
                             window,
                             cx,
                         )

@@ -3904,6 +3904,9 @@ dependencies = [
  "locus-preferences",
  "locus-ui",
  "oneo-gpui",
+ "rust-i18n",
+ "serde-saphyr 1.2.0",
+ "serde_json",
 ]
 
 [[package]]
@@ -3922,6 +3925,9 @@ dependencies = [
  "percent-encoding",
  "regex",
  "reqwest_client",
+ "rust-i18n",
+ "serde-saphyr 1.2.0",
+ "serde_json",
 ]
 
 [[package]]
@@ -3937,9 +3943,10 @@ dependencies = [
  "locus-settings",
  "locus-ui",
  "oneo-gpui",
- "oneo-gpui-graph",
  "oneo-gpui-terminal",
+ "rust-i18n",
  "serde",
+ "serde-saphyr 1.2.0",
  "serde_json",
  "tempfile",
  "unicode-segmentation",
