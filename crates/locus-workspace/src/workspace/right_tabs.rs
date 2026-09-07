@@ -1,4 +1,3 @@
-use super::canvas::CanvasError;
 use super::*;
 use crate::OpenCommandPalette;
 use gpui_kit::Focusable as _;
@@ -8,6 +7,7 @@ use gpui_kit::component::{
     button::{Button, ButtonVariants as _},
     tab::{Tab, TabBar},
 };
+use locus_canvas::{CanvasEvent, CanvasView};
 use rust_i18n::t;
 
 const RIGHT_TAB_MAX_WIDTH_REM: f32 = 16.0;
@@ -22,7 +22,12 @@ pub(super) enum RightTabContent {
         terminal: Entity<TerminalView>,
         _title_subscription: Subscription,
     },
-    Canvas(super::canvas::CanvasTab),
+    Canvas {
+        path: String,
+        title: String,
+        view: Entity<CanvasView>,
+        _subscription: Subscription,
+    },
 }
 
 impl RightTab {
@@ -36,7 +41,7 @@ impl RightTab {
     fn focus_handle(&self, cx: &App) -> FocusHandle {
         match &self.content {
             RightTabContent::Terminal { terminal, .. } => terminal.read(cx).focus_handle(cx),
-            RightTabContent::Canvas(canvas) => canvas.focus_handle(),
+            RightTabContent::Canvas { view, .. } => view.read(cx).focus_handle(cx),
         }
     }
 }
@@ -92,70 +97,58 @@ fn right_tab(label: String, icon: Icon, close: Button) -> Tab {
 }
 
 impl Locus {
-    pub(super) fn reload_canvases(&mut self, cx: &mut Context<Self>) {
-        let mut requests = Vec::new();
-        for tab in &mut self.right_tabs {
-            if let RightTabContent::Canvas(canvas) = &mut tab.content {
-                canvas.reload_generation = canvas.reload_generation.wrapping_add(1);
-                let file = self
-                    .library_tree
-                    .node(&canvas.path)
-                    .and_then(|node| node.document_path.clone());
-                requests.push((tab.id, canvas.reload_generation, file));
-            }
-        }
-        if requests.is_empty() {
-            return;
-        }
-        cx.spawn(async move |this, cx| {
-            let results = cx
-                .background_spawn(async move {
-                    requests
-                        .into_iter()
-                        .map(|(id, generation, file)| {
-                            let document = file
-                                .ok_or(CanvasError::Missing)
-                                .and_then(|file| {
-                                    load_note(&file)
-                                        .map_err(|error| CanvasError::Load(error.to_string()))
-                                })
-                                .map(|source| MarkdownDocument::parse(&source));
-                            (id, generation, document)
-                        })
-                        .collect::<Vec<_>>()
-                })
-                .await;
-            let _ = this.update(cx, |this, cx| {
-                for (id, generation, document) in results {
-                    if let Some(tab) = this.right_tabs.iter_mut().find(|tab| tab.id == id)
-                        && let RightTabContent::Canvas(canvas) = &mut tab.content
-                        && canvas.reload_generation == generation
-                    {
-                        canvas.refresh(document, cx);
-                    }
-                }
-                cx.notify();
-            });
-        })
-        .detach();
-    }
-
-    pub(super) fn open_canvas(
+    pub(super) fn reload_focused_canvas(
         &mut self,
-        path: &str,
-        title: &str,
-        source: &str,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) {
+    ) -> bool {
+        if !self.app_shell.workspace().visible(PanelSide::Right)
+            || self.app_shell.is_settings_open()
+        {
+            return false;
+        }
+        for tab in &self.right_tabs {
+            if Some(tab.id) == self.selected_right_tab_id
+                && let RightTabContent::Canvas { view, .. } = &tab.content
+                && view.read(cx).focus_handle(cx).is_focused(window)
+            {
+                view.update(cx, |view, cx| view.reload(cx));
+                return true;
+            }
+        }
+        false
+    }
+
+    pub(super) fn update_canvas_titles(&mut self) {
+        for tab in &mut self.right_tabs {
+            if let RightTabContent::Canvas { path, title, .. } = &mut tab.content
+                && let Some(node) = self.library_tree.node(path)
+            {
+                title.clone_from(&node.title);
+            }
+        }
+    }
+
+    pub(super) fn open_canvas(&mut self, path: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(node) = self
+            .library_tree
+            .node(path)
+            .filter(|node| node.canvas_path.is_some())
+            .cloned()
+        else {
+            return;
+        };
+        let Some(root) = self.current_library_path(cx).map(Path::to_path_buf) else {
+            return;
+        };
         if !self.app_shell.workspace().visible(PanelSide::Right) {
             self.toggle_panel(PanelSide::Right, window, cx);
         }
         if let Some(index) = self.right_tabs.iter().position(|tab| {
             matches!(&tab.content,
-            RightTabContent::Canvas(canvas) if canvas.matches(path, title, source))
+            RightTabContent::Canvas { path: owner, .. } if owner == path)
         }) {
-            if matches!(&self.right_tabs[index].content, RightTabContent::Canvas(canvas) if canvas.has_error())
+            if matches!(&self.right_tabs[index].content, RightTabContent::Canvas { view, .. } if view.read(cx).has_error())
             {
                 self.right_tabs.remove(index);
             } else {
@@ -165,55 +158,32 @@ impl Locus {
         }
         let id = self.next_right_tab_id;
         self.next_right_tab_id += 1;
-        let (sender, receiver) = async_channel::bounded(16);
-        let canvas = super::canvas::CanvasTab::new(path, title, source, sender, window, cx);
-        cx.spawn_in(window, async move |this, cx| {
-            while let Ok(command) = receiver.recv().await {
-                if this
-                    .update_in(cx, |this, window, cx| {
-                        if command == "loaded" {
-                            if let Some(tab) = this.right_tabs.iter_mut().find(|tab| tab.id == id)
-                                && let RightTabContent::Canvas(canvas) = &mut tab.content
-                            {
-                                canvas.finish_loading();
-                                cx.notify();
-                            }
-                            return;
-                        }
-                        if this.selected_right_tab_id != Some(id)
-                            || this.app_shell.is_settings_open()
-                            || !this.app_shell.workspace().visible(PanelSide::Right)
-                        {
-                            return;
-                        }
-                        if let Some(url) = command.strip_prefix("url:") {
-                            cx.open_url(url);
-                            return;
-                        }
-                        match command.as_str() {
-                            "w" => this.close_right_tab(id, window, cx),
-                            "e" => {
-                                this.open_command_palette_action(&OpenCommandPalette, window, cx)
-                            }
-                            "," => window.dispatch_action(Box::new(OpenSettings), cx),
-                            "focus" => {
-                                if let Some(tab) = this.right_tabs.iter().find(|tab| tab.id == id) {
-                                    window.focus(&tab.focus_handle(cx), cx);
-                                }
-                            }
-                            _ => {}
-                        }
-                    })
-                    .is_err()
-                {
-                    break;
-                }
+        let language = self.language(cx);
+        let view = cx.new(|cx| CanvasView::new(&root, &node.directory, language, window, cx));
+        let subscription = cx.subscribe_in(&view, window, move |this, _, event, window, cx| {
+            if this.selected_right_tab_id != Some(id)
+                || this.app_shell.is_settings_open()
+                || !this.app_shell.workspace().visible(PanelSide::Right)
+            {
+                return;
             }
-        })
-        .detach();
+            match event {
+                CanvasEvent::Close => this.close_right_tab(id, window, cx),
+                CanvasEvent::CommandPalette => {
+                    this.open_command_palette_action(&OpenCommandPalette, window, cx)
+                }
+                CanvasEvent::Settings => window.dispatch_action(Box::new(OpenSettings), cx),
+                CanvasEvent::OpenUrl(url) => cx.open_url(url),
+            }
+        });
         self.right_tabs.push(RightTab {
             id,
-            content: RightTabContent::Canvas(canvas),
+            content: RightTabContent::Canvas {
+                path: node.path,
+                title: node.title,
+                view,
+                _subscription: subscription,
+            },
         });
         self.select_right_tab(self.right_tabs.len() - 1, window, cx);
     }
@@ -225,19 +195,22 @@ impl Locus {
             && self.command_palette_state == super::command_palette::CommandPaletteState::Hidden
             && !window.has_active_dialog(cx)
             && !window.has_active_sheet(cx);
-        let dark = Theme::global(cx).is_dark();
+        let language = self.language(cx);
         for tab in &mut self.right_tabs {
-            if let RightTabContent::Canvas(canvas) = &mut tab.content {
-                canvas.synchronize(
-                    visible && self.selected_right_tab_id == Some(tab.id),
-                    dark,
-                    cx,
-                );
+            if let RightTabContent::Canvas { view, .. } = &mut tab.content {
+                view.update(cx, |view, cx| {
+                    view.synchronize(
+                        visible && self.selected_right_tab_id == Some(tab.id),
+                        language,
+                        cx,
+                    )
+                });
             }
         }
     }
 
     fn create_terminal(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let could_reload_current_note = self.can_reload_current_note();
         let preferences = self.settings.read(cx).preferences().clone();
         let Some(path) = preferences.library_path.clone() else {
             return;
@@ -264,6 +237,7 @@ impl Locus {
         self.selected_right_tab_id = Some(id);
         self.scroll_to_right_tab(id);
         window.focus(&focus, cx);
+        self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
     }
 
@@ -286,26 +260,30 @@ impl Locus {
     }
 
     fn select_right_tab(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let could_reload_current_note = self.can_reload_current_note();
         let Some(tab) = self.right_tabs.get_mut(index) else {
             return;
         };
-        if let RightTabContent::Canvas(canvas) = &mut tab.content {
-            canvas.request_focus();
+        if let RightTabContent::Canvas { view, .. } = &mut tab.content {
+            view.update(cx, |view, _| view.request_focus());
         }
         let focus = tab.focus_handle(cx);
         let id = tab.id;
         self.selected_right_tab_id = Some(id);
         self.scroll_to_right_tab(id);
         window.focus(&focus, cx);
+        self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
     }
 
     fn close_right_tab(&mut self, id: u64, window: &mut Window, cx: &mut Context<Self>) {
+        let could_reload_current_note = self.can_reload_current_note();
         let Some(index) = self.right_tabs.iter().position(|tab| tab.id == id) else {
             return;
         };
-        if let RightTabContent::Canvas(canvas) = &mut self.right_tabs[index].content {
-            canvas.synchronize(false, Theme::global(cx).is_dark(), cx);
+        if let RightTabContent::Canvas { view, .. } = &self.right_tabs[index].content {
+            let language = self.language(cx);
+            view.update(cx, |view, cx| view.synchronize(false, language, cx));
         }
         self.right_tabs.remove(index);
         let neighbor = self
@@ -322,8 +300,8 @@ impl Locus {
                 .iter_mut()
                 .find(|tab| tab.id == selected)
                 .expect("selected right tab exists");
-            if let RightTabContent::Canvas(canvas) = &mut tab.content {
-                canvas.request_focus();
+            if let RightTabContent::Canvas { view, .. } = &mut tab.content {
+                view.update(cx, |view, _| view.request_focus());
             }
             let focus = tab.focus_handle(cx);
             self.scroll_to_right_tab(selected);
@@ -334,6 +312,7 @@ impl Locus {
                 self.toggle_panel(PanelSide::Right, window, cx);
             }
         }
+        self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
     }
 
@@ -396,15 +375,15 @@ impl Locus {
                         close_terminal_label(language, id),
                         Icon::SquareTerminal,
                     ),
-                    RightTabContent::Canvas(canvas) => (
-                        canvas.label(),
+                    RightTabContent::Canvas { title, .. } => (
+                        title.clone(),
                         t!(
                             "workspace.canvas.close",
-                            title = canvas.label(),
+                            title = title,
                             locale = language.locale()
                         )
                         .into_owned(),
-                        Icon::File,
+                        Icon::Globe,
                     ),
                 };
                 right_tab(
@@ -474,7 +453,7 @@ impl Locus {
             .and_then(|id| self.right_tabs.iter().find(|tab| tab.id == id))
             .map(|tab| match &tab.content {
                 RightTabContent::Terminal { terminal, .. } => terminal.clone().into_any_element(),
-                RightTabContent::Canvas(canvas) => canvas.render(self.language(cx)),
+                RightTabContent::Canvas { view, .. } => view.clone().into_any_element(),
             });
 
         right_panel_body(content)

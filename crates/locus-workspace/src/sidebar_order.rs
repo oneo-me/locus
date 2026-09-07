@@ -134,6 +134,7 @@ mod tests {
             icon_image: None,
             summary: None,
             additional_metadata: Vec::new(),
+            canvas_path: None,
             attachments: Vec::new(),
             change: None,
             descendant_change: None,

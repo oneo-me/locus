@@ -8,6 +8,7 @@ publish = false
 rust-i18n.workspace = true
 async-channel.workspace = true
 gpui-kit.workspace = true
+locus-canvas.workspace = true
 locus-library.workspace = true
 locus-mcp.workspace = true
 locus-preferences.workspace = true
@@ -18,10 +19,6 @@ oneo-gpui-terminal.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 unicode-segmentation.workspace = true
-
-[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
-gpui-wry = "0.6"
-wry = { package = "lb-wry", version = "0.53.3" }
 
 [dev-dependencies]
 gpui-kit = { workspace = true, features = ["test-support"] }

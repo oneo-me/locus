@@ -1,0 +1,13 @@
+_version: 2
+canvas.empty:
+  en: Add HTML to canvas.html, then refresh this page.
+  zh-CN: 请在 canvas.html 中添加 HTML，然后刷新页面。
+canvas.read_error:
+  en: Could not read canvas.html. Check that the note and canvas files exist and are accessible, then refresh this page.
+  zh-CN: 无法读取 canvas.html。请确认笔记和画布文件存在且可访问，然后刷新页面。
+canvas.unsupported:
+  en: Canvas requires macOS or Windows.
+  zh-CN: 画布需要 macOS 或 Windows。
+canvas.error:
+  en: Could not open canvas
+  zh-CN: 无法打开画布

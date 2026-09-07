@@ -2,11 +2,9 @@ rust_i18n::i18n!("locales", fallback = "en");
 
 pub mod platform;
 
-mod canvas;
 mod link_icon;
 mod local_image;
 mod markdown_extensions;
-pub use canvas::CanvasMetadata;
 
 pub use gpui_kit::component::IconName as Icon;
 pub use local_image::document_icon_image;

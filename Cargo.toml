@@ -43,6 +43,7 @@ tokio = { version = "1", features = ["net", "rt-multi-thread"] }
 tokio-util = { version = "0.7", features = ["rt"] }
 unicode-segmentation = "1.12"
 
+locus-canvas = { path = "crates/locus-canvas" }
 locus-library = { path = "crates/locus-library" }
 locus-preferences = { path = "crates/locus-preferences" }
 locus-mcp = { path = "crates/locus-mcp" }

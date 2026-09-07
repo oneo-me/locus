@@ -3,12 +3,14 @@ mod process_environment;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+mod canvas;
 mod mutations;
 mod reference;
 mod repository;
 mod scanner;
 mod watcher;
 
+pub use canvas::{CANVAS_FILE, load_canvas};
 pub use mutations::{archive_note, restore_archived_note, update_note_icon};
 pub use reference::{LIBRARY_REFERENCE_SCHEME, library_reference_path};
 pub use scanner::load_note;
@@ -32,6 +34,7 @@ pub struct LibraryNode {
     pub path: String,
     pub directory: PathBuf,
     pub document_path: Option<PathBuf>,
+    pub canvas_path: Option<PathBuf>,
     pub title: String,
     pub icon: Option<String>,
     pub icon_image: Option<DocumentIcon>,
@@ -155,6 +158,73 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn canvas_is_discovered_without_being_read_or_counted_as_an_attachment() {
+        let library = TestLibrary::new();
+        let directory = library.0.join("note");
+        fs::create_dir(&directory).unwrap();
+        fs::write(directory.join("index.md"), "---\ntitle: Note\n---\nBody").unwrap();
+        fs::write(directory.join("file.txt"), "attachment").unwrap();
+        assert!(
+            LibraryTree::load(Some(&library.0))
+                .node("note")
+                .unwrap()
+                .canvas_path
+                .is_none()
+        );
+        let canvas = directory.join(CANVAS_FILE);
+        fs::write(&canvas, [0xff]).unwrap();
+        let tree = LibraryTree::load(Some(&library.0));
+        let node = tree.node("note").unwrap();
+        assert_eq!(node.canvas_path.as_deref(), Some(canvas.as_path()));
+        assert_eq!(
+            node.attachments
+                .iter()
+                .map(|file| file.name.as_str())
+                .collect::<Vec<_>>(),
+            ["file.txt"]
+        );
+        assert!(load_canvas(&library.0, &directory).is_err());
+        fs::write(&canvas, "<button>First</button>").unwrap();
+        assert_eq!(
+            load_canvas(&library.0, &directory).unwrap(),
+            "<button>First</button>"
+        );
+        fs::write(&canvas, "<button>Latest</button>").unwrap();
+        assert_eq!(
+            load_canvas(&library.0, &directory).unwrap(),
+            "<button>Latest</button>"
+        );
+        fs::remove_file(&canvas).unwrap();
+        assert!(
+            LibraryTree::load(Some(&library.0))
+                .node("note")
+                .unwrap()
+                .canvas_path
+                .is_none()
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn canvas_loading_rejects_symlinks_and_directories_outside_the_library() {
+        let library = TestLibrary::new();
+        let outside = TestLibrary::new();
+        let directory = library.0.join("note");
+        fs::create_dir(&directory).unwrap();
+        fs::write(directory.join("index.md"), "Note").unwrap();
+        fs::write(outside.0.join("index.md"), "Outside").unwrap();
+        fs::write(outside.0.join(CANVAS_FILE), "Outside canvas").unwrap();
+        assert!(load_canvas(&library.0, &outside.0).is_err());
+        std::os::unix::fs::symlink(outside.0.join(CANVAS_FILE), directory.join(CANVAS_FILE))
+            .unwrap();
+        assert!(load_canvas(&library.0, &directory).is_err());
+        let tree = LibraryTree::load(Some(&library.0));
+        let node = tree.node("note").unwrap();
+        assert!(node.canvas_path.is_none());
+        assert!(node.attachments.is_empty());
     }
 
     #[test]

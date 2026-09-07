@@ -78,15 +78,8 @@ impl Locus {
             .and_then(|note| note.document.as_ref())
             .filter(|document| !document.is_empty())
         {
-            let canvas_owner = locus.clone();
-            let canvas_path = node.path.clone();
             let extensions =
-                LocusMarkdownExtensions::new(&node.attachments, &self.library_tree, language)
-                    .on_open_canvas(move |title, source, window, cx| {
-                        let _ = canvas_owner.update(cx, |this, cx| {
-                            this.open_canvas(&canvas_path, title, source, window, cx);
-                        });
-                    });
+                LocusMarkdownExtensions::new(&node.attachments, &self.library_tree, language);
             let labels = MarkdownLabels {
                 copy_code: t!("workspace.note.copy_code", locale = language.locale())
                     .into_owned()
@@ -297,6 +290,23 @@ impl Locus {
                             ),
                     )
                     .child(self.fps_counter.clone())
+                    .when(node.canvas_path.is_some(), |bar| {
+                        let path = node.path.clone();
+                        bar.child(
+                            toolbar_icon_button(
+                                "open-note-canvas",
+                                t!("workspace.canvas.open", locale = language.locale())
+                                    .into_owned(),
+                                Icon::Globe,
+                                theme,
+                            )
+                            .on_click(cx.listener(
+                                move |this, _, window, cx| {
+                                    this.open_canvas(&path, window, cx);
+                                },
+                            )),
+                        )
+                    })
                     .child(copy_button)
                     .child(edit_button)
                     .child(open_directory_button)

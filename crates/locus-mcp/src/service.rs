@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 
 use locus_library::{LibraryNode, LibraryTree, load_note};
 
-const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path, call resolve_article directly; do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; sibling regular files are attachments. Do not recreate CRUD or attachment tools through MCP.";
+const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path, call resolve_article directly; do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; sibling regular files are attachments, excluding index.md, icon.png, and canvas.html. canvas.html holds the note canvas as an HTML fragment; see locus://standard/canvas for authoring. Do not recreate CRUD or attachment tools through MCP.";
 
 #[derive(Clone)]
 pub(super) struct LocusMcp {
@@ -364,6 +364,38 @@ fn create_excerpt(content: &str, query: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn canvas_is_excluded_from_discovery_attachment_counts() {
+        let root = tempfile::tempdir().unwrap();
+        let directory = root.path().join("note");
+        std::fs::create_dir(&directory).unwrap();
+        std::fs::write(directory.join("index.md"), "---\ntitle: Note\n---\nBody").unwrap();
+        std::fs::write(directory.join("canvas.html"), "<p>Canvas</p>").unwrap();
+        std::fs::write(directory.join("file.txt"), "Attachment").unwrap();
+        let service = LocusMcp::new(Some(root.path().to_path_buf()));
+        let resolved = service
+            .resolve_article_value(ResolveArticleRequest {
+                path: "note".into(),
+            })
+            .unwrap();
+        assert_eq!(resolved["attachmentCount"], 1);
+        let listed = service
+            .list_articles_value(ListArticlesRequest {
+                parent: String::new(),
+                cursor: None,
+                limit: None,
+            })
+            .unwrap();
+        assert_eq!(listed["articles"][0]["attachmentCount"], 1);
+        let searched = service
+            .search_articles_value(SearchArticlesRequest {
+                query: "Note".into(),
+                limit: None,
+            })
+            .unwrap();
+        assert_eq!(searched["results"][0]["attachmentCount"], 1);
+    }
 
     #[test]
     fn article_paths_accept_index_suffix_and_reject_traversal() {

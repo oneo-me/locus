@@ -25,6 +25,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new(COMMAND_PALETTE_KEY, OpenCommandPalette, None),
         KeyBinding::new(NEW_TERMINAL_KEY, NewTerminal, None),
         KeyBinding::new("secondary-r", ReloadCurrentNote, None),
+        KeyBinding::new("f5", ReloadCurrentNote, None),
     ]);
 }
 

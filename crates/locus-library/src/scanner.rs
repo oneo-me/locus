@@ -117,10 +117,17 @@ pub(super) fn scan_children(
         } else {
             Vec::new()
         };
+        let canvas_path = path.join(super::CANVAS_FILE);
+        let canvas_path = (has_document
+            && canvas_path
+                .symlink_metadata()
+                .is_ok_and(|metadata| metadata.file_type().is_file()))
+        .then_some(canvas_path);
         nodes.push(LibraryNode {
             path: relative_directory,
             directory: path,
             document_path: has_document.then_some(document_path),
+            canvas_path,
             title,
             icon: metadata.icon,
             icon_image,
@@ -180,6 +187,7 @@ fn read_attachments(directory: &Path) -> Result<Vec<Attachment>, std::io::Error>
             && !name.starts_with('.')
             && name != DOCUMENT_FILE
             && !name.eq_ignore_ascii_case(DOCUMENT_ICON_FILE)
+            && !name.eq_ignore_ascii_case(super::CANVAS_FILE)
         {
             let path = entry.path();
             let metadata = entry.metadata()?;

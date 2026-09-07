@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-mod canvas;
 mod command_palette;
 mod navigation;
 mod note;
@@ -514,7 +513,7 @@ impl Locus {
                         .map(|content| {
                             MarkdownDocument::parse_with_hidden_code_blocks(
                                 &content,
-                                &["gallery", "attachments", "canvas"],
+                                &["gallery", "attachments"],
                             )
                         })
                         .map_err(|error| error.to_string())
@@ -558,9 +557,11 @@ impl Locus {
     }
 
     fn change_library(&mut self, path: &Path, cx: &mut Context<Self>) {
+        let could_reload_current_note = self.can_reload_current_note();
+        let language = self.language(cx);
         for tab in &mut self.right_tabs {
-            if let right_tabs::RightTabContent::Canvas(canvas) = &mut tab.content {
-                canvas.synchronize(false, Theme::global(cx).is_dark(), cx);
+            if let right_tabs::RightTabContent::Canvas { view, .. } = &mut tab.content {
+                view.update(cx, |view, cx| view.synchronize(false, language, cx));
             }
         }
         self.right_tabs.retain(|tab| tab.terminal().is_some());
@@ -571,7 +572,6 @@ impl Locus {
         {
             self.selected_right_tab_id = self.right_tabs.first().map(|tab| tab.id);
         }
-        let could_reload_current_note = self.can_reload_current_note();
         self.library_watch_task = None;
         self.library_watcher = None;
         let (watcher, task, watcher_error) = Self::start_library_watcher(Some(path), cx);
@@ -624,7 +624,7 @@ impl Locus {
             settings.set_archive_state(tree.archived_notes.clone(), tree.error.clone(), cx);
         });
         self.library_tree = tree;
-        self.reload_canvases(cx);
+        self.update_canvas_titles();
         self.library_navigation
             .retain(|path| self.library_tree.node(path).is_some());
 
@@ -720,6 +720,9 @@ impl Locus {
             self.library_tree
                 .node(path)
                 .is_some_and(|node| node.document_path.is_some())
+        }) || self.right_tabs.iter().any(|tab| {
+            Some(tab.id) == self.selected_right_tab_id
+                && matches!(&tab.content, right_tabs::RightTabContent::Canvas { .. })
         })
     }
 
@@ -833,9 +836,12 @@ impl Locus {
     fn reload_current_note_action(
         &mut self,
         _: &ReloadCurrentNote,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.reload_focused_canvas(window, cx) {
+            return;
+        }
         self.begin_selected_note_load(cx);
     }
 

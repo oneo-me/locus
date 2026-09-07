@@ -70,8 +70,6 @@ pub enum Block {
     },
     Code {
         language: Option<String>,
-        title: String,
-        source_start: usize,
         code: String,
         selection_range: Range<usize>,
     },
@@ -93,11 +91,9 @@ pub enum Block {
 pub fn parse(source: &str) -> Vec<Block> {
     let options =
         Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS;
-    let (events, offsets): (Vec<_>, Vec<_>) =
-        Parser::new_ext(source, options).into_offset_iter().unzip();
+    let events = Parser::new_ext(source, options).collect::<Vec<_>>();
     let mut cursor = Cursor {
         events: &events,
-        offsets: &offsets,
         index: 0,
     };
     let mut blocks = Vec::new();
@@ -116,7 +112,6 @@ pub fn parse(source: &str) -> Vec<Block> {
 
 struct Cursor<'a, 'event> {
     events: &'a [Event<'event>],
-    offsets: &'a [Range<usize>],
     index: usize,
 }
 
@@ -139,10 +134,6 @@ impl<'event> Cursor<'_, 'event> {
 }
 
 fn parse_started_block(cursor: &mut Cursor) -> Vec<Block> {
-    let source_start = cursor
-        .offsets
-        .get(cursor.index)
-        .map_or(0, |range| range.start);
     let Some(Event::Start(tag)) = cursor.next() else {
         return Vec::new();
     };
@@ -153,14 +144,6 @@ fn parse_started_block(cursor: &mut Cursor) -> Vec<Block> {
             runs: pieces_into_runs(parse_inline_container(cursor)),
         }],
         Tag::CodeBlock(kind) => {
-            let title = match &kind {
-                CodeBlockKind::Fenced(info) => info
-                    .trim()
-                    .split_once(char::is_whitespace)
-                    .map(|(_, title)| title.trim().to_owned())
-                    .unwrap_or_default(),
-                CodeBlockKind::Indented => String::new(),
-            };
             let language = match kind {
                 CodeBlockKind::Fenced(info) => info
                     .split_whitespace()
@@ -182,8 +165,6 @@ fn parse_started_block(cursor: &mut Cursor) -> Vec<Block> {
             }
             vec![Block::Code {
                 language,
-                title,
-                source_start,
                 code,
                 selection_range: 0..0,
             }]
@@ -639,7 +620,6 @@ impl SelectionTextIndexer<'_> {
                 language,
                 code,
                 selection_range,
-                ..
             } => {
                 if language
                     .as_deref()

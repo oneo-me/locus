@@ -1,0 +1,21 @@
+[package]
+name = "locus-canvas"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-channel.workspace = true
+gpui-kit.workspace = true
+locus-library.workspace = true
+oneo-gpui.workspace = true
+rust-i18n.workspace = true
+
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+gpui-wry = "0.6"
+wry = { package = "lb-wry", version = "0.53.3" }
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+serde-saphyr.workspace = true
+tempfile.workspace = true
