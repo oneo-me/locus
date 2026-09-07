@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, ClipboardItem, CursorStyle, DispatchPhase, Element, ElementId,
     EntityId, FocusHandle, FontWeight, GlobalElementId, Hitbox, HitboxBehavior, Hsla,
     InspectorElementId, IntoElement, KeyDownEvent, LayoutId, MouseButton, MouseDownEvent,
@@ -293,7 +293,7 @@ pub struct SelectableText {
 pub(super) struct TextInteraction {
     pub selection: MarkdownSelection,
     pub focus: FocusHandle,
-    pub notify_entity: gpui::EntityId,
+    pub notify_entity: gpui_kit::EntityId,
     pub link_handler: Option<LinkHandler>,
 }
 
@@ -428,11 +428,11 @@ impl Element for SelectableText {
         None
     }
 
-    fn a11y_role(&self) -> Option<gpui::accesskit::Role> {
-        Some(gpui::accesskit::Role::Label)
+    fn a11y_role(&self) -> Option<gpui_kit::accesskit::Role> {
+        Some(gpui_kit::accesskit::Role::Label)
     }
 
-    fn write_a11y_info(&self, node: &mut gpui::accesskit::Node) {
+    fn write_a11y_info(&self, node: &mut gpui_kit::accesskit::Node) {
         node.set_value(self.value.to_string());
     }
 
@@ -450,7 +450,7 @@ impl Element for SelectableText {
         &mut self,
         _: Option<&GlobalElementId>,
         inspector_id: Option<&InspectorElementId>,
-        bounds: gpui::Bounds<gpui::Pixels>,
+        bounds: gpui_kit::Bounds<gpui_kit::Pixels>,
         state: &mut Self::RequestLayoutState,
         window: &mut Window,
         cx: &mut App,
@@ -464,7 +464,7 @@ impl Element for SelectableText {
         &mut self,
         _: Option<&GlobalElementId>,
         inspector_id: Option<&InspectorElementId>,
-        bounds: gpui::Bounds<gpui::Pixels>,
+        bounds: gpui_kit::Bounds<gpui_kit::Pixels>,
         _: &mut Self::RequestLayoutState,
         hitbox: &mut Self::PrepaintState,
         window: &mut Window,
@@ -581,7 +581,10 @@ impl Element for SelectableText {
     }
 }
 
-fn local_index(layout: &gpui::TextLayout, position: gpui::Point<gpui::Pixels>) -> Option<usize> {
+fn local_index(
+    layout: &gpui_kit::TextLayout,
+    position: gpui_kit::Point<gpui_kit::Pixels>,
+) -> Option<usize> {
     match layout.index_for_position(position) {
         Ok(index) | Err(index) => Some(index),
     }

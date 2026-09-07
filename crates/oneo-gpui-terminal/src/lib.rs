@@ -23,7 +23,7 @@ use alacritty_terminal::vte::ansi::{
     Color, CursorShape as AlacrittyCursorShape, CursorStyle as AlacrittyCursorStyle, NamedColor,
     Rgb,
 };
-use gpui::{
+use gpui_kit::{
     App, Bounds, ClipboardItem, Context, ElementInputHandler, EntityInputHandler, EventEmitter,
     FocusHandle, Focusable, FontStyle, FontWeight, Hsla, IntoElement, KeyDownEvent, Keystroke,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render, Rgba, Role,
@@ -31,7 +31,7 @@ use gpui::{
     UTF16Selection, UnderlineStyle, Window, canvas, div, font, point, prelude::*, px, rgb, size,
 };
 
-use gpui_component::Theme;
+use gpui_kit::component::Theme;
 
 mod color;
 mod config;
@@ -75,7 +75,7 @@ mod tests {
     use super::*;
     use alacritty_terminal::event::VoidListener;
     use alacritty_terminal::vte::ansi::Processor;
-    use gpui::Modifiers;
+    use gpui_kit::Modifiers;
 
     fn key(key: &str, key_char: Option<&str>, modifiers: Modifiers) -> Keystroke {
         Keystroke {

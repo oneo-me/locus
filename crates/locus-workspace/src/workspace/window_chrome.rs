@@ -1,5 +1,5 @@
 use super::*;
-use gpui_component::{
+use gpui_kit::component::{
     Disableable as _, Sizable as _,
     button::{Button, ButtonVariants as _},
 };
@@ -54,7 +54,7 @@ impl Locus {
         &self,
         side: PanelSide,
         cx: &mut Context<Self>,
-    ) -> gpui_component::button::Button {
+    ) -> gpui_kit::component::button::Button {
         let theme = Theme::global(cx).clone();
         let language = self.language(cx);
         let (id, label) = match side {
@@ -199,7 +199,7 @@ impl Locus {
     pub(super) fn render_settings_button(
         &self,
         cx: &mut Context<Self>,
-    ) -> gpui_component::button::Button {
+    ) -> gpui_kit::component::button::Button {
         let label = t!(
             "workspace.settings.open",
             locale = self.language(cx).locale()

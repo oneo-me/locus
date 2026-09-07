@@ -1,8 +1,8 @@
-use gpui::{
+use gpui_kit::component::{Root, Theme};
+use gpui_kit::{
     AppContext, Context, Entity, Render, SharedString, Subscription, Window, WindowOptions, div,
     prelude::*,
 };
-use gpui_component::{Root, Theme};
 use oneo_gpui_graph::{GraphData, GraphEdge, GraphEvent, GraphLabels, GraphNode, GraphView};
 
 struct Relationships {
@@ -58,8 +58,8 @@ impl Render for Relationships {
 }
 
 fn main() {
-    gpui_platform::application().run(|cx| {
-        gpui_component::init(cx);
+    gpui_kit::application().run(|cx| {
+        gpui_kit::init(cx);
         cx.open_window(WindowOptions::default(), |window, cx| {
             let view = cx.new(Relationships::new);
             cx.new(|cx| Root::new(view, window, cx))

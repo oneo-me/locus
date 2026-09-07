@@ -8,15 +8,15 @@ mod controls;
 mod mcp;
 mod pages;
 
-use gpui::{
-    App, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, FontWeight, MouseButton,
-    PathPromptOptions, Render, Role, Stateful, StatefulInteractiveElement, Window, div, prelude::*,
-    px,
-};
-use gpui_component::{
+use gpui_kit::component::{
     IndexPath,
     input::{Input, InputEvent, InputState},
     select::{SearchableVec, SelectEvent, SelectItem, SelectState},
+};
+use gpui_kit::{
+    App, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, FontWeight, MouseButton,
+    PathPromptOptions, Render, Role, Stateful, StatefulInteractiveElement, Window, div, prelude::*,
+    px,
 };
 use locus_library::ArchivedNote;
 use locus_mcp::McpServerState;
@@ -36,8 +36,8 @@ use oneo_gpui::{
     settings_sidebar_header,
 };
 
-fn ui_rem(value: f32) -> gpui::Rems {
-    gpui::rems(value / 16.0)
+fn ui_rem(value: f32) -> gpui_kit::Rems {
+    gpui_kit::rems(value / 16.0)
 }
 
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 720.0;
@@ -217,14 +217,14 @@ enum FontKind {
 
 #[derive(Clone)]
 struct ChoiceItem {
-    label: gpui::SharedString,
+    label: gpui_kit::SharedString,
     value: Choice,
 }
 
 impl SelectItem for ChoiceItem {
     type Value = Choice;
 
-    fn title(&self) -> gpui::SharedString {
+    fn title(&self) -> gpui_kit::SharedString {
         self.label.clone()
     }
 
@@ -235,17 +235,17 @@ impl SelectItem for ChoiceItem {
 
 #[derive(Clone)]
 struct FontItem {
-    family: gpui::SharedString,
+    family: gpui_kit::SharedString,
 }
 
 impl SelectItem for FontItem {
-    type Value = gpui::SharedString;
+    type Value = gpui_kit::SharedString;
 
-    fn title(&self) -> gpui::SharedString {
+    fn title(&self) -> gpui_kit::SharedString {
         self.family.clone()
     }
 
-    fn display_title(&self) -> Option<gpui::AnyElement> {
+    fn display_title(&self) -> Option<gpui_kit::AnyElement> {
         Some(
             div()
                 .min_w_0()
@@ -715,7 +715,7 @@ impl Settings {
         &self,
         id: &'static str,
         cx: &mut Context<Self>,
-    ) -> Stateful<gpui::Div> {
+    ) -> Stateful<gpui_kit::Div> {
         div()
             .id(id)
             .h_full()
@@ -747,7 +747,7 @@ impl Settings {
             }))
     }
 
-    fn render_sidebar_header(&self, fullscreen: bool, cx: &mut Context<Self>) -> gpui::Div {
+    fn render_sidebar_header(&self, fullscreen: bool, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let back_label = t!("settings.navigation.back", locale = language.locale()).into_owned();
@@ -767,7 +767,7 @@ impl Settings {
         )
     }
 
-    fn render_sidebar(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
+    fn render_sidebar(&self, cx: &mut Context<Self>) -> Stateful<gpui_kit::Div> {
         let language = self.preferences.language;
         let theme = Theme::global(cx).clone();
         div()
@@ -846,7 +846,7 @@ impl Settings {
         icon_kind: Icon,
         page: SettingsPage,
         cx: &mut Context<Self>,
-    ) -> gpui_component::button::Button {
+    ) -> gpui_kit::component::button::Button {
         let selected = self.page == page;
         settings_navigation_row(id, label, icon_kind, selected, cx).on_click(cx.listener(
             move |this, _, window, cx| {
@@ -855,7 +855,7 @@ impl Settings {
         ))
     }
 
-    fn render_content_header(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
+    fn render_content_header(&self, cx: &mut Context<Self>) -> Stateful<gpui_kit::Div> {
         let title = self.page.label(self.preferences.language);
         self.render_titlebar_drag_region("settings-content-titlebar", cx)
             .size_full()
@@ -867,7 +867,7 @@ impl Settings {
             .child(title)
     }
 
-    fn render_content(&self, cx: &mut Context<Self>) -> Stateful<gpui::Div> {
+    fn render_content(&self, cx: &mut Context<Self>) -> Stateful<gpui_kit::Div> {
         let theme = Theme::global(cx).clone();
         let content = match self.page {
             SettingsPage::General => self.render_general(cx),

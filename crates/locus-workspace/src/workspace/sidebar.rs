@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
-use gpui::{
+use gpui_kit::{
     Animation, AnimationExt, AnyElement, Div, DragMoveEvent, FontWeight, ObjectFit, Role,
     StatefulInteractiveElement, StyledImage, Transformation, div, ease_out_quint, prelude::*, px,
     radians,
@@ -11,7 +11,7 @@ use gpui::{
 
 use super::Locus;
 use crate::sidebar_order::reorder_siblings;
-use gpui_component::{menu::ContextMenuExt as _, scroll::Scrollbar};
+use gpui_kit::component::{menu::ContextMenuExt as _, scroll::Scrollbar};
 use locus_library::{ChangeStatus, LibraryNode};
 use locus_preferences::localization::Language;
 use locus_preferences::theme::Theme;
@@ -32,7 +32,7 @@ impl Locus {
     pub(super) fn render_library_sidebar(
         &self,
         language: Language,
-        cx: &mut gpui::Context<Self>,
+        cx: &mut gpui_kit::Context<Self>,
     ) -> Div {
         let theme = Theme::global(cx).clone();
         if self.settings.read(cx).preferences().library_path.is_none() {
@@ -130,7 +130,7 @@ impl Locus {
         &self,
         node: &LibraryNode,
         depth: usize,
-        cx: &mut gpui::Context<Self>,
+        cx: &mut gpui_kit::Context<Self>,
     ) -> AnyElement {
         let theme = Theme::global(cx).clone();
         let has_children = !node.children.is_empty();
@@ -152,7 +152,7 @@ impl Locus {
             .min_w_0()
             .flex_1()
             .child(library_node_content(node, expanded, theme.clone()))
-            .on_drag(drag, |_, _, _, cx| cx.new(|_| gpui::Empty))
+            .on_drag(drag, |_, _, _, cx| cx.new(|_| gpui_kit::Empty))
             .on_click(cx.listener(move |this, _, _, cx| {
                 this.select_library_node(select_path.clone(), has_children, cx);
                 cx.stop_propagation();
@@ -253,7 +253,7 @@ impl Locus {
         dragged_path: &str,
         target_path: &str,
         parent: &str,
-        cx: &mut gpui::Context<Self>,
+        cx: &mut gpui_kit::Context<Self>,
     ) {
         let Some(previous_layout) = sibling_layout(
             &self.library_tree.nodes,
@@ -285,14 +285,18 @@ impl Locus {
         &mut self,
         path: String,
         has_children: bool,
-        cx: &mut gpui::Context<Self>,
+        cx: &mut gpui_kit::Context<Self>,
     ) {
         self.library_navigation
             .visit(self.selected_library_node.as_deref(), &path);
         self.apply_library_selection(path, has_children, cx);
     }
 
-    pub(super) fn restore_library_selection(&mut self, path: String, cx: &mut gpui::Context<Self>) {
+    pub(super) fn restore_library_selection(
+        &mut self,
+        path: String,
+        cx: &mut gpui_kit::Context<Self>,
+    ) {
         let Some(has_children) = self
             .library_tree
             .node(&path)
@@ -309,7 +313,7 @@ impl Locus {
         &mut self,
         path: String,
         has_children: bool,
-        cx: &mut gpui::Context<Self>,
+        cx: &mut gpui_kit::Context<Self>,
     ) {
         let could_reload_current_note = self.can_reload_current_note();
         let selection_changed = self.selected_library_node.as_deref() != Some(path.as_str());
@@ -319,7 +323,7 @@ impl Locus {
             self.note_code_blocks.reset();
             self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
             self.note_scroll_handle
-                .set_offset(gpui::point(gpui::px(0.0), gpui::px(0.0)));
+                .set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0)));
         }
         self.selected_library_node = Some(path.clone());
         self.expanded_library_nodes = expanded_paths_for_selection(&path, has_children);
@@ -546,7 +550,7 @@ fn emoji_icon(icon: String) -> AnyElement {
         .into_any_element()
 }
 
-fn sidebar_message(message: impl Into<gpui::SharedString>, color: gpui::Hsla) -> Div {
+fn sidebar_message(message: impl Into<gpui_kit::SharedString>, color: gpui_kit::Hsla) -> Div {
     div()
         .p_4()
         .text_sm()

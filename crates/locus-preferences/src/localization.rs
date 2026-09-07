@@ -26,6 +26,6 @@ impl Language {
     }
 
     pub fn activate(self) {
-        gpui_component::set_locale(self.locale());
+        gpui_kit::component::set_locale(self.locale());
     }
 }

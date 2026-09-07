@@ -2,16 +2,16 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use gpui::{
+use gpui_kit::component::ElementExt as _;
+use gpui_kit::{
     Bounds, Context, EventEmitter, FocusHandle, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, PinchEvent, Pixels, Point, Render, Role, ScrollDelta, ScrollWheelEvent, Task,
     Window, canvas, div, prelude::*,
 };
-use gpui_component::ElementExt as _;
 
 use crate::paint::*;
 use crate::{GraphData, GraphLabels, GraphNodeColors};
-use gpui_component::Theme;
+use gpui_kit::component::Theme;
 
 use crate::layout::{
     ALPHA_MIN, GraphPoint, LayoutEdge, advance_layout, advance_layout_scaled, graph_bounds,
@@ -707,7 +707,7 @@ fn wheel_zoom_factor(delta: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{point, px};
+    use gpui_kit::{point, px};
 
     #[test]
     fn gpui_positive_wheel_delta_zooms_in() {
@@ -736,8 +736,8 @@ mod tests {
         .unwrap()
     }
 
-    #[gpui::test]
-    fn latest_snapshot_wins_and_replacement_resets_the_viewport(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn latest_snapshot_wins_and_replacement_resets_the_viewport(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let view = cx.new(|cx| GraphView::new(single_node(true), GraphLabels::default(), cx));
         view.update(cx, |view, cx| {
@@ -770,16 +770,18 @@ mod tests {
         view.read_with(cx, |view, _| assert!(view.visible_graph.nodes.is_empty()));
     }
 
-    #[gpui::test]
-    fn pointer_activation_dragging_and_focus_use_the_public_event(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn pointer_activation_dragging_and_focus_use_the_public_event(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         cx.update(|cx| {
-            gpui_component::init(cx);
+            gpui_kit::init(cx);
             cx.set_reduce_motion(true);
         });
         let view = cx.new(|cx| GraphView::new(single_node(true), GraphLabels::default(), cx));
         let mut events = cx.events(&view);
-        let (_, cx) =
-            cx.add_window_view(|window, cx| gpui_component::Root::new(view.clone(), window, cx));
+        let (_, cx) = cx
+            .add_window_view(|window, cx| gpui_kit::component::Root::new(view.clone(), window, cx));
         cx.run_until_parked();
         cx.update(|window, cx| window.draw(cx).clear(cx));
         let center = view.read_with(cx, |view, _| {
@@ -837,17 +839,17 @@ mod tests {
         assert!(events.try_recv().is_err());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn zoom_is_anchored_and_clamped_and_pending_updates_survive_input(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         cx.update(|cx| {
-            gpui_component::init(cx);
+            gpui_kit::init(cx);
             cx.set_reduce_motion(true);
         });
         let view = cx.new(|cx| GraphView::new(single_node(true), GraphLabels::default(), cx));
-        let (_, cx) =
-            cx.add_window_view(|window, cx| gpui_component::Root::new(view.clone(), window, cx));
+        let (_, cx) = cx
+            .add_window_view(|window, cx| gpui_kit::component::Root::new(view.clone(), window, cx));
         cx.run_until_parked();
         cx.update(|window, cx| window.draw(cx).clear(cx));
         let center = view.read_with(cx, |view, _| {

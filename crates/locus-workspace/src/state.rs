@@ -1,6 +1,6 @@
 use oneo_gpui::SettingsStore;
 
-use gpui::{Bounds, Pixels, px, size};
+use gpui_kit::{Bounds, Pixels, px, size};
 use serde::{Deserialize, Serialize};
 
 use locus_preferences::config::{
@@ -120,7 +120,7 @@ mod tests {
             fps_counter_visible: true,
             selected_library_node: Some("projects/locus".to_owned()),
             window_bounds: Some(Bounds::new(
-                gpui::point(px(120.0), px(80.0)),
+                gpui_kit::point(px(120.0), px(80.0)),
                 size(px(1280.0), px(960.0)),
             )),
         };
@@ -140,7 +140,7 @@ mod tests {
             right_sidebar_width: 1200.0,
             selected_library_node: Some("../outside".to_owned()),
             window_bounds: Some(Bounds::new(
-                gpui::point(px(f32::NAN), px(40.0)),
+                gpui_kit::point(px(f32::NAN), px(40.0)),
                 size(px(800.0), px(600.0)),
             )),
             ..InterfaceState::default()
@@ -171,7 +171,7 @@ mod tests {
     fn undersized_window_bounds_are_normalized() {
         let mut state = InterfaceState {
             window_bounds: Some(Bounds::new(
-                gpui::point(px(120.0), px(80.0)),
+                gpui_kit::point(px(120.0), px(80.0)),
                 size(px(800.0), px(600.0)),
             )),
             ..InterfaceState::default()

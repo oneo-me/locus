@@ -1,6 +1,6 @@
-use gpui::{App, Hsla, Window, WindowAppearance, px, rgb};
-pub use gpui_component::Theme;
-use gpui_component::ThemeMode;
+pub use gpui_kit::component::Theme;
+use gpui_kit::component::ThemeMode;
+use gpui_kit::{App, Hsla, Window, WindowAppearance, px, rgb};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

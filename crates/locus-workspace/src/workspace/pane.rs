@@ -1,4 +1,4 @@
-use gpui::{AnyElement, App, Context, Entity, Render, WeakEntity, Window, div, prelude::*};
+use gpui_kit::{AnyElement, App, Context, Entity, Render, WeakEntity, Window, div, prelude::*};
 
 use super::Locus;
 

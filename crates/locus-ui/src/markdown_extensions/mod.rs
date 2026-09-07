@@ -2,7 +2,7 @@ mod attachment_views;
 mod extension_syntax;
 mod thumbnail;
 
-use gpui::{AnyElement, ObjectFit, StyledImage, div, prelude::*, px};
+use gpui_kit::{AnyElement, ObjectFit, StyledImage, div, prelude::*, px};
 use oneo_gpui_markdown::{MarkdownExtensions, generic_link_icon};
 
 use crate::{document_icon_image, link_icon::remote_link_icon};

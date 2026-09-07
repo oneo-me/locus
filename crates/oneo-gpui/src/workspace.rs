@@ -1,9 +1,9 @@
 use std::time::{Duration, Instant};
 
-use gpui::{
+use gpui_kit::component::{IconName, Theme};
+use gpui_kit::{
     AnyElement, Div, Hsla, Stateful, Window, div, ease_out_quint, prelude::*, px, transparent_black,
 };
-use gpui_component::{IconName, Theme};
 
 use crate::toolbar_icon_button;
 
@@ -469,7 +469,7 @@ impl PanelWindowResize {
         let viewport_size = window.viewport_size();
         let target_width = self.target_window_width(panel_width);
         if !frame.window_resize_complete {
-            window.resize(gpui::size(px(target_width), viewport_size.height));
+            window.resize(gpui_kit::size(px(target_width), viewport_size.height));
             window.request_animation_frame();
         }
         frame
@@ -580,10 +580,10 @@ fn fitted_panel_widths(
 
 pub fn panel_toggle_button(
     id: &'static str,
-    label: impl Into<gpui::SharedString>,
+    label: impl Into<gpui_kit::SharedString>,
     side: PanelSide,
     theme: &Theme,
-) -> gpui_component::button::Button {
+) -> gpui_kit::component::button::Button {
     let icon = match side {
         PanelSide::Left => IconName::PanelLeft,
         PanelSide::Right => IconName::PanelRight,
@@ -903,11 +903,15 @@ mod tests {
         assert!(sidebar_divider_visible(520.0));
     }
 
-    #[gpui::test]
-    fn left_sidebar_can_reopen_after_returning_from_settings(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn left_sidebar_can_reopen_after_returning_from_settings(cx: &mut gpui_kit::TestAppContext) {
         struct Workspace;
-        impl gpui::Render for Workspace {
-            fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+        impl gpui_kit::Render for Workspace {
+            fn render(
+                &mut self,
+                _: &mut Window,
+                _: &mut gpui_kit::Context<Self>,
+            ) -> impl IntoElement {
                 div()
             }
         }

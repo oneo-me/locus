@@ -1,4 +1,4 @@
-use gpui::{Div, ElementId, MouseButton, Stateful, WindowControlArea, div, prelude::*};
+use gpui_kit::{Div, ElementId, MouseButton, Stateful, WindowControlArea, div, prelude::*};
 
 pub fn titlebar_drag_region(id: impl Into<ElementId>) -> Stateful<Div> {
     div()

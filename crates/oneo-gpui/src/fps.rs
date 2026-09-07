@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
-use gpui::{Context, Render, SharedString, Window, div, prelude::*, px};
-use gpui_component::Theme;
+use gpui_kit::component::Theme;
+use gpui_kit::{Context, Render, SharedString, Window, div, prelude::*, px};
 
 pub struct FpsCounter {
     visible: bool,

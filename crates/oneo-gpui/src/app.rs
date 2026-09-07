@@ -9,8 +9,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use anyhow::Result;
-use gpui::{App, Application, AssetSource, WindowHandle};
-use gpui_component::Root;
+use gpui_kit::component::Root;
+use gpui_kit::{App, Application, AssetSource, WindowHandle};
 
 use crate::window::{close_main_window, init_reduce_motion};
 use menu::bind_app_shell_keys;
@@ -30,7 +30,7 @@ impl Default for AppShell {
 impl AppShell {
     pub fn new() -> Self {
         Self {
-            application: gpui_platform::application().with_assets(gpui_component_assets::Assets),
+            application: gpui_kit::application().with_assets(gpui_kit::assets::Assets),
             left_panel_toggle: true,
         }
     }
@@ -57,7 +57,7 @@ impl AppShell {
             cx.activate(true);
         });
         self.application.run(move |cx| {
-            gpui_component::init(cx);
+            gpui_kit::init(cx);
             init_reduce_motion(cx);
             bind_app_shell_keys(cx, self.left_panel_toggle);
             bind_window_actions(cx);
@@ -96,7 +96,7 @@ fn bind_window_actions(cx: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{Context, IntoElement, Render, TestAppContext, Window, div};
+    use gpui_kit::{Context, IntoElement, Render, TestAppContext, Window, div};
 
     struct Content;
 
@@ -106,7 +106,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn fullscreen_shortcut_works_without_product_action_handlers(cx: &mut TestAppContext) {
         cx.update(|cx| {
             bind_app_shell_keys(cx, true);

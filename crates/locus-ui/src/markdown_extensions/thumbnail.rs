@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, UNIX_EPOCH};
 
-use gpui::{
+use gpui_kit::{
     Animation, AnimationExt, AnyElement, App, Asset, ImageCacheError, ObjectFit, RenderImage,
     SharedString, StyledImage, Transformation, Window, div, img, percentage, prelude::*, px,
 };

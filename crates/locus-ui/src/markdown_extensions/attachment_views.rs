@@ -1,7 +1,7 @@
 use rust_i18n::t;
 use std::path::Path;
 
-use gpui::{
+use gpui_kit::{
     AnyElement, App, KeyDownEvent, MouseButton, PromptLevel, SharedString, Window, div, prelude::*,
     px,
 };
@@ -167,7 +167,7 @@ pub fn render_thumbnail_image(attachment: &Attachment, theme: Theme) -> AnyEleme
         .into_any_element()
 }
 
-fn attachment_name(name: String) -> gpui::Div {
+fn attachment_name(name: String) -> gpui_kit::Div {
     let (start, end) = split_filename(&name);
     if end.is_empty() {
         return div().min_w_0().flex_1().truncate().child(start);
@@ -235,7 +235,11 @@ fn extension_error(title: String, message: String, theme: Theme) -> AnyElement {
         .gap(px(3.0))
         .text_size(px(13.0))
         .line_height(px(19.0))
-        .child(div().font_weight(gpui::FontWeight::SEMIBOLD).child(title))
+        .child(
+            div()
+                .font_weight(gpui_kit::FontWeight::SEMIBOLD)
+                .child(title),
+        )
         .child(div().text_color(theme.muted_foreground).child(message))
         .into_any_element()
 }

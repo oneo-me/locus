@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::fmt;
 
-use gpui::Hsla;
+use gpui_kit::Hsla;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GraphNodeColors {

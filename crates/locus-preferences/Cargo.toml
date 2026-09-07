@@ -6,8 +6,7 @@ publish = false
 
 [dependencies]
 oneo-gpui.workspace = true
-gpui.workspace = true
-gpui-component.workspace = true
+gpui-kit.workspace = true
 oneo-gpui-terminal.workspace = true
 rust-i18n.workspace = true
 serde.workspace = true

@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 default = ["shell"]
-shell = ["dep:gpui", "dep:gpui-component", "dep:gpui-component-assets", "dep:gpui_platform", "dep:objc2", "dep:objc2-app-kit", "dep:raw-window-handle"]
+shell = ["dep:gpui-kit", "dep:objc2", "dep:objc2-app-kit", "dep:raw-window-handle"]
 
 [[example]]
 name = "minimal"
@@ -17,13 +17,10 @@ dirs.workspace = true
 serde.workspace = true
 tempfile.workspace = true
 toml.workspace = true
-gpui_platform = { workspace = true, optional = true }
-gpui-component-assets = { workspace = true, optional = true }
-gpui = { workspace = true, optional = true }
-gpui-component = { workspace = true, optional = true }
+gpui-kit = { workspace = true, optional = true }
 
 [dev-dependencies]
-gpui = { workspace = true, features = ["test-support"] }
+gpui-kit = { workspace = true, features = ["test-support"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { version = "0.6", optional = true }

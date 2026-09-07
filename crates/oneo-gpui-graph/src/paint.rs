@@ -1,5 +1,5 @@
 use crate::layout::GraphPoint;
-use gpui::{
+use gpui_kit::{
     BorderStyle, Bounds, ColorSpace, Edges, FontWeight, Hsla, PathBuilder, Pixels, Point,
     SharedString, TextAlign, TextRun, Window, font, hsla, linear_color_stop, linear_gradient,
     point, px, quad, size,
@@ -53,10 +53,10 @@ pub(super) struct PaintSnapshot {
 
 pub(super) fn paint_graph(
     snapshot: &PaintSnapshot,
-    labels: &[Option<gpui::ShapedLine>],
+    labels: &[Option<gpui_kit::ShapedLine>],
     bounds: Bounds<Pixels>,
     window: &mut Window,
-    cx: &mut gpui::App,
+    cx: &mut gpui_kit::App,
 ) {
     for edge in &snapshot.edges {
         let Some(source) = snapshot.nodes.get(edge.source) else {
@@ -211,7 +211,7 @@ pub(super) fn shape_graph_label(
     font_family: SharedString,
     color: Hsla,
     window: &mut Window,
-) -> gpui::ShapedLine {
+) -> gpui_kit::ShapedLine {
     let shape = |value: SharedString| {
         let mut label_font = font(font_family.clone());
         label_font.weight = FontWeight::NORMAL;

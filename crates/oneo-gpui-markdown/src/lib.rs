@@ -6,7 +6,7 @@ mod selection;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use gpui::{
+use gpui_kit::{
     AnyElement, ClipboardItem, FocusHandle, FontStyle, FontWeight, KeyDownEvent, MouseButton,
     ObjectFit, Role, SharedString, StrikethroughStyle, StyledImage, StyledText, TextRun,
     Transformation, UnderlineStyle, div, font, img, linear_color_stop, linear_gradient, prelude::*,
@@ -20,7 +20,7 @@ pub use self::parser::{
 };
 use self::selection::{LinkHandler, SelectableText};
 pub use self::selection::{MarkdownSelection, SelectableCodeStyle, selectable_code_text};
-use gpui_component::{
+use gpui_kit::component::{
     Icon, IconName, Sizable as _, Theme,
     button::{Button, ButtonVariants as _},
 };
@@ -100,7 +100,7 @@ pub struct Markdown<'a> {
     selection: MarkdownSelection,
     code_blocks: MarkdownCodeBlocks,
     focus: FocusHandle,
-    notify_entity: gpui::EntityId,
+    notify_entity: gpui_kit::EntityId,
     link_handler: Option<LinkHandler>,
 }
 
@@ -124,7 +124,7 @@ impl<'a> Markdown<'a> {
         presentation: MarkdownPresentation<'a>,
         selection: MarkdownSelection,
         focus: FocusHandle,
-        notify_entity: gpui::EntityId,
+        notify_entity: gpui_kit::EntityId,
     ) -> Self {
         let MarkdownPresentation {
             theme,
@@ -161,7 +161,7 @@ impl<'a> Markdown<'a> {
 
     pub fn with_link_handler(
         mut self,
-        handler: impl Fn(&str, &mut gpui::Window, &mut gpui::App) -> bool + 'static,
+        handler: impl Fn(&str, &mut gpui_kit::Window, &mut gpui_kit::App) -> bool + 'static,
     ) -> Self {
         self.link_handler = Some(std::rc::Rc::new(handler));
         self
@@ -258,7 +258,7 @@ struct RenderContext<'a> {
     selection: MarkdownSelection,
     code_blocks: MarkdownCodeBlocks,
     focus: FocusHandle,
-    notify_entity: gpui::EntityId,
+    notify_entity: gpui_kit::EntityId,
     link_handler: Option<LinkHandler>,
     next_text_id: usize,
     next_code_id: usize,
@@ -1046,7 +1046,7 @@ impl RenderContext<'_> {
         align: &[TableAlign],
         weight: FontWeight,
         divider: bool,
-    ) -> gpui::Div {
+    ) -> gpui_kit::Div {
         let mut row = div()
             .w_full()
             .min_w_0()
@@ -1098,8 +1098,8 @@ fn image_path(base_directory: &Path, url: &str) -> PathBuf {
 fn activate_link(
     url: &str,
     handler: Option<&LinkHandler>,
-    window: &mut gpui::Window,
-    cx: &mut gpui::App,
+    window: &mut gpui_kit::Window,
+    cx: &mut gpui_kit::App,
 ) {
     if !handler.is_some_and(|handler| handler(url, window, cx)) {
         cx.open_url(url);
@@ -1188,11 +1188,11 @@ mod tests {
         focus: FocusHandle,
     }
 
-    impl gpui::Render for CodeBlockView {
+    impl gpui_kit::Render for CodeBlockView {
         fn render(
             &mut self,
-            _: &mut gpui::Window,
-            cx: &mut gpui::Context<Self>,
+            _: &mut gpui_kit::Window,
+            cx: &mut gpui_kit::Context<Self>,
         ) -> impl IntoElement {
             Markdown::new(
                 &self.document,
@@ -1220,9 +1220,9 @@ mod tests {
         }
     }
 
-    #[gpui::test]
-    fn plain_code_blocks_preserve_text_selection_and_overflow(cx: &mut gpui::TestAppContext) {
-        cx.update(gpui_component::init);
+    #[gpui_kit::test]
+    fn plain_code_blocks_preserve_text_selection_and_overflow(cx: &mut gpui_kit::TestAppContext) {
+        cx.update(gpui_kit::component::init);
         let code = "    let 中文 = \"**literal** ~~~~ <tag>\";\n".repeat(30);
         let document = MarkdownDocument::parse(&format!("Before\n\n```rust\n{code}```\n\nAfter"));
         let selection = MarkdownSelection::default();

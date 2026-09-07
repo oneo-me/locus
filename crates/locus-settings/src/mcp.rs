@@ -1,5 +1,5 @@
 use super::*;
-use gpui_component::{
+use gpui_kit::component::{
     Disableable as _, Sizable as _,
     button::{Button, ButtonVariants as _},
     switch::Switch,
@@ -196,7 +196,7 @@ impl Settings {
         client: McpClient,
         code: String,
         cx: &mut Context<Self>,
-    ) -> gpui::Div {
+    ) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let key = client.copy_key();
@@ -285,7 +285,7 @@ impl Settings {
             )
     }
 
-    fn render_mcp_guide(&self, endpoint: &str, cx: &mut Context<Self>) -> gpui::Div {
+    fn render_mcp_guide(&self, endpoint: &str, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let client = self.mcp_client;
@@ -329,7 +329,7 @@ impl Settings {
             .child(self.render_mcp_code(client, client.code(endpoint), cx))
     }
 
-    pub(super) fn render_mcp(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn render_mcp(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let endpoint = self.mcp_server_state.endpoint().to_owned();

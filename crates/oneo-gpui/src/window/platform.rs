@@ -1,14 +1,14 @@
-use gpui::Window;
+use gpui_kit::Window;
 
 #[cfg(target_os = "macos")]
-pub fn init_reduce_motion(cx: &mut gpui::App) {
+pub fn init_reduce_motion(cx: &mut gpui_kit::App) {
     use objc2_app_kit::NSWorkspace;
 
     cx.set_reduce_motion(NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion());
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn init_reduce_motion(_: &mut gpui::App) {}
+pub fn init_reduce_motion(_: &mut gpui_kit::App) {}
 
 #[cfg(target_os = "macos")]
 pub fn configure_sidebar_material(window: &Window) -> Result<(), &'static str> {
@@ -62,7 +62,7 @@ pub fn configure_sidebar_material(_: &Window) -> Result<(), &'static str> {
 }
 
 #[cfg(any(debug_assertions, target_os = "macos"))]
-pub fn configure_main_window_close_behavior(window: &Window, cx: &gpui::App) {
+pub fn configure_main_window_close_behavior(window: &Window, cx: &gpui_kit::App) {
     window.on_window_should_close(cx, |window, cx| {
         close_main_window(window, cx);
         cfg!(debug_assertions)
@@ -70,9 +70,9 @@ pub fn configure_main_window_close_behavior(window: &Window, cx: &gpui::App) {
 }
 
 #[cfg(all(not(debug_assertions), not(target_os = "macos")))]
-pub fn configure_main_window_close_behavior(_: &Window, _: &gpui::App) {}
+pub fn configure_main_window_close_behavior(_: &Window, _: &gpui_kit::App) {}
 
-pub fn close_main_window(window: &mut Window, cx: &mut gpui::App) {
+pub fn close_main_window(window: &mut Window, cx: &mut gpui_kit::App) {
     #[cfg(debug_assertions)]
     {
         let _ = window;

@@ -2,12 +2,12 @@ use super::note_atmosphere::{
     AtmosphereBackdrop, AtmosphereShape, NoteAtmosphere, Pattern, derive_note_atmosphere,
 };
 use super::{Locus, SelectedNote};
-use gpui::{
+use gpui_kit::component::scroll::Scrollbar;
+use gpui_kit::{
     AnyElement, BorderStyle, Bounds, Div, Edges, FontWeight, MouseButton, ObjectFit, PathBuilder,
     Pixels, ScrollHandle, Window, canvas, div, linear_color_stop, linear_gradient, point,
     prelude::*, px, quad, transparent_black,
 };
-use gpui_component::scroll::Scrollbar;
 use locus_library::{LIBRARY_REFERENCE_SCHEME, LibraryNode, library_reference_path};
 use locus_preferences::theme::Theme;
 use locus_ui::{
@@ -27,7 +27,7 @@ impl Locus {
         selected_note: Option<&SelectedNote>,
         left_control_clearance: f32,
         content_width: f32,
-        cx: &mut gpui::Context<Self>,
+        cx: &mut gpui_kit::Context<Self>,
     ) -> Div {
         let theme = Theme::global(cx).clone();
         let preferences = self.settings.read(cx).preferences();
@@ -178,7 +178,7 @@ impl Locus {
             )
     }
 
-    pub(super) fn open_library_reference(&mut self, path: &str, cx: &mut gpui::Context<Self>) {
+    pub(super) fn open_library_reference(&mut self, path: &str, cx: &mut gpui_kit::Context<Self>) {
         let Some((has_children, is_note)) = self
             .library_tree
             .node(path)
@@ -200,7 +200,7 @@ impl Locus {
         left_control_clearance: f32,
         content_width: f32,
         theme: &Theme,
-        cx: &mut gpui::Context<Self>,
+        cx: &mut gpui_kit::Context<Self>,
     ) -> impl IntoElement + use<> {
         let copied = self.copied_library_node.as_deref() == Some(node.path.as_str());
         let language = self.language(cx);
@@ -314,7 +314,7 @@ fn note_titlebar_padding(
     (left, right)
 }
 
-fn note_metadata(node: &LibraryNode, panel_color: gpui::Hsla, theme: &Theme) -> Option<Div> {
+fn note_metadata(node: &LibraryNode, panel_color: gpui_kit::Hsla, theme: &Theme) -> Option<Div> {
     let summary = node
         .summary
         .as_ref()
@@ -394,8 +394,8 @@ fn format_yaml_metadata_value(value: &serde_json::Value) -> String {
 
 fn note_titlebar_background(
     handle: ScrollHandle,
-    color: gpui::Hsla,
-    border_color: gpui::Hsla,
+    color: gpui_kit::Hsla,
+    border_color: gpui_kit::Hsla,
 ) -> impl IntoElement {
     canvas(
         |_, _, _| (),
@@ -625,7 +625,10 @@ fn paint_shape(
             let (x, y) = map(cx - radius, cy - radius);
             let r = radius * scale;
             window.paint_quad(quad(
-                Bounds::new(point(px(x), px(y)), gpui::size(px(r * 2.0), px(r * 2.0))),
+                Bounds::new(
+                    point(px(x), px(y)),
+                    gpui_kit::size(px(r * 2.0), px(r * 2.0)),
+                ),
                 px(r),
                 color.opacity(alpha),
                 Pixels::ZERO,
@@ -643,7 +646,10 @@ fn paint_shape(
             let (x, y) = map(cx - radius, cy - radius);
             let r = radius * scale;
             window.paint_quad(quad(
-                Bounds::new(point(px(x), px(y)), gpui::size(px(r * 2.0), px(r * 2.0))),
+                Bounds::new(
+                    point(px(x), px(y)),
+                    gpui_kit::size(px(r * 2.0), px(r * 2.0)),
+                ),
                 px(r),
                 transparent_black(),
                 px(stroke_width * scale),

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use gpui::SharedString;
+use gpui_kit::SharedString;
 
 #[derive(Clone)]
 pub struct GraphLabels {

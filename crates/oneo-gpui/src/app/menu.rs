@@ -1,4 +1,4 @@
-use gpui::{App, KeyBinding, Menu, MenuItem, SharedString, actions};
+use gpui_kit::{App, KeyBinding, Menu, MenuItem, SharedString, actions};
 
 actions!(
     app_shell,
@@ -169,8 +169,8 @@ pub fn set_app_shell_menus(cx: &mut App, menus: AppShellMenus) {
 mod tests {
     use super::*;
 
-    #[gpui::test]
-    fn mandatory_left_sidebar_has_no_close_shortcut(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn mandatory_left_sidebar_has_no_close_shortcut(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| {
             bind_app_shell_keys(cx, false);
             let bindings = cx.key_bindings();
@@ -181,8 +181,8 @@ mod tests {
         });
     }
 
-    #[gpui::test]
-    fn optional_left_sidebar_keeps_its_shortcut(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn optional_left_sidebar_keeps_its_shortcut(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| {
             bind_app_shell_keys(cx, true);
             assert_eq!(

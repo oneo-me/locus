@@ -1,6 +1,6 @@
 mod platform;
 
-use gpui::{AppContext, px, size};
+use gpui_kit::{AppContext, px, size};
 use locus_preferences::Preferences;
 use locus_preferences::config::{WINDOW_HEIGHT, WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH, WINDOW_WIDTH};
 use locus_workspace::{InterfaceState, Locus, set_app_menus};

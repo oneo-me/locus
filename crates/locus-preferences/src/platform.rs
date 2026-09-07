@@ -1,4 +1,4 @@
-use gpui::Window;
+use gpui_kit::Window;
 
 #[cfg(target_os = "macos")]
 pub fn set_window_appearance(window: &Window, dark: Option<bool>) {

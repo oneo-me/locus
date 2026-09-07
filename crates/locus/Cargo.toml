@@ -5,7 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-gpui.workspace = true
+gpui-kit.workspace = true
 oneo-gpui.workspace = true
 locus-preferences.workspace = true
 locus-workspace.workspace = true

@@ -1,5 +1,5 @@
 use super::*;
-use gpui_component::{
+use gpui_kit::component::{
     Sizable as _,
     button::{Button, ButtonVariants as _},
 };
@@ -8,11 +8,11 @@ use rust_i18n::t;
 impl Settings {
     pub(super) fn render_setting_row(
         &self,
-        title: impl Into<gpui::SharedString>,
-        description: impl Into<gpui::SharedString>,
+        title: impl Into<gpui_kit::SharedString>,
+        description: impl Into<gpui_kit::SharedString>,
         control: impl IntoElement,
         cx: &App,
-    ) -> gpui::Div {
+    ) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let title = title.into();
         let description = description.into();
@@ -41,7 +41,7 @@ impl Settings {
             .child(control)
     }
 
-    pub(super) fn render_general(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn render_general(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let path = self
@@ -57,7 +57,7 @@ impl Settings {
         let path_control = div()
             .min_w_0()
             .flex_none()
-            .w(gpui::rems(SETTINGS_CONTROL_WIDTH_REM))
+            .w(gpui_kit::rems(SETTINGS_CONTROL_WIDTH_REM))
             .h(ui_rem(32.0))
             .rounded(ui_rem(7.0))
             .border_1()
@@ -116,7 +116,7 @@ impl Settings {
             ))
     }
 
-    pub(super) fn render_appearance(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn render_appearance(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         div()
@@ -229,7 +229,7 @@ impl Settings {
             )
     }
 
-    pub(super) fn render_terminal(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn render_terminal(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         div()
@@ -279,7 +279,7 @@ impl Settings {
                     .into_owned(),
                     Input::new(&self.terminal_shell_input)
                         .flex_none()
-                        .w(gpui::rems(SETTINGS_CONTROL_WIDTH_REM))
+                        .w(gpui_kit::rems(SETTINGS_CONTROL_WIDTH_REM))
                         .aria_label(
                             t!("settings.terminal.shell.label", locale = language.locale())
                                 .into_owned(),
@@ -302,7 +302,7 @@ impl Settings {
                     .into_owned(),
                     Input::new(&self.terminal_command_input)
                         .flex_none()
-                        .w(gpui::rems(SETTINGS_CONTROL_WIDTH_REM))
+                        .w(gpui_kit::rems(SETTINGS_CONTROL_WIDTH_REM))
                         .aria_label(
                             t!(
                                 "settings.terminal.command.label",

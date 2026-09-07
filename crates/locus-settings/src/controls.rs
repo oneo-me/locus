@@ -1,4 +1,4 @@
-use gpui_component::select::Select;
+use gpui_kit::component::select::Select;
 use rust_i18n::t;
 
 use super::*;
@@ -41,7 +41,7 @@ impl Settings {
         _cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let language = self.preferences.language;
-        div().w(gpui::rems(7.25)).flex_none().child(
+        div().w(gpui_kit::rems(7.25)).flex_none().child(
             Select::new(&self.choice_selects[&dropdown])
                 .w_full()
                 .accessibility_label(dropdown.label(language)),
@@ -54,10 +54,10 @@ impl Settings {
         _cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let language = self.preferences.language;
-        div().w(gpui::rems(20.5)).flex_none().child(
+        div().w(gpui_kit::rems(20.5)).flex_none().child(
             Select::new(&self.font_selects[&kind])
                 .w_full()
-                .menu_width(gpui::rems(20.5))
+                .menu_width(gpui_kit::rems(20.5))
                 .search_placeholder(
                     t!("settings.font.search", locale = language.locale()).into_owned(),
                 )

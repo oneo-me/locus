@@ -1,8 +1,8 @@
-use gpui::{ElementId, SharedString, Styled as _, px};
-use gpui_component::{
+use gpui_kit::component::{
     IconName, Sizable as _, Theme,
     button::{Button, ButtonVariants as _},
 };
+use gpui_kit::{ElementId, SharedString, Styled as _, px};
 
 use crate::TITLEBAR_CONTROL_SIZE;
 

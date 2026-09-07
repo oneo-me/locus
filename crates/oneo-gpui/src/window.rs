@@ -12,12 +12,12 @@ pub(crate) use platform::{
 };
 
 use anyhow::{Result, anyhow};
-use gpui::{
+use gpui_kit::component::{Root, Theme};
+use gpui_kit::{
     App, AppContext, Bounds, Entity, Pixels, Render, SharedString, Size, Styled as _,
     TitlebarOptions, Window, WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowOptions,
     point, px, size,
 };
-use gpui_component::{Root, Theme};
 
 const MIN_VISIBLE_TITLEBAR_WIDTH: f32 = 120.0;
 const MIN_VISIBLE_TITLEBAR_HEIGHT: f32 = 24.0;

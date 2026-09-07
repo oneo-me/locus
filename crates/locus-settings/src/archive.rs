@@ -1,5 +1,5 @@
-use gpui::{AnyElement, ObjectFit, StyledImage};
-use gpui_component::{Disableable as _, Sizable as _, button::Button};
+use gpui_kit::component::{Disableable as _, Sizable as _, button::Button};
+use gpui_kit::{AnyElement, ObjectFit, StyledImage};
 use rust_i18n::t;
 
 use super::*;
@@ -54,7 +54,7 @@ impl Settings {
         .detach();
     }
 
-    pub(super) fn render_archive(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn render_archive(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         if self.preferences.library_path.is_none() {
@@ -110,7 +110,7 @@ impl Settings {
         })
     }
 
-    fn render_archive_row(&self, note: ArchivedNote, cx: &mut Context<Self>) -> gpui::Div {
+    fn render_archive_row(&self, note: ArchivedNote, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.language;
         let pending = self.restoring_archive.as_ref() == Some(&note.document_path);
@@ -209,7 +209,10 @@ fn emoji_icon(value: String) -> AnyElement {
         .into_any_element()
 }
 
-fn archive_message(message: impl Into<gpui::SharedString>, color: gpui::Hsla) -> gpui::Div {
+fn archive_message(
+    message: impl Into<gpui_kit::SharedString>,
+    color: gpui_kit::Hsla,
+) -> gpui_kit::Div {
     div()
         .w_full()
         .self_stretch()

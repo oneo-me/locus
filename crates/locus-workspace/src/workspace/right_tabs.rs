@@ -1,6 +1,6 @@
 use super::*;
-use gpui::Focusable as _;
-use gpui_component::{
+use gpui_kit::Focusable as _;
+use gpui_kit::component::{
     Sizable as _,
     button::{Button, ButtonVariants as _},
     tab::{Tab, TabBar},
@@ -61,7 +61,7 @@ fn terminal_tab(label: String, close: Button) -> Tab {
         .px_2()
         .aria_label(label.clone())
         .label(label)
-        .prefix(gpui_component::Icon::new(Icon::SquareTerminal))
+        .prefix(gpui_kit::component::Icon::new(Icon::SquareTerminal))
         .suffix(close)
 }
 
@@ -319,7 +319,7 @@ mod tests {
 #[cfg(test)]
 mod layout_tests {
     use super::*;
-    use gpui::{TestAppContext, VisualTestContext};
+    use gpui_kit::{TestAppContext, VisualTestContext};
 
     struct TabPreview {
         title: String,
@@ -359,9 +359,9 @@ mod layout_tests {
         cx.update(|window, cx| window.draw(cx).clear(cx));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn terminal_titles_resize_without_clipping_the_close_button(cx: &mut TestAppContext) {
-        cx.update(gpui_component::init);
+        cx.update(gpui_kit::component::init);
         let (preview, cx) = cx.add_window_view(|_, _| TabPreview {
             title: "zsh".to_owned(),
         });
@@ -398,9 +398,9 @@ mod layout_tests {
             assert!(tab.size.width <= max_width);
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn selected_underline_is_painted_on_the_header_bottom(cx: &mut TestAppContext) {
-        cx.update(gpui_component::init);
+        cx.update(gpui_kit::component::init);
         let (preview, cx) = cx.add_window_view(|_, _| TabPreview {
             title: "π - Notes".to_owned(),
         });
@@ -409,7 +409,7 @@ mod layout_tests {
         draw(cx);
         let header = cx.debug_bounds("tab-header").expect("header is rendered");
         cx.update(|window, cx| {
-            let background: gpui::Background = Theme::global(cx).primary.into();
+            let background: gpui_kit::Background = Theme::global(cx).primary.into();
             let underline = window
                 .painted_quads()
                 .into_iter()

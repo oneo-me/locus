@@ -1,12 +1,12 @@
 use super::TITLEBAR_HEIGHT;
-use gpui::{AnyElement, App, Div, FontWeight, Hsla, SharedString, div, prelude::*, px, rems};
-use gpui_component::{Icon, IconName, Sizable as _, Theme};
-use gpui_component::{
+use gpui_kit::component::{Icon, IconName, Sizable as _, Theme};
+use gpui_kit::component::{
     Selectable as _,
     button::{Button, ButtonCustomVariant, ButtonVariants as _},
 };
+use gpui_kit::{AnyElement, App, Div, FontWeight, Hsla, SharedString, div, prelude::*, px, rems};
 
-fn ui_rem(value: f32) -> gpui::Rems {
+fn ui_rem(value: f32) -> gpui_kit::Rems {
     rems(value / 16.0)
 }
 
@@ -230,7 +230,7 @@ impl SettingsShell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{Context, Render, TestAppContext, Window};
+    use gpui_kit::{Context, Render, TestAppContext, Window};
 
     struct SettingsNavigationHarness;
 
@@ -255,16 +255,16 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn settings_navigation_rows_render_in_all_selection_states(cx: &mut TestAppContext) {
-        cx.update(gpui_component::init);
+        cx.update(gpui_kit::component::init);
         let (_, cx) = cx.add_window_view(|_, _| SettingsNavigationHarness);
         cx.update(|window, cx| window.draw(cx).clear(cx));
     }
 
     struct SettingsReturnHarness {
         returned: bool,
-        workspace_focus: gpui::FocusHandle,
+        workspace_focus: gpui_kit::FocusHandle,
     }
 
     impl Render for SettingsReturnHarness {
@@ -296,15 +296,15 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn settings_header_return_activates_and_restores_workspace_focus(cx: &mut TestAppContext) {
-        cx.update(gpui_component::init);
+        cx.update(gpui_kit::component::init);
         let (view, cx) = cx.add_window_view(|_, cx| SettingsReturnHarness {
             returned: false,
             workspace_focus: cx.focus_handle(),
         });
         cx.update(|window, cx| window.draw(cx).clear(cx));
-        cx.simulate_click(gpui::point(px(40.0), px(24.0)), Default::default());
+        cx.simulate_click(gpui_kit::point(px(40.0), px(24.0)), Default::default());
         cx.update(|window, cx| {
             assert!(view.read(cx).returned);
             assert!(view.read(cx).workspace_focus.is_focused(window));

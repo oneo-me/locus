@@ -1,4 +1,4 @@
-use gpui::{Hsla, hsla};
+use gpui_kit::{Hsla, hsla};
 
 #[derive(Clone)]
 pub(super) struct NoteAtmosphere {

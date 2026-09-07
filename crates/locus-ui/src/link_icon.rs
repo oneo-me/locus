@@ -5,7 +5,7 @@ use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use futures::AsyncReadExt;
-use gpui::{App, Asset, ImageCacheError, Img, RenderImage, Window, img};
+use gpui_kit::{App, Asset, ImageCacheError, Img, RenderImage, Window, img};
 use http_client::{AsyncBody, HttpClient, Url};
 use regex::Regex;
 use reqwest_client::ReqwestClient;
@@ -84,7 +84,7 @@ pub fn remote_link_icon(url: &str) -> Img {
 
 async fn fetch_icon_on_runtime(
     page: String,
-    renderer: gpui::SvgRenderer,
+    renderer: gpui_kit::SvgRenderer,
 ) -> Result<(Url, Vec<u8>, Arc<RenderImage>), String> {
     let client = LINK_HTTP_CLIENT.clone();
     reqwest_client::runtime()
@@ -96,7 +96,7 @@ async fn fetch_icon_on_runtime(
 async fn fetch_icon(
     client: &dyn HttpClient,
     page: &str,
-    renderer: gpui::SvgRenderer,
+    renderer: gpui_kit::SvgRenderer,
 ) -> Result<(Url, Vec<u8>, Arc<RenderImage>), String> {
     let page_url = Url::parse(page).map_err(|error| error.to_string())?;
     if !matches!(page_url.scheme(), "http" | "https") {
@@ -186,7 +186,7 @@ fn icon_url(page_url: &Url, html: &str) -> Option<Url> {
     None
 }
 
-fn prepare_icon(bytes: &[u8], renderer: gpui::SvgRenderer) -> Result<Arc<RenderImage>, String> {
+fn prepare_icon(bytes: &[u8], renderer: gpui_kit::SvgRenderer) -> Result<Arc<RenderImage>, String> {
     let Ok(format) = image::guess_format(bytes) else {
         return renderer
             .render_single_frame(bytes, 1.0)
@@ -390,7 +390,8 @@ mod tests {
         image::DynamicImage::new_rgba8(128, 64)
             .write_to(&mut source, image::ImageFormat::Png)
             .unwrap();
-        let icon = prepare_icon(source.get_ref(), gpui::SvgRenderer::new(Arc::new(()))).unwrap();
+        let icon =
+            prepare_icon(source.get_ref(), gpui_kit::SvgRenderer::new(Arc::new(()))).unwrap();
         let size = icon.size(0);
         assert_eq!((size.width.0, size.height.0), (64, 32));
     }
@@ -453,7 +454,7 @@ mod tests {
         let page = format!("http://127.0.0.1:{port}/page");
         let (icon_url, _, icon) = futures::executor::block_on(fetch_icon_on_runtime(
             page,
-            gpui::SvgRenderer::new(Arc::new(())),
+            gpui_kit::SvgRenderer::new(Arc::new(())),
         ))
         .unwrap();
 

@@ -7,8 +7,7 @@ publish = false
 [dependencies]
 rust-i18n.workspace = true
 async-channel.workspace = true
-gpui.workspace = true
-gpui-component.workspace = true
+gpui-kit.workspace = true
 locus-library.workspace = true
 locus-mcp.workspace = true
 locus-preferences.workspace = true
@@ -21,6 +20,6 @@ serde_json.workspace = true
 unicode-segmentation.workspace = true
 
 [dev-dependencies]
-gpui = { workspace = true, features = ["test-support"] }
+gpui-kit = { workspace = true, features = ["test-support"] }
 serde-saphyr.workspace = true
 tempfile.workspace = true

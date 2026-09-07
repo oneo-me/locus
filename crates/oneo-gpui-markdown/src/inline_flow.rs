@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use gpui::{
+use gpui_kit::{
     AnyElement, App, AvailableSpace, Bounds, Element, ElementId, GlobalElementId,
     InspectorElementId, IntoElement, LayoutId, LineFragment, Pixels, SharedString, Size,
     StyledText, TextRun, TextStyle, WhiteSpace, Window, point, px, size,
@@ -29,7 +29,7 @@ pub(super) enum InlineFlowItem {
 pub(super) struct InlineFlow {
     id: ElementId,
     items: Vec<InlineFlowItem>,
-    selection_color: gpui::Hsla,
+    selection_color: gpui_kit::Hsla,
     interaction: TextInteraction,
 }
 
@@ -48,13 +48,13 @@ struct InlineFlowLayout {
 enum PositionedFragment {
     Text {
         item_index: usize,
-        origin: gpui::Point<Pixels>,
+        origin: gpui_kit::Point<Pixels>,
         size: Size<Pixels>,
         source_range: Range<usize>,
     },
     Element {
         item_index: usize,
-        origin: gpui::Point<Pixels>,
+        origin: gpui_kit::Point<Pixels>,
         size: Size<Pixels>,
     },
 }
@@ -75,7 +75,7 @@ impl InlineFlow {
     pub(super) fn new(
         id: impl Into<ElementId>,
         items: Vec<InlineFlowItem>,
-        selection_color: gpui::Hsla,
+        selection_color: gpui_kit::Hsla,
         interaction: TextInteraction,
     ) -> Self {
         Self {
@@ -578,17 +578,17 @@ fn slice_ranges(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{FontWeight, Render, TestAppContext, div, font, px};
+    use gpui_kit::{FontWeight, Render, TestAppContext, div, font, px};
 
     struct TestView;
 
     impl Render for TestView {
-        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+        fn render(&mut self, _: &mut Window, _: &mut gpui_kit::Context<Self>) -> impl IntoElement {
             div()
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn wrapped_lines_fit_their_actual_text_runs(cx: &mut TestAppContext) {
         let window = cx.open_window(size(px(100.0), px(100.0)), |_, _| TestView);
         window

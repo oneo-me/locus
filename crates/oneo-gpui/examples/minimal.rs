@@ -1,5 +1,5 @@
-use gpui::{AppContext, Context, IntoElement, ParentElement, Render, Styled, Window, div};
-use gpui_component::{ActiveTheme, v_flex};
+use gpui_kit::component::{ActiveTheme, v_flex};
+use gpui_kit::{AppContext, Context, IntoElement, ParentElement, Render, Styled, Window, div};
 use oneo_gpui::{AppShell, SettingsStore, ShellWindow, titlebar_drag_region};
 use serde::{Deserialize, Serialize};
 

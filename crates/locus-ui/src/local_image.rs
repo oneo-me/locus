@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use gpui::{
+use gpui_kit::{
     App, Asset, ImageAssetLoader, ImageCacheError, Img, RenderImage, Resource, Window, img,
 };
 

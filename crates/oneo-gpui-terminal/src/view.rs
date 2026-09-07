@@ -99,14 +99,14 @@ impl TerminalPalette {
                 dark,
                 background: rgb(0x171717).into(),
                 foreground: rgb(0xe5e5e5).into(),
-                selection: gpui::hsla(214.0 / 360.0, 0.75, 0.55, 0.34),
+                selection: gpui_kit::hsla(214.0 / 360.0, 0.75, 0.55, 0.34),
             }
         } else {
             Self {
                 dark,
                 background: rgb(0xfafafa).into(),
                 foreground: rgb(0x242424).into(),
-                selection: gpui::hsla(214.0 / 360.0, 0.75, 0.55, 0.24),
+                selection: gpui_kit::hsla(214.0 / 360.0, 0.75, 0.55, 0.24),
             }
         }
     }

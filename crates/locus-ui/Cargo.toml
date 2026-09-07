@@ -7,8 +7,7 @@ publish = false
 [dependencies]
 rust-i18n.workspace = true
 futures.workspace = true
-gpui.workspace = true
-gpui-component.workspace = true
+gpui-kit.workspace = true
 http_client.workspace = true
 image.workspace = true
 locus-library.workspace = true

@@ -1,8 +1,10 @@
 use super::Locus;
-use gpui::{Anchor, AnyElement, App, Context, PathPromptOptions, PromptLevel, Window, prelude::*};
-use gpui_component::{
+use gpui_kit::component::{
     Disableable as _,
     menu::{DropdownMenu as _, PopupMenu, PopupMenuItem},
+};
+use gpui_kit::{
+    Anchor, AnyElement, App, Context, PathPromptOptions, PromptLevel, Window, prelude::*,
 };
 use locus_library::{LibraryNode, archive_note, update_note_icon};
 use locus_ui::{Icon, toolbar_icon_button};
@@ -62,7 +64,7 @@ impl Locus {
             let archive_path = document_path.clone();
             menu.item(
                 PopupMenuItem::new(upload_label.clone())
-                    .icon(gpui_component::Icon::new(Icon::ArrowUp))
+                    .icon(gpui_kit::component::Icon::new(Icon::ArrowUp))
                     .disabled(disabled)
                     .on_click(move |_, _, cx| {
                         let _ = choose_locus.update(cx, |this, cx| {
@@ -73,7 +75,7 @@ impl Locus {
             .separator()
             .item(
                 PopupMenuItem::new(archive_label.clone())
-                    .icon(gpui_component::Icon::new(Icon::Inbox))
+                    .icon(gpui_kit::component::Icon::new(Icon::Inbox))
                     .disabled(disabled)
                     .on_click(move |_, _, cx| {
                         let _ = archive_locus.update(cx, |this, cx| {

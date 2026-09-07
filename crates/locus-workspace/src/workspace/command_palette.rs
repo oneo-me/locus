@@ -1,16 +1,16 @@
 use rust_i18n::t;
 use std::time::Duration;
 
-use gpui::{
+use gpui_kit::component::{
+    ActiveTheme as _, Disableable as _, FocusTrapElement as _, WindowExt as _,
+    command::{Command, CommandGroup, CommandItem},
+    h_flex,
+};
+use gpui_kit::{
     Animation, AnimationExt as _, AnyElement, ClipboardItem, Context, Focusable as _,
     InteractiveElement as _, IntoElement as _, MouseButton, MouseDownEvent, ObjectFit,
     ParentElement as _, Role, SharedString, StatefulInteractiveElement as _, Styled as _,
     StyledImage as _, Window, div, ease_in_out, px,
-};
-use gpui_component::{
-    ActiveTheme as _, Disableable as _, FocusTrapElement as _, WindowExt as _,
-    command::{Command, CommandGroup, CommandItem},
-    h_flex,
 };
 
 use super::Locus;
@@ -34,7 +34,7 @@ pub(super) enum CommandPaletteState {
     Hiding,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, gpui::Action)]
+#[derive(Clone, Debug, Eq, PartialEq, gpui_kit::Action)]
 #[action(namespace = locus, no_json, no_register)]
 pub(super) struct OpenNote {
     path: String,
@@ -74,9 +74,9 @@ impl Locus {
 
     fn build_command_palette(
         &self,
-        palette: &gpui::Entity<gpui_component::command::CommandState>,
-        locus: gpui::WeakEntity<Self>,
-        cx: &gpui::App,
+        palette: &gpui_kit::Entity<gpui_kit::component::command::CommandState>,
+        locus: gpui_kit::WeakEntity<Self>,
+        cx: &gpui_kit::App,
     ) -> Command {
         let language = self.settings.read(cx).preferences().language;
         let locus_for_cancel = locus.clone();
@@ -232,7 +232,7 @@ impl Locus {
                 .into_owned(),
             )
             .empty(move |_, _, cx| {
-                gpui::div()
+                gpui_kit::div()
                     .w_full()
                     .py_6()
                     .text_center()
@@ -510,7 +510,7 @@ impl Locus {
         .into_owned();
         let confirmation = t!("common.ok", locale = language.locale()).into_owned();
         drop(window.prompt(
-            gpui::PromptLevel::Critical,
+            gpui_kit::PromptLevel::Critical,
             &title,
             Some(&detail),
             &[confirmation.as_str()],
@@ -546,7 +546,7 @@ fn note_command_item(node: &LibraryNode) -> CommandItem {
 fn command_note_icon(
     image: Option<&DocumentIcon>,
     emoji: Option<&str>,
-    cx: &gpui::App,
+    cx: &gpui_kit::App,
 ) -> AnyElement {
     if let Some(image) = image {
         let fallback = emoji.map(str::to_owned);
@@ -559,7 +559,7 @@ fn command_note_icon(
             .with_fallback(move || {
                 fallback.clone().map_or_else(
                     || {
-                        gpui_component::Icon::new(Icon::FileText)
+                        gpui_kit::component::Icon::new(Icon::FileText)
                             .size(px(16.))
                             .text_color(muted_foreground)
                             .into_any_element()
@@ -572,7 +572,7 @@ fn command_note_icon(
 
     emoji.map_or_else(
         || {
-            gpui_component::Icon::new(Icon::FileText)
+            gpui_kit::component::Icon::new(Icon::FileText)
                 .size(px(16.))
                 .text_color(cx.theme().muted_foreground)
                 .into_any_element()

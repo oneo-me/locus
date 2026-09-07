@@ -13,13 +13,13 @@ mod right_tabs;
 mod sidebar;
 mod window_chrome;
 
-use gpui::{
+use gpui_kit::component::{ElementExt as _, Root};
+use gpui_kit::{
     AnyElement, App, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
     ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Subscription, Task, WeakFocusHandle,
     Window, div, prelude::*, px, transparent_black,
 };
-use gpui_component::{ElementExt as _, Root};
 
 use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
@@ -155,7 +155,7 @@ pub struct Locus {
     note_text_focus: FocusHandle,
     note_text_selection: MarkdownSelection,
     note_code_blocks: MarkdownCodeBlocks,
-    command_palette: Entity<gpui_component::command::CommandState>,
+    command_palette: Entity<gpui_kit::component::command::CommandState>,
     command_palette_overlay_focus: FocusHandle,
     command_palette_state: command_palette::CommandPaletteState,
     command_palette_close_generation: u64,
@@ -183,7 +183,8 @@ impl Locus {
         let left_pane = LocusPane::new(&locus, Locus::left_pane_content, cx);
         let content_pane = LocusPane::new(&locus, Locus::content_pane_content, cx);
         let right_pane = LocusPane::new(&locus, Locus::right_pane_content, cx);
-        let command_palette = cx.new(|cx| gpui_component::command::CommandState::new(window, cx));
+        let command_palette =
+            cx.new(|cx| gpui_kit::component::command::CommandState::new(window, cx));
         let fps_counter = cx.new(|_| {
             FpsCounter::new(
                 interface_state.fps_counter_visible,
@@ -679,7 +680,7 @@ impl Locus {
         self.note_text_selection.reset();
         self.note_code_blocks.reset();
         self.note_scroll_handle
-            .set_offset(gpui::point(px(0.0), px(0.0)));
+            .set_offset(gpui_kit::point(px(0.0), px(0.0)));
     }
 
     fn begin_selected_note_load(&mut self, cx: &mut Context<Self>) {
