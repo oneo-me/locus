@@ -22,16 +22,25 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 ```
 
-构建并签名 macOS 应用包：
+## 打包
 
-```bash
-./scripts/bundle.sh debug
-./scripts/bundle.sh release
+先安装 workspace 中的公共工具：
+
+```sh
+cargo install --path crates/oneo-tool-packer --locked
 ```
 
-应用包分别输出到 `target/debug/Locus Debug.app` 与 `target/release/Locus.app`。默认使用 ad-hoc 签名；需要 Developer ID 签名时设置 `LOCUS_CODESIGN_IDENTITY`。
+确保 Cargo 的 `bin` 目录位于 PATH 中。VSCode 的 `build` 任务与以下命令使用同一个打包入口：
 
-构建前需要安装最新版稳定 Rust、Xcode 和 Xcode Command Line Tools。
+```sh
+oneo-tool-packer
+oneo-tool-packer --target aarch64-apple-darwin
+oneo-tool-packer --target x86_64-pc-windows-msvc
+```
+
+工具只构建 Release；省略 `--target` 时使用当前 Rust host。macOS 在 Mac 上生成 `.app` 目录，Windows 在 Visual Studio C++ 开发环境中生成包含 `.exe` 和运行库的目录，不生成安装程序。产物固定保存到项目根 `.build/<target>/`，`.build/` 已由 Git 忽略；平台与架构必须具备对应工具链。
+
+项目配置见 `packer.toml`，macOS 图标固定为根目录 `icon.icon/`，Info.plist 由工具生成；Windows 固定使用根目录 `icon.ico` 并嵌入 EXE。macOS 需要 Xcode 与 Command Line Tools，默认 ad-hoc 签名；Developer ID 签名使用 `--codesign-identity` 或 `ONEO_PACKER_CODESIGN_IDENTITY`。macOS Release 主程序的禁用符号导出由工具统一处理；普通 `cargo build --release` 只应用项目 Cargo profile，不自动禁用导出。工具的配置和 Windows 运行库收集规则见 [Oneo Tool Packer](locus://projects/locus/areas/application-packaging)。
 
 ## 项目文档
 

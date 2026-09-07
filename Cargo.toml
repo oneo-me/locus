@@ -25,6 +25,7 @@ image = "0.25"
 libc = "0.2"
 notify = "8.2"
 percent-encoding = "2"
+plist = "1.10"
 regex = "1"
 reqwest_client = { package = "gpui-pre-reqwest-client", version = "0.3.1" }
 rmcp = { version = "3", features = [

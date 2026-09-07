@@ -1,0 +1,4 @@
+package = "locus"
+bin = "locus"
+name = "Locus"
+identifier = "me.oneo.locus"

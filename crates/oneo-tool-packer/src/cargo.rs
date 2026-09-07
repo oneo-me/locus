@@ -1,0 +1,153 @@
+use crate::{cli::Target, config::Project};
+use anyhow::{Context, Result, ensure};
+use serde::Deserialize;
+use std::{
+    io::{BufRead, BufReader},
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
+
+#[derive(Deserialize)]
+pub struct Metadata {
+    pub packages: Vec<Package>,
+    pub workspace_members: Vec<String>,
+}
+#[derive(Deserialize)]
+pub struct Package {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub targets: Vec<CargoTarget>,
+}
+#[derive(Deserialize)]
+pub struct CargoTarget {
+    pub name: String,
+    pub kind: Vec<String>,
+}
+
+pub fn metadata(root: &Path) -> Result<Metadata> {
+    let output = crate::captured(
+        Command::new("cargo")
+            .current_dir(root)
+            .args(["metadata", "--no-deps", "--format-version", "1"])
+            .arg("--manifest-path")
+            .arg(root.join("Cargo.toml")),
+    )?;
+    serde_json::from_slice(&output).context("parse Cargo metadata")
+}
+
+pub fn host(root: &Path) -> Result<String> {
+    let output = crate::captured(Command::new("rustc").current_dir(root).arg("-vV"))?;
+    String::from_utf8(output)?
+        .lines()
+        .find_map(|line| line.strip_prefix("host: ").map(str::to_owned))
+        .context("rustc did not report its host")
+}
+
+pub fn build_command(project: &Project, target: &Target, icon_resource: Option<&Path>) -> Command {
+    let mut command = Command::new("cargo");
+    command
+        .current_dir(&project.root)
+        .args([
+            "rustc",
+            "--locked",
+            "--message-format=json-render-diagnostics",
+            "--manifest-path",
+        ])
+        .arg(project.root.join("Cargo.toml"))
+        .args([
+            "--package",
+            &project.config.package,
+            "--bin",
+            &project.config.bin,
+            "--target",
+            &target.triple,
+        ]);
+    command.arg("--release");
+    if target.os == "macos" {
+        command.args(["--", "-C", "link-arg=-Wl,-no_exported_symbols"]);
+    } else {
+        let mut argument = std::ffi::OsString::from("link-arg=");
+        argument.push(icon_resource.unwrap_or(Path::new("<temporary-icon.res>")));
+        command.args(["--", "-C"]).arg(argument);
+    }
+    command
+}
+
+pub fn build(mut command: Command, project: &Project) -> Result<PathBuf> {
+    eprintln!("Building {}", project.config.package);
+    let mut child = command
+        .stdout(Stdio::piped())
+        .spawn()
+        .context("start Cargo build")?;
+    let reader = BufReader::new(child.stdout.take().context("read Cargo output")?);
+    let executable = match read_artifacts(reader, project) {
+        Ok(executable) => executable,
+        Err(error) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
+        }
+    };
+    let status = child.wait()?;
+    ensure!(status.success(), "Cargo build failed ({status})");
+    executable.context("Cargo did not report the selected executable")
+}
+
+fn read_artifacts(reader: impl BufRead, project: &Project) -> Result<Option<PathBuf>> {
+    let mut executable = None;
+    for line in reader.lines() {
+        let line = line?;
+        let message: serde_json::Value =
+            serde_json::from_str(&line).context("parse Cargo build output")?;
+        if message["reason"] == "compiler-artifact"
+            && message["package_id"] == project.package_id
+            && message["target"]["name"] == project.config.bin
+            && let Some(path) = message["executable"].as_str()
+        {
+            executable = Some(PathBuf::from(path));
+        }
+    }
+    Ok(executable)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn project() -> Project {
+        Project {
+            root: "/tmp/project with spaces".into(),
+            config: toml::from_str("package='app'\nbin='app'\nname='App'\nidentifier='me.app'")
+                .unwrap(),
+            version: "0.1.0".into(),
+            package_id: "path+file:///tmp/app#0.1.0".into(),
+        }
+    }
+    #[test]
+    fn always_builds_release_and_limits_export_flag_to_macos_main_binary() {
+        for triple in ["aarch64-apple-darwin", "x86_64-pc-windows-msvc"] {
+            let args: Vec<_> = build_command(
+                &project(),
+                &Target::resolve(Some(triple), "").unwrap(),
+                None,
+            )
+            .get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+            assert!(args.iter().any(|a| a == "--release"));
+            assert_eq!(
+                args.iter().any(|a| a.contains("no_exported_symbols")),
+                triple.ends_with("darwin")
+            );
+            assert!(args.windows(2).any(|a| a == ["--bin", "app"]));
+        }
+    }
+    #[test]
+    fn selects_only_the_requested_package_artifact() {
+        let input = b"{\"reason\":\"compiler-artifact\",\"package_id\":\"other\",\"target\":{\"name\":\"app\"},\"executable\":\"/wrong\"}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///tmp/app#0.1.0\",\"target\":{\"name\":\"app\"},\"executable\":\"/custom target/app\"}\n";
+        assert_eq!(
+            read_artifacts(&input[..], &project()).unwrap().unwrap(),
+            PathBuf::from("/custom target/app")
+        );
+    }
+}
