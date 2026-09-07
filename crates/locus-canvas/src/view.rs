@@ -335,6 +335,27 @@ fn canvas_response(
     language: Language,
 ) -> wry::http::Response<Vec<u8>> {
     use wry::http::{Method, Response, StatusCode};
+    if request.uri().path() == "/_locus/template" {
+        let source = request
+            .uri()
+            .query()
+            .and_then(|query| query.strip_prefix("uri="))
+            .and_then(|uri| percent_encoding::percent_decode_str(uri).decode_utf8().ok())
+            .filter(|_| request.method() == Method::GET)
+            .and_then(|uri| locus_library::load_canvas_template(root, &uri).ok());
+        return Response::builder()
+            .status(if source.is_some() {
+                StatusCode::OK
+            } else {
+                StatusCode::NOT_FOUND
+            })
+            .header("Content-Type", "text/plain; charset=utf-8")
+            .header("Cache-Control", "no-store")
+            .header("X-Content-Type-Options", "nosniff")
+            .header("Content-Security-Policy", CANVAS_POLICY)
+            .body(source.unwrap_or_default().into_bytes())
+            .expect("canvas template response headers are valid");
+    }
     if request.method() == Method::GET && request.uri().path() != "/canvas.html" {
         let name = request.uri().path().strip_prefix('/').unwrap_or_default();
         let resource = percent_encoding::percent_decode_str(name)
@@ -398,6 +419,7 @@ const CANVAS_POLICY: &str = "default-src 'none'; script-src 'self' 'unsafe-inlin
 
 fn canvas_document(source: &str, dark: bool) -> String {
     let tailwind = include_str!("../assets/tailwindcss/browser-4.3.3.js");
+    let templates = include_str!("templates.js");
     let theme = if dark { "dark" } else { "light" };
     format!(
         r#"<!doctype html><html class="{theme}" style="color-scheme:{theme}"><head>
@@ -405,13 +427,57 @@ fn canvas_document(source: &str, dark: bool) -> String {
 <meta http-equiv="Content-Security-Policy" content="{CANVAS_POLICY}">
 <style>html,body{{margin:0;width:100%;height:100%;}}body{{overflow-wrap:anywhere;}}</style>
 <style type="text/tailwindcss">@custom-variant dark (&:where(.dark, .dark *));</style>
-<script>{tailwind}</script></head><body>{source}</body></html>"#
+<script>{tailwind}</script><script>{templates}</script></head><body>{source}</body></html>"#
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[test]
+    fn template_protocol_returns_raw_canvas_and_enforces_the_library_boundary() {
+        use wry::http::{Request, StatusCode};
+        let root = tempfile::tempdir().unwrap();
+        let note = root.path().join("travel");
+        std::fs::create_dir(&note).unwrap();
+        std::fs::write(note.join("index.md"), "Travel").unwrap();
+        std::fs::write(
+            note.join("canvas.html"),
+            "<script>window.template = 42;</script>",
+        )
+        .unwrap();
+        for (method, uri, status) in [
+            ("GET", "locus://travel", StatusCode::OK),
+            ("POST", "locus://travel", StatusCode::NOT_FOUND),
+            ("GET", "file:///travel", StatusCode::NOT_FOUND),
+            ("GET", "locus://../travel", StatusCode::NOT_FOUND),
+            ("GET", "locus://%2e%2e/travel", StatusCode::NOT_FOUND),
+            ("GET", "locus://missing", StatusCode::NOT_FOUND),
+        ] {
+            let uri = format!(
+                "/_locus/template?uri={}",
+                percent_encoding::utf8_percent_encode(uri, percent_encoding::NON_ALPHANUMERIC)
+            );
+            let request = Request::builder()
+                .method(method)
+                .uri(uri)
+                .body(Vec::new())
+                .unwrap();
+            let response =
+                canvas_response(root.path(), root.path(), &request, false, Language::English);
+            assert_eq!(response.status(), status);
+            assert_eq!(response.headers()["Cache-Control"], "no-store");
+            assert_eq!(
+                response.headers()["Content-Type"],
+                "text/plain; charset=utf-8"
+            );
+            if status == StatusCode::OK {
+                assert_eq!(response.body(), b"<script>window.template = 42;</script>");
+            }
+        }
+    }
 
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     #[test]
