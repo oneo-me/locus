@@ -8,9 +8,9 @@ use std::sync::Arc;
 
 use gpui::{
     AnyElement, ClipboardItem, FocusHandle, FontStyle, FontWeight, KeyDownEvent, MouseButton,
-    ObjectFit, Role, SharedString, StrikethroughStyle, StyleRefinement, StyledImage, StyledText,
-    TextRun, Transformation, UnderlineStyle, div, font, img, linear_color_stop, linear_gradient,
-    prelude::*, px, radians, relative,
+    ObjectFit, Role, SharedString, StrikethroughStyle, StyledImage, StyledText, TextRun,
+    Transformation, UnderlineStyle, div, font, img, linear_color_stop, linear_gradient, prelude::*,
+    px, radians, relative,
 };
 
 pub use self::code_blocks::MarkdownCodeBlocks;
@@ -23,7 +23,6 @@ pub use self::selection::{MarkdownSelection, SelectableCodeStyle, selectable_cod
 use gpui_component::{
     Icon, IconName, Sizable as _, Theme,
     button::{Button, ButtonVariants as _},
-    text::{TextView, TextViewStyle},
 };
 
 pub trait MarkdownExtensions {
@@ -830,32 +829,14 @@ impl RenderContext<'_> {
         let maximum_content_height = body_height - 16.0;
         let copy_label = self.labels.copy_code.clone();
         let copied_code = code.to_owned();
-        let code_source = text_view_code_source(language.as_deref(), code);
-        let highlighted_code = TextView::markdown(
-            SharedString::from(format!("markdown-code-text-view-{code_id}")),
-            code_source,
-        )
-        .style(
-            TextViewStyle::default().code_block(
-                StyleRefinement::default()
-                    .p_0()
-                    .bg(self.theme.transparent)
-                    .font_family(self.code_font_family)
-                    .text_size(px(self.code_text_size))
-                    .line_height(px((self.code_text_size * 1.5).round()))
-                    .whitespace_normal(),
-            ),
-        )
-        .w_full()
-        .min_w_0();
         let mut code_font = font(self.code_font_family);
         code_font.weight = FontWeight::NORMAL;
-        let selection_overlay = self.selectable_text(
+        let code_text = self.selectable_text(
             SharedString::from(code.to_owned()),
             vec![TextRun {
                 len: code.len(),
                 font: code_font,
-                color: self.theme.transparent,
+                color: self.theme.foreground,
                 ..Default::default()
             }],
             selection_range.clone(),
@@ -882,7 +863,7 @@ impl RenderContext<'_> {
             .font_family(self.code_font_family)
             .text_size(px(self.code_text_size))
             .line_height(px((self.code_text_size * 1.5).round()))
-            .text_color(self.theme.muted_foreground)
+            .text_color(self.theme.foreground)
             .whitespace_normal()
             .on_children_prepainted(move |bounds, _, cx| {
                 let overflowing = bounds
@@ -892,26 +873,7 @@ impl RenderContext<'_> {
                     cx.notify(notify_entity);
                 }
             })
-            .child(
-                div()
-                    .relative()
-                    .w_full()
-                    .min_w_0()
-                    .child(highlighted_code)
-                    .child(
-                        div()
-                            .absolute()
-                            .top_0()
-                            .right_0()
-                            .bottom_0()
-                            .left_0()
-                            .font_family(self.code_font_family)
-                            .text_size(px(self.code_text_size))
-                            .line_height(px((self.code_text_size * 1.5).round()))
-                            .whitespace_normal()
-                            .child(selection_overlay),
-                    ),
-            );
+            .child(code_text);
         if !expanded {
             code_body = code_body.max_h(px(body_height));
         }
@@ -1121,26 +1083,6 @@ impl RenderContext<'_> {
     }
 }
 
-fn text_view_code_source(language: Option<&str>, code: &str) -> SharedString {
-    let language = language
-        .and_then(|language| language.split_whitespace().next())
-        .unwrap_or_default();
-    let longest_tilde_run = code
-        .bytes()
-        .fold((0usize, 0usize), |(longest, current), byte| {
-            if byte == b'~' {
-                let current = current + 1;
-                (longest.max(current), current)
-            } else {
-                (longest, 0)
-            }
-        })
-        .0;
-    let fence = "~".repeat((longest_tilde_run + 1).max(3));
-    let trailing_newline = if code.ends_with('\n') { "" } else { "\n" };
-    format!("{fence}{language}\n{code}{trailing_newline}{fence}").into()
-}
-
 fn image_path(base_directory: &Path, url: &str) -> PathBuf {
     if let Some(path) = url.strip_prefix("file://") {
         return PathBuf::from(path);
@@ -1239,27 +1181,80 @@ fn column_widths(
 mod tests {
     use super::*;
 
+    struct CodeBlockView {
+        document: MarkdownDocument,
+        selection: MarkdownSelection,
+        code_blocks: MarkdownCodeBlocks,
+        focus: FocusHandle,
+    }
+
+    impl gpui::Render for CodeBlockView {
+        fn render(
+            &mut self,
+            _: &mut gpui::Window,
+            cx: &mut gpui::Context<Self>,
+        ) -> impl IntoElement {
+            Markdown::new(
+                &self.document,
+                Path::new("/notes"),
+                MarkdownPresentation {
+                    theme: Theme::global(cx).clone(),
+                    typography: MarkdownTypography {
+                        text_font_family: ".SystemUIFont",
+                        text_size: 14.0,
+                        code_font_family: "Menlo",
+                        code_text_size: 14.0,
+                    },
+                    labels: MarkdownLabels {
+                        copy_code: "Copy code".into(),
+                        collapse_code: "Collapse code".into(),
+                        expand_code: "Expand code".into(),
+                    },
+                },
+                self.selection.clone(),
+                self.focus.clone(),
+                cx.entity_id(),
+            )
+            .with_code_blocks(self.code_blocks.clone())
+            .render()
+        }
+    }
+
+    #[gpui::test]
+    fn plain_code_blocks_preserve_text_selection_and_overflow(cx: &mut gpui::TestAppContext) {
+        cx.update(gpui_component::init);
+        let code = "    let 中文 = \"**literal** ~~~~ <tag>\";\n".repeat(30);
+        let document = MarkdownDocument::parse(&format!("Before\n\n```rust\n{code}```\n\nAfter"));
+        let selection = MarkdownSelection::default();
+        let code_blocks = MarkdownCodeBlocks::default();
+        document.synchronize_interaction_state(&selection, &code_blocks);
+        let (_, cx) = cx.add_window_view(|_, cx| CodeBlockView {
+            document,
+            selection: selection.clone(),
+            code_blocks: code_blocks.clone(),
+            focus: cx.focus_handle(),
+        });
+
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        assert!(code_blocks.is_overflowing(0));
+        assert!(!code_blocks.is_expanded(0));
+        assert!(selection.select_all());
+        assert_eq!(
+            selection.selected_text().as_deref(),
+            Some(format!("Before\n{code}After").as_str())
+        );
+
+        code_blocks.set_expanded(0, true);
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        assert!(code_blocks.is_expanded(0));
+        assert!(code_blocks.is_overflowing(0));
+    }
+
     #[test]
     fn resolves_relative_images_from_the_note_directory() {
         assert_eq!(
             image_path(Path::new("/notes/article"), "diagram.png"),
             PathBuf::from("/notes/article/diagram.png")
-        );
-    }
-
-    #[test]
-    fn text_view_code_source_preserves_code_and_language() {
-        assert_eq!(
-            text_view_code_source(Some("rust"), "fn main() {}\n").as_ref(),
-            "~~~rust\nfn main() {}\n~~~"
-        );
-    }
-
-    #[test]
-    fn text_view_code_source_uses_a_fence_longer_than_the_code() {
-        assert_eq!(
-            text_view_code_source(Some("rust extra"), "let marker = \"~~~~\";").as_ref(),
-            "~~~~~rust\nlet marker = \"~~~~\";\n~~~~~"
         );
     }
 
