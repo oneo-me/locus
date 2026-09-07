@@ -12,7 +12,7 @@ use locus_preferences::storage::data_directory;
 
 pub const LEFT_SIDEBAR_MIN_WIDTH: f32 = DEFAULT_LEFT_SIDEBAR_WIDTH;
 pub const LEFT_SIDEBAR_MAX_WIDTH: f32 = 420.0;
-pub const RIGHT_SIDEBAR_MIN_WIDTH: f32 = oneo_gpui::RIGHT_SIDEBAR_MIN_WIDTH;
+pub const RIGHT_SIDEBAR_MIN_WIDTH: f32 = DEFAULT_RIGHT_SIDEBAR_WIDTH;
 pub const RIGHT_SIDEBAR_MAX_WIDTH: f32 = 1000.0;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -182,5 +182,19 @@ mod tests {
         let bounds = state.window_bounds.unwrap();
         assert_eq!(f32::from(bounds.size.width), WINDOW_MIN_WIDTH);
         assert_eq!(f32::from(bounds.size.height), WINDOW_MIN_HEIGHT);
+    }
+
+    #[test]
+    fn locus_right_sidebar_defaults_and_restored_widths_respect_520() {
+        assert_eq!(InterfaceState::default().right_sidebar_width, 520.0);
+        let mut state = InterfaceState {
+            right_sidebar_width: 320.0,
+            ..InterfaceState::default()
+        };
+        state.normalize();
+        assert_eq!(state.right_sidebar_width, 520.0);
+        assert_eq!(WINDOW_MIN_WIDTH, 980.0);
+        assert_eq!(oneo_gpui::DEFAULT_RIGHT_SIDEBAR_WIDTH, 320.0);
+        assert_eq!(oneo_gpui::RIGHT_SIDEBAR_MIN_WIDTH, 320.0);
     }
 }

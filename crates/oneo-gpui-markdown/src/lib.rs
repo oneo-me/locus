@@ -29,6 +29,8 @@ pub trait MarkdownExtensions {
     fn render_code_block(
         &self,
         _language: &str,
+        _title: &str,
+        _source_start: usize,
         _source: &str,
         _theme: &Theme,
     ) -> Option<AnyElement> {
@@ -75,6 +77,31 @@ impl MarkdownDocument {
 
     pub fn is_empty(&self) -> bool {
         self.blocks.is_empty()
+    }
+
+    pub fn code_blocks(&self) -> Vec<(&str, &str, &str)> {
+        fn collect<'a>(blocks: &'a [Block], result: &mut Vec<(&'a str, &'a str, &'a str)>) {
+            for block in blocks {
+                match block {
+                    Block::Code {
+                        language,
+                        title,
+                        code,
+                        ..
+                    } => result.push((language.as_deref().unwrap_or_default(), title, code)),
+                    Block::Quote { children } => collect(children, result),
+                    Block::List { items, .. } => {
+                        for item in items {
+                            collect(&item.blocks, result);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let mut result = Vec::new();
+        collect(&self.blocks, &mut result);
+        result
     }
 
     pub fn synchronize_interaction_state(
@@ -300,9 +327,11 @@ impl RenderContext<'_> {
             } => self.render_image(url, alt, alt_selection_range),
             Block::Code {
                 language,
+                title,
+                source_start,
                 code,
                 selection_range,
-            } => self.render_code_block(language, code, selection_range),
+            } => self.render_code_block(language, title, *source_start, code, selection_range),
             Block::Quote { children } => {
                 let children = children
                     .iter()
@@ -812,12 +841,15 @@ impl RenderContext<'_> {
     fn render_code_block(
         &mut self,
         language: &Option<String>,
+        title: &str,
+        source_start: usize,
         code: &str,
         selection_range: &std::ops::Range<usize>,
     ) -> AnyElement {
         if let Some(element) = language.as_deref().and_then(|language| {
-            self.extensions
-                .and_then(|extensions| extensions.render_code_block(language, code, &self.theme))
+            self.extensions.and_then(|extensions| {
+                extensions.render_code_block(language, title, source_start, code, &self.theme)
+            })
         }) {
             return element;
         }
@@ -1255,6 +1287,37 @@ mod tests {
         assert_eq!(
             image_path(Path::new("/notes/article"), "diagram.png"),
             PathBuf::from("/notes/article/diagram.png")
+        );
+    }
+
+    #[test]
+    fn titled_canvas_preserves_html_without_exposing_it_to_note_selection() {
+        let document = MarkdownDocument::parse_with_hidden_code_blocks(
+            "Before\n\n```canvas 暖暮 · 样板\n<style>.x{color:red}</style><script>run()</script>\n```\n\nAfter",
+            &["canvas"],
+        );
+        assert_eq!(
+            document.code_blocks(),
+            vec![(
+                "canvas",
+                "暖暮 · 样板",
+                "<style>.x{color:red}</style><script>run()</script>"
+            )]
+        );
+        assert_eq!(document.selection_text.as_ref(), "Before\nAfter");
+    }
+
+    #[test]
+    fn code_block_metadata_is_available_inside_quotes_and_lists() {
+        let document = MarkdownDocument::parse(
+            "> ```canvas Quoted\n> <b>Quote</b>\n> ```\n\n- ```canvas Listed\n  <b>List</b>\n  ```",
+        );
+        assert_eq!(
+            document.code_blocks(),
+            vec![
+                ("canvas", "Quoted", "<b>Quote</b>"),
+                ("canvas", "Listed", "<b>List</b>")
+            ]
         );
     }
 

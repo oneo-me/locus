@@ -1,11 +1,22 @@
 mod attachment_views;
 mod extension_syntax;
+#[cfg(test)]
+mod tests;
 mod thumbnail;
+
+use gpui_kit::component::button::Button;
+use gpui_kit::{App, Window};
+use rust_i18n::t;
+use std::rc::Rc;
+
+type CanvasHandler = Rc<dyn Fn(&str, &str, &mut Window, &mut App)>;
 
 use gpui_kit::{AnyElement, ObjectFit, StyledImage, div, prelude::*, px};
 use oneo_gpui_markdown::{MarkdownExtensions, generic_link_icon};
 
+use crate::CanvasMetadata;
 use crate::{document_icon_image, link_icon::remote_link_icon};
+use gpui_kit::component::Disableable as _;
 use gpui_kit::component::Theme;
 use locus_library::{Attachment, LIBRARY_REFERENCE_SCHEME, LibraryTree, library_reference_path};
 use oneo_gpui::Language;
@@ -14,6 +25,7 @@ pub struct LocusMarkdownExtensions<'a> {
     attachments: &'a [Attachment],
     library_tree: &'a LibraryTree,
     language: Language,
+    canvas_handler: Option<CanvasHandler>,
 }
 
 impl<'a> LocusMarkdownExtensions<'a> {
@@ -26,13 +38,92 @@ impl<'a> LocusMarkdownExtensions<'a> {
             attachments,
             library_tree,
             language,
+            canvas_handler: None,
         }
+    }
+
+    pub fn on_open_canvas(
+        mut self,
+        handler: impl Fn(&str, &str, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.canvas_handler = Some(Rc::new(handler));
+        self
     }
 }
 
 impl MarkdownExtensions for LocusMarkdownExtensions<'_> {
-    fn render_code_block(&self, language: &str, source: &str, theme: &Theme) -> Option<AnyElement> {
+    fn render_code_block(
+        &self,
+        language: &str,
+        title: &str,
+        source_start: usize,
+        source: &str,
+        theme: &Theme,
+    ) -> Option<AnyElement> {
         match language {
+            "canvas" => {
+                let handler = self.canvas_handler.clone()?;
+                let canvas_title = title.to_owned();
+                let metadata = CanvasMetadata::parse(title);
+                let valid = metadata.is_some();
+                let (title, description) = metadata
+                    .map(|metadata| {
+                        (
+                            metadata.title().to_owned(),
+                            metadata.description().to_owned(),
+                        )
+                    })
+                    .unwrap_or_else(|| {
+                        (
+                            t!(
+                                "markdown.canvas.invalid_title",
+                                locale = self.language.locale()
+                            )
+                            .into_owned(),
+                            t!(
+                                "markdown.canvas.required_metadata",
+                                locale = self.language.locale()
+                            )
+                            .into_owned(),
+                        )
+                    });
+                let source = source.to_owned();
+                Some(
+                    Button::new(("canvas", source_start))
+                        .debug_selector(|| "canvas-placeholder".to_owned())
+                        .outline()
+                        .disabled(!valid)
+                        .w_full()
+                        .h_auto()
+                        .p_4()
+                        .justify_start()
+                        .accessibility_label(format!("{title} — {description}"))
+                        .child(
+                            div()
+                                .w_full()
+                                .min_w_0()
+                                .flex()
+                                .flex_col()
+                                .gap_1()
+                                .whitespace_normal()
+                                .child(
+                                    div()
+                                        .font_weight(gpui_kit::FontWeight::SEMIBOLD)
+                                        .child(title),
+                                )
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(gpui_kit::FontWeight::NORMAL)
+                                        .text_color(theme.muted_foreground)
+                                        .debug_selector(|| "canvas-description".to_owned())
+                                        .child(description),
+                                ),
+                        )
+                        .on_click(move |_, window, cx| handler(&canvas_title, &source, window, cx))
+                        .into_any_element(),
+                )
+            }
             "gallery" => Some(attachment_views::render_gallery(
                 source,
                 self.attachments,

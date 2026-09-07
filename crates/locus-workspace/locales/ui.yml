@@ -1,4 +1,22 @@
 _version: 2
+workspace.canvas.empty:
+  en: Add HTML to this canvas in the note, then reopen it.
+  zh-CN: 请在笔记的画布中添加 HTML，然后重新打开。
+workspace.canvas.missing:
+  en: This canvas or its note is no longer available.
+  zh-CN: 此画布或所属笔记已不存在。
+workspace.canvas.ambiguous:
+  en: Give each canvas in the note a distinct title, then reopen it.
+  zh-CN: 请为笔记中的画布设置不同标题，然后重新打开。
+workspace.canvas.unsupported:
+  en: Canvas requires macOS or Windows.
+  zh-CN: 画布需要 macOS 或 Windows。
+workspace.canvas.error:
+  en: Could not open canvas
+  zh-CN: 无法打开画布
+workspace.canvas.close:
+  en: "Close %{title}"
+  zh-CN: "关闭%{title}"
 menu.application.about:
   en: About Locus
   zh-CN: 关于 Locus

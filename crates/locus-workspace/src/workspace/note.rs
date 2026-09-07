@@ -78,8 +78,15 @@ impl Locus {
             .and_then(|note| note.document.as_ref())
             .filter(|document| !document.is_empty())
         {
+            let canvas_owner = locus.clone();
+            let canvas_path = node.path.clone();
             let extensions =
-                LocusMarkdownExtensions::new(&node.attachments, &self.library_tree, language);
+                LocusMarkdownExtensions::new(&node.attachments, &self.library_tree, language)
+                    .on_open_canvas(move |title, source, window, cx| {
+                        let _ = canvas_owner.update(cx, |this, cx| {
+                            this.open_canvas(&canvas_path, title, source, window, cx);
+                        });
+                    });
             let labels = MarkdownLabels {
                 copy_code: t!("workspace.note.copy_code", locale = language.locale())
                     .into_owned()

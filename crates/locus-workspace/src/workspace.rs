@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+mod canvas;
 mod command_palette;
 mod navigation;
 mod note;
@@ -97,7 +98,7 @@ fn terminal_configuration(preferences: &Preferences) -> TerminalConfiguration {
 }
 const TITLEBAR_NAVIGATION_WIDTH: f32 = TITLEBAR_CONTROL_SIZE * 2.0 + TITLEBAR_NAVIGATION_GAP;
 const WORKSPACE_SHELL_CONFIG: WorkspaceShellConfig = WorkspaceShellConfig {
-    content_min_width: 360.0,
+    content_min_width: locus_preferences::config::CONTENT_MIN_WIDTH,
     left: PanelSize {
         min: LEFT_SIDEBAR_MIN_WIDTH,
         max: LEFT_SIDEBAR_MAX_WIDTH,
@@ -289,8 +290,8 @@ impl Locus {
                             cx,
                         );
                     });
-                    for tab in &this.right_tabs {
-                        tab.terminal.update(cx, |terminal, cx| {
+                    for terminal in this.right_tabs.iter().filter_map(RightTab::terminal) {
+                        terminal.update(cx, |terminal, cx| {
                             terminal.set_labels(terminal_labels(*language), cx);
                         });
                     }
@@ -305,15 +306,15 @@ impl Locus {
                     this.terminals_need_restart = true;
                 }
                 SettingsEvent::TerminalColorSchemeChanged(color_scheme) => {
-                    for tab in &this.right_tabs {
-                        tab.terminal.update(cx, |terminal, cx| {
+                    for terminal in this.right_tabs.iter().filter_map(RightTab::terminal) {
+                        terminal.update(cx, |terminal, cx| {
                             terminal.set_color_scheme(*color_scheme, cx);
                         });
                     }
                 }
                 SettingsEvent::TerminalCursorStyleChanged(cursor_style) => {
-                    for tab in &this.right_tabs {
-                        tab.terminal.update(cx, |terminal, cx| {
+                    for terminal in this.right_tabs.iter().filter_map(RightTab::terminal) {
+                        terminal.update(cx, |terminal, cx| {
                             terminal.set_cursor_style(*cursor_style, cx);
                         });
                     }
@@ -322,8 +323,8 @@ impl Locus {
                     cx.notify();
                 }
                 SettingsEvent::TerminalFontChanged(family, size) => {
-                    for tab in &this.right_tabs {
-                        tab.terminal.update(cx, |terminal, cx| {
+                    for terminal in this.right_tabs.iter().filter_map(RightTab::terminal) {
+                        terminal.update(cx, |terminal, cx| {
                             terminal.set_font(family.clone(), *size, cx);
                         });
                     }
@@ -513,7 +514,7 @@ impl Locus {
                         .map(|content| {
                             MarkdownDocument::parse_with_hidden_code_blocks(
                                 &content,
-                                &["gallery", "attachments"],
+                                &["gallery", "attachments", "canvas"],
                             )
                         })
                         .map_err(|error| error.to_string())
@@ -557,6 +558,19 @@ impl Locus {
     }
 
     fn change_library(&mut self, path: &Path, cx: &mut Context<Self>) {
+        for tab in &mut self.right_tabs {
+            if let right_tabs::RightTabContent::Canvas(canvas) = &mut tab.content {
+                canvas.synchronize(false, Theme::global(cx).is_dark(), cx);
+            }
+        }
+        self.right_tabs.retain(|tab| tab.terminal().is_some());
+        if !self
+            .right_tabs
+            .iter()
+            .any(|tab| Some(tab.id) == self.selected_right_tab_id)
+        {
+            self.selected_right_tab_id = self.right_tabs.first().map(|tab| tab.id);
+        }
         let could_reload_current_note = self.can_reload_current_note();
         self.library_watch_task = None;
         self.library_watcher = None;
@@ -610,6 +624,7 @@ impl Locus {
             settings.set_archive_state(tree.archived_notes.clone(), tree.error.clone(), cx);
         });
         self.library_tree = tree;
+        self.reload_canvases(cx);
         self.library_navigation
             .retain(|path| self.library_tree.node(path).is_some());
 
@@ -963,7 +978,7 @@ impl Locus {
     fn render_right_sidebar(&self, width: f32, show_resize: bool, cx: &mut Context<Self>) -> Div {
         let theme = Theme::global(cx).clone();
 
-        let panel = oneo_gpui::WorkspacePanel::new(self.render_terminal_panel(cx));
+        let panel = oneo_gpui::WorkspacePanel::new(self.render_right_panel(cx));
         let panel = if self.right_tabs.is_empty() {
             panel
         } else {
@@ -1019,9 +1034,10 @@ impl Locus {
 
     fn advance_render_lifecycle(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let layout = self.app_shell.workspace_mut().layout(window);
+        self.synchronize_canvases(window, cx);
         let panels = layout.frame;
-        for tab in &self.right_tabs {
-            tab.terminal.update(cx, |terminal, _| {
+        for terminal in self.right_tabs.iter().filter_map(RightTab::terminal) {
+            terminal.update(cx, |terminal, _| {
                 terminal.set_available_size(
                     panels.right_content,
                     (f32::from(window.viewport_size().height) - TITLEBAR_HEIGHT).max(120.0),
