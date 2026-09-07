@@ -68,6 +68,7 @@ impl EditorPreference {
 pub struct Preferences {
     pub library_path: Option<PathBuf>,
     pub editor: EditorPreference,
+    pub auto_open_canvas: bool,
     #[serde(flatten)]
     pub appearance: AppearancePreferences,
     pub ui_font_family: String,
@@ -89,6 +90,7 @@ impl Default for Preferences {
         Self {
             library_path: DEFAULT_LIBRARY_PATH.map(PathBuf::from),
             editor: EditorPreference::System,
+            auto_open_canvas: false,
             appearance: AppearancePreferences::default(),
             ui_font_family: DEFAULT_UI_FONT_FAMILY.to_owned(),
             code_font_family: DEFAULT_CODE_FONT_FAMILY.to_owned(),
@@ -180,6 +182,7 @@ mod tests {
         let preferences = Preferences {
             library_path: Some(PathBuf::from("/tmp/笔记")),
             editor: EditorPreference::VisualStudioCode,
+            auto_open_canvas: true,
             appearance: AppearancePreferences {
                 theme: ThemePreference::Dark,
                 language: Language::English,
@@ -206,6 +209,7 @@ mod tests {
 
         assert_eq!(restored.library_path, preferences.library_path);
         assert_eq!(restored.editor, preferences.editor);
+        assert!(restored.auto_open_canvas);
         assert_eq!(restored.appearance.theme, preferences.appearance.theme);
         assert_eq!(
             restored.appearance.language,
@@ -247,6 +251,7 @@ mod tests {
         let preferences: Preferences = store.load().unwrap();
         assert_eq!(preferences.appearance, AppearancePreferences::default());
         assert!(preferences.mcp_enabled);
+        assert!(!preferences.auto_open_canvas);
         std::fs::write(
             &path,
             r#"theme = "dark"

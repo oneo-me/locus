@@ -2,6 +2,7 @@ use super::*;
 use gpui_kit::component::{
     Sizable as _,
     button::{Button, ButtonVariants as _},
+    switch::Switch,
 };
 use rust_i18n::t;
 
@@ -74,6 +75,34 @@ impl Settings {
                 t!("settings.editor.label", locale = language.locale()).into_owned(),
                 t!("settings.editor.description", locale = language.locale()).into_owned(),
                 self.render_dropdown(Dropdown::Editor, cx),
+            ))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
+            .child(SettingsItem::new(
+                t!(
+                    "settings.auto_open_canvas.label",
+                    locale = language.locale()
+                )
+                .into_owned(),
+                t!(
+                    "settings.auto_open_canvas.description",
+                    locale = language.locale()
+                )
+                .into_owned(),
+                Switch::new("auto-open-canvas")
+                    .small()
+                    .checked(self.preferences.auto_open_canvas)
+                    .accessibility_label(
+                        t!(
+                            "settings.auto_open_canvas.label",
+                            locale = language.locale()
+                        )
+                        .into_owned(),
+                    )
+                    .on_click(cx.listener(|this, checked, _, cx| {
+                        this.preferences.auto_open_canvas = *checked;
+                        this.persist();
+                        cx.notify();
+                    })),
             ))
     }
 

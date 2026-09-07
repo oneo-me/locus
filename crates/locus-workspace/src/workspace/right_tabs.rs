@@ -24,7 +24,6 @@ pub(super) enum RightTabContent {
     },
     Canvas {
         path: String,
-        title: String,
         view: Entity<CanvasView>,
         _subscription: Subscription,
     },
@@ -82,6 +81,27 @@ fn selected_tab_after_close(
     }
 }
 
+fn canvas_navigation_changes<'a>(
+    tabs: impl Iterator<Item = (u64, Option<&'a str>)>,
+    selected: Option<&'a str>,
+    canvas_available: bool,
+    auto_open: bool,
+) -> (Vec<u64>, Option<&'a str>) {
+    let mut current_open = false;
+    let mut close = Vec::new();
+    for (id, owner) in tabs {
+        if let Some(owner) = owner {
+            if Some(owner) == selected {
+                current_open = true;
+            } else {
+                close.push(id);
+            }
+        }
+    }
+    let open = selected.filter(|_| auto_open && canvas_available && !current_open);
+    (close, open)
+}
+
 fn right_tab_scroll_item(tab_index: usize) -> usize {
     tab_index + 1
 }
@@ -119,17 +139,90 @@ impl Locus {
         false
     }
 
-    pub(super) fn update_canvas_titles(&mut self) {
-        for tab in &mut self.right_tabs {
-            if let RightTabContent::Canvas { path, title, .. } = &mut tab.content
-                && let Some(node) = self.library_tree.node(path)
-            {
-                title.clone_from(&node.title);
-            }
-        }
+    pub(super) fn schedule_note_canvas_selection(&self, cx: &mut Context<Self>) {
+        let view = cx.weak_entity();
+        let window = self.window_handle;
+        let selected = self.selected_library_node.clone();
+        let library = self.current_library_path(cx).map(Path::to_path_buf);
+        cx.defer(move |cx| {
+            let _ = window.update(cx, |_, window, cx| {
+                let _ = view.update(cx, |this, cx| {
+                    if this.selected_library_node == selected
+                        && this.current_library_path(cx) == library.as_deref()
+                    {
+                        this.apply_note_canvas_selection(window, cx);
+                    }
+                });
+            });
+        });
     }
 
-    pub(super) fn open_canvas(&mut self, path: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn apply_note_canvas_selection(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let could_reload = self.can_reload_current_note();
+        let language = self.language(cx);
+        let selected = self.selected_library_node.clone();
+        let (close, open) = canvas_navigation_changes(
+            self.right_tabs.iter().map(|tab| {
+                (
+                    tab.id,
+                    match &tab.content {
+                        RightTabContent::Canvas { path, .. } => Some(path.as_str()),
+                        RightTabContent::Terminal { .. } => None,
+                    },
+                )
+            }),
+            selected.as_deref(),
+            selected
+                .as_deref()
+                .and_then(|path| self.library_tree.node(path))
+                .is_some_and(|node| node.canvas_path.is_some()),
+            self.settings.read(cx).preferences().auto_open_canvas,
+        );
+        let open = open.map(str::to_owned);
+        self.right_tabs.retain(|tab| {
+            let RightTabContent::Canvas { view, .. } = &tab.content else {
+                return true;
+            };
+            if !close.contains(&tab.id) {
+                return true;
+            }
+            if view.read(cx).focus_handle(cx).is_focused(window) {
+                window.focus(&self.root_focus, cx);
+            }
+            view.update(cx, |view, cx| view.synchronize(false, language, cx));
+            false
+        });
+        if !self
+            .right_tabs
+            .iter()
+            .any(|tab| Some(tab.id) == self.selected_right_tab_id)
+        {
+            self.selected_right_tab_id = self.right_tabs.last().map(|tab| tab.id);
+        }
+        if let Some(path) = open {
+            self.open_canvas(&path, false, window, cx);
+        }
+        if !close.is_empty()
+            && self.right_tabs.is_empty()
+            && self.app_shell.workspace().visible(PanelSide::Right)
+        {
+            self.toggle_panel(PanelSide::Right, window, cx);
+        }
+        self.update_app_menus_if_reload_state_changed(could_reload, cx);
+        cx.notify();
+    }
+
+    pub(super) fn open_canvas(
+        &mut self,
+        path: &str,
+        focus: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let Some(node) = self
             .library_tree
             .node(path)
@@ -152,7 +245,9 @@ impl Locus {
             {
                 self.right_tabs.remove(index);
             } else {
-                self.select_right_tab(index, window, cx);
+                if focus {
+                    self.select_right_tab(index, window, cx);
+                }
                 return;
             }
         }
@@ -180,12 +275,17 @@ impl Locus {
             id,
             content: RightTabContent::Canvas {
                 path: node.path,
-                title: node.title,
                 view,
                 _subscription: subscription,
             },
         });
-        self.select_right_tab(self.right_tabs.len() - 1, window, cx);
+        if focus {
+            self.select_right_tab(self.right_tabs.len() - 1, window, cx);
+        } else {
+            self.selected_right_tab_id = Some(id);
+            self.scroll_to_right_tab(id);
+            cx.notify();
+        }
     }
 
     pub(super) fn synchronize_canvases(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -375,14 +475,9 @@ impl Locus {
                         close_terminal_label(language, id),
                         Icon::SquareTerminal,
                     ),
-                    RightTabContent::Canvas { title, .. } => (
-                        title.clone(),
-                        t!(
-                            "workspace.canvas.close",
-                            title = title,
-                            locale = language.locale()
-                        )
-                        .into_owned(),
+                    RightTabContent::Canvas { .. } => (
+                        t!("workspace.canvas.title", locale = language.locale()).into_owned(),
+                        t!("workspace.canvas.close", locale = language.locale()).into_owned(),
                         Icon::Globe,
                     ),
                 };
@@ -471,8 +566,46 @@ fn right_panel_body(content: Option<AnyElement>) -> Div {
 
 #[cfg(test)]
 mod tests {
-    use super::{right_tab_scroll_item, selected_tab_after_close, terminal_tab_title};
+    use super::{
+        canvas_navigation_changes, right_tab_scroll_item, selected_tab_after_close,
+        terminal_tab_title,
+    };
     use oneo_gpui::Language;
+
+    #[test]
+    fn navigation_closes_only_departing_canvases_and_opens_when_enabled() {
+        let tabs = [(1, None), (2, Some("first")), (3, None)];
+        assert_eq!(
+            canvas_navigation_changes(tabs.into_iter(), Some("second"), true, true),
+            (vec![2], Some("second"))
+        );
+        assert_eq!(
+            canvas_navigation_changes(tabs.into_iter(), Some("second"), true, false),
+            (vec![2], None)
+        );
+        assert_eq!(
+            canvas_navigation_changes(tabs.into_iter(), Some("second"), false, true),
+            (vec![2], None)
+        );
+        assert_eq!(
+            canvas_navigation_changes(tabs.into_iter(), None, false, true),
+            (vec![2], None)
+        );
+        assert_eq!(
+            canvas_navigation_changes(tabs.into_iter(), Some("first"), true, true),
+            (vec![], None)
+        );
+    }
+
+    #[test]
+    fn startup_and_reentry_open_a_fresh_canvas_only_when_enabled() {
+        for enabled in [false, true] {
+            assert_eq!(
+                canvas_navigation_changes(std::iter::empty(), Some("first"), true, enabled),
+                (vec![], enabled.then_some("first"))
+            );
+        }
+    }
 
     #[test]
     fn closing_the_selected_tab_selects_its_neighbor() {

@@ -302,7 +302,7 @@ impl Locus {
                             )
                             .on_click(cx.listener(
                                 move |this, _, window, cx| {
-                                    this.open_canvas(&path, window, cx);
+                                    this.open_canvas(&path, true, window, cx);
                                 },
                             )),
                         )

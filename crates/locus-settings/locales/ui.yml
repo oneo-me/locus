@@ -224,3 +224,9 @@ settings.mcp.service.label:
 settings.mcp.service.toggle:
   en: Start MCP service
   zh-CN: 启动 MCP 服务
+settings.auto_open_canvas.label:
+  en: Automatically open canvas
+  zh-CN: 自动打开画布
+settings.auto_open_canvas.description:
+  en: Open the canvas in the sidebar when entering a note that has one.
+  zh-CN: 进入有画布的笔记时，自动在侧边栏打开画布。

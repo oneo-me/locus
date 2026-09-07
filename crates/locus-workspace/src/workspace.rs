@@ -118,6 +118,7 @@ struct SelectedNote {
 }
 
 pub struct Locus {
+    window_handle: gpui_kit::AnyWindowHandle,
     root_focus: FocusHandle,
     right_sidebar_focus: FocusHandle,
     app_shell: AppShellState,
@@ -361,7 +362,12 @@ impl Locus {
         })
         .detach();
 
+        cx.defer_in(window, |this, window, cx| {
+            this.apply_note_canvas_selection(window, cx)
+        });
+
         Self {
+            window_handle: window.window_handle(),
             root_focus,
             right_sidebar_focus: cx.focus_handle(),
             app_shell: AppShellState::new(WorkspaceShellState::new(
@@ -588,7 +594,7 @@ impl Locus {
         });
         self.sidebar_order.apply(path, &mut self.library_tree.nodes);
         self.library_navigation.clear();
-        self.clear_library_selection();
+        self.clear_library_selection(cx);
         self.expanded_library_nodes.clear();
         self.scroll_to_selected_library_node = false;
         self.save_interface_state(cx);
@@ -624,7 +630,6 @@ impl Locus {
             settings.set_archive_state(tree.archived_notes.clone(), tree.error.clone(), cx);
         });
         self.library_tree = tree;
-        self.update_canvas_titles();
         self.library_navigation
             .retain(|path| self.library_tree.node(path).is_some());
 
@@ -647,7 +652,7 @@ impl Locus {
                 }
             }
         } else if selected_path.is_some() {
-            self.clear_library_selection();
+            self.clear_library_selection(cx);
             self.expanded_library_nodes.clear();
             self.save_interface_state(cx);
         }
@@ -673,11 +678,12 @@ impl Locus {
         .detach();
     }
 
-    fn clear_library_selection(&mut self) {
+    fn clear_library_selection(&mut self, cx: &mut Context<Self>) {
         self.note_load_generation = self.note_load_generation.wrapping_add(1);
         self.note_load_task = None;
         self.selected_note = None;
         self.selected_library_node = None;
+        self.schedule_note_canvas_selection(cx);
         self.copied_library_node = None;
         self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
         self.note_text_selection.reset();

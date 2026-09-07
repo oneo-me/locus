@@ -3,8 +3,8 @@ workspace.canvas.open:
   en: Open canvas
   zh-CN: 打开画布
 workspace.canvas.close:
-  en: "Close %{title}"
-  zh-CN: "关闭%{title}"
+  en: "Close canvas"
+  zh-CN: "关闭画布"
 menu.application.about:
   en: About Locus
   zh-CN: 关于 Locus
@@ -209,3 +209,6 @@ workspace.note.read_error:
 workspace.note.reference_copied:
   en: Note reference copied
   zh-CN: 笔记引用已复制
+workspace.canvas.title:
+  en: Canvas
+  zh-CN: 画布
