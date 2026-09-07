@@ -10,7 +10,7 @@ mod repository;
 mod scanner;
 mod watcher;
 
-pub use canvas::{CANVAS_FILE, load_canvas};
+pub use canvas::{CANVAS_FILE, load_canvas, load_canvas_resource};
 pub use mutations::{archive_note, restore_archived_note, update_note_icon};
 pub use reference::{LIBRARY_REFERENCE_SCHEME, library_reference_path};
 pub use scanner::load_note;

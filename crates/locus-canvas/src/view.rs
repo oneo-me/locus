@@ -335,6 +335,29 @@ fn canvas_response(
     language: Language,
 ) -> wry::http::Response<Vec<u8>> {
     use wry::http::{Method, Response, StatusCode};
+    if request.method() == Method::GET && request.uri().path() != "/canvas.html" {
+        let name = request.uri().path().strip_prefix('/').unwrap_or_default();
+        let resource = percent_encoding::percent_decode_str(name)
+            .decode_utf8()
+            .ok()
+            .and_then(|name| {
+                let bytes = locus_library::load_canvas_resource(root, directory, &name).ok()?;
+                let mime = mime_guess::from_path(name.as_ref()).first_or_octet_stream();
+                Some((bytes, mime.to_string()))
+            });
+        let (status, bytes, mime) = match resource {
+            Some((bytes, mime)) => (StatusCode::OK, bytes, mime),
+            None => (StatusCode::NOT_FOUND, Vec::new(), "text/plain".to_owned()),
+        };
+        return Response::builder()
+            .status(status)
+            .header("Content-Type", mime)
+            .header("Cache-Control", "no-store")
+            .header("X-Content-Type-Options", "nosniff")
+            .header("Content-Security-Policy", CANVAS_POLICY)
+            .body(bytes)
+            .expect("canvas resource response headers are valid");
+    }
     let (status, source) = if request.method() != Method::GET
         || request.uri().path() != "/canvas.html"
     {
@@ -371,13 +394,15 @@ fn theme_script(dark: bool) -> String {
     )
 }
 
+const CANVAS_POLICY: &str = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+
 fn canvas_document(source: &str, dark: bool) -> String {
     let tailwind = include_str!("../assets/tailwindcss/browser-4.3.3.js");
     let theme = if dark { "dark" } else { "light" };
     format!(
         r#"<!doctype html><html class="{theme}" style="color-scheme:{theme}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="{CANVAS_POLICY}">
 <style>html,body{{margin:0;width:100%;height:100%;}}body{{overflow-wrap:anywhere;}}</style>
 <style type="text/tailwindcss">@custom-variant dark (&:where(.dark, .dark *));</style>
 <script>{tailwind}</script></head><body>{source}</body></html>"#
@@ -493,6 +518,60 @@ mod tests {
         }
     }
 
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[test]
+    fn relative_images_are_served_as_bytes_with_decoded_names() {
+        use wry::http::{Request, StatusCode};
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("index.md"), "Note").unwrap();
+        std::fs::write(root.path().join("照片 1.png"), [0, 128, 255]).unwrap();
+        let request = Request::builder()
+            .uri(
+                "/".to_owned()
+                    + &percent_encoding::utf8_percent_encode(
+                        "照片 1.png",
+                        percent_encoding::NON_ALPHANUMERIC,
+                    )
+                    .to_string()
+                    + "?v=1",
+            )
+            .body(Vec::new())
+            .unwrap();
+        let response =
+            canvas_response(root.path(), root.path(), &request, false, Language::English);
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()["Content-Type"], "image/png");
+        assert_eq!(response.headers()["Content-Security-Policy"], CANVAS_POLICY);
+        assert_eq!(response.headers()["Cache-Control"], "no-store");
+        assert_eq!(response.body(), &[0, 128, 255]);
+        for uri in [
+            "/%2e%2e%2fphoto.png",
+            "/%2fphoto.png",
+            "/%5cphoto.png",
+            "/%FF.png",
+            "/%69ndex.md",
+            "/.secret",
+            "/missing.png",
+        ] {
+            let request = Request::builder().uri(uri).body(Vec::new()).unwrap();
+            assert_eq!(
+                canvas_response(root.path(), root.path(), &request, false, Language::English)
+                    .status(),
+                StatusCode::NOT_FOUND,
+                "{uri}"
+            );
+        }
+        let request = Request::builder()
+            .method("POST")
+            .uri("/photo.png")
+            .body(Vec::new())
+            .unwrap();
+        assert_eq!(
+            canvas_response(root.path(), root.path(), &request, false, Language::English).status(),
+            StatusCode::NOT_FOUND
+        );
+    }
+
     #[test]
     fn document_contains_offline_tailwind_and_preserves_inline_programs() {
         let source = "<style>.test{color:red}</style><button class=\"p-4\">Run</button><script>window.value=42;</script>";
@@ -501,6 +580,9 @@ mod tests {
         assert!(document.contains("@custom-variant dark"));
         assert!(document.contains("<html class=\"dark\""));
         assert!(!document.contains("<script src="));
-        assert!(document.contains("connect-src 'none'"));
+        assert!(document.contains("connect-src 'self' https:"));
+        assert!(document.contains("worker-src 'self' blob:"));
+        assert!(document.contains("img-src 'self' https: data: blob:"));
+        assert!(document.contains("frame-src 'none'"));
     }
 }

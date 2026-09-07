@@ -4587,7 +4587,9 @@ dependencies = [
  "gpui-wry",
  "lb-wry",
  "locus-library",
+ "mime_guess",
  "oneo-gpui",
+ "percent-encoding",
  "rust-i18n",
  "serde-saphyr 1.2.0",
  "tempfile",
@@ -4605,6 +4607,7 @@ dependencies = [
  "serde",
  "serde-saphyr 1.2.0",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
