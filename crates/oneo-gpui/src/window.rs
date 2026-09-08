@@ -41,6 +41,10 @@ impl ShellWindow {
         }
     }
 
+    pub fn min_size(&self) -> Size<Pixels> {
+        self.min_size
+    }
+
     pub fn with_size(mut self, size: Size<Pixels>) -> Self {
         self.size = size;
         self
