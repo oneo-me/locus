@@ -8,7 +8,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
-gpui-kit = "0.6"
+gpui-kit = "0.6.1"
 
 anyhow = "1"
 tempfile = "3"
