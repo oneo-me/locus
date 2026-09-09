@@ -29,10 +29,7 @@ use crate::state::{
     InterfaceState, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH,
     RIGHT_SIDEBAR_MIN_WIDTH,
 };
-use crate::{
-    NewTerminal, OpenSettings, ReloadCurrentNote, ToggleFpsCounter, ToggleLeftPanel,
-    ToggleRightPanel,
-};
+use crate::{NewTerminal, OpenSettings, ReloadCurrentNote, ToggleLeftPanel, ToggleRightPanel};
 use gpui_kit::component::Theme;
 use locus_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use locus_mcp::{McpConfiguration, McpServerController};
@@ -44,7 +41,7 @@ use locus_settings::{Settings, SettingsEvent, SettingsInit};
 use locus_ui::{Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection};
 use oneo_gpui::Language;
 use oneo_gpui::{
-    AppShellState, CloseWindow, FpsCounter, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET,
+    AppShellState, CloseWindow, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET,
     TITLEBAR_CONTROL_SIZE, TITLEBAR_HEIGHT, WorkspaceShell, WorkspaceShellConfig,
     WorkspaceShellState, panel_resize_handle, titlebar_content_left_padding,
     titlebar_left_control_offset,
@@ -123,7 +120,6 @@ pub struct Locus {
     right_sidebar_focus: FocusHandle,
     app_shell: AppShellState,
     header_drag_armed: bool,
-    fps_counter: Entity<FpsCounter>,
     settings: Entity<Settings>,
     left_pane: Entity<LocusPane>,
     content_pane: Entity<LocusPane>,
@@ -184,16 +180,6 @@ impl Locus {
         let right_pane = LocusPane::new(&locus, Locus::right_pane_content, cx);
         let command_palette =
             cx.new(|cx| gpui_kit::component::command::CommandState::new(window, cx));
-        let fps_counter = cx.new(|_| {
-            FpsCounter::new(
-                interface_state.fps_counter_visible,
-                t!(
-                    "workspace.fps.label",
-                    locale = preferences.appearance.language.locale()
-                )
-                .into_owned(),
-            )
-        });
         window.focus(&root_focus, cx);
         preferences.appearance.apply(window, cx);
         let library_path = preferences.library_path.clone();
@@ -284,12 +270,6 @@ impl Locus {
                 SettingsEvent::LanguageChanged(language) => {
                     language.activate();
                     crate::set_app_menus(cx, *language, this.can_reload_current_note());
-                    this.fps_counter.update(cx, |counter, cx| {
-                        counter.set_label(
-                            t!("workspace.fps.label", locale = language.locale()).into_owned(),
-                            cx,
-                        );
-                    });
                     for terminal in this.right_tabs.iter().filter_map(RightTab::terminal) {
                         terminal.update(cx, |terminal, cx| {
                             terminal.set_labels(terminal_labels(*language), cx);
@@ -346,18 +326,18 @@ impl Locus {
                     cx.background_executor()
                         .timer(WINDOW_BOUNDS_SAVE_DEBOUNCE)
                         .await;
-                    this.update(cx, |this, cx| {
+                    this.update(cx, |this, _| {
                         this.window_bounds_save_task.take();
-                        this.save_interface_state(cx);
+                        this.save_interface_state();
                     })
                     .ok();
                 }));
             }
         })
         .detach();
-        cx.on_app_quit(|this, cx| {
+        cx.on_app_quit(|this, _| {
             this.window_bounds_save_task.take();
-            this.save_interface_state(cx);
+            this.save_interface_state();
             async {}
         })
         .detach();
@@ -378,7 +358,6 @@ impl Locus {
                 interface_state.right_sidebar_width,
             )),
             header_drag_armed: false,
-            fps_counter,
             settings,
             left_pane,
             content_pane,
@@ -597,7 +576,7 @@ impl Locus {
         self.clear_library_selection(cx);
         self.expanded_library_nodes.clear();
         self.scroll_to_selected_library_node = false;
-        self.save_interface_state(cx);
+        self.save_interface_state();
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
     }
@@ -654,7 +633,7 @@ impl Locus {
         } else if selected_path.is_some() {
             self.clear_library_selection(cx);
             self.expanded_library_nodes.clear();
-            self.save_interface_state(cx);
+            self.save_interface_state();
         }
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
@@ -744,21 +723,20 @@ impl Locus {
         }
     }
 
-    fn interface_state(&self, cx: &App) -> InterfaceState {
+    fn interface_state(&self) -> InterfaceState {
         let shell = self.app_shell.workspace().snapshot();
         InterfaceState {
             left_sidebar_width: shell.left_width,
             right_sidebar_width: shell.right_width,
             left_sidebar_visible: shell.left_visible,
             right_sidebar_visible: shell.right_visible,
-            fps_counter_visible: self.fps_counter.read(cx).visible(),
             selected_library_node: self.selected_library_node.clone(),
             window_bounds: self.window_bounds,
         }
     }
 
-    fn save_interface_state(&self, cx: &App) {
-        if let Err(error) = self.interface_state(cx).save() {
+    fn save_interface_state(&self) {
+        if let Err(error) = self.interface_state().save() {
             eprintln!("无法保存界面状态：{error}");
         }
     }
@@ -851,18 +829,6 @@ impl Locus {
         self.begin_selected_note_load(cx);
     }
 
-    fn toggle_fps_counter_action(
-        &mut self,
-        _: &ToggleFpsCounter,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.fps_counter
-            .update(cx, |counter, cx| counter.toggle(cx));
-        self.save_interface_state(cx);
-        cx.notify();
-    }
-
     fn render_panel_resize_handle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::global(cx).clone();
         let active = self.app_shell.workspace().resize_active(side);
@@ -899,7 +865,7 @@ impl Locus {
             PanelSide::Right => DEFAULT_RIGHT_SIDEBAR_WIDTH,
         };
         self.app_shell.workspace_mut().reset_width(side, width);
-        self.save_interface_state(cx);
+        self.save_interface_state();
         cx.notify();
     }
 
@@ -929,7 +895,7 @@ impl Locus {
         let panel_resized = self.app_shell.workspace_mut().finish_resize();
         let library_drag_ended = self.dragged_library_node.take().is_some();
         if panel_resized {
-            self.save_interface_state(cx);
+            self.save_interface_state();
         }
         if panel_resized || library_drag_ended {
             cx.notify();
@@ -1133,7 +1099,6 @@ impl Render for Locus {
             .on_action(cx.listener(Self::choose_current_note_icon_action))
             .on_action(cx.listener(Self::archive_current_note_action))
             .on_action(cx.listener(Self::reload_current_note_action))
-            .on_action(cx.listener(Self::toggle_fps_counter_action))
             .on_action(cx.listener(Self::toggle_left_sidebar_action))
             .on_action(cx.listener(Self::toggle_right_sidebar_action))
             .capture_any_mouse_down(cx.listener(Self::navigation_mouse_down))

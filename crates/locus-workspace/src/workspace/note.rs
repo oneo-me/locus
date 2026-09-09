@@ -289,7 +289,6 @@ impl Locus {
                                     .child(node.title.clone()),
                             ),
                     )
-                    .child(self.fps_counter.clone())
                     .when(node.canvas_path.is_some(), |bar| {
                         let path = node.path.clone();
                         bar.child(

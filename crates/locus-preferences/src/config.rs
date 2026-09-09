@@ -18,7 +18,6 @@ pub const DEFAULT_MCP_PORT: u16 = 2301;
 
 pub const DEFAULT_LEFT_SIDEBAR_VISIBLE: bool = true;
 pub const DEFAULT_RIGHT_SIDEBAR_VISIBLE: bool = true;
-pub const DEFAULT_FPS_COUNTER_VISIBLE: bool = false;
 pub const DEFAULT_LEFT_SIDEBAR_WIDTH: f32 = oneo_gpui::DEFAULT_LEFT_SIDEBAR_WIDTH;
 pub const DEFAULT_RIGHT_SIDEBAR_WIDTH: f32 = 520.0;
 

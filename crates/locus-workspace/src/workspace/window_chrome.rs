@@ -16,7 +16,7 @@ impl Locus {
         self.app_shell
             .workspace_mut()
             .toggle(side, window, cx.reduce_motion(), WINDOW_MIN_WIDTH);
-        self.save_interface_state(cx);
+        self.save_interface_state();
         cx.notify();
     }
 
@@ -124,7 +124,6 @@ impl Locus {
                 self.window_drag_region("content-center-drag-region", cx)
                     .flex_1(),
             )
-            .child(self.fps_counter.clone())
             .child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
     }
 

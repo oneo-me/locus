@@ -14,12 +14,6 @@ menu.application.quit:
 menu.application.settings:
   en: Settings…
   zh-CN: 设置…
-menu.developer.show_fps:
-  en: Show FPS
-  zh-CN: 显示帧率
-menu.developer.title:
-  en: Developer
-  zh-CN: 开发
 menu.edit.title:
   en: Edit
   zh-CN: 编辑
@@ -77,9 +71,6 @@ workspace.mcp.copy_endpoint:
 workspace.mcp.endpoint_copied:
   en: MCP URL copied
   zh-CN: MCP 地址已复制
-workspace.fps.label:
-  en: FPS
-  zh-CN: 帧/秒
 workspace.navigation.back:
   en: Back
   zh-CN: 后退

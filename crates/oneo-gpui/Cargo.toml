@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 default = ["shell"]
-shell = ["dep:gpui-kit", "dep:objc2", "dep:objc2-app-kit", "dep:raw-window-handle", "dep:rust-i18n", "dep:sys-locale"]
+shell = ["dep:gpui-fps", "dep:gpui-kit", "dep:objc2", "dep:objc2-app-kit", "dep:raw-window-handle", "dep:rust-i18n", "dep:sys-locale"]
 
 [[example]]
 name = "minimal"
@@ -20,6 +20,7 @@ serde.workspace = true
 tempfile.workspace = true
 toml.workspace = true
 gpui-kit = { workspace = true, optional = true }
+gpui-fps = { version = "0.6.1", optional = true }
 
 [dev-dependencies]
 serde_json.workspace = true

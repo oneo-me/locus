@@ -2,7 +2,7 @@ mod menu;
 
 pub use menu::{
     About, AppShellMenuLabels, AppShellMenus, CloseSettings, CloseWindow, OpenSettings, Quit,
-    ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, set_app_shell_menus,
+    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, set_app_shell_menus,
 };
 
 use std::cell::Cell;

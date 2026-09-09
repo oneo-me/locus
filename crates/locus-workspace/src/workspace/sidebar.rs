@@ -326,7 +326,7 @@ impl Locus {
         }
         self.selected_library_node = Some(path.clone());
         self.expanded_library_nodes = expanded_paths_for_selection(&path, has_children);
-        self.save_interface_state(cx);
+        self.save_interface_state();
         if selection_changed {
             self.schedule_note_canvas_selection(cx);
             self.begin_selected_note_load(cx);

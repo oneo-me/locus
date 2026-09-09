@@ -96,6 +96,10 @@ impl ShellWindow {
                 configure_main_window_close_behavior(window, cx);
                 material_error = configure_sidebar_material(window).err();
                 let view = build(window, cx);
+                #[cfg(debug_assertions)]
+                let view = cx.new(|_| DebugWindowContent {
+                    content: view.into(),
+                });
                 cx.new(|cx| {
                     Root::new(view, window, cx)
                         .bordered(false)
@@ -108,6 +112,28 @@ impl ShellWindow {
             return Err(anyhow!(error));
         }
         Ok(handle)
+    }
+}
+
+#[cfg(debug_assertions)]
+struct DebugWindowContent {
+    content: gpui_kit::AnyView,
+}
+
+#[cfg(debug_assertions)]
+impl Render for DebugWindowContent {
+    fn render(
+        &mut self,
+        window: &mut Window,
+        cx: &mut gpui_kit::Context<Self>,
+    ) -> impl gpui_kit::IntoElement {
+        use gpui_kit::ParentElement as _;
+
+        gpui_kit::div()
+            .relative()
+            .size_full()
+            .child(self.content.clone())
+            .child(gpui_fps::fps_monitor(window, cx).anchor(gpui_kit::Anchor::BottomRight))
     }
 }
 
@@ -127,6 +153,75 @@ fn window_titlebar_is_reachable(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(debug_assertions)]
+    #[gpui_kit::test]
+    fn debug_hud_keeps_content_focus_and_actions(cx: &mut gpui_kit::TestAppContext) {
+        use gpui_kit::{Context, FocusHandle, IntoElement, div, prelude::*};
+
+        struct Content {
+            focus: FocusHandle,
+            settings: bool,
+        }
+
+        impl Render for Content {
+            fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+                div()
+                    .id("content")
+                    .debug_selector(|| "content".to_owned())
+                    .track_focus(&self.focus)
+                    .size_full()
+                    .on_action(cx.listener(|this, _: &crate::OpenSettings, _, cx| {
+                        this.settings = !this.settings;
+                        cx.notify();
+                    }))
+                    .child(if self.settings {
+                        "Settings"
+                    } else {
+                        "Workspace"
+                    })
+            }
+        }
+
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.bind_keys([gpui_kit::KeyBinding::new(
+                "secondary-,",
+                crate::OpenSettings,
+                None,
+            )]);
+        });
+        let mut content = None;
+        let (_, cx) = cx.add_window_view(|window, cx| {
+            let view = cx.new(|cx| Content {
+                focus: cx.focus_handle(),
+                settings: false,
+            });
+            window.focus(&view.read(cx).focus.clone(), cx);
+            content = Some(view.clone());
+            let view = cx.new(|_| DebugWindowContent {
+                content: view.into(),
+            });
+            Root::new(view, window, cx)
+        });
+        let content = content.unwrap();
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        assert!(gpui_kit::profiler::trace_enabled());
+        let bounds = cx.debug_bounds("content").unwrap();
+        cx.simulate_click(
+            point(bounds.right() - px(20.0), bounds.bottom() - px(20.0)),
+            Default::default(),
+        );
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        assert!(cx.update(|window, cx| content.read(cx).focus.is_focused(window)));
+        #[cfg(target_os = "macos")]
+        cx.simulate_keystrokes("cmd-,");
+        #[cfg(not(target_os = "macos"))]
+        cx.simulate_keystrokes("ctrl-,");
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        assert!(content.read_with(cx, |content, _| content.settings));
+        assert!(gpui_kit::profiler::trace_enabled());
+    }
 
     #[test]
     fn saved_window_requires_a_reachable_titlebar() {

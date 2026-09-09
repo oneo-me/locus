@@ -4,9 +4,8 @@ use gpui_kit::{Bounds, Pixels, px, size};
 use serde::{Deserialize, Serialize};
 
 use locus_preferences::config::{
-    DEFAULT_FPS_COUNTER_VISIBLE, DEFAULT_LEFT_SIDEBAR_VISIBLE, DEFAULT_LEFT_SIDEBAR_WIDTH,
-    DEFAULT_RIGHT_SIDEBAR_VISIBLE, DEFAULT_RIGHT_SIDEBAR_WIDTH, INTERFACE_STATE_FILE,
-    WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH,
+    DEFAULT_LEFT_SIDEBAR_VISIBLE, DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_VISIBLE,
+    DEFAULT_RIGHT_SIDEBAR_WIDTH, INTERFACE_STATE_FILE, WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH,
 };
 use locus_preferences::storage::data_directory;
 
@@ -22,7 +21,6 @@ pub struct InterfaceState {
     pub right_sidebar_width: f32,
     pub left_sidebar_visible: bool,
     pub right_sidebar_visible: bool,
-    pub fps_counter_visible: bool,
     pub selected_library_node: Option<String>,
     pub window_bounds: Option<Bounds<Pixels>>,
 }
@@ -34,7 +32,6 @@ impl Default for InterfaceState {
             right_sidebar_width: DEFAULT_RIGHT_SIDEBAR_WIDTH,
             left_sidebar_visible: DEFAULT_LEFT_SIDEBAR_VISIBLE,
             right_sidebar_visible: DEFAULT_RIGHT_SIDEBAR_VISIBLE,
-            fps_counter_visible: DEFAULT_FPS_COUNTER_VISIBLE,
             selected_library_node: None,
             window_bounds: None,
         }
@@ -117,7 +114,6 @@ mod tests {
             right_sidebar_width: 640.0,
             left_sidebar_visible: false,
             right_sidebar_visible: true,
-            fps_counter_visible: true,
             selected_library_node: Some("projects/locus".to_owned()),
             window_bounds: Some(Bounds::new(
                 gpui_kit::point(px(120.0), px(80.0)),

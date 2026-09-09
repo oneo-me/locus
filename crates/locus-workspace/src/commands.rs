@@ -41,9 +41,6 @@ pub fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: 
                 close_window: t!("menu.window.close", locale = language.locale())
                     .into_owned()
                     .into(),
-                developer: t!("menu.developer.title", locale = language.locale())
-                    .into_owned()
-                    .into(),
                 edit: t!("menu.edit.title", locale = language.locale())
                     .into_owned()
                     .into(),
@@ -65,9 +62,6 @@ pub fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: 
                 )
                 .into_owned()
                 .into(),
-                toggle_fps_counter: t!("menu.developer.show_fps", locale = language.locale())
-                    .into_owned()
-                    .into(),
                 toggle_full_screen: t!("menu.view.enter_full_screen", locale = language.locale())
                     .into_owned()
                     .into(),

@@ -8,7 +8,6 @@ actions!(
         CloseWindow,
         OpenSettings,
         Quit,
-        ToggleFpsCounter,
         ToggleFullScreen,
         ToggleLeftPanel,
         ToggleRightPanel
@@ -18,14 +17,12 @@ actions!(
 pub struct AppShellMenuLabels {
     pub about: SharedString,
     pub close_window: SharedString,
-    pub developer: SharedString,
     pub edit: SharedString,
     pub file: SharedString,
     pub quit: SharedString,
     pub settings: SharedString,
     pub toggle_left_panel: SharedString,
     pub toggle_right_panel: SharedString,
-    pub toggle_fps_counter: SharedString,
     pub toggle_full_screen: SharedString,
     pub view: SharedString,
     pub window: SharedString,
@@ -102,12 +99,6 @@ pub(super) fn bind_app_shell_keys(cx: &mut App, right_panel_toggle: bool) {
     cx.bind_keys([KeyBinding::new("ctrl-cmd-f", ToggleFullScreen, None)]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([KeyBinding::new("f11", ToggleFullScreen, None)]);
-    #[cfg(debug_assertions)]
-    cx.bind_keys([KeyBinding::new(
-        "secondary-alt-shift-f",
-        ToggleFpsCounter,
-        None,
-    )]);
 }
 
 pub fn set_app_shell_menus(cx: &mut App, menus: AppShellMenus) {
@@ -156,11 +147,6 @@ pub fn set_app_shell_menus(cx: &mut App, menus: AppShellMenus) {
         native_menus.push(Menu::new(labels.edit).items(menus.edit_items));
     }
     native_menus.push(Menu::new(labels.view).items(view_items));
-    #[cfg(debug_assertions)]
-    native_menus.push(Menu::new(labels.developer).items([MenuItem::action(
-        labels.toggle_fps_counter,
-        ToggleFpsCounter,
-    )]));
     native_menus
         .push(Menu::new(labels.window).items([MenuItem::action(labels.close_window, CloseWindow)]));
     cx.set_menus(native_menus);

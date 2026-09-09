@@ -14,8 +14,6 @@ pub mod app;
 mod button;
 pub mod config;
 #[cfg(feature = "shell")]
-mod fps;
-#[cfg(feature = "shell")]
 mod settings;
 #[cfg(feature = "shell")]
 pub mod window;
@@ -32,14 +30,11 @@ pub use workspace_panel::{
 #[cfg(feature = "shell")]
 pub use app::{
     About, AppShell, AppShellMenuLabels, AppShellMenus, CloseSettings, CloseWindow, OpenSettings,
-    Quit, ToggleFpsCounter, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
-    set_app_shell_menus,
+    Quit, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, set_app_shell_menus,
 };
 #[cfg(feature = "shell")]
 pub use button::{toolbar_dropdown_menu, toolbar_icon_button};
 pub use config::SettingsStore;
-#[cfg(feature = "shell")]
-pub use fps::FpsCounter;
 #[cfg(feature = "shell")]
 pub use settings::{
     SettingsGroup, SettingsItem, SettingsShell, settings_back_button, settings_button,
