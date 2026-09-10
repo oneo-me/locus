@@ -40,7 +40,7 @@ async fn complete_library_workflow_uses_only_the_full_http_endpoint() {
         port,
     };
     let controller = McpServerController::new(&configuration);
-    assert!(matches!(controller.state(), McpServerState::Running { .. }));
+    assert!(matches!(controller.state(), McpServerState::Running));
     let client = ()
         .serve(StreamableHttpClientTransport::from_uri(format!(
             "http://127.0.0.1:{port}/mcp/full"
@@ -243,13 +243,7 @@ async fn local_network_mode_shares_both_routes_and_rejects_unknown_hosts() {
         port,
     };
     let controller = McpServerController::new(&configuration);
-    assert!(matches!(controller.state(), McpServerState::Running { .. }));
-    assert!(
-        controller
-            .state()
-            .full_endpoint()
-            .ends_with(&format!(":{port}/mcp/full"))
-    );
+    assert!(matches!(controller.state(), McpServerState::Running));
     for route in ["/mcp", "/mcp/full"] {
         let client = ()
             .serve(StreamableHttpClientTransport::from_uri(format!(
@@ -259,15 +253,21 @@ async fn local_network_mode_shares_both_routes_and_rejects_unknown_hosts() {
             .unwrap();
         assert!(!client.list_all_tools().await.unwrap().is_empty());
         client.cancel().await.unwrap();
-        let mut connection =
-            std::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port)).unwrap();
-        connection
-            .set_read_timeout(Some(std::time::Duration::from_secs(5)))
-            .unwrap();
-        write!(connection, "POST {route} HTTP/1.1\r\nHost: untrusted.example\r\nContent-Type: application/json\r\nAccept: application/json, text/event-stream\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}").unwrap();
-        let mut response = String::new();
-        connection.read_to_string(&mut response).unwrap();
-        assert!(response.starts_with("HTTP/1.1 403"), "{response}");
+        for host in [
+            "untrusted.example",
+            "192.0.2.1",
+            "127.0.0.1.untrusted.example",
+        ] {
+            let mut connection =
+                std::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port)).unwrap();
+            connection
+                .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                .unwrap();
+            write!(connection, "POST {route} HTTP/1.1\r\nHost: {host}\r\nContent-Type: application/json\r\nAccept: application/json, text/event-stream\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}").unwrap();
+            let mut response = String::new();
+            connection.read_to_string(&mut response).unwrap();
+            assert!(response.starts_with("HTTP/1.1 403"), "{response}");
+        }
     }
     drop(controller);
 }

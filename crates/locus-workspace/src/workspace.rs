@@ -16,10 +16,10 @@ mod window_chrome;
 
 use gpui_kit::component::{ElementExt as _, Root};
 use gpui_kit::{
-    AnyElement, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
-    ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Subscription, Task, WeakFocusHandle,
-    Window, div, prelude::*, px, transparent_black,
+    AnyElement, Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render, ScrollAnchor, ScrollHandle,
+    Stateful, StyleRefinement, Subscription, Task, WeakFocusHandle, Window, div, prelude::*, px,
+    transparent_black,
 };
 
 use self::canvas::NoteCanvas;
@@ -112,8 +112,6 @@ pub struct Locus {
     pending_note_action: Option<PathBuf>,
     copied_library_node: Option<String>,
     note_copy_generation: u64,
-    mcp_status_copied: bool,
-    mcp_status_copy_generation: u64,
     note_scroll_handle: ScrollHandle,
     window_bounds: Option<Bounds<Pixels>>,
     window_bounds_save_task: Option<Task<()>>,
@@ -309,8 +307,6 @@ impl Locus {
             pending_note_action: None,
             copied_library_node: None,
             note_copy_generation: 0,
-            mcp_status_copied: false,
-            mcp_status_copy_generation: 0,
             note_scroll_handle: ScrollHandle::new(),
             window_bounds: interface_state.window_bounds,
             window_bounds_save_task: None,
@@ -1039,12 +1035,10 @@ mod tests {
         );
         assert!(matches!(
             controller.state(),
-            locus_mcp::McpServerState::Stopped { .. }
+            locus_mcp::McpServerState::Stopped
         ));
-        assert_eq!(
-            controller.state().endpoint(),
-            locus_mcp::mcp_endpoint(true, 4321)
-        );
+        assert!(configuration.local_network);
+        assert_eq!(configuration.port, 4321);
     }
 
     #[test]

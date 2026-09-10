@@ -44,12 +44,6 @@ mcp.status.running:
 mcp.status.stopped:
   en: Stopped
   zh-CN: 已停止
-workspace.mcp.copy_endpoint:
-  en: Copy MCP URL
-  zh-CN: 复制 MCP 地址
-workspace.mcp.endpoint_copied:
-  en: MCP URL copied
-  zh-CN: MCP 地址已复制
 workspace.navigation.back:
   en: Back
   zh-CN: 后退

@@ -15,14 +15,14 @@ use gpui_kit::component::{
     select::{SearchableVec, SelectEvent, SelectItem, SelectState},
 };
 use gpui_kit::{
-    App, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, FontWeight, PathPromptOptions,
-    Render, Role, Stateful, StatefulInteractiveElement, Window, div, prelude::*, px,
+    App, Context, Entity, EventEmitter, FocusHandle, FontWeight, PathPromptOptions, Render,
+    Stateful, StatefulInteractiveElement, Window, div, prelude::*, px,
 };
 use locus_library::ArchivedNote;
 use locus_mcp::McpServerState;
 use locus_preferences::config::{DEFAULT_CODE_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY};
 use locus_preferences::{AgentPreference, EditorPreference, Preferences, TerminalPreference};
-use locus_ui::{Icon, MarkdownSelection, SelectableCodeStyle, icon, selectable_code_text};
+use locus_ui::{Icon, icon};
 use oneo_gpui::Language;
 use oneo_gpui::{AppearanceChange, AppearanceControls, FONT_SIZES};
 use oneo_gpui::{
@@ -239,7 +239,6 @@ pub enum SettingsEvent {
 pub struct Settings {
     focus: FocusHandle,
     return_focus: FocusHandle,
-    mcp_code_focus: FocusHandle,
     page: SettingsPage,
     choice_selects: std::collections::HashMap<Dropdown, Entity<ChoiceSelect>>,
     font_selects: std::collections::HashMap<FontKind, Entity<FontSelect>>,
@@ -249,10 +248,6 @@ pub struct Settings {
     mcp_port_draft: String,
     mcp_port_error: Option<String>,
     mcp_server_state: McpServerState,
-    mcp_copied: Option<&'static str>,
-    mcp_client: mcp::McpClient,
-    mcp_full_access: bool,
-    mcp_code_selection: MarkdownSelection,
     archived_notes: Vec<ArchivedNote>,
     archive_load_error: Option<String>,
     archive_action_error: Option<String>,
@@ -383,7 +378,6 @@ impl Settings {
             appearance_controls,
             focus: cx.focus_handle(),
             return_focus,
-            mcp_code_focus: cx.focus_handle(),
             page: SettingsPage::General,
             choice_selects,
             font_selects,
@@ -392,10 +386,6 @@ impl Settings {
             mcp_port_draft,
             mcp_port_error: None,
             mcp_server_state,
-            mcp_copied: None,
-            mcp_client: mcp::McpClient::default(),
-            mcp_full_access: false,
-            mcp_code_selection: MarkdownSelection::default(),
             archived_notes,
             archive_load_error,
             archive_action_error: None,

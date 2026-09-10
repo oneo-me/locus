@@ -60,8 +60,8 @@ mcp.status.stopped:
   en: Stopped
   zh-CN: 已停止
 settings.appearance.code_font.description:
-  en: Font used for code in notes and settings
-  zh-CN: 用于笔记和设置中的代码内容
+  en: Font used for code in notes
+  zh-CN: 用于笔记中的代码内容
 settings.archive.empty:
   en: No archived notes.
   zh-CN: 暂无归档笔记。
@@ -81,8 +81,8 @@ settings.archive.restoring:
   en: Removing…
   zh-CN: 正在移出…
 settings.appearance.code_font_size.description:
-  en: Text size used for code in notes and settings
-  zh-CN: 用于笔记和设置中的代码内容
+  en: Text size used for code in notes
+  zh-CN: 用于笔记中的代码内容
 settings.appearance.code_font_size.label:
   en: Code font size
   zh-CN: 代码字号
@@ -107,48 +107,6 @@ settings.library.path.description:
 settings.library.path.label:
   en: Library path
   zh-CN: 文档库路径
-settings.mcp.client.claude.description:
-  en: Adds an HTTP server; run /mcp in Claude Code to verify it.
-  zh-CN: 添加 HTTP 类型服务；进入 Claude Code 后运行 /mcp 检查连接。
-settings.mcp.client.codex.description:
-  en: The CLI and IDE extension share this configuration; run /mcp in Codex to verify it.
-  zh-CN: CLI 与 IDE 扩展共享这项配置；进入 Codex 后运行 /mcp 检查连接。
-settings.mcp.client.connection_parameters:
-  en: Connection parameters
-  zh-CN: 连接参数
-settings.mcp.client.cursor.description:
-  en: Add this to the global MCP configuration, then refresh MCP servers in Cursor.
-  zh-CN: 写入全局 MCP 配置，然后在 Cursor 中刷新 MCP 服务。
-settings.mcp.client.generic:
-  en: Generic
-  zh-CN: 通用
-settings.mcp.client.generic.description:
-  en: Field names vary by client; choose Streamable HTTP, not legacy SSE.
-  zh-CN: 客户端字段名称可能不同；选择 Streamable HTTP，不要选择旧式 SSE。
-settings.mcp.client.opencode.description:
-  en: Add the remote MCP server, then run opencode mcp list to verify it.
-  zh-CN: 添加远程 MCP 服务，再运行 opencode mcp list 检查连接。
-settings.mcp.client.terminal:
-  en: Terminal
-  zh-CN: 终端
-settings.mcp.configuration_copied:
-  en: Configuration copied
-  zh-CN: 配置已复制
-settings.mcp.connect_agent:
-  en: Connect an Agent
-  zh-CN: 配置到 Agent
-settings.mcp.copy_configuration:
-  en: Copy configuration
-  zh-CN: 复制配置
-settings.mcp.endpoint.copied:
-  en: Copied
-  zh-CN: 已复制
-settings.mcp.endpoint.copy:
-  en: Copy URL
-  zh-CN: 复制地址
-settings.mcp.endpoint.label:
-  en: Service URL
-  zh-CN: 服务地址
 settings.mcp.local_network.description:
   en: No authentication. Network clients can read, upload, modify and permanently delete library content; the standard endpoint also exposes local paths.
   zh-CN: 无身份验证。局域网客户端可读取、上传、修改和永久删除库内内容；标准接口还会返回本机路径。
@@ -170,9 +128,6 @@ settings.mcp.port.title:
 settings.mcp.port.validation_error:
   en: Port must be an integer from 1 to 65535.
   zh-CN: 端口必须是 1 到 65535 之间的整数。
-settings.mcp.scope_note:
-  en: The standard endpoint returns metadata and local paths. Agents edit content with their own file tools.
-  zh-CN: 标准接口返回元数据和本机路径，Agent 使用自身文件工具编辑内容。
 settings.mcp.service.description:
   en: Provides standard discovery and full library access over Streamable HTTP
   zh-CN: 通过 Streamable HTTP 提供标准发现与完整笔记库操作
@@ -183,15 +138,6 @@ settings.mcp.service.toggle:
   en: Start MCP service
   zh-CN: 启动 MCP 服务
 
-settings.mcp.standard_access:
-  en: Standard
-  zh-CN: 标准接口
-settings.mcp.full_access:
-  en: Full access
-  zh-CN: 完整接口
-settings.mcp.full_scope_note:
-  en: Read, edit, upload, download, move and delete notes, attachments and canvases through MCP. Uses the same service and network setting; no server file paths are returned.
-  zh-CN: 通过 MCP 读取、编辑、上传、下载、移动和删除笔记、附件及画布。共用服务与局域网设置，不返回服务器文件路径。
 settings.terminal.application.label:
   en: Terminal
   zh-CN: 终端
@@ -204,3 +150,7 @@ settings.terminal.agent.label:
 settings.terminal.agent.description:
   en: Start this installed Agent when opening the terminal.
   zh-CN: 打开终端时启动此 Agent，请先完成安装。
+
+settings.mcp.status.label:
+  en: Service status
+  zh-CN: 服务状态

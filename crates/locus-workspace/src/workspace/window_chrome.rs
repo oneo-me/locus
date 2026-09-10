@@ -1,8 +1,6 @@
 use super::*;
-use gpui_kit::component::{
-    Disableable as _, Sizable as _,
-    button::{Button, ButtonVariants as _},
-};
+use gpui_kit::Role;
+use gpui_kit::component::{Disableable as _, button::Button};
 use locus_mcp::McpServerState;
 use rust_i18n::t;
 
@@ -119,16 +117,16 @@ impl Locus {
             )
     }
 
-    pub(super) fn render_mcp_status(&self, cx: &mut Context<Self>) -> Button {
+    pub(super) fn render_mcp_status(&self, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::global(cx).clone();
         let language = self.language(cx);
         let state = self.mcp_server.state();
         let (status, color) = match &state {
-            McpServerState::Stopped { .. } => (
+            McpServerState::Stopped => (
                 t!("mcp.status.stopped", locale = language.locale()).into_owned(),
                 theme.muted_foreground,
             ),
-            McpServerState::Running { .. } => (
+            McpServerState::Running => (
                 t!("mcp.status.running", locale = language.locale()).into_owned(),
                 theme.success,
             ),
@@ -137,45 +135,19 @@ impl Locus {
                 theme.danger,
             ),
         };
-        let endpoint = state.endpoint().to_owned();
-        let label = if self.mcp_status_copied {
-            t!("workspace.mcp.endpoint_copied", locale = language.locale()).into_owned()
-        } else {
-            format!(
-                "{status} · {}",
-                t!("workspace.mcp.copy_endpoint", locale = language.locale()).into_owned()
-            )
-        };
-        let (icon_kind, icon_color) = if self.mcp_status_copied {
-            (Icon::Check, theme.success)
-        } else {
-            (Icon::Network, color)
-        };
-
-        Button::new("copy-mcp-endpoint")
-            .ghost()
-            .xsmall()
-            .size(px(28.0))
-            .icon(icon_kind)
-            .text_color(icon_color)
-            .accessibility_label(label.clone())
-            .tooltip(label)
-            .on_click(cx.listener(move |this, _, _, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(endpoint.clone()));
-                this.mcp_status_copied = true;
-                this.mcp_status_copy_generation = this.mcp_status_copy_generation.wrapping_add(1);
-                let generation = this.mcp_status_copy_generation;
-                cx.spawn(async move |this, cx| {
-                    cx.background_executor().timer(COPY_FEEDBACK_DURATION).await;
-                    let _ = this.update(cx, |this, cx| {
-                        if this.mcp_status_copy_generation == generation {
-                            this.mcp_status_copied = false;
-                            cx.notify();
-                        }
-                    });
-                })
-                .detach();
-                cx.notify();
-            }))
+        let label = format!("MCP · {status}");
+        div()
+            .id("mcp-status")
+            .role(Role::Status)
+            .aria_label(label.clone())
+            .tooltip(move |window, cx| {
+                gpui_kit::component::tooltip::Tooltip::new(label.clone()).build(window, cx)
+            })
+            .flex()
+            .items_center()
+            .justify_center()
+            .size(gpui_kit::rems(1.75))
+            .text_color(color)
+            .child(gpui_kit::component::Icon::new(Icon::Network).size(gpui_kit::rems(0.875)))
     }
 }

@@ -4628,7 +4628,6 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
- "libc",
  "locus-library",
  "rmcp",
  "schemars",
@@ -4638,6 +4637,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-util",
+ "tower",
 ]
 
 [[package]]

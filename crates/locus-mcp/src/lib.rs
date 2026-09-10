@@ -1,7 +1,7 @@
-use std::ffi::CStr;
+#![forbid(unsafe_code)]
+
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::path::PathBuf;
-use std::ptr;
 use std::thread::{self, JoinHandle};
 
 mod full;
@@ -21,23 +21,9 @@ const FULL_MCP_PATH: &str = "/mcp/full";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum McpServerState {
-    Stopped { endpoint: String },
-    Running { endpoint: String },
-    Failed { endpoint: String, message: String },
-}
-
-impl McpServerState {
-    pub fn full_endpoint(&self) -> String {
-        format!("{}/full", self.endpoint())
-    }
-
-    pub fn endpoint(&self) -> &str {
-        match self {
-            Self::Stopped { endpoint }
-            | Self::Running { endpoint }
-            | Self::Failed { endpoint, .. } => endpoint,
-        }
-    }
+    Stopped,
+    Running,
+    Failed { message: String },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -59,9 +45,7 @@ impl McpServerController {
         let mut controller = Self {
             cancellation: None,
             thread: None,
-            state: McpServerState::Stopped {
-                endpoint: mcp_endpoint(configuration.local_network, configuration.port),
-            },
+            state: McpServerState::Stopped,
         };
         controller.apply(configuration);
         controller
@@ -69,15 +53,14 @@ impl McpServerController {
 
     pub fn apply(&mut self, configuration: &McpConfiguration) -> McpServerState {
         self.stop();
-        let endpoint = mcp_endpoint(configuration.local_network, configuration.port);
         if !configuration.enabled {
-            self.state = McpServerState::Stopped { endpoint };
+            self.state = McpServerState::Stopped;
             return self.state.clone();
         }
 
         self.state = match self.start(configuration) {
-            Ok(endpoint) => McpServerState::Running { endpoint },
-            Err(message) => McpServerState::Failed { endpoint, message },
+            Ok(()) => McpServerState::Running,
+            Err(message) => McpServerState::Failed { message },
         };
         self.state.clone()
     }
@@ -86,7 +69,7 @@ impl McpServerController {
         self.state.clone()
     }
 
-    fn start(&mut self, configuration: &McpConfiguration) -> Result<String, String> {
+    fn start(&mut self, configuration: &McpConfiguration) -> Result<(), String> {
         let address = bind_address(configuration.local_network, configuration.port);
         let listener =
             TcpListener::bind(address).map_err(|error| format!("无法监听 {address}：{error}"))?;
@@ -97,7 +80,6 @@ impl McpServerController {
         let cancellation = CancellationToken::new();
         let server_cancellation = cancellation.clone();
         let root = configuration.library_path.clone();
-        let allowed_hosts = allowed_hosts(configuration.local_network);
         let thread = thread::Builder::new()
             .name("locus-mcp".to_owned())
             .spawn(move || {
@@ -128,21 +110,29 @@ impl McpServerController {
                         move || Ok(FullMcp::new(library.clone(), full_cancellation.clone())),
                         LocalSessionManager::default().into(),
                         StreamableHttpServerConfig::default()
-                            .with_allowed_hosts(allowed_hosts.clone())
                             .with_cancellation_token(server_cancellation.child_token()),
                     );
                     let service = StreamableHttpService::new(
                         move || Ok(LocusMcp::new(service_root.clone())),
                         LocalSessionManager::default().into(),
                         StreamableHttpServerConfig::default()
-                            .with_allowed_hosts(allowed_hosts)
                             .with_cancellation_token(server_cancellation.child_token()),
                     );
-                    let router = Router::new()
-                        .nest_service(FULL_MCP_PATH, full_service)
-                        .nest_service(MCP_PATH, service);
+                    let make_service = tower::service_fn(
+                        move |stream: axum::serve::IncomingStream<'_, tokio::net::TcpListener>| {
+                            let hosts = allowed_hosts(stream.io().local_addr().ok());
+                            let mut service = service.clone();
+                            let mut full_service = full_service.clone();
+                            service.config.allowed_hosts = hosts.clone();
+                            full_service.config.allowed_hosts = hosts;
+                            let router = Router::new()
+                                .nest_service(FULL_MCP_PATH, full_service)
+                                .nest_service(MCP_PATH, service);
+                            std::future::ready(Ok::<_, std::convert::Infallible>(router))
+                        },
+                    );
                     let shutdown = server_cancellation.clone();
-                    if let Err(error) = axum::serve(listener, router)
+                    if let Err(error) = axum::serve(listener, make_service)
                         .with_graceful_shutdown(shutdown.cancelled_owned())
                         .await
                     {
@@ -154,10 +144,7 @@ impl McpServerController {
 
         self.cancellation = Some(cancellation);
         self.thread = Some(thread);
-        Ok(mcp_endpoint(
-            configuration.local_network,
-            configuration.port,
-        ))
+        Ok(())
     }
 
     fn stop(&mut self) {
@@ -178,17 +165,6 @@ impl Drop for McpServerController {
     }
 }
 
-pub fn mcp_endpoint(local_network: bool, port: u16) -> String {
-    let host = if local_network {
-        local_network_ip()
-            .map(|address| address.to_string())
-            .unwrap_or_else(|| "<本机局域网 IP>".to_owned())
-    } else {
-        "127.0.0.1".to_owned()
-    };
-    format!("http://{host}:{port}{MCP_PATH}")
-}
-
 fn bind_address(local_network: bool, port: u16) -> SocketAddr {
     let ip = if local_network {
         IpAddr::V4(Ipv4Addr::UNSPECIFIED)
@@ -198,78 +174,16 @@ fn bind_address(local_network: bool, port: u16) -> SocketAddr {
     SocketAddr::new(ip, port)
 }
 
-fn local_network_ip() -> Option<Ipv4Addr> {
-    preferred_local_ipv4(interface_ipv4_addresses())
-}
-
-fn interface_ipv4_addresses() -> Vec<(String, Ipv4Addr)> {
-    let mut head: *mut libc::ifaddrs = ptr::null_mut();
-    if unsafe { libc::getifaddrs(&mut head) } != 0 {
-        return Vec::new();
-    }
-
-    let mut addresses = Vec::new();
-    let mut current = head;
-    while !current.is_null() {
-        let interface = unsafe { &*current };
-        let is_up = interface.ifa_flags & libc::IFF_UP as u32 != 0;
-        let is_loopback = interface.ifa_flags & libc::IFF_LOOPBACK as u32 != 0;
-        if is_up && !is_loopback && !interface.ifa_addr.is_null() {
-            let address = unsafe { &*interface.ifa_addr };
-            if address.sa_family as i32 == libc::AF_INET {
-                let name = unsafe { CStr::from_ptr(interface.ifa_name) }
-                    .to_string_lossy()
-                    .into_owned();
-                let address = unsafe { &*(interface.ifa_addr as *const libc::sockaddr_in) };
-                addresses.push((name, Ipv4Addr::from(u32::from_be(address.sin_addr.s_addr))));
-            }
-        }
-        current = interface.ifa_next;
-    }
-    unsafe { libc::freeifaddrs(head) };
-    addresses
-}
-
-fn preferred_local_ipv4(
-    addresses: impl IntoIterator<Item = (String, Ipv4Addr)>,
-) -> Option<Ipv4Addr> {
-    addresses
-        .into_iter()
-        .filter(|(_, address)| is_real_local_address(*address))
-        .max_by_key(|(name, address)| interface_priority(name, *address))
-        .map(|(_, address)| address)
-}
-
-fn is_real_local_address(address: Ipv4Addr) -> bool {
-    let [first, second, ..] = address.octets();
-    !address.is_loopback()
-        && !address.is_unspecified()
-        && !address.is_link_local()
-        && !address.is_broadcast()
-        && !(first == 198 && (18..=19).contains(&second))
-}
-
-fn interface_priority(name: &str, address: Ipv4Addr) -> (bool, bool, bool) {
-    let physical = name.starts_with("en") || name.starts_with("eth") || name.starts_with("wl");
-    let virtual_interface = name.starts_with("utun")
-        || name.starts_with("tun")
-        || name.starts_with("tap")
-        || name.starts_with("bridge")
-        || name.starts_with("awdl")
-        || name.starts_with("llw");
-    (physical, address.is_private(), !virtual_interface)
-}
-
-fn allowed_hosts(local_network: bool) -> Vec<String> {
+fn allowed_hosts(local_address: Option<SocketAddr>) -> Vec<String> {
     let mut hosts = vec![
         "localhost".to_owned(),
         "127.0.0.1".to_owned(),
         "::1".to_owned(),
     ];
-    if local_network {
-        hosts.push("0.0.0.0".to_owned());
-        if let Some(address) = local_network_ip() {
-            hosts.push(address.to_string());
+    if let Some(address) = local_address {
+        let host = address.ip().to_string();
+        if !hosts.contains(&host) {
+            hosts.push(host);
         }
     }
     hosts
@@ -308,7 +222,7 @@ mod tests {
     }
 
     #[test]
-    fn endpoint_reflects_binding_scope() {
+    fn listener_reflects_binding_scope() {
         assert_eq!(
             bind_address(false, 3001),
             SocketAddr::from((Ipv4Addr::LOCALHOST, 3001))
@@ -317,8 +231,19 @@ mod tests {
             bind_address(true, 3001),
             SocketAddr::from((Ipv4Addr::UNSPECIFIED, 3001))
         );
-        assert_eq!(mcp_endpoint(false, 3001), "http://127.0.0.1:3001/mcp");
-        assert!(mcp_endpoint(true, 3001).ends_with(":3001/mcp"));
+    }
+
+    #[test]
+    fn allowed_hosts_follow_the_connection_destination() {
+        let first = allowed_hosts(Some("192.168.1.24:2301".parse().unwrap()));
+        assert_eq!(first, ["localhost", "127.0.0.1", "::1", "192.168.1.24"]);
+        let second = allowed_hosts(Some("10.0.0.8:2301".parse().unwrap()));
+        assert_eq!(second, ["localhost", "127.0.0.1", "::1", "10.0.0.8"]);
+        assert_eq!(allowed_hosts(None), ["localhost", "127.0.0.1", "::1"]);
+        assert_eq!(
+            allowed_hosts(Some("127.0.0.1:2301".parse().unwrap())),
+            ["localhost", "127.0.0.1", "::1"]
+        );
     }
 
     #[test]
@@ -332,12 +257,7 @@ mod tests {
             port,
         };
         let mut controller = McpServerController::new(&configuration);
-        assert_eq!(
-            controller.state(),
-            McpServerState::Stopped {
-                endpoint: format!("http://127.0.0.1:{port}/mcp"),
-            }
-        );
+        assert_eq!(controller.state(), McpServerState::Stopped);
 
         configuration.enabled = true;
         assert!(matches!(
@@ -347,28 +267,17 @@ mod tests {
         drop(occupied);
         assert!(matches!(
             controller.apply(&configuration),
-            McpServerState::Running { .. }
+            McpServerState::Running
         ));
         assert!(TcpListener::bind((Ipv4Addr::LOCALHOST, port)).is_err());
 
         configuration.enabled = false;
         assert!(matches!(
             controller.apply(&configuration),
-            McpServerState::Stopped { .. }
+            McpServerState::Stopped
         ));
         let released = TcpListener::bind((Ipv4Addr::LOCALHOST, port)).unwrap();
         drop(released);
-    }
-
-    #[test]
-    fn local_address_prefers_physical_interface_over_surge_tunnel() {
-        let address = preferred_local_ipv4([
-            ("utun4".to_owned(), Ipv4Addr::new(198, 18, 0, 1)),
-            ("bridge100".to_owned(), Ipv4Addr::new(192, 168, 64, 1)),
-            ("en0".to_owned(), Ipv4Addr::new(192, 168, 1, 24)),
-        ]);
-
-        assert_eq!(address, Some(Ipv4Addr::new(192, 168, 1, 24)));
     }
 
     #[tokio::test]
@@ -392,7 +301,7 @@ mod tests {
             local_network: false,
         };
         let controller = McpServerController::new(&configuration);
-        assert!(matches!(controller.state(), McpServerState::Running { .. }));
+        assert!(matches!(controller.state(), McpServerState::Running));
 
         let transport =
             StreamableHttpClientTransport::from_uri(format!("http://127.0.0.1:{port}/mcp"));
