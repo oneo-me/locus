@@ -50,7 +50,11 @@ const GHOSTTY_SCRIPT: &str = r#"on run argv
         set config to new surface configuration
         set initial working directory of config to item 1 of argv
         set command of config to item 2 of argv
-        new window with configuration config
+        if (count of windows) > 0 then
+            new tab in front window with configuration config
+        else
+            new window with configuration config
+        end if
         activate
     end tell
 end run"#;

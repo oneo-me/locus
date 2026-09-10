@@ -16,7 +16,7 @@ Markdown 文档树始终是知识内容的唯一事实来源。外部 Agent 可�
 
 在“设置 → 终端”选择系统终端或 Ghostty，并选择 Codex、pi、OpenCode 或 Claude Code。默认为系统终端与 Codex。打开 Agent 时，应用调用外部终端，在当前笔记库根目录运行对应的 `codex`、`pi`、`opencode` 或 `claude` 命令；需要先安装所选终端和 Agent。外部会话由终端软件管理，切换笔记库或退出 Locus 不结束会话，设置变化只影响后续启动。
 
-macOS 系统终端使用 Terminal，Ghostty 使用其 [AppleScript 接口](https://ghostty.org/docs/features/applescript)（需要 1.3.0 或以上）；两者均先后台启动，再创建一个 Agent 窗口并激活，复用已运行的应用。启动时加载 zsh 登录与交互配置，Agent 退出或找不到命令时保留 Shell，便于查看错误。Windows 使用系统控制台，不提供 Ghostty 选项。共享 shell 只提供左侧栏与主内容区。旧内嵌终端与自动打开画布设置不再使用，下一次保存设置时移除旧字段，其他偏好保留。以下为 macOS 快捷键：
+macOS 系统终端使用 Terminal，Ghostty 使用其 [AppleScript 接口](https://ghostty.org/docs/features/applescript)（需要 1.3.0 或以上）；两者均先后台启动，再创建 Agent 会话并激活，复用已运行的应用。Terminal 创建新窗口；Ghostty 优先在最近使用的已有窗口中新建标签页，没有窗口时才创建新窗口。启动时加载 zsh 登录与交互配置，Agent 退出或找不到命令时保留 Shell，便于查看错误。Windows 使用系统控制台，不提供 Ghostty 选项。共享 shell 只提供左侧栏与主内容区。旧内嵌终端与自动打开画布设置不再使用，下一次保存设置时移除旧字段，其他偏好保留。以下为 macOS 快捷键：
 
 | 操作 | 快捷键 |
 | --- | --- |
