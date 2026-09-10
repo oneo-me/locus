@@ -1,5 +1,5 @@
 use rust_i18n::t;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -17,8 +17,8 @@ mod window_chrome;
 use gpui_kit::component::{ElementExt as _, Root};
 use gpui_kit::{
     AnyElement, Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render, ScrollAnchor, ScrollHandle,
-    Stateful, StyleRefinement, Subscription, Task, WeakFocusHandle, Window, div, prelude::*, px,
+    MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render, ScrollHandle, Stateful,
+    StyleRefinement, Subscription, Task, WeakFocusHandle, Window, div, prelude::*, px,
     transparent_black,
 };
 
@@ -90,16 +90,14 @@ pub struct Locus {
     library_watcher_error: Option<String>,
     sidebar_order: SidebarOrderState,
     dragged_library_node: Option<String>,
-    library_reorder_offsets: HashMap<String, f32>,
-    library_reorder_generation: u64,
+    library_reorder_animation: Option<sidebar::LibraryReorderAnimation>,
     expanded_library_nodes: HashSet<String>,
     selected_library_node: Option<String>,
     library_navigation: LibraryNavigation,
     selected_note: Option<SelectedNote>,
     note_load_generation: u64,
     note_load_task: Option<Task<()>>,
-    library_scroll_handle: ScrollHandle,
-    selected_library_scroll_anchor: ScrollAnchor,
+    library_tree_state: Entity<gpui_kit::base::TreeState>,
     scroll_to_selected_library_node: bool,
     note_text_focus: FocusHandle,
     note_text_selection: MarkdownSelection,
@@ -159,9 +157,18 @@ impl Locus {
                 )
             })
             .unwrap_or_default();
-        let library_scroll_handle = ScrollHandle::new();
-        let selected_library_scroll_anchor =
-            ScrollAnchor::for_handle(library_scroll_handle.clone());
+        let library_tree_state = cx.new(|cx| {
+            let mut state = gpui_kit::base::TreeState::new(cx).items(sidebar::library_tree_items(
+                &library_tree.nodes,
+                &expanded_library_nodes,
+            ));
+            let ix = selected_library_node
+                .as_ref()
+                .and_then(|path| state.index_of(&path.clone().into()));
+            state.set_selected_index(ix, cx);
+            state
+        });
+        Self::observe_library_tree(&library_tree_state, cx);
         let scroll_to_selected_library_node = selected_library_node.is_some();
         let note_load_generation = 1;
         let (selected_note, note_load_task) = selected_library_node
@@ -285,16 +292,14 @@ impl Locus {
             library_watcher_error,
             sidebar_order,
             dragged_library_node: None,
-            library_reorder_offsets: HashMap::new(),
-            library_reorder_generation: 0,
+            library_reorder_animation: None,
             expanded_library_nodes,
             selected_library_node,
             library_navigation: LibraryNavigation::default(),
             selected_note,
             note_load_generation,
             note_load_task,
-            library_scroll_handle,
-            selected_library_scroll_anchor,
+            library_tree_state,
             scroll_to_selected_library_node,
             note_text_focus: cx.focus_handle(),
             note_text_selection: MarkdownSelection::default(),
@@ -459,6 +464,7 @@ impl Locus {
         self.library_watcher = watcher;
         self.library_watch_task = task;
         self.library_watcher_error = watcher_error;
+        self.library_reorder_animation = None;
         self.library_tree = LibraryTree::load(Some(path));
         self.settings.update(cx, |settings, cx| {
             settings.set_archive_state(
@@ -471,6 +477,7 @@ impl Locus {
         self.library_navigation.clear();
         self.clear_library_selection(cx);
         self.expanded_library_nodes.clear();
+        self.sync_library_tree(cx);
         self.scroll_to_selected_library_node = false;
         self.save_interface_state();
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
@@ -504,7 +511,13 @@ impl Locus {
         self.settings.update(cx, |settings, cx| {
             settings.set_archive_state(tree.archived_notes.clone(), tree.error.clone(), cx);
         });
+        self.library_reorder_animation = None;
         self.library_tree = tree;
+        self.expanded_library_nodes.retain(|path| {
+            self.library_tree
+                .node(path)
+                .is_some_and(|node| !node.children.is_empty())
+        });
         self.library_navigation
             .retain(|path| self.library_tree.node(path).is_some());
 
@@ -515,13 +528,10 @@ impl Locus {
         });
         if selection_still_valid {
             if let Some(path) = selected_path.as_deref() {
-                let (has_children, is_document) = self
+                let is_document = self
                     .library_tree
                     .node(path)
-                    .map(|node| (!node.children.is_empty(), node.document_path.is_some()))
-                    .unwrap_or_default();
-                self.expanded_library_nodes =
-                    sidebar::expanded_paths_for_selection(path, has_children);
+                    .is_some_and(|node| node.document_path.is_some());
                 if is_document && (!selected_was_document || reload_selected_note) {
                     self.begin_selected_note_load(cx);
                 }
@@ -531,6 +541,7 @@ impl Locus {
             self.expanded_library_nodes.clear();
             self.save_interface_state();
         }
+        self.sync_library_tree(cx);
         self.schedule_note_canvas_selection(cx);
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
@@ -847,6 +858,15 @@ impl Locus {
     }
 
     fn advance_render_lifecycle(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self
+            .library_reorder_animation
+            .as_ref()
+            .is_some_and(|animation| {
+                cx.reduce_motion() || animation.is_finished(std::time::Instant::now())
+            })
+        {
+            self.library_reorder_animation = None;
+        }
         let layout = self.app_shell.workspace_mut().layout(window);
         self.synchronize_canvases(window, cx);
         let panels = layout.frame;
@@ -854,7 +874,11 @@ impl Locus {
             self.left_pane.update(cx, |_, cx| cx.notify());
         }
         if panels.left > 0.0 && self.scroll_to_selected_library_node {
-            self.selected_library_scroll_anchor.scroll_to(window, cx);
+            self.library_tree_state.update(cx, |state, _| {
+                if let Some(ix) = state.selected_index() {
+                    state.scroll_to_item(ix, gpui_kit::ScrollStrategy::Center);
+                }
+            });
             self.scroll_to_selected_library_node = false;
         }
     }

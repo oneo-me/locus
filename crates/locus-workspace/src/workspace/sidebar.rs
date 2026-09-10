@@ -1,16 +1,16 @@
 use rust_i18n::t;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use gpui_kit::{
-    Animation, AnimationExt, AnyElement, Div, DragMoveEvent, FontWeight, ObjectFit, Role,
-    StatefulInteractiveElement, StyledImage, Transformation, div, ease_out_quint, prelude::*, px,
-    radians,
+    AnyElement, Div, DragMoveEvent, FontWeight, ObjectFit, StatefulInteractiveElement, StyledImage,
+    Transformation, div, ease_out_quint, prelude::*, px, radians,
 };
 
 use super::Locus;
 use crate::sidebar_order::reorder_siblings;
+use gpui_kit::base::{Tree, TreeEntry, TreeEvent, TreeItem, TreeState};
 use gpui_kit::component::Theme;
 use gpui_kit::component::{menu::ContextMenuExt as _, scroll::Scrollbar};
 use locus_library::{ChangeStatus, LibraryNode};
@@ -21,13 +21,103 @@ use oneo_gpui::sidebar_selection_background;
 const TREE_ROW_HEIGHT: f32 = 30.0;
 const TREE_LEVEL_INDENT: f32 = 16.0;
 
+const REORDER_DURATION: Duration = Duration::from_millis(150);
+
+pub(super) struct LibraryReorderAnimation {
+    offsets: HashMap<String, f32>,
+    started: Instant,
+}
+
+impl LibraryReorderAnimation {
+    pub(super) fn is_finished(&self, now: Instant) -> bool {
+        now.duration_since(self.started) >= REORDER_DURATION
+    }
+
+    fn offset(&self, path: &str, now: Instant) -> Option<f32> {
+        if self.is_finished(now) {
+            return None;
+        }
+        let progress =
+            now.duration_since(self.started).as_secs_f32() / REORDER_DURATION.as_secs_f32();
+        let mut path = path;
+        while !path.is_empty() {
+            if let Some(offset) = self.offsets.get(path) {
+                return Some(offset * (1.0 - ease_out_quint()(progress)));
+            }
+            path = parent_path(path);
+        }
+        None
+    }
+}
+
 #[derive(Clone)]
 struct DraggedLibraryNode {
     path: String,
     parent: String,
 }
 
+pub(super) fn library_tree_items(
+    nodes: &[LibraryNode],
+    expanded: &HashSet<String>,
+) -> Vec<TreeItem> {
+    nodes
+        .iter()
+        .map(|node| {
+            TreeItem::new(node.path.clone(), node.title.clone())
+                .expanded(expanded.contains(&node.path))
+                .children(library_tree_items(&node.children, expanded))
+        })
+        .collect()
+}
+
+fn selected_tree_node(state: &TreeState) -> Option<(String, bool)> {
+    state
+        .selected_entry()
+        .map(|entry| (entry.item().id.to_string(), entry.is_expanded()))
+}
+
 impl Locus {
+    pub(super) fn sync_library_tree(&self, cx: &mut gpui_kit::Context<Self>) {
+        let items = library_tree_items(&self.library_tree.nodes, &self.expanded_library_nodes);
+        self.library_tree_state.update(cx, |state, cx| {
+            state.set_items(items, cx);
+            let ix = self
+                .selected_library_node
+                .as_ref()
+                .and_then(|path| state.index_of(&path.clone().into()));
+            state.set_selected_index(ix, cx);
+        });
+    }
+
+    pub(super) fn observe_library_tree(
+        state: &gpui_kit::Entity<TreeState>,
+        cx: &mut gpui_kit::Context<Self>,
+    ) {
+        cx.subscribe(state, |this, _, event, cx| {
+            match event {
+                TreeEvent::Expanded(path) => {
+                    this.expanded_library_nodes.insert(path.to_string());
+                }
+                TreeEvent::Collapsed(path) => {
+                    this.expanded_library_nodes.remove(path.as_ref());
+                }
+            }
+            cx.notify();
+        })
+        .detach();
+        cx.observe(state, |this, state, cx| {
+            let selected = selected_tree_node(state.read(cx));
+            if let Some((path, expanded)) = selected
+                && this.selected_library_node.as_ref() != Some(&path)
+                && this.library_tree.node(&path).is_some()
+            {
+                this.select_library_node(path, expanded, cx);
+                cx.notify();
+            }
+        })
+        .detach();
+    }
+
     pub(super) fn render_library_sidebar(
         &self,
         language: Language,
@@ -47,14 +137,7 @@ impl Locus {
             );
         }
 
-        let mut body = div()
-            .id("library-tree-scroll")
-            .size_full()
-            .min_h_0()
-            .overflow_y_scroll()
-            .track_scroll(&self.library_scroll_handle)
-            .px(px(8.0))
-            .pb_3();
+        let mut body = div().size_full().min_h_0().flex().flex_col().pb_3();
         if self.library_tree.repository_error.is_some() {
             body = body.child(
                 div()
@@ -115,25 +198,49 @@ impl Locus {
             );
         }
 
-        for node in &self.library_tree.nodes {
-            body = body.child(self.render_library_node(node, 0, cx));
-        }
-        div()
-            .relative()
+        let owner = cx.entity().downgrade();
+        let focus = self.library_tree_state.clone();
+        let tree = Tree::new(&self.library_tree_state)
             .size_full()
-            .child(body)
-            .child(Scrollbar::vertical(&self.library_scroll_handle))
+            .list_style(gpui_kit::StyleRefinement::default().size_full())
+            .item(move |_, entry, _, window, cx| {
+                owner
+                    .update(cx, |this, cx| this.render_library_node(entry, window, cx))
+                    .unwrap_or_else(|_| div().into_any_element())
+            });
+        body.child(
+            div()
+                .relative()
+                .flex_1()
+                .min_h_0()
+                .child(
+                    div()
+                        .id("library-tree-focus")
+                        .size_full()
+                        .px(px(8.0))
+                        .on_mouse_down(gpui_kit::MouseButton::Left, move |_, window, cx| {
+                            focus.update(cx, |state, cx| state.focus(window, cx));
+                        })
+                        .child(tree),
+                )
+                .child(Scrollbar::vertical(
+                    self.library_tree_state.read(cx).scroll_handle(),
+                )),
+        )
     }
 
     fn render_library_node(
         &self,
-        node: &LibraryNode,
-        depth: usize,
+        entry: &TreeEntry,
+        window: &mut gpui_kit::Window,
         cx: &mut gpui_kit::Context<Self>,
     ) -> AnyElement {
+        let Some(node) = self.library_tree.node(entry.item().id.as_ref()) else {
+            return div().into_any_element();
+        };
+        let depth = entry.depth();
         let theme = Theme::global(cx).clone();
-        let has_children = !node.children.is_empty();
-        let expanded = self.expanded_library_nodes.contains(&node.path);
+        let expanded = entry.is_expanded();
         let selected = self.selected_library_node.as_deref() == Some(node.path.as_str());
         let path = node.path.clone();
         let parent = parent_path(&path).to_owned();
@@ -142,21 +249,13 @@ impl Locus {
             path: path.clone(),
             parent: parent.clone(),
         };
-        let select_path = path.clone();
         let content = div()
             .id(format!("library-node-action-{}", node.path))
-            .role(Role::Button)
-            .aria_label(node.title.clone())
             .h_full()
             .min_w_0()
             .flex_1()
             .child(library_node_content(node, expanded, theme.clone()))
-            .on_drag(drag, |_, _, _, cx| cx.new(|_| gpui_kit::Empty))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                this.select_library_node(select_path.clone(), has_children, cx);
-                cx.stop_propagation();
-                cx.notify();
-            }));
+            .on_drag(drag, |_, _, _, cx| cx.new(|_| gpui_kit::Empty));
         let content = if node.document_path.is_some() {
             content
                 .context_menu(self.note_popup_menu(node, cx))
@@ -178,9 +277,6 @@ impl Locus {
             .when(selected, |row| {
                 row.bg(sidebar_selection_background(&theme))
                     .text_color(theme.foreground)
-            })
-            .when(selected, |row| {
-                row.anchor_scroll(Some(self.selected_library_scroll_anchor.clone()))
             })
             .when(!selected, |row| {
                 let selection_background = sidebar_selection_background(&theme);
@@ -220,30 +316,17 @@ impl Locus {
                 }
             }));
 
-        let mut branch = div().w_full().min_w_0().flex().flex_col().child(row);
-        if has_children && expanded {
-            for child in &node.children {
-                branch = branch.child(self.render_library_node(child, depth + 1, cx));
-            }
-        }
-
-        if let Some(offset) = self.library_reorder_offsets.get(&node.path).copied()
+        if !cx.reduce_motion()
+            && let Some(offset) = self
+                .library_reorder_animation
+                .as_ref()
+                .and_then(|animation| animation.offset(&node.path, Instant::now()))
             && offset != 0.0
         {
-            let animation_id = format!(
-                "library-reorder-{}-{}",
-                self.library_reorder_generation, node.path
-            );
-            branch
-                .relative()
-                .with_animation(
-                    animation_id,
-                    Animation::new(Duration::from_millis(150)).with_easing(ease_out_quint()),
-                    move |branch, progress| branch.top(px(offset * (1.0 - progress))),
-                )
-                .into_any_element()
+            window.request_animation_frame();
+            row.relative().top(px(offset)).into_any_element()
         } else {
-            branch.into_any_element()
+            row.into_any_element()
         }
     }
 
@@ -265,8 +348,11 @@ impl Locus {
         else {
             return;
         };
-        self.library_reorder_offsets = reorder_animation_offsets(&previous_layout, &paths);
-        self.library_reorder_generation = self.library_reorder_generation.wrapping_add(1);
+        self.library_reorder_animation = (!cx.reduce_motion()).then(|| LibraryReorderAnimation {
+            offsets: reorder_animation_offsets(&previous_layout, &paths),
+            started: Instant::now(),
+        });
+        self.sync_library_tree(cx);
         let Some(library_path) = self
             .current_library_path(cx)
             .map(std::path::Path::to_path_buf)
@@ -283,12 +369,12 @@ impl Locus {
     pub(super) fn select_library_node(
         &mut self,
         path: String,
-        has_children: bool,
+        expand_selected: bool,
         cx: &mut gpui_kit::Context<Self>,
     ) {
         self.library_navigation
             .visit(self.selected_library_node.as_deref(), &path);
-        self.apply_library_selection(path, has_children, cx);
+        self.apply_library_selection(path, expand_selected, cx);
     }
 
     pub(super) fn restore_library_selection(
@@ -311,7 +397,7 @@ impl Locus {
     fn apply_library_selection(
         &mut self,
         path: String,
-        has_children: bool,
+        expand_selected: bool,
         cx: &mut gpui_kit::Context<Self>,
     ) {
         let could_reload_current_note = self.can_reload_current_note();
@@ -325,7 +411,9 @@ impl Locus {
                 .set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0)));
         }
         self.selected_library_node = Some(path.clone());
-        self.expanded_library_nodes = expanded_paths_for_selection(&path, has_children);
+        self.expanded_library_nodes = expanded_paths_for_selection(&path, expand_selected);
+        self.sync_library_tree(cx);
+        self.scroll_to_selected_library_node = true;
         self.save_interface_state();
         if selection_changed {
             self.schedule_note_canvas_selection(cx);
@@ -504,13 +592,13 @@ fn library_node_content(node: &LibraryNode, expanded: bool, theme: Theme) -> Div
 
 pub(super) fn expanded_paths_for_selection(
     path: &str,
-    has_children: bool,
+    expand_selected: bool,
 ) -> std::collections::HashSet<String> {
     let segments = path.split('/').collect::<Vec<_>>();
     let mut expanded = (1..segments.len())
         .map(|index| segments[..index].join("/"))
         .collect::<std::collections::HashSet<_>>();
-    if has_children {
+    if expand_selected {
         expanded.insert(path.to_owned());
     }
     expanded
@@ -578,6 +666,149 @@ mod tests {
     };
     use std::cmp::Ordering;
     use std::collections::HashSet;
+
+    #[gpui_kit::test]
+    fn library_projection_preserves_hierarchy_identity_and_selection(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        use super::library_tree_items;
+        use gpui_kit::AppContext;
+        use gpui_kit::base::TreeState;
+        use locus_library::LibraryTree;
+
+        let root = tempfile::tempdir().unwrap();
+        for path in ["alpha/child", "beta"] {
+            std::fs::create_dir_all(root.path().join(path)).unwrap();
+            std::fs::write(
+                root.path().join(path).join("index.md"),
+                "---\ntitle: Same title\n---\n",
+            )
+            .unwrap();
+        }
+        let mut library = LibraryTree::load(Some(root.path()));
+        let expanded = expanded_paths_for_selection("alpha/child", false);
+        let state =
+            cx.new(|cx| TreeState::new(cx).items(library_tree_items(&library.nodes, &expanded)));
+        state.update(cx, |state, cx| {
+            assert_eq!(state.entry(0).unwrap().item().id.as_ref(), "alpha");
+            assert_eq!(state.entry(1).unwrap().depth(), 1);
+            assert_eq!(state.entry(1).unwrap().item().label.as_ref(), "Same title");
+            let ix = state.index_of(&"alpha/child".into());
+            state.set_selected_index(ix, cx);
+            assert_eq!(state.selected_item().unwrap().id.as_ref(), "alpha/child");
+
+            super::reorder_siblings(&mut library.nodes, "beta", "alpha").unwrap();
+            state.set_items(library_tree_items(&library.nodes, &expanded), cx);
+            let ix = state.index_of(&"alpha/child".into());
+            state.set_selected_index(ix, cx);
+            assert_eq!(state.selected_index(), Some(2));
+            assert_eq!(state.selected_item().unwrap().id.as_ref(), "alpha/child");
+
+            state.set_items(library_tree_items(&library.nodes, &HashSet::new()), cx);
+            assert!(state.index_of(&"alpha/child".into()).is_none());
+            assert!(state.selected_item().is_none());
+            state.set_items(Vec::new(), cx);
+            assert!(state.entry(0).is_none());
+        });
+    }
+
+    #[gpui_kit::test]
+    fn clicking_an_expanded_parent_keeps_it_collapsed_after_selection(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        use gpui_kit::base::{Tree, TreeItem, TreeState};
+        use gpui_kit::test::{TestSupportExt, TestWindowExt};
+        use gpui_kit::{AppContext, Context, Entity, Render, Window, div, prelude::*, px, size};
+
+        struct TreeFixture(Entity<TreeState>);
+        impl Render for TreeFixture {
+            fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+                Tree::new(&self.0)
+                    .size_full()
+                    .list_style(gpui_kit::StyleRefinement::default().size_full())
+                    .item(|_, entry, _, _, _| {
+                        div()
+                            .id(entry.item().id.clone())
+                            .test_support()
+                            .h(px(30.0))
+                            .w_full()
+                            .child(entry.item().label.clone())
+                            .into_any_element()
+                    })
+            }
+        }
+
+        cx.update(gpui_kit::init);
+        let state = cx.new(|cx| {
+            let mut state = TreeState::new(cx).items(vec![
+                TreeItem::new("parent", "Parent")
+                    .expanded(true)
+                    .child(TreeItem::new("parent/child", "Child")),
+            ]);
+            state.set_selected_index(Some(1), cx);
+            state
+        });
+        let handle = cx.open_window(size(px(300.0), px(300.0)), |_, _| {
+            TreeFixture(state.clone())
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.click("parent", cx);
+        })
+        .unwrap();
+        state.update(cx, |state, cx| {
+            let (path, expanded) = super::selected_tree_node(state).unwrap();
+            assert_eq!(path, "parent");
+            assert!(!expanded);
+            let paths = expanded_paths_for_selection(&path, expanded);
+            assert!(!paths.contains("parent"));
+            state.set_items(
+                vec![
+                    TreeItem::new("parent", "Parent")
+                        .expanded(paths.contains("parent"))
+                        .child(TreeItem::new("parent/child", "Child")),
+                ],
+                cx,
+            );
+            state.set_selected_index(Some(0), cx);
+            assert!(state.index_of(&"parent/child".into()).is_none());
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.click("parent", cx);
+        })
+        .unwrap();
+        state.read_with(cx, |state, _| {
+            assert_eq!(
+                super::selected_tree_node(state),
+                Some(("parent".to_owned(), true))
+            );
+            assert!(state.index_of(&"parent/child".into()).is_some());
+        });
+    }
+
+    #[test]
+    fn reappearing_rows_share_the_original_animation_deadline() {
+        use std::collections::HashMap;
+        use std::time::{Duration, Instant};
+        let started = Instant::now();
+        let animation = super::LibraryReorderAnimation {
+            offsets: HashMap::from([("parent/item".to_owned(), 30.0)]),
+            started,
+        };
+        assert_eq!(animation.offset("parent/item", started), Some(30.0));
+        let later = started + Duration::from_millis(75);
+        let offset = animation.offset("parent/item", later).unwrap();
+        assert!(offset > 0.0 && offset < 30.0);
+        assert_eq!(animation.offset("parent/item/child", later), Some(offset));
+        let finished = started + super::REORDER_DURATION;
+        assert!(animation.is_finished(finished));
+        assert_eq!(animation.offset("parent/item", finished), None);
+        assert_eq!(
+            animation.offset("parent/item/child", finished + Duration::from_secs(1)),
+            None
+        );
+    }
 
     #[test]
     fn selection_keeps_only_its_ancestor_chain_expanded() {
