@@ -3,6 +3,7 @@ mod process_environment;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+mod access;
 mod canvas;
 mod mutations;
 mod reference;
@@ -10,6 +11,7 @@ mod repository;
 mod scanner;
 mod watcher;
 
+pub use access::{ContentTarget, LibraryAccess, Resource, content_version};
 pub use canvas::{CANVAS_FILE, load_canvas, load_canvas_resource, load_canvas_template};
 pub use mutations::{archive_note, restore_archived_note, update_note_icon};
 pub use reference::{LIBRARY_REFERENCE_SCHEME, library_reference_path};

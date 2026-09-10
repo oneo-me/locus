@@ -11,19 +11,16 @@ pub fn load_canvas_template(root: &Path, uri: &str) -> io::Result<String> {
     };
     let path = crate::library_reference_path(uri).ok_or_else(invalid)?;
     let mut directory = root.canonicalize()?;
-    for segment in path.split('/') {
-        let name = percent_encoding::percent_decode_str(segment)
-            .decode_utf8()
-            .map_err(|_| invalid())?;
+    for name in path.split('/') {
         if name.is_empty()
             || name.starts_with('.')
             || name.ends_with(['.', ' '])
-            || name.contains(['/', '\\', ':', '\0', '?', '#', '%'])
+            || name.contains(['/', '\\', ':', '\0'])
             || name == "node_modules"
         {
             return Err(invalid());
         }
-        directory.push(name.as_ref());
+        directory.push(name);
         if !fs::symlink_metadata(&directory)?.file_type().is_dir() {
             return Err(invalid());
         }

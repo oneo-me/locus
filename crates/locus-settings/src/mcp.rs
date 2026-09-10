@@ -332,13 +332,17 @@ impl Settings {
     pub(super) fn render_mcp(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let theme = Theme::global(cx).clone();
         let language = self.preferences.appearance.language;
-        let endpoint = self.mcp_server_state.endpoint().to_owned();
+        let endpoint = if self.mcp_full_access {
+            self.mcp_server_state.full_endpoint()
+        } else {
+            self.mcp_server_state.endpoint().to_owned()
+        };
         let endpoint_copy = endpoint.clone();
         let status = match &self.mcp_server_state {
             McpServerState::Stopped { .. } => {
                 t!("mcp.status.stopped", locale = language.locale()).into_owned()
             }
-            McpServerState::Running { endpoint } => {
+            McpServerState::Running { .. } => {
                 format!(
                     "{} · {endpoint}",
                     t!("mcp.status.running", locale = language.locale()).into_owned()
@@ -431,6 +435,27 @@ impl Settings {
                 )
             })
             .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
+            .child(
+                div().px(ui_rem(20.0)).py(ui_rem(12.0)).child(
+                    TabBar::new("mcp-access-tabs")
+                        .underline()
+                        .selected_index(usize::from(self.mcp_full_access))
+                        .on_click(cx.listener(|this, index: &usize, _, cx| {
+                            this.mcp_full_access = *index == 1;
+                            this.mcp_copied = None;
+                            cx.notify();
+                        }))
+                        .child(
+                            Tab::new().label(
+                                t!("settings.mcp.standard_access", locale = language.locale())
+                                    .into_owned(),
+                            ),
+                        )
+                        .child(Tab::new().label(
+                            t!("settings.mcp.full_access", locale = language.locale()).into_owned(),
+                        )),
+                ),
+            )
             .child(SettingsItem::new(
                 t!("settings.mcp.endpoint.label", locale = language.locale()).into_owned(),
                 status,
@@ -455,7 +480,17 @@ impl Settings {
                     .pb(ui_rem(18.0))
                     .text_xs()
                     .text_color(theme.muted_foreground)
-                    .child(t!("settings.mcp.scope_note", locale = language.locale()).into_owned()),
+                    .child(
+                        t!(
+                            if self.mcp_full_access {
+                                "settings.mcp.full_scope_note"
+                            } else {
+                                "settings.mcp.scope_note"
+                            },
+                            locale = language.locale()
+                        )
+                        .into_owned(),
+                    ),
             )
     }
 }
@@ -466,12 +501,15 @@ mod tests {
 
     #[test]
     fn every_mcp_client_uses_the_current_endpoint_and_unique_controls() {
-        let endpoint = "http://127.0.0.1:2301/mcp";
-        let mut copy_keys = std::collections::HashSet::new();
-
-        for client in McpClient::ALL {
-            assert!(client.code(endpoint).contains(endpoint));
-            assert!(copy_keys.insert(client.copy_key()));
+        let state = McpServerState::Stopped {
+            endpoint: "http://127.0.0.1:2301/mcp".into(),
+        };
+        for endpoint in [state.endpoint().to_owned(), state.full_endpoint()] {
+            let mut copy_keys = std::collections::HashSet::new();
+            for client in McpClient::ALL {
+                assert!(client.code(&endpoint).contains(&endpoint));
+                assert!(copy_keys.insert(client.copy_key()));
+            }
         }
     }
 }

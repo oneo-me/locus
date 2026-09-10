@@ -65,7 +65,7 @@ fn read_regular_document(path: &Path) -> Result<String, String> {
     fs::read_to_string(path).map_err(|error| error.to_string())
 }
 
-fn prepare_icon(path: &Path) -> Result<Vec<u8>, String> {
+pub(super) fn prepare_icon(path: &Path) -> Result<Vec<u8>, String> {
     let metadata = path.symlink_metadata().map_err(|error| error.to_string())?;
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err("请选择图片文件。".to_owned());
@@ -105,7 +105,11 @@ fn prepare_icon(path: &Path) -> Result<Vec<u8>, String> {
     Ok(encoded)
 }
 
-fn set_frontmatter_scalar(content: &str, key: &str, value: &str) -> Result<String, String> {
+pub(super) fn set_frontmatter_scalar(
+    content: &str,
+    key: &str,
+    value: &str,
+) -> Result<String, String> {
     let (bom, normalized) = split_bom(content);
     let Some(parts) = FrontmatterParts::parse(normalized)? else {
         let line_ending = if normalized.contains("\r\n") {
@@ -162,21 +166,9 @@ fn set_frontmatter_scalar(content: &str, key: &str, value: &str) -> Result<Strin
         )
     };
     let updated_metadata = frontmatter_object(&updated)?;
-    let updated_value_matches = match key {
-        "archived" => {
-            updated_metadata
-                .get(key)
-                .and_then(serde_json::Value::as_bool)
-                == Some(true)
-        }
-        "icon" => {
-            updated_metadata
-                .get(key)
-                .and_then(serde_json::Value::as_str)
-                == Some(value)
-        }
-        _ => false,
-    };
+    let expected: serde_json::Value =
+        serde_saphyr::from_str(value).map_err(|_| format!("无法安全更新 {key} 字段。"))?;
+    let updated_value_matches = updated_metadata.get(key) == Some(&expected);
     if !updated_value_matches {
         return Err(format!("无法安全更新 {key} 字段。"));
     }
@@ -302,7 +294,7 @@ impl<'a> FrontmatterParts<'a> {
     }
 }
 
-fn write_atomically(path: &Path, content: &[u8]) -> Result<(), String> {
+pub(super) fn write_atomically(path: &Path, content: &[u8]) -> Result<(), String> {
     let directory = path.parent().ok_or_else(|| "笔记路径无效。".to_owned())?;
     let file_name = path
         .file_name()

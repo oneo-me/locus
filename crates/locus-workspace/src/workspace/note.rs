@@ -116,7 +116,6 @@ impl Locus {
                         return false;
                     }
                     if let Some(path) = library_reference_path(url) {
-                        let path = path.to_owned();
                         let _ = locus.update(cx, |this, cx| this.open_library_reference(&path, cx));
                     }
                     true

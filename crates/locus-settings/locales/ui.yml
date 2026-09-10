@@ -192,8 +192,8 @@ settings.mcp.endpoint.label:
   en: Service URL
   zh-CN: 服务地址
 settings.mcp.local_network.description:
-  en: No authentication; devices on the same network can search notes and see absolute local file paths
-  zh-CN: 无身份验证；同一网络的设备可检索笔记，并看到本机文件绝对路径
+  en: No authentication. Network clients can read, upload, modify and permanently delete library content; the standard endpoint also exposes local paths.
+  zh-CN: 无身份验证。局域网客户端可读取、上传、修改和永久删除库内内容；标准接口还会返回本机路径。
 settings.mcp.local_network.label:
   en: Share on local network
   zh-CN: 公开到局域网
@@ -213,11 +213,11 @@ settings.mcp.port.validation_error:
   en: Port must be an integer from 1 to 65535.
   zh-CN: 端口必须是 1 到 65535 之间的整数。
 settings.mcp.scope_note:
-  en: The server only provides list_articles, search_articles, and resolve_article; Agents maintain content and attachments with local file tools.
-  zh-CN: 服务仅提供 list_articles、search_articles、resolve_article；正文与附件由 Agent 使用本地文件工具维护。
+  en: The standard endpoint returns metadata and local paths. Agents edit content with their own file tools.
+  zh-CN: 标准接口返回元数据和本机路径，Agent 使用自身文件工具编辑内容。
 settings.mcp.service.description:
-  en: Provides three read-only document discovery tools over Streamable HTTP
-  zh-CN: 通过 Streamable HTTP 提供三个只读文档发现工具
+  en: Provides standard discovery and full library access over Streamable HTTP
+  zh-CN: 通过 Streamable HTTP 提供标准发现与完整笔记库操作
 settings.mcp.service.label:
   en: Start service
   zh-CN: 启动服务
@@ -230,3 +230,13 @@ settings.auto_open_canvas.label:
 settings.auto_open_canvas.description:
   en: Open the canvas in the sidebar when entering a note that has one.
   zh-CN: 进入有画布的笔记时，自动在侧边栏打开画布。
+
+settings.mcp.standard_access:
+  en: Standard
+  zh-CN: 标准接口
+settings.mcp.full_access:
+  en: Full access
+  zh-CN: 完整接口
+settings.mcp.full_scope_note:
+  en: Read, edit, upload, download, move and delete notes, attachments and canvases through MCP. Uses the same service and network setting; no server file paths are returned.
+  zh-CN: 通过 MCP 读取、编辑、上传、下载、移动和删除笔记、附件及画布。共用服务与局域网设置，不返回服务器文件路径。

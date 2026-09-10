@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::ptr;
 use std::thread::{self, JoinHandle};
 
+mod full;
 mod service;
 
 use axum::Router;
@@ -12,9 +13,11 @@ use rmcp::transport::streamable_http_server::{
 };
 use tokio_util::sync::CancellationToken;
 
+use full::FullMcp;
 use service::LocusMcp;
 
 const MCP_PATH: &str = "/mcp";
+const FULL_MCP_PATH: &str = "/mcp/full";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum McpServerState {
@@ -24,6 +27,10 @@ pub enum McpServerState {
 }
 
 impl McpServerState {
+    pub fn full_endpoint(&self) -> String {
+        format!("{}/full", self.endpoint())
+    }
+
     pub fn endpoint(&self) -> &str {
         match self {
             Self::Stopped { endpoint }
@@ -113,6 +120,17 @@ impl McpServerController {
                         }
                     };
                     let service_root = root.clone();
+                    let library = std::sync::Arc::new(std::sync::Mutex::new(
+                        locus_library::LibraryAccess::new(root),
+                    ));
+                    let full_cancellation = server_cancellation.child_token();
+                    let full_service = StreamableHttpService::new(
+                        move || Ok(FullMcp::new(library.clone(), full_cancellation.clone())),
+                        LocalSessionManager::default().into(),
+                        StreamableHttpServerConfig::default()
+                            .with_allowed_hosts(allowed_hosts.clone())
+                            .with_cancellation_token(server_cancellation.child_token()),
+                    );
                     let service = StreamableHttpService::new(
                         move || Ok(LocusMcp::new(service_root.clone())),
                         LocalSessionManager::default().into(),
@@ -120,7 +138,9 @@ impl McpServerController {
                             .with_allowed_hosts(allowed_hosts)
                             .with_cancellation_token(server_cancellation.child_token()),
                     );
-                    let router = Router::new().nest_service(MCP_PATH, service);
+                    let router = Router::new()
+                        .nest_service(FULL_MCP_PATH, full_service)
+                        .nest_service(MCP_PATH, service);
                     let shutdown = server_cancellation.clone();
                     if let Err(error) = axum::serve(listener, router)
                         .with_graceful_shutdown(shutdown.cancelled_owned())

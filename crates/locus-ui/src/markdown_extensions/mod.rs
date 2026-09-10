@@ -56,7 +56,7 @@ impl MarkdownExtensions for LocusMarkdownExtensions<'_> {
 
     fn render_link_icon(&self, url: &str, theme: &Theme) -> Option<AnyElement> {
         if let Some(path) = library_reference_path(url) {
-            let Some(node) = self.library_tree.node(path) else {
+            let Some(node) = self.library_tree.node(&path) else {
                 return Some(generic_link_icon(theme));
             };
             if let Some(source) = node.icon_image.as_ref() {

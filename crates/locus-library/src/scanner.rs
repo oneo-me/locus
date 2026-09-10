@@ -13,12 +13,12 @@ const DOCUMENT_FILE: &str = "index.md";
 const DOCUMENT_ICON_FILE: &str = "icon.png";
 
 #[derive(Default)]
-struct DocumentMetadata {
-    title: Option<String>,
-    icon: Option<String>,
-    summary: Option<String>,
-    archived: bool,
-    additional: Vec<(String, serde_json::Value)>,
+pub(super) struct DocumentMetadata {
+    pub(super) title: Option<String>,
+    pub(super) icon: Option<String>,
+    pub(super) summary: Option<String>,
+    pub(super) archived: bool,
+    pub(super) additional: Vec<(String, serde_json::Value)>,
 }
 
 struct OrderedFrontmatter(Vec<(String, serde_json::Value)>);
@@ -220,7 +220,7 @@ fn image_size(path: &Path) -> Option<ImageSize> {
     (width > 0 && height > 0).then_some(ImageSize { width, height })
 }
 
-fn read_document_metadata(path: &Path) -> Result<DocumentMetadata, std::io::Error> {
+pub(super) fn read_document_metadata(path: &Path) -> Result<DocumentMetadata, std::io::Error> {
     let mut reader = BufReader::new(fs::File::open(path)?);
     let mut line = String::new();
     if reader.read_line(&mut line)? == 0
@@ -269,7 +269,7 @@ fn document_body(content: &str) -> &str {
     frontmatter_parts(normalized).map_or(normalized, |(_, body)| body)
 }
 
-fn frontmatter_parts(content: &str) -> Option<(&str, &str)> {
+pub(super) fn frontmatter_parts(content: &str) -> Option<(&str, &str)> {
     let rest = content
         .strip_prefix("---\r\n")
         .or_else(|| content.strip_prefix("---\n"))?;

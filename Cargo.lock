@@ -4608,12 +4608,16 @@ version = "0.1.0"
 dependencies = [
  "async-channel",
  "image",
+ "libc",
  "notify 8.2.0",
  "percent-encoding",
+ "pulldown-cmark",
  "regex",
+ "schemars",
  "serde",
  "serde-saphyr 1.2.0",
  "serde_json",
+ "sha2 0.10.9",
  "tempfile",
 ]
 
@@ -4622,12 +4626,14 @@ name = "locus-mcp"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64 0.22.1",
  "libc",
  "locus-library",
  "rmcp",
  "schemars",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "tempfile",
  "tokio",
  "tokio-util",
