@@ -75,6 +75,11 @@ pub fn create(
         )?;
         copy_resources(
             &project.root,
+            &project.config.resources,
+            &bundle.join("resources"),
+        )?;
+        copy_resources(
+            &project.root,
             &project.config.windows.resources,
             &bundle.join("resources"),
         )?;
@@ -131,6 +136,7 @@ fn macos(
     for entry in fs::read_dir(&compiled_icons)? {
         copy_resources(&compiled_icons, &[entry?.path()], &resources)?;
     }
+    copy_resources(&project.root, &project.config.resources, &resources)?;
     let mut info = plist::Value::from_file(&partial)?
         .into_dictionary()
         .context("actool produced invalid metadata")?;
@@ -317,6 +323,32 @@ mod tests {
         assert!(publish(&staging.path().join("missing"), &output, staging).is_err());
         assert_eq!(fs::read_to_string(output.join("app.exe")).unwrap(), "old");
     }
+    #[test]
+    fn copies_external_template_directories_for_both_platforms() {
+        let root = tempfile::tempdir().unwrap();
+        let template = root.path().join("templates/手机主题/桌面");
+        fs::create_dir_all(&template).unwrap();
+        fs::write(template.join("壁纸.svg"), "<svg/>").unwrap();
+        let config: crate::config::Config = toml::from_str(
+            r#"
+package = "app"
+bin = "app"
+name = "App"
+identifier = "me.test.app"
+resources = ["templates"]
+"#,
+        )
+        .unwrap();
+        for output in ["App.app/Contents/Resources", "App/resources"] {
+            let destination = root.path().join(output);
+            copy_resources(root.path(), &config.resources, &destination).unwrap();
+            assert_eq!(
+                fs::read_to_string(destination.join("templates/手机主题/桌面/壁纸.svg")).unwrap(),
+                "<svg/>"
+            );
+        }
+    }
+
     #[test]
     fn resource_collision_fails_instead_of_overwriting() {
         let root = tempfile::tempdir().unwrap();

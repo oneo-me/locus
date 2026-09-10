@@ -13,6 +13,8 @@ pub struct Config {
     pub name: String,
     pub identifier: String,
     #[serde(default)]
+    pub resources: Vec<PathBuf>,
+    #[serde(default)]
     pub windows: Windows,
 }
 
