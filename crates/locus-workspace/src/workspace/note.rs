@@ -35,10 +35,31 @@ impl Locus {
         let markdown_code_font_family = preferences.resolved_code_font_family().to_owned();
         let markdown_code_text_size = preferences.code_font_size;
         let language = preferences.appearance.language;
-        let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark());
         let locus = cx.weak_entity();
         let titlebar =
             self.render_note_titlebar(node, left_control_clearance, content_width, &theme, cx);
+        if node.canvas_path.is_some() {
+            let canvas = self
+                .note_canvas
+                .as_ref()
+                .filter(|canvas| canvas.path == node.path)
+                .map(|canvas| canvas.view.clone().into_any_element());
+            let metadata = note_metadata(node, theme.background, &theme).map(|metadata| {
+                div()
+                    .w_full()
+                    .min_w_0()
+                    .py_1()
+                    .child(metadata)
+                    .into_any_element()
+            });
+            return super::canvas::canvas_page(
+                titlebar.into_any_element(),
+                metadata,
+                canvas,
+                &theme,
+            );
+        }
+        let atmosphere = derive_note_atmosphere(&node.title, theme.is_dark());
         let selected_note = selected_note.filter(|note| note.path == node.path);
 
         let mut article = div()
@@ -202,11 +223,18 @@ impl Locus {
     ) -> impl IntoElement + use<> {
         let copied = self.copied_library_node.as_deref() == Some(node.path.as_str());
         let language = self.language(cx);
-        let (left_padding, right_padding) = note_titlebar_padding(
-            content_width,
-            self.app_shell.workspace().rendered_width(),
-            left_control_clearance,
-        );
+        let (left_padding, right_padding) = if node.canvas_path.is_some() {
+            (
+                (left_control_clearance - self.app_shell.workspace().rendered_width()).max(16.0),
+                16.0,
+            )
+        } else {
+            note_titlebar_padding(
+                content_width,
+                self.app_shell.workspace().rendered_width(),
+                left_control_clearance,
+            )
+        };
         let copy_button = toolbar_icon_button(
             "copy-note-reference",
             if copied {
@@ -256,12 +284,15 @@ impl Locus {
                 self.note_scroll_handle.clone(),
                 theme.background,
                 theme.border,
+                node.canvas_path.is_some(),
             ))
             .child(
                 div()
                     .mx_auto()
                     .w_full()
-                    .max_w(px(NOTE_MAX_WIDTH))
+                    .when(node.canvas_path.is_none(), |bar| {
+                        bar.max_w(px(NOTE_MAX_WIDTH))
+                    })
                     .h_full()
                     .flex()
                     .items_center()
@@ -287,22 +318,6 @@ impl Locus {
                                     .child(node.title.clone()),
                             ),
                     )
-                    .when(node.canvas_path.is_some(), |bar| {
-                        bar.child(
-                            toolbar_icon_button(
-                                "reload-note-canvas",
-                                t!("workspace.canvas.reload", locale = language.locale())
-                                    .into_owned(),
-                                Icon::Globe,
-                                theme,
-                            )
-                            .on_click(cx.listener(
-                                move |this, _, window, cx| {
-                                    this.reload_note_canvas(window, cx);
-                                },
-                            )),
-                        )
-                    })
                     .child(copy_button)
                     .child(edit_button)
                     .child(open_directory_button)
@@ -342,13 +357,18 @@ fn note_metadata(node: &LibraryNode, panel_color: gpui_kit::Hsla, theme: &Theme)
             div()
                 .px(px(14.0))
                 .py(px(8.0))
+                .when(node.canvas_path.is_some(), |summary| summary.px_4().py_1())
                 .text_sm()
                 .line_height(px(21.0))
                 .child(summary.clone()),
         );
     }
     if !node.additional_metadata.is_empty() {
-        let mut fields = div().py(px(4.0)).flex().flex_col();
+        let mut fields = div()
+            .py(px(4.0))
+            .when(node.canvas_path.is_some(), |fields| fields.py_0())
+            .flex()
+            .flex_col();
         for (key, value) in &node.additional_metadata {
             fields = fields.child(
                 div()
@@ -365,6 +385,7 @@ fn note_metadata(node: &LibraryNode, panel_color: gpui_kit::Hsla, theme: &Theme)
                             .flex_none()
                             .px(px(14.0))
                             .py(px(6.0))
+                            .when(node.canvas_path.is_some(), |field| field.px_4().py_1())
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(theme.muted_foreground)
                             .whitespace_normal()
@@ -376,6 +397,7 @@ fn note_metadata(node: &LibraryNode, panel_color: gpui_kit::Hsla, theme: &Theme)
                             .flex_1()
                             .px(px(14.0))
                             .py(px(6.0))
+                            .when(node.canvas_path.is_some(), |field| field.px_4().py_1())
                             .text_color(theme.foreground)
                             .whitespace_normal()
                             .child(format_yaml_metadata_value(value)),
@@ -403,11 +425,12 @@ fn note_titlebar_background(
     handle: ScrollHandle,
     color: gpui_kit::Hsla,
     border_color: gpui_kit::Hsla,
+    always_visible: bool,
 ) -> impl IntoElement {
     canvas(
         |_, _, _| (),
         move |bounds, _, window, _| {
-            if handle.offset().y < px(-0.5) {
+            if always_visible || handle.offset().y < px(-0.5) {
                 window.paint_quad(quad(
                     bounds,
                     Pixels::ZERO,

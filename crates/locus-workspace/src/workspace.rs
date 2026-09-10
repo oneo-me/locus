@@ -821,16 +821,7 @@ impl Locus {
                 content_width,
                 cx,
             );
-            let canvas = self
-                .note_canvas
-                .as_ref()
-                .filter(|canvas| canvas.path == node.path)
-                .map(|canvas| canvas.view.clone().into_any_element());
-            oneo_gpui::WorkspacePanel::new(canvas::note_page(
-                note.into_any_element(),
-                canvas,
-                &theme,
-            ))
+            oneo_gpui::WorkspacePanel::new(note)
         } else {
             oneo_gpui::WorkspacePanel::new(div().size_full())
                 .header(self.render_content_titlebar(left_control_clearance, cx))

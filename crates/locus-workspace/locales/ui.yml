@@ -164,9 +164,6 @@ workspace.note.read_error:
 workspace.note.reference_copied:
   en: Note reference copied
   zh-CN: 笔记引用已复制
-workspace.canvas.reload:
-  en: Reload canvas
-  zh-CN: 刷新画布
 workspace.terminal.launch_error:
   en: Could not open the terminal. Check that it is installed and try again.
   zh-CN: 无法打开终端，请确认已安装后重试。

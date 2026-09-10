@@ -140,36 +140,47 @@ impl Locus {
     }
 }
 
-pub(super) fn note_page(note: AnyElement, canvas: Option<AnyElement>, theme: &Theme) -> Div {
-    let has_canvas = canvas.is_some();
+pub(super) fn canvas_page(
+    titlebar: AnyElement,
+    metadata: Option<AnyElement>,
+    canvas: Option<AnyElement>,
+    theme: &Theme,
+) -> Div {
     div()
+        .relative()
         .size_full()
         .min_h_0()
         .min_w_0()
         .flex()
         .flex_col()
+        .overflow_hidden()
+        .child(div().h(px(super::TITLEBAR_HEIGHT)).flex_none())
+        .when_some(metadata, |page, metadata| {
+            page.child(
+                div()
+                    .id("canvas-metadata")
+                    .debug_selector(|| "canvas-metadata".to_owned())
+                    .w_full()
+                    .max_h_64()
+                    .flex_none()
+                    .overflow_y_scroll()
+                    .bg(theme.background)
+                    .border_b_1()
+                    .border_color(theme.border)
+                    .child(metadata),
+            )
+        })
         .child(
             div()
                 .min_h_0()
                 .min_w_0()
                 .flex_1()
-                .debug_selector(|| "note-region".to_owned())
-                .child(note),
+                .overflow_hidden()
+                .pl(px(1.0))
+                .debug_selector(|| "canvas-region".to_owned())
+                .children(canvas),
         )
-        .when(has_canvas, |page| {
-            page.child(
-                div()
-                    .min_h_0()
-                    .min_w_0()
-                    .flex_1()
-                    .flex_grow(2.0)
-                    .pl(px(1.0))
-                    .border_t_1()
-                    .border_color(theme.border)
-                    .debug_selector(|| "canvas-region".to_owned())
-                    .children(canvas),
-            )
-        })
+        .child(titlebar)
 }
 
 #[cfg(test)]
@@ -180,12 +191,19 @@ mod tests {
     struct NotePagePreview {
         height: f32,
         canvas: bool,
+        metadata_height: Option<f32>,
     }
 
     impl Render for NotePagePreview {
         fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-            div().w(px(700.0)).h(px(self.height)).child(note_page(
-                div().size_full().into_any_element(),
+            div().w(px(700.0)).h(px(self.height)).child(canvas_page(
+                div()
+                    .absolute()
+                    .top_0()
+                    .h(px(super::super::TITLEBAR_HEIGHT))
+                    .into_any_element(),
+                self.metadata_height
+                    .map(|height| div().h(px(height)).into_any_element()),
                 self.canvas.then(|| {
                     div()
                         .size_full()
@@ -198,11 +216,12 @@ mod tests {
     }
 
     #[gpui_kit::test]
-    fn canvas_uses_two_thirds_and_absent_canvas_restores_full_note(cx: &mut TestAppContext) {
+    fn canvas_fills_page_below_titlebar_even_while_loading(cx: &mut TestAppContext) {
         cx.update(gpui_kit::component::init);
         let (view, cx) = cx.add_window_view(|_, _| NotePagePreview {
             height: 900.0,
             canvas: true,
+            metadata_height: None,
         });
         for height in [900.0, 820.0, 1100.0] {
             view.update(cx, |view, cx| {
@@ -210,15 +229,36 @@ mod tests {
                 cx.notify();
             });
             cx.update(|window, cx| window.draw(cx).clear(cx));
-            let note = cx.debug_bounds("note-region").unwrap();
             let canvas = cx.debug_bounds("canvas-region").unwrap();
-            assert!((f32::from(canvas.size.height) - height * 2.0 / 3.0).abs() <= 1.0);
-            assert_eq!(note.bottom(), canvas.top());
-            assert_eq!(note.size.width, canvas.size.width);
+            assert!(
+                (f32::from(canvas.size.height) - (height - super::super::TITLEBAR_HEIGHT)).abs()
+                    <= 1.0
+            );
+            assert_eq!(canvas.top(), px(super::super::TITLEBAR_HEIGHT));
             assert_eq!(f32::from(canvas.bottom()), height);
             let surface = cx.debug_bounds("canvas-surface").unwrap();
             assert_eq!(surface.left() - canvas.left(), px(1.0));
             assert_eq!(surface.right(), canvas.right());
+        }
+        for metadata_height in [Some(80.0), Some(180.0), Some(900.0), None] {
+            view.update(cx, |view, cx| {
+                view.metadata_height = metadata_height;
+                cx.notify();
+            });
+            cx.update(|window, cx| window.draw(cx).clear(cx));
+            let canvas = cx.debug_bounds("canvas-region").unwrap();
+            if metadata_height.is_some() {
+                let metadata = cx.debug_bounds("canvas-metadata").unwrap();
+                assert_eq!(metadata.top(), px(super::super::TITLEBAR_HEIGHT));
+                assert_eq!(metadata.bottom(), canvas.top());
+                assert!(metadata.size.height <= px(256.0));
+                assert!(metadata.size.height > px(0.0));
+            } else {
+                assert!(cx.debug_bounds("canvas-metadata").is_none());
+                assert_eq!(canvas.top(), px(super::super::TITLEBAR_HEIGHT));
+            }
+            assert!(canvas.size.height > px(0.0));
+            assert_eq!(f32::from(canvas.bottom()), 1100.0);
         }
         view.update(cx, |view, cx| {
             view.canvas = false;
@@ -226,9 +266,9 @@ mod tests {
         });
         cx.update(|window, cx| window.draw(cx).clear(cx));
         assert_eq!(
-            f32::from(cx.debug_bounds("note-region").unwrap().size.height),
-            1100.0
+            f32::from(cx.debug_bounds("canvas-region").unwrap().size.height),
+            1100.0 - super::super::TITLEBAR_HEIGHT
         );
-        assert!(cx.debug_bounds("canvas-region").is_none());
+        assert!(cx.debug_bounds("canvas-surface").is_none());
     }
 }
