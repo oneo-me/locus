@@ -6,7 +6,7 @@ use gpui_kit::{
 use oneo_gpui::Language;
 use std::path::Path;
 use std::sync::{
-    Arc,
+    Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
 
@@ -42,6 +42,9 @@ pub enum CanvasEvent {
 }
 
 pub struct CanvasView {
+    root: std::path::PathBuf,
+    directory: std::path::PathBuf,
+    dependencies: Arc<Mutex<super::export::Dependencies>>,
     language: Language,
     visible: bool,
     #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -101,6 +104,9 @@ impl CanvasView {
         .detach();
         let dark = Theme::global(cx).is_dark();
         let mut tab = Self {
+            root: root.to_path_buf(),
+            directory: directory.to_path_buf(),
+            dependencies: Arc::new(Mutex::new(super::export::Dependencies::default())),
             language,
             visible: false,
             #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -130,6 +136,8 @@ impl CanvasView {
         #[cfg(any(target_os = "macos", target_os = "windows"))]
         let page_dark = tab.dark.clone();
         #[cfg(any(target_os = "macos", target_os = "windows"))]
+        let dependencies = tab.dependencies.clone();
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
         let executor = cx.background_executor().clone();
         #[cfg(any(target_os = "macos", target_os = "windows"))]
         let terminal_message = format!("terminal:{}", uuid::Uuid::new_v4());
@@ -144,15 +152,39 @@ impl CanvasView {
                     let root = root.clone();
                     let directory = directory.clone();
                     let page_dark = page_dark.clone();
+                    let dependencies = dependencies.clone();
                     executor
                         .spawn(async move {
-                            responder.respond(canvas_response(
+                            let response = canvas_response(
                                 &root,
                                 &directory,
                                 &request,
                                 page_dark.load(Ordering::Relaxed),
                                 language,
-                            ));
+                            );
+                            if response.status().is_success() {
+                                let mut dependencies = dependencies.lock().unwrap();
+                                if request.uri().path() == "/canvas.html" {
+                                    *dependencies = super::export::Dependencies::default();
+                                } else if request.uri().path() == "/_locus/template" {
+                                    if let Some(uri) = request
+                                        .uri()
+                                        .query()
+                                        .and_then(|query| query.strip_prefix("uri="))
+                                        && let Ok(uri) =
+                                            percent_encoding::percent_decode_str(uri).decode_utf8()
+                                    {
+                                        dependencies.templates.insert(uri.into_owned());
+                                    }
+                                } else if let Ok(name) = percent_encoding::percent_decode_str(
+                                    request.uri().path().trim_start_matches('/'),
+                                )
+                                .decode_utf8()
+                                {
+                                    dependencies.resources.insert(name.into_owned());
+                                }
+                            }
+                            responder.respond(response);
                         })
                         .detach();
                 },
@@ -202,6 +234,19 @@ impl CanvasView {
             tab.error = Some(CanvasError::Unsupported);
         }
         tab
+    }
+
+    pub fn prepare_download(
+        &self,
+        cx: &App,
+    ) -> gpui_kit::Task<std::io::Result<super::CanvasDownload>> {
+        let root = self.root.clone();
+        let directory = self.directory.clone();
+        let dependencies = self.dependencies.lock().unwrap().clone();
+        let dark = self.dark.load(Ordering::Relaxed);
+        cx.background_executor().spawn(async move {
+            super::export::prepare_download(&root, &directory, dark, dependencies)
+        })
     }
 
     pub fn has_error(&self) -> bool {
@@ -422,7 +467,7 @@ fn theme_script(dark: bool) -> String {
 
 const CANVAS_POLICY: &str = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
 
-fn canvas_document(source: &str, dark: bool) -> String {
+pub(crate) fn canvas_document(source: &str, dark: bool) -> String {
     let tailwind = include_str!("../assets/tailwindcss/browser-4.3.3.js");
     let templates = include_str!("templates.js");
     let theme = if dark { "dark" } else { "light" };

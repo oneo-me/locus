@@ -4590,15 +4590,19 @@ name = "locus-canvas"
 version = "0.1.0"
 dependencies = [
  "async-channel",
+ "base64 0.22.1",
  "gpui-kit",
  "gpui-wry",
+ "html5ever 0.29.1",
  "lb-wry",
  "locus-library",
  "mime_guess",
  "oneo-gpui",
  "percent-encoding",
+ "regex",
  "rust-i18n",
  "serde-saphyr 1.2.0",
+ "serde_json",
  "tempfile",
  "uuid",
 ]
@@ -4644,6 +4648,7 @@ dependencies = [
 name = "locus-preferences"
 version = "0.1.0"
 dependencies = [
+ "dirs 6.0.0",
  "gpui-kit",
  "oneo-gpui",
  "rust-i18n",

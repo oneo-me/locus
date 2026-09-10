@@ -9,7 +9,7 @@ use crate::TITLEBAR_CONTROL_SIZE;
 pub fn toolbar_icon_button(
     id: impl Into<ElementId>,
     label: impl Into<SharedString>,
-    icon: IconName,
+    icon: impl Into<gpui_kit::component::Icon>,
     theme: &Theme,
 ) -> Button {
     icon_button(id, label, icon, theme).occlude()
@@ -18,7 +18,7 @@ pub fn toolbar_icon_button(
 fn icon_button(
     id: impl Into<ElementId>,
     label: impl Into<SharedString>,
-    icon: IconName,
+    icon: impl Into<gpui_kit::component::Icon>,
     theme: &Theme,
 ) -> Button {
     let label = label.into();
@@ -26,7 +26,7 @@ fn icon_button(
         .ghost()
         .small()
         .size(px(TITLEBAR_CONTROL_SIZE))
-        .icon(icon)
+        .icon(icon.into())
         .text_color(theme.muted_foreground)
         .accessibility_label(label.clone())
         .tooltip(label)

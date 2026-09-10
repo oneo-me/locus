@@ -5,6 +5,13 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+base64.workspace = true
+html5ever = "0.29.1"
+regex.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+mime_guess = "2"
+percent-encoding.workspace = true
 async-channel.workspace = true
 gpui-kit.workspace = true
 locus-library.workspace = true
@@ -13,8 +20,6 @@ rust-i18n.workspace = true
 
 [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
 gpui-wry = "0.6"
-mime_guess = "2"
-percent-encoding.workspace = true
 uuid.workspace = true
 wry = { package = "lb-wry", version = "0.53.3" }
 

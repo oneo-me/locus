@@ -14,6 +14,8 @@ Markdown 文档树始终是知识内容的唯一事实来源。外部 Agent 可�
 
 笔记存在 `canvas.html` 时，标题栏和头部概要、YAML 数据以下只显示画布，不再混合显示 Markdown 正文，也不生成笔记装饰背景；标题栏和信息区使用白底风格，信息区按内容确定高度，过长时独立滚动，画布占满剩余空间。没有画布时显示 Markdown 正文。画布笔记的 `index.md` 只保留 frontmatter，不写正文；已有混合内容暂不自动整理。画布使用 HTML 片段，基本页面所需的 Tailwind 运行时随应用提供。离开笔记会释放所属画布；保存文件后，在画布内使用 Command/Ctrl+R 或 F5 重新加载。
 
+画布笔记的标题栏操作区第一位提供独立的“下载画布”图标按钮，位于复制按钮之前。可在“设置 → 通用 → 导出目录”选择保存位置，默认使用系统下载目录；点击下载后，没有引用附件时直接生成“笔记标题.html”；有引用附件时生成以笔记标题命名的文件夹，包含完整的 `canvas.html` 和引用附件。文件和文件夹同名时自动编号，打开 HTML 即可查看。模版、画布数据与 Tailwind 内置在页面中，附件保留原文件名，不复制无关附件；在线地图和数据仍需联网。导出读取已保存源码，不保存网页临时交互状态；动态拼接的依赖需先触发加载。本地模块脚本或 Worker 可能需要通过本地 HTTP 服务打开，以满足浏览器的来源限制。
+
 在“设置 → 终端”选择系统终端或 Ghostty，并选择 Codex、pi、OpenCode 或 Claude Code。默认为系统终端与 Codex。打开 Agent 时，应用调用外部终端，在当前笔记库根目录运行对应的 `codex`、`pi`、`opencode` 或 `claude` 命令；需要先安装所选终端和 Agent。外部会话由终端软件管理，切换笔记库或退出 Locus 不结束会话，设置变化只影响后续启动。
 
 macOS 系统终端使用 Terminal，Ghostty 使用其 [AppleScript 接口](https://ghostty.org/docs/features/applescript)（需要 1.3.0 或以上）；两者均先后台启动，再创建 Agent 会话并激活，复用已运行的应用。Terminal 创建新窗口；Ghostty 优先在最近使用的已有窗口中新建标签页，没有窗口时才创建新窗口。启动时加载 zsh 登录与交互配置，Agent 退出或找不到命令时保留 Shell，便于查看错误。Windows 使用系统控制台，不提供 Ghostty 选项。共享 shell 只提供左侧栏与主内容区。旧内嵌终端与自动打开画布设置不再使用，下一次保存设置时移除旧字段，其他偏好保留。以下为 macOS 快捷键：
@@ -65,7 +67,7 @@ cargo test --workspace --all-features
 
 ```sh
 npm install --prefix /tmp/locus-canvas-tests --no-save jsdom@30.0.1
-NODE_PATH=/tmp/locus-canvas-tests/node_modules node --test crates/locus-canvas/tests/templates.cjs
+NODE_PATH=/tmp/locus-canvas-tests/node_modules node --test crates/locus-canvas/tests/templates.cjs crates/locus-canvas/tests/export.cjs
 ```
 
 自动化测试不代替各平台的窗口、WebView、外部终端启动和实际视觉体验验证。

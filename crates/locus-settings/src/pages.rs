@@ -19,39 +19,31 @@ impl Settings {
                 t!("settings.library.not_selected", locale = language.locale()).into_owned()
             });
         let choose_label = t!("settings.library.choose", locale = language.locale()).into_owned();
-        let path_control = div()
-            .min_w_0()
-            .flex_none()
-            .w(gpui_kit::rems(SETTINGS_CONTROL_WIDTH_REM))
-            .h(ui_rem(32.0))
-            .rounded(ui_rem(7.0))
-            .border_1()
-            .border_color(theme.input)
-            .bg(theme.background)
-            .overflow_hidden()
-            .flex()
-            .items_center()
-            .child(
-                div()
-                    .min_w_0()
-                    .flex_1()
-                    .px(ui_rem(10.0))
-                    .overflow_hidden()
-                    .whitespace_nowrap()
-                    .text_ellipsis()
-                    .text_sm()
-                    .text_color(theme.muted_foreground)
-                    .child(path),
-            )
-            .child(
-                Button::new("choose-library")
-                    .text()
-                    .small()
-                    .h_full()
-                    .px(ui_rem(10.0))
-                    .label(choose_label)
-                    .on_click(cx.listener(|this, _, _, cx| this.choose_library(cx))),
-            );
+        let path_control = directory_control(
+            path,
+            Button::new("choose-library")
+                .label(choose_label)
+                .on_click(cx.listener(|this, _, _, cx| this.choose_library(cx))),
+            &theme,
+        );
+        let export_path = self
+            .preferences
+            .resolved_export_directory()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| {
+                t!("settings.export.not_selected", locale = language.locale()).into_owned()
+            });
+        let export_control = directory_control(
+            export_path.clone(),
+            Button::new("choose-export-directory")
+                .accessibility_label(
+                    t!("settings.export.choose_prompt", locale = language.locale()).into_owned(),
+                )
+                .tooltip(export_path)
+                .label(t!("settings.export.choose", locale = language.locale()).into_owned())
+                .on_click(cx.listener(|this, _, _, cx| this.choose_export_directory(cx))),
+            &theme,
+        );
 
         div()
             .w_full()
@@ -68,6 +60,12 @@ impl Settings {
                 )
                 .into_owned(),
                 path_control,
+            ))
+            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
+            .child(SettingsItem::new(
+                t!("settings.export.directory", locale = language.locale()).into_owned(),
+                t!("settings.export.description", locale = language.locale()).into_owned(),
+                export_control,
             ))
             .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(SettingsItem::new(
@@ -163,4 +161,32 @@ impl Settings {
                 self.render_dropdown(Dropdown::Agent, cx),
             ))
     }
+}
+
+fn directory_control(path: String, button: Button, theme: &Theme) -> gpui_kit::Div {
+    div()
+        .min_w_0()
+        .flex_none()
+        .w(gpui_kit::rems(SETTINGS_CONTROL_WIDTH_REM))
+        .h(ui_rem(32.0))
+        .rounded(ui_rem(7.0))
+        .border_1()
+        .border_color(theme.input)
+        .bg(theme.background)
+        .overflow_hidden()
+        .flex()
+        .items_center()
+        .child(
+            div()
+                .min_w_0()
+                .flex_1()
+                .px(ui_rem(10.0))
+                .overflow_hidden()
+                .whitespace_nowrap()
+                .text_ellipsis()
+                .text_sm()
+                .text_color(theme.muted_foreground)
+                .child(path),
+        )
+        .child(button.text().small().h_full().px(ui_rem(10.0)))
 }

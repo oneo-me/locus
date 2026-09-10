@@ -10,6 +10,88 @@ pub(super) struct NoteCanvas {
 }
 
 impl Locus {
+    pub(super) fn download_note_canvas(
+        &mut self,
+        path: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.canvas_download_pending {
+            return;
+        }
+        let Some(canvas) = self
+            .note_canvas
+            .as_ref()
+            .filter(|canvas| canvas.path == path)
+        else {
+            return;
+        };
+        let Some(node) = self.library_tree.node(path) else {
+            return;
+        };
+        let title = node.title.clone();
+        let Some(directory) = self
+            .settings
+            .read(cx)
+            .preferences()
+            .resolved_export_directory()
+        else {
+            window.push_notification(
+                gpui_kit::component::notification::Notification::error(
+                    t!(
+                        "workspace.canvas.directory_required",
+                        locale = self.language(cx).locale()
+                    )
+                    .into_owned(),
+                ),
+                cx,
+            );
+            return;
+        };
+        let task = canvas.view.read(cx).prepare_download(cx);
+        self.canvas_download_pending = true;
+        cx.notify();
+        cx.spawn_in(window, async move |this, cx| {
+            let result = async {
+                let download = task.await?;
+                cx.background_spawn(async move { download.save(&directory, &title) })
+                    .await
+            }
+            .await;
+            let _ = this.update_in(cx, |this, window, cx| {
+                use gpui_kit::component::notification::Notification;
+                this.canvas_download_pending = false;
+                let language = this.language(cx);
+                match result {
+                    Ok(path) => {
+                        window.push_notification(
+                            Notification::success(format!(
+                                "{}\n{}",
+                                t!("workspace.canvas.downloaded", locale = language.locale()),
+                                path.display()
+                            )),
+                            cx,
+                        );
+                    }
+                    Err(error) => {
+                        window.push_notification(
+                            Notification::error(format!(
+                                "{}\n{error}",
+                                t!(
+                                    "workspace.canvas.download_error",
+                                    locale = language.locale()
+                                )
+                            )),
+                            cx,
+                        );
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     pub(super) fn reload_focused_canvas(
         &mut self,
         window: &mut Window,

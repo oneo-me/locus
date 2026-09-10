@@ -154,3 +154,21 @@ settings.terminal.agent.description:
 settings.mcp.status.label:
   en: Service status
   zh-CN: 服务状态
+settings.export.directory:
+  en: Export directory
+  zh-CN: 导出目录
+settings.export.description:
+  en: Save canvases and attachments here; defaults to Downloads
+  zh-CN: 用于保存画布及其附件，默认为系统下载目录
+settings.export.choose:
+  en: Choose…
+  zh-CN: 选择…
+settings.export.choose_prompt:
+  en: Choose export directory
+  zh-CN: 选择导出目录
+settings.export.not_selected:
+  en: Choose an export directory
+  zh-CN: 请选择导出目录
+settings.export.choose_error:
+  en: Couldn’t open the directory picker. Try again.
+  zh-CN: 无法打开目录选择窗口，请重试。
