@@ -3,6 +3,9 @@ use std::process::Command;
 
 use locus_preferences::EditorPreference;
 
+mod terminal;
+pub use terminal::open_agent;
+
 pub fn open_directory(path: &Path) -> Result<(), String> {
     if !path.is_dir() {
         return Err("目录不存在或无法访问。".to_owned());

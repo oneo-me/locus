@@ -15,6 +15,7 @@ rust-i18n.workspace = true
 gpui-wry = "0.6"
 mime_guess = "2"
 percent-encoding.workspace = true
+uuid.workspace = true
 wry = { package = "lb-wry", version = "0.53.3" }
 
 [dev-dependencies]

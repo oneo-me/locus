@@ -1,44 +1,66 @@
 use rust_i18n::t;
 use std::path::PathBuf;
 
-pub use oneo_gpui_terminal::{TerminalColorScheme, TerminalCursorStyle};
 use serde::{Deserialize, Serialize};
 
 use crate::config::{
     DEFAULT_CODE_FONT_FAMILY, DEFAULT_CODE_FONT_SIZE, DEFAULT_LIBRARY_PATH, DEFAULT_MCP_ENABLED,
-    DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT, DEFAULT_TERMINAL_COMMAND,
-    DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_TERMINAL_FONT_SIZE, DEFAULT_TERMINAL_SHELL,
-    DEFAULT_UI_FONT_FAMILY,
+    DEFAULT_MCP_LOCAL_NETWORK, DEFAULT_MCP_PORT, DEFAULT_UI_FONT_FAMILY,
 };
 use crate::storage::settings_store;
 use oneo_gpui::{AppearancePreferences, FONT_SIZES, Language};
 
-pub fn terminal_color_scheme_label(value: TerminalColorScheme, language: Language) -> String {
-    match value {
-        TerminalColorScheme::Auto => {
-            t!("terminal.color_scheme.auto", locale = language.locale()).into_owned()
-        }
-        TerminalColorScheme::Light => {
-            t!("terminal.color_scheme.light", locale = language.locale()).into_owned()
-        }
-        TerminalColorScheme::Dark => {
-            t!("terminal.color_scheme.dark", locale = language.locale()).into_owned()
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TerminalPreference {
+    #[default]
+    System,
+    Ghostty,
+}
+
+impl TerminalPreference {
+    pub const ALL: &'static [Self] = if cfg!(target_os = "windows") {
+        &[Self::System]
+    } else {
+        &[Self::System, Self::Ghostty]
+    };
+
+    pub fn label(self, language: Language) -> String {
+        match self {
+            Self::System => t!("settings.terminal.system", locale = language.locale()).into_owned(),
+            Self::Ghostty => "Ghostty".to_owned(),
         }
     }
 }
 
-pub fn terminal_cursor_style_label(value: TerminalCursorStyle, language: Language) -> String {
-    match value {
-        TerminalCursorStyle::Block => {
-            t!("terminal.cursor_style.block", locale = language.locale()).into_owned()
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentPreference {
+    #[default]
+    Codex,
+    Pi,
+    OpenCode,
+    ClaudeCode,
+}
+
+impl AgentPreference {
+    pub const ALL: [Self; 4] = [Self::Codex, Self::Pi, Self::OpenCode, Self::ClaudeCode];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Codex => "Codex",
+            Self::Pi => "pi",
+            Self::OpenCode => "OpenCode",
+            Self::ClaudeCode => "Claude Code",
         }
-        TerminalCursorStyle::Underline => t!(
-            "terminal.cursor_style.underline",
-            locale = language.locale()
-        )
-        .into_owned(),
-        TerminalCursorStyle::Bar => {
-            t!("terminal.cursor_style.bar", locale = language.locale()).into_owned()
+    }
+
+    pub fn command(self) -> &'static str {
+        match self {
+            Self::Codex => "codex",
+            Self::Pi => "pi",
+            Self::OpenCode => "opencode",
+            Self::ClaudeCode => "claude",
         }
     }
 }
@@ -68,18 +90,13 @@ impl EditorPreference {
 pub struct Preferences {
     pub library_path: Option<PathBuf>,
     pub editor: EditorPreference,
-    pub auto_open_canvas: bool,
     #[serde(flatten)]
     pub appearance: AppearancePreferences,
     pub ui_font_family: String,
     pub code_font_family: String,
     pub code_font_size: f32,
-    pub terminal_font_family: String,
-    pub terminal_font_size: f32,
-    pub terminal_shell: String,
-    pub terminal_command: String,
-    pub terminal_color_scheme: TerminalColorScheme,
-    pub terminal_cursor_style: TerminalCursorStyle,
+    pub terminal: TerminalPreference,
+    pub agent: AgentPreference,
     pub mcp_enabled: bool,
     pub mcp_local_network: bool,
     pub mcp_port: u16,
@@ -90,17 +107,12 @@ impl Default for Preferences {
         Self {
             library_path: DEFAULT_LIBRARY_PATH.map(PathBuf::from),
             editor: EditorPreference::System,
-            auto_open_canvas: false,
             appearance: AppearancePreferences::default(),
             ui_font_family: DEFAULT_UI_FONT_FAMILY.to_owned(),
             code_font_family: DEFAULT_CODE_FONT_FAMILY.to_owned(),
             code_font_size: DEFAULT_CODE_FONT_SIZE,
-            terminal_font_family: DEFAULT_TERMINAL_FONT_FAMILY.to_owned(),
-            terminal_font_size: DEFAULT_TERMINAL_FONT_SIZE,
-            terminal_shell: DEFAULT_TERMINAL_SHELL.to_owned(),
-            terminal_command: DEFAULT_TERMINAL_COMMAND.to_owned(),
-            terminal_color_scheme: TerminalColorScheme::Auto,
-            terminal_cursor_style: TerminalCursorStyle::Block,
+            terminal: TerminalPreference::default(),
+            agent: AgentPreference::default(),
             mcp_enabled: DEFAULT_MCP_ENABLED,
             mcp_local_network: DEFAULT_MCP_LOCAL_NETWORK,
             mcp_port: DEFAULT_MCP_PORT,
@@ -133,18 +145,11 @@ impl Preferences {
         if !FONT_SIZES.contains(&self.code_font_size) {
             self.code_font_size = defaults.code_font_size;
         }
-        if !FONT_SIZES.contains(&self.terminal_font_size) {
-            self.terminal_font_size = defaults.terminal_font_size;
-        }
         if self.mcp_port == 0 {
             self.mcp_port = defaults.mcp_port;
         }
         normalize_font_family(&mut self.ui_font_family, &defaults.ui_font_family);
         normalize_font_family(&mut self.code_font_family, &defaults.code_font_family);
-        normalize_font_family(
-            &mut self.terminal_font_family,
-            &defaults.terminal_font_family,
-        );
     }
 
     pub fn resolved_ui_font_family(&self) -> &str {
@@ -153,10 +158,6 @@ impl Preferences {
 
     pub fn resolved_code_font_family(&self) -> &str {
         resolved_font_family(&self.code_font_family, DEFAULT_CODE_FONT_FAMILY)
-    }
-
-    pub fn resolved_terminal_font_family(&self) -> &str {
-        resolved_font_family(&self.terminal_font_family, DEFAULT_TERMINAL_FONT_FAMILY)
     }
 }
 
@@ -182,7 +183,6 @@ mod tests {
         let preferences = Preferences {
             library_path: Some(PathBuf::from("/tmp/笔记")),
             editor: EditorPreference::VisualStudioCode,
-            auto_open_canvas: true,
             appearance: AppearancePreferences {
                 theme: ThemePreference::Dark,
                 language: Language::English,
@@ -191,12 +191,8 @@ mod tests {
             ui_font_family: "Avenir Next".to_owned(),
             code_font_family: "JetBrains Mono".to_owned(),
             code_font_size: 15.0,
-            terminal_font_family: "SF Mono".to_owned(),
-            terminal_font_size: 16.0,
-            terminal_shell: "/bin/zsh".to_owned(),
-            terminal_command: "git status".to_owned(),
-            terminal_color_scheme: TerminalColorScheme::Dark,
-            terminal_cursor_style: TerminalCursorStyle::Bar,
+            terminal: TerminalPreference::Ghostty,
+            agent: AgentPreference::ClaudeCode,
             mcp_enabled: true,
             mcp_local_network: true,
             mcp_port: 43123,
@@ -209,7 +205,6 @@ mod tests {
 
         assert_eq!(restored.library_path, preferences.library_path);
         assert_eq!(restored.editor, preferences.editor);
-        assert!(restored.auto_open_canvas);
         assert_eq!(restored.appearance.theme, preferences.appearance.theme);
         assert_eq!(
             restored.appearance.language,
@@ -222,24 +217,53 @@ mod tests {
         );
         assert_eq!(restored.code_font_family, preferences.code_font_family);
         assert_eq!(restored.code_font_size, preferences.code_font_size);
-        assert_eq!(
-            restored.terminal_font_family,
-            preferences.terminal_font_family
-        );
-        assert_eq!(restored.terminal_font_size, preferences.terminal_font_size);
-        assert_eq!(restored.terminal_shell, preferences.terminal_shell);
-        assert_eq!(restored.terminal_command, preferences.terminal_command);
-        assert_eq!(
-            restored.terminal_color_scheme,
-            preferences.terminal_color_scheme
-        );
-        assert_eq!(
-            restored.terminal_cursor_style,
-            preferences.terminal_cursor_style
-        );
+        assert_eq!(restored.terminal, preferences.terminal);
+        assert_eq!(restored.agent, preferences.agent);
         assert_eq!(restored.mcp_enabled, preferences.mcp_enabled);
         assert_eq!(restored.mcp_local_network, preferences.mcp_local_network);
         assert_eq!(restored.mcp_port, preferences.mcp_port);
+    }
+
+    #[test]
+    fn removed_terminal_settings_do_not_reset_other_preferences() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.toml");
+        std::fs::write(
+            &path,
+            r#"
+library_path = "/tmp/notes"
+theme = "dark"
+mcp_enabled = true
+terminal_shell = "/bin/bash"
+terminal_command = "old-command"
+terminal_font_family = "Old Font"
+terminal_font_size = 18.0
+terminal_color_scheme = "dark"
+terminal_cursor_style = "bar"
+auto_open_canvas = false
+"#,
+        )
+        .unwrap();
+        let store = oneo_gpui::SettingsStore::at_path(path.clone()).unwrap();
+        let preferences: Preferences = store.load().unwrap();
+        assert_eq!(preferences.library_path, Some(PathBuf::from("/tmp/notes")));
+        assert_eq!(preferences.appearance.theme, ThemePreference::Dark);
+        assert!(preferences.mcp_enabled);
+        assert_eq!(preferences.terminal, TerminalPreference::System);
+        assert_eq!(preferences.agent, AgentPreference::Codex);
+        store.save(&preferences).unwrap();
+        let saved = std::fs::read_to_string(path).unwrap();
+        assert!(!saved.contains("terminal_"));
+        assert!(!saved.contains("auto_open_canvas"));
+        assert!(saved.contains("mcp_enabled = true"));
+    }
+
+    #[test]
+    fn agents_use_their_installed_executable_names() {
+        assert_eq!(
+            AgentPreference::ALL.map(AgentPreference::command),
+            ["codex", "pi", "opencode", "claude"]
+        );
     }
 
     #[test]
@@ -251,7 +275,6 @@ mod tests {
         let preferences: Preferences = store.load().unwrap();
         assert_eq!(preferences.appearance, AppearancePreferences::default());
         assert!(preferences.mcp_enabled);
-        assert!(!preferences.auto_open_canvas);
         std::fs::write(
             &path,
             r#"theme = "dark"
@@ -279,8 +302,6 @@ ui_font_size = 18.0
             },
             code_font_family: "  ".to_owned(),
             code_font_size: 99.0,
-            terminal_font_family: "\t".to_owned(),
-            terminal_font_size: -1.0,
             mcp_port: 0,
             ..Preferences::default()
         };
@@ -294,11 +315,6 @@ ui_font_size = 18.0
         );
         assert_eq!(preferences.code_font_family, DEFAULT_CODE_FONT_FAMILY);
         assert_eq!(preferences.code_font_size, DEFAULT_CODE_FONT_SIZE);
-        assert_eq!(
-            preferences.terminal_font_family,
-            DEFAULT_TERMINAL_FONT_FAMILY
-        );
-        assert_eq!(preferences.terminal_font_size, DEFAULT_TERMINAL_FONT_SIZE);
         assert_eq!(preferences.mcp_port, DEFAULT_MCP_PORT);
     }
 }

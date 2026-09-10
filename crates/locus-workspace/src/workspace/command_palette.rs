@@ -17,7 +17,7 @@ use super::Locus;
 use crate::{
     ArchiveCurrentNote, ChooseCurrentNoteIcon, CopyCurrentNoteReference, EditCurrentNote,
     NewTerminal, OpenCommandPalette, OpenCurrentNoteDirectory, OpenSettings, ReloadCurrentNote,
-    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel,
+    ToggleFullScreen, ToggleLeftPanel,
 };
 use locus_library::{DocumentIcon, LIBRARY_REFERENCE_SCHEME, LibraryNode};
 use locus_ui::{Icon, document_icon_image};
@@ -99,9 +99,12 @@ impl Locus {
                 CommandItem::new()
                     .label(t!("workspace.terminal.new", locale = language.locale()).into_owned())
                     .icon(Icon::SquareTerminal)
-                    .keywords(["terminal", "shell"])
+                    .keywords(["terminal", "agent", "codex", "pi", "opencode", "claude"])
                     .action(Box::new(NewTerminal))
-                    .disabled(self.settings.read(cx).preferences().library_path.is_none()),
+                    .disabled(
+                        self.terminal_launch_pending
+                            || self.settings.read(cx).preferences().library_path.is_none(),
+                    ),
             )
             .item(
                 CommandItem::new()
@@ -112,16 +115,6 @@ impl Locus {
                     .icon(Icon::PanelLeft)
                     .keywords(["left sidebar", "navigation"])
                     .action(Box::new(ToggleLeftPanel)),
-            )
-            .item(
-                CommandItem::new()
-                    .label(
-                        t!("menu.view.toggle_right_sidebar", locale = language.locale())
-                            .into_owned(),
-                    )
-                    .icon(Icon::PanelRight)
-                    .keywords(["right sidebar", "terminal panel"])
-                    .action(Box::new(ToggleRightPanel)),
             )
             .item(
                 CommandItem::new()

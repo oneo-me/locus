@@ -10,7 +10,7 @@ pub use commands::{bind_keys, set_app_menus};
 pub use state::InterfaceState;
 pub use workspace::Locus;
 
-use oneo_gpui::{OpenSettings, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel};
+use oneo_gpui::{OpenSettings, ToggleFullScreen, ToggleLeftPanel};
 
 #[cfg(test)]
 mod localization_tests;

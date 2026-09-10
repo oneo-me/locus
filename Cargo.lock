@@ -4600,6 +4600,7 @@ dependencies = [
  "rust-i18n",
  "serde-saphyr 1.2.0",
  "tempfile",
+ "uuid",
 ]
 
 [[package]]
@@ -4645,7 +4646,6 @@ version = "0.1.0"
 dependencies = [
  "gpui-kit",
  "oneo-gpui",
- "oneo-gpui-terminal",
  "rust-i18n",
  "serde",
  "serde-saphyr 1.2.0",
@@ -4701,7 +4701,6 @@ dependencies = [
  "locus-settings",
  "locus-ui",
  "oneo-gpui",
- "oneo-gpui-terminal",
  "rust-i18n",
  "serde",
  "serde-saphyr 1.2.0",

@@ -18,29 +18,3 @@ fn package_catalog_resolves_every_message_in_both_languages() {
         }
     }
 }
-
-#[test]
-fn empty_sidebar_follows_language_switches() {
-    use oneo_gpui::Language;
-
-    for (language, expected) in [
-        (Language::Chinese, "暂无内容"),
-        (Language::English, "No content"),
-        (Language::Chinese, "暂无内容"),
-    ] {
-        language.activate();
-        assert_eq!(t!("workspace.sidebar.empty"), expected);
-    }
-}
-
-#[test]
-fn terminal_labels_substitute_the_session_id() {
-    assert_eq!(
-        t!("workspace.terminal.tab", id = 3, locale = "en"),
-        "Terminal 3"
-    );
-    assert_eq!(
-        t!("workspace.terminal.close_tab", id = 3, locale = "zh-CN"),
-        "关闭终端 3"
-    );
-}

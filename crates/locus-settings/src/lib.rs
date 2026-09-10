@@ -20,13 +20,8 @@ use gpui_kit::{
 };
 use locus_library::ArchivedNote;
 use locus_mcp::McpServerState;
-use locus_preferences::config::{
-    DEFAULT_CODE_FONT_FAMILY, DEFAULT_TERMINAL_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY,
-};
-use locus_preferences::{
-    EditorPreference, Preferences, TerminalColorScheme, TerminalCursorStyle,
-    terminal_color_scheme_label, terminal_cursor_style_label,
-};
+use locus_preferences::config::{DEFAULT_CODE_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY};
+use locus_preferences::{AgentPreference, EditorPreference, Preferences, TerminalPreference};
 use locus_ui::{Icon, MarkdownSelection, SelectableCodeStyle, icon, selectable_code_text};
 use oneo_gpui::Language;
 use oneo_gpui::{AppearanceChange, AppearanceControls, FONT_SIZES};
@@ -70,9 +65,8 @@ enum Choice {
     Page(SettingsPage),
     Editor(EditorPreference),
     CodeFontSize(f32),
-    TerminalFontSize(f32),
-    TerminalColorScheme(TerminalColorScheme),
-    TerminalCursorStyle(TerminalCursorStyle),
+    Terminal(TerminalPreference),
+    Agent(AgentPreference),
 }
 
 impl Choice {
@@ -80,11 +74,9 @@ impl Choice {
         match self {
             Self::Page(page) => page.label(language),
             Self::Editor(editor) => editor.label(language),
-            Self::CodeFontSize(size) | Self::TerminalFontSize(size) => {
-                font_size_label(size).to_owned()
-            }
-            Self::TerminalColorScheme(scheme) => terminal_color_scheme_label(scheme, language),
-            Self::TerminalCursorStyle(style) => terminal_cursor_style_label(style, language),
+            Self::CodeFontSize(size) => font_size_label(size).to_owned(),
+            Self::Terminal(terminal) => terminal.label(language),
+            Self::Agent(agent) => agent.label().to_owned(),
         }
     }
 }
@@ -104,27 +96,24 @@ fn choice_items(dropdown: Dropdown, language: Language) -> Vec<ChoiceItem> {
 enum Dropdown {
     Editor,
     CodeFontSize,
-    TerminalFontSize,
-    TerminalColorScheme,
-    TerminalCursorStyle,
+    Terminal,
+    Agent,
 }
 
 impl Dropdown {
-    const ALL: [Self; 5] = [
+    const ALL: [Self; 4] = [
         Self::Editor,
         Self::CodeFontSize,
-        Self::TerminalFontSize,
-        Self::TerminalColorScheme,
-        Self::TerminalCursorStyle,
+        Self::Terminal,
+        Self::Agent,
     ];
 
     fn label(self, language: Language) -> String {
         let key = match self {
             Self::Editor => "settings.editor.label",
             Self::CodeFontSize => "settings.appearance.code_font_size.label",
-            Self::TerminalFontSize => "settings.terminal.font_size.label",
-            Self::TerminalColorScheme => "settings.terminal.color_scheme.label",
-            Self::TerminalCursorStyle => "settings.terminal.cursor_style.label",
+            Self::Terminal => "settings.terminal.application.label",
+            Self::Agent => "settings.terminal.agent.label",
         };
         t!(key, locale = language.locale()).into_owned()
     }
@@ -136,17 +125,14 @@ impl Dropdown {
                 .map(Choice::Editor)
                 .collect(),
             Self::CodeFontSize => FONT_SIZES.into_iter().map(Choice::CodeFontSize).collect(),
-            Self::TerminalFontSize => FONT_SIZES
-                .into_iter()
-                .map(Choice::TerminalFontSize)
+            Self::Terminal => TerminalPreference::ALL
+                .iter()
+                .copied()
+                .map(Choice::Terminal)
                 .collect(),
-            Self::TerminalColorScheme => TerminalColorScheme::ALL
+            Self::Agent => AgentPreference::ALL
                 .into_iter()
-                .map(Choice::TerminalColorScheme)
-                .collect(),
-            Self::TerminalCursorStyle => TerminalCursorStyle::ALL
-                .into_iter()
-                .map(Choice::TerminalCursorStyle)
+                .map(Choice::Agent)
                 .collect(),
         }
     }
@@ -155,13 +141,8 @@ impl Dropdown {
         match self {
             Self::Editor => Choice::Editor(preferences.editor),
             Self::CodeFontSize => Choice::CodeFontSize(preferences.code_font_size),
-            Self::TerminalFontSize => Choice::TerminalFontSize(preferences.terminal_font_size),
-            Self::TerminalColorScheme => {
-                Choice::TerminalColorScheme(preferences.terminal_color_scheme)
-            }
-            Self::TerminalCursorStyle => {
-                Choice::TerminalCursorStyle(preferences.terminal_cursor_style)
-            }
+            Self::Terminal => Choice::Terminal(preferences.terminal),
+            Self::Agent => Choice::Agent(preferences.agent),
         }
     }
 }
@@ -170,7 +151,6 @@ impl Dropdown {
 enum FontKind {
     Ui,
     Code,
-    Terminal,
 }
 
 #[derive(Clone)]
@@ -235,9 +215,6 @@ impl FontKind {
                 locale = language.locale()
             )
             .into_owned(),
-            Self::Terminal => {
-                t!("settings.terminal.font.label", locale = language.locale()).into_owned()
-            }
         }
     }
 
@@ -245,7 +222,6 @@ impl FontKind {
         match self {
             Self::Ui => preferences.resolved_ui_font_family(),
             Self::Code => preferences.resolved_code_font_family(),
-            Self::Terminal => preferences.resolved_terminal_font_family(),
         }
     }
 }
@@ -255,12 +231,8 @@ pub enum SettingsEvent {
     ArchiveRestored,
     LanguageChanged(Language),
     LibraryChanged(std::path::PathBuf),
-    TerminalLaunchChanged,
-    TerminalColorSchemeChanged(TerminalColorScheme),
-    TerminalCursorStyleChanged(TerminalCursorStyle),
     UiFontChanged,
     CodeFontChanged,
-    TerminalFontChanged(String, f32),
     McpConfigurationChanged,
 }
 
@@ -273,8 +245,6 @@ pub struct Settings {
     font_selects: std::collections::HashMap<FontKind, Entity<FontSelect>>,
     preferences: Preferences,
     appearance_controls: AppearanceControls,
-    terminal_shell_input: Entity<InputState>,
-    terminal_command_input: Entity<InputState>,
     mcp_port_input: Entity<InputState>,
     mcp_port_draft: String,
     mcp_port_error: Option<String>,
@@ -323,10 +293,8 @@ impl Settings {
         for family in [
             DEFAULT_UI_FONT_FAMILY,
             DEFAULT_CODE_FONT_FAMILY,
-            DEFAULT_TERMINAL_FONT_FAMILY,
             preferences.resolved_ui_font_family(),
             preferences.resolved_code_font_family(),
-            preferences.resolved_terminal_font_family(),
         ] {
             if !font_names.iter().any(|font| font == family) {
                 font_names.push(family.to_owned());
@@ -364,7 +332,7 @@ impl Settings {
             })
             .collect::<Vec<_>>();
         let mut font_selects = std::collections::HashMap::new();
-        for kind in [FontKind::Ui, FontKind::Code, FontKind::Terminal] {
+        for kind in [FontKind::Ui, FontKind::Code] {
             let selected = kind.selected(&preferences);
             let selected_index = font_items
                 .iter()
@@ -392,28 +360,6 @@ impl Settings {
             .detach();
             font_selects.insert(kind, select);
         }
-        let terminal_shell_input = cx.new(|cx| {
-            InputState::new(window, cx)
-                .default_value(preferences.terminal_shell.clone())
-                .placeholder(
-                    t!(
-                        "settings.terminal.shell.placeholder",
-                        locale = language.locale()
-                    )
-                    .into_owned(),
-                )
-        });
-        let terminal_command_input = cx.new(|cx| {
-            InputState::new(window, cx)
-                .default_value(preferences.terminal_command.clone())
-                .placeholder(
-                    t!(
-                        "settings.terminal.command.placeholder",
-                        locale = language.locale()
-                    )
-                    .into_owned(),
-                )
-        });
         let mcp_port_draft = preferences.mcp_port.to_string();
         let mcp_port_input = cx.new(|cx| {
             InputState::new(window, cx)
@@ -422,30 +368,6 @@ impl Settings {
                     t!("settings.mcp.port.placeholder", locale = language.locale()).into_owned(),
                 )
         });
-        cx.subscribe(
-            &terminal_shell_input,
-            |this, input, event: &InputEvent, cx| {
-                if !matches!(event, InputEvent::Change) {
-                    return;
-                }
-                this.preferences.terminal_shell = input.read(cx).value().to_string();
-                this.persist();
-                cx.emit(SettingsEvent::TerminalLaunchChanged);
-            },
-        )
-        .detach();
-        cx.subscribe(
-            &terminal_command_input,
-            |this, input, event: &InputEvent, cx| {
-                if !matches!(event, InputEvent::Change) {
-                    return;
-                }
-                this.preferences.terminal_command = input.read(cx).value().to_string();
-                this.persist();
-                cx.emit(SettingsEvent::TerminalLaunchChanged);
-            },
-        )
-        .detach();
         cx.subscribe(&mcp_port_input, |this, input, event: &InputEvent, cx| {
             if !matches!(event, InputEvent::Change) {
                 return;
@@ -466,8 +388,6 @@ impl Settings {
             choice_selects,
             font_selects,
             preferences,
-            terminal_shell_input,
-            terminal_command_input,
             mcp_port_input,
             mcp_port_draft,
             mcp_port_error: None,
@@ -584,28 +504,6 @@ impl Settings {
             .sync(self.preferences.appearance, window, cx);
         match change {
             AppearanceChange::Language(language) => {
-                self.terminal_shell_input.update(cx, |input, cx| {
-                    input.set_placeholder(
-                        t!(
-                            "settings.terminal.shell.placeholder",
-                            locale = language.locale()
-                        )
-                        .into_owned(),
-                        window,
-                        cx,
-                    );
-                });
-                self.terminal_command_input.update(cx, |input, cx| {
-                    input.set_placeholder(
-                        t!(
-                            "settings.terminal.command.placeholder",
-                            locale = language.locale()
-                        )
-                        .into_owned(),
-                        window,
-                        cx,
-                    );
-                });
                 self.mcp_port_input.update(cx, |input, cx| {
                     input.set_placeholder(
                         t!("settings.mcp.port.placeholder", locale = language.locale())
@@ -644,30 +542,8 @@ impl Settings {
                 self.preferences.code_font_size = size;
                 cx.emit(SettingsEvent::CodeFontChanged);
             }
-            Choice::TerminalFontSize(size) => {
-                if self.preferences.terminal_font_size == size {
-                    return;
-                }
-                self.preferences.terminal_font_size = size;
-                cx.emit(SettingsEvent::TerminalFontChanged(
-                    self.preferences.resolved_terminal_font_family().to_owned(),
-                    size,
-                ));
-            }
-            Choice::TerminalColorScheme(color_scheme) => {
-                if self.preferences.terminal_color_scheme == color_scheme {
-                    return;
-                }
-                self.preferences.terminal_color_scheme = color_scheme;
-                cx.emit(SettingsEvent::TerminalColorSchemeChanged(color_scheme));
-            }
-            Choice::TerminalCursorStyle(cursor_style) => {
-                if self.preferences.terminal_cursor_style == cursor_style {
-                    return;
-                }
-                self.preferences.terminal_cursor_style = cursor_style;
-                cx.emit(SettingsEvent::TerminalCursorStyleChanged(cursor_style));
-            }
+            Choice::Terminal(terminal) => self.preferences.terminal = terminal,
+            Choice::Agent(agent) => self.preferences.agent = agent,
         }
         self.persist();
         cx.notify();

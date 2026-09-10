@@ -4,23 +4,19 @@ use gpui_kit::{Bounds, Pixels, px, size};
 use serde::{Deserialize, Serialize};
 
 use locus_preferences::config::{
-    DEFAULT_LEFT_SIDEBAR_VISIBLE, DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_VISIBLE,
-    DEFAULT_RIGHT_SIDEBAR_WIDTH, INTERFACE_STATE_FILE, WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH,
+    DEFAULT_LEFT_SIDEBAR_VISIBLE, DEFAULT_LEFT_SIDEBAR_WIDTH, INTERFACE_STATE_FILE,
+    WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH,
 };
 use locus_preferences::storage::data_directory;
 
 pub const LEFT_SIDEBAR_MIN_WIDTH: f32 = DEFAULT_LEFT_SIDEBAR_WIDTH;
 pub const LEFT_SIDEBAR_MAX_WIDTH: f32 = 420.0;
-pub const RIGHT_SIDEBAR_MIN_WIDTH: f32 = DEFAULT_RIGHT_SIDEBAR_WIDTH;
-pub const RIGHT_SIDEBAR_MAX_WIDTH: f32 = 1000.0;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct InterfaceState {
     pub left_sidebar_width: f32,
-    pub right_sidebar_width: f32,
     pub left_sidebar_visible: bool,
-    pub right_sidebar_visible: bool,
     pub selected_library_node: Option<String>,
     pub window_bounds: Option<Bounds<Pixels>>,
 }
@@ -29,9 +25,7 @@ impl Default for InterfaceState {
     fn default() -> Self {
         Self {
             left_sidebar_width: DEFAULT_LEFT_SIDEBAR_WIDTH,
-            right_sidebar_width: DEFAULT_RIGHT_SIDEBAR_WIDTH,
             left_sidebar_visible: DEFAULT_LEFT_SIDEBAR_VISIBLE,
-            right_sidebar_visible: DEFAULT_RIGHT_SIDEBAR_VISIBLE,
             selected_library_node: None,
             window_bounds: None,
         }
@@ -61,15 +55,9 @@ impl InterfaceState {
         if !self.left_sidebar_width.is_finite() {
             self.left_sidebar_width = DEFAULT_LEFT_SIDEBAR_WIDTH;
         }
-        if !self.right_sidebar_width.is_finite() {
-            self.right_sidebar_width = DEFAULT_RIGHT_SIDEBAR_WIDTH;
-        }
         self.left_sidebar_width = self
             .left_sidebar_width
             .clamp(LEFT_SIDEBAR_MIN_WIDTH, LEFT_SIDEBAR_MAX_WIDTH);
-        self.right_sidebar_width = self
-            .right_sidebar_width
-            .clamp(RIGHT_SIDEBAR_MIN_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH);
         self.window_bounds = self.window_bounds.take().and_then(|mut bounds| {
             let values = [
                 f32::from(bounds.origin.x),
@@ -108,12 +96,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn removed_sidebar_fields_do_not_discard_the_selected_note_or_left_sidebar() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = SettingsStore::at_path(directory.path().join("state.toml")).unwrap();
+        std::fs::write(store.path(), "left_sidebar_width = 320.0\nleft_sidebar_visible = false\nright_sidebar_width = 640.0\nright_sidebar_visible = true\nselected_library_node = 'projects/locus'\n").unwrap();
+        let mut state: InterfaceState = store.load().unwrap();
+        state.normalize();
+        assert_eq!(state.left_sidebar_width, 320.0);
+        assert!(!state.left_sidebar_visible);
+        assert_eq!(
+            state.selected_library_node.as_deref(),
+            Some("projects/locus")
+        );
+        store.save(&state).unwrap();
+        let saved = std::fs::read_to_string(store.path()).unwrap();
+        assert!(!saved.contains("right_sidebar"));
+        assert_eq!(store.load::<InterfaceState>().unwrap(), state);
+    }
+
+    #[test]
     fn interface_state_round_trip() {
         let state = InterfaceState {
             left_sidebar_width: 320.0,
-            right_sidebar_width: 640.0,
             left_sidebar_visible: false,
-            right_sidebar_visible: true,
             selected_library_node: Some("projects/locus".to_owned()),
             window_bounds: Some(Bounds::new(
                 gpui_kit::point(px(120.0), px(80.0)),
@@ -133,7 +138,6 @@ mod tests {
     fn invalid_widths_are_normalized() {
         let mut state = InterfaceState {
             left_sidebar_width: f32::NAN,
-            right_sidebar_width: 1200.0,
             selected_library_node: Some("../outside".to_owned()),
             window_bounds: Some(Bounds::new(
                 gpui_kit::point(px(f32::NAN), px(40.0)),
@@ -145,7 +149,6 @@ mod tests {
         state.normalize();
 
         assert_eq!(state.left_sidebar_width, DEFAULT_LEFT_SIDEBAR_WIDTH);
-        assert_eq!(state.right_sidebar_width, RIGHT_SIDEBAR_MAX_WIDTH);
         assert_eq!(state.selected_library_node, None);
         assert_eq!(state.window_bounds, None);
     }
@@ -178,19 +181,5 @@ mod tests {
         let bounds = state.window_bounds.unwrap();
         assert_eq!(f32::from(bounds.size.width), WINDOW_MIN_WIDTH);
         assert_eq!(f32::from(bounds.size.height), WINDOW_MIN_HEIGHT);
-    }
-
-    #[test]
-    fn locus_right_sidebar_defaults_and_restored_widths_respect_520() {
-        assert_eq!(InterfaceState::default().right_sidebar_width, 520.0);
-        let mut state = InterfaceState {
-            right_sidebar_width: 320.0,
-            ..InterfaceState::default()
-        };
-        state.normalize();
-        assert_eq!(state.right_sidebar_width, 520.0);
-        assert_eq!(WINDOW_MIN_WIDTH, 980.0);
-        assert_eq!(oneo_gpui::DEFAULT_RIGHT_SIDEBAR_WIDTH, 320.0);
-        assert_eq!(oneo_gpui::RIGHT_SIDEBAR_MIN_WIDTH, 320.0);
     }
 }

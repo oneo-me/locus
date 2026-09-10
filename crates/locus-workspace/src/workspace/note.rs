@@ -14,7 +14,6 @@ use locus_ui::{
     Icon, LocusMarkdownExtensions, Markdown, MarkdownLabels, MarkdownPresentation,
     MarkdownTypography, document_icon_image, toolbar_icon_button,
 };
-use oneo_gpui::PanelSide;
 use rust_i18n::t;
 const NOTE_MAX_WIDTH: f32 = 832.0;
 const ATMOSPHERE_HEIGHT: f32 = 268.0;
@@ -205,7 +204,7 @@ impl Locus {
         let language = self.language(cx);
         let (left_padding, right_padding) = note_titlebar_padding(
             content_width,
-            self.app_shell.workspace().rendered_width(PanelSide::Left),
+            self.app_shell.workspace().rendered_width(),
             left_control_clearance,
         );
         let copy_button = toolbar_icon_button(
@@ -289,18 +288,17 @@ impl Locus {
                             ),
                     )
                     .when(node.canvas_path.is_some(), |bar| {
-                        let path = node.path.clone();
                         bar.child(
                             toolbar_icon_button(
-                                "open-note-canvas",
-                                t!("workspace.canvas.open", locale = language.locale())
+                                "reload-note-canvas",
+                                t!("workspace.canvas.reload", locale = language.locale())
                                     .into_owned(),
                                 Icon::Globe,
                                 theme,
                             )
                             .on_click(cx.listener(
                                 move |this, _, window, cx| {
-                                    this.open_canvas(&path, true, window, cx);
+                                    this.reload_note_canvas(window, cx);
                                 },
                             )),
                         )
@@ -320,10 +318,7 @@ fn note_titlebar_padding(
 ) -> (f32, f32) {
     let centered_gutter = ((content_width - NOTE_MAX_WIDTH) / 2.0).max(0.0);
     let left = (left_control_clearance - left_sidebar_width - centered_gutter).max(16.0);
-    let right_control_clearance =
-        super::TITLEBAR_CONTROL_INSET + super::TITLEBAR_CONTROL_SIZE + super::TITLEBAR_CONTROL_GAP;
-    let right = (right_control_clearance - centered_gutter).max(16.0);
-    (left, right)
+    (left, 16.0)
 }
 
 fn note_metadata(node: &LibraryNode, panel_color: gpui_kit::Hsla, theme: &Theme) -> Option<Div> {
@@ -838,8 +833,8 @@ mod tests {
 
     #[test]
     fn narrow_note_titlebar_only_avoids_controls_that_overlap_content() {
-        assert_eq!(note_titlebar_padding(700.0, 0.0, 120.0), (120.0, 45.0));
-        assert_eq!(note_titlebar_padding(700.0, 250.0, 120.0), (16.0, 45.0));
+        assert_eq!(note_titlebar_padding(700.0, 0.0, 120.0), (120.0, 16.0));
+        assert_eq!(note_titlebar_padding(700.0, 250.0, 120.0), (16.0, 16.0));
     }
 
     #[test]

@@ -3,50 +3,44 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+mod canvas;
 mod command_palette;
 mod navigation;
 mod note;
 mod note_atmosphere;
 mod note_menu;
 mod pane;
-mod right_tabs;
 mod sidebar;
+mod terminal;
 mod window_chrome;
 
 use gpui_kit::component::{ElementExt as _, Root};
 use gpui_kit::{
-    AnyElement, App, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
+    AnyElement, Bounds, ClipboardItem, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
     ScrollAnchor, ScrollHandle, Stateful, StyleRefinement, Subscription, Task, WeakFocusHandle,
     Window, div, prelude::*, px, transparent_black,
 };
 
+use self::canvas::NoteCanvas;
 use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
-use self::right_tabs::RightTab;
 use crate::sidebar_order::SidebarOrderState;
-use crate::state::{
-    InterfaceState, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH, RIGHT_SIDEBAR_MAX_WIDTH,
-    RIGHT_SIDEBAR_MIN_WIDTH,
-};
-use crate::{NewTerminal, OpenSettings, ReloadCurrentNote, ToggleLeftPanel, ToggleRightPanel};
+use crate::state::{InterfaceState, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH};
+use crate::{NewTerminal, OpenSettings, ReloadCurrentNote, ToggleLeftPanel};
 use gpui_kit::component::Theme;
 use locus_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use locus_mcp::{McpConfiguration, McpServerController};
 use locus_preferences::Preferences;
-use locus_preferences::config::{
-    DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, WINDOW_MIN_WIDTH,
-};
+use locus_preferences::config::DEFAULT_LEFT_SIDEBAR_WIDTH;
 use locus_settings::{Settings, SettingsEvent, SettingsInit};
 use locus_ui::{Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection};
 use oneo_gpui::Language;
 use oneo_gpui::{
-    AppShellState, CloseWindow, PanelSide, PanelSize, TITLEBAR_CONTROL_INSET,
-    TITLEBAR_CONTROL_SIZE, TITLEBAR_HEIGHT, WorkspaceShell, WorkspaceShellConfig,
-    WorkspaceShellState, panel_resize_handle, titlebar_content_left_padding,
-    titlebar_left_control_offset,
+    AppShellState, CloseWindow, PanelSize, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
+    TITLEBAR_HEIGHT, WorkspaceShell, WorkspaceShellConfig, WorkspaceShellState,
+    panel_resize_handle, titlebar_content_left_padding, titlebar_left_control_offset,
 };
-use oneo_gpui_terminal::{TerminalConfiguration, TerminalEvent, TerminalLabels, TerminalView};
 
 const TITLEBAR_CONTROL_GAP: f32 = 8.0;
 const TITLEBAR_NAVIGATION_INSET: f32 = 6.0;
@@ -61,47 +55,12 @@ fn mcp_configuration(preferences: &Preferences) -> McpConfiguration {
     }
 }
 
-fn terminal_labels(language: Language) -> TerminalLabels {
-    TerminalLabels {
-        accessibility_label: t!("terminal.accessibility_label", locale = language.locale())
-            .into_owned()
-            .into(),
-        could_not_start: t!("terminal.error.could_not_start", locale = language.locale())
-            .into_owned()
-            .into(),
-        starting: t!("terminal.status.starting", locale = language.locale())
-            .into_owned()
-            .into(),
-        process_exited: t!("terminal.status.process_exited", locale = language.locale())
-            .into_owned()
-            .into(),
-    }
-}
-
-fn terminal_configuration(preferences: &Preferences) -> TerminalConfiguration {
-    TerminalConfiguration {
-        shell: preferences.terminal_shell.clone(),
-        startup_command: preferences.terminal_command.clone(),
-        color_scheme: preferences.terminal_color_scheme,
-        cursor_style: preferences.terminal_cursor_style,
-        font_family: preferences
-            .resolved_terminal_font_family()
-            .to_owned()
-            .into(),
-        font_size: preferences.terminal_font_size,
-        labels: terminal_labels(preferences.appearance.language),
-    }
-}
 const TITLEBAR_NAVIGATION_WIDTH: f32 = TITLEBAR_CONTROL_SIZE * 2.0 + TITLEBAR_NAVIGATION_GAP;
 const WORKSPACE_SHELL_CONFIG: WorkspaceShellConfig = WorkspaceShellConfig {
     content_min_width: locus_preferences::config::CONTENT_MIN_WIDTH,
     left: PanelSize {
         min: LEFT_SIDEBAR_MIN_WIDTH,
         max: LEFT_SIDEBAR_MAX_WIDTH,
-    },
-    right: PanelSize {
-        min: RIGHT_SIDEBAR_MIN_WIDTH,
-        max: RIGHT_SIDEBAR_MAX_WIDTH,
     },
 };
 const COPY_FEEDBACK_DURATION: Duration = Duration::from_secs(2);
@@ -117,19 +76,14 @@ struct SelectedNote {
 pub struct Locus {
     window_handle: gpui_kit::AnyWindowHandle,
     root_focus: FocusHandle,
-    right_sidebar_focus: FocusHandle,
     app_shell: AppShellState,
     header_drag_armed: bool,
     settings: Entity<Settings>,
     left_pane: Entity<LocusPane>,
     content_pane: Entity<LocusPane>,
-    right_pane: Entity<LocusPane>,
     mcp_server: McpServerController,
-    right_tabs: Vec<RightTab>,
-    selected_right_tab_id: Option<u64>,
-    next_right_tab_id: u64,
-    right_tab_scroll_handle: ScrollHandle,
-    terminals_need_restart: bool,
+    note_canvas: Option<NoteCanvas>,
+    terminal_launch_pending: bool,
     library_tree: LibraryTree,
     library_watcher: Option<LibraryWatcher>,
     library_watch_task: Option<Task<()>>,
@@ -177,7 +131,6 @@ impl Locus {
         let locus = cx.entity();
         let left_pane = LocusPane::new(&locus, Locus::left_pane_content, cx);
         let content_pane = LocusPane::new(&locus, Locus::content_pane_content, cx);
-        let right_pane = LocusPane::new(&locus, Locus::right_pane_content, cx);
         let command_palette =
             cx.new(|cx| gpui_kit::component::command::CommandState::new(window, cx));
         window.focus(&root_focus, cx);
@@ -259,9 +212,6 @@ impl Locus {
             |this, _, event: &SettingsEvent, cx| match event {
                 SettingsEvent::Close => {
                     this.app_shell.close_settings();
-                    if this.terminals_need_restart {
-                        this.restart_terminals(cx);
-                    }
                     cx.notify();
                 }
                 SettingsEvent::ArchiveRestored => {
@@ -270,44 +220,14 @@ impl Locus {
                 SettingsEvent::LanguageChanged(language) => {
                     language.activate();
                     crate::set_app_menus(cx, *language, this.can_reload_current_note());
-                    for terminal in this.right_tabs.iter().filter_map(RightTab::terminal) {
-                        terminal.update(cx, |terminal, cx| {
-                            terminal.set_labels(terminal_labels(*language), cx);
-                        });
-                    }
                     cx.notify();
                 }
                 SettingsEvent::LibraryChanged(path) => {
                     this.change_library(path, cx);
-                    this.restart_terminals(cx);
                     this.restart_mcp_server(cx);
-                }
-                SettingsEvent::TerminalLaunchChanged => {
-                    this.terminals_need_restart = true;
-                }
-                SettingsEvent::TerminalColorSchemeChanged(color_scheme) => {
-                    for terminal in this.right_tabs.iter().filter_map(RightTab::terminal) {
-                        terminal.update(cx, |terminal, cx| {
-                            terminal.set_color_scheme(*color_scheme, cx);
-                        });
-                    }
-                }
-                SettingsEvent::TerminalCursorStyleChanged(cursor_style) => {
-                    for terminal in this.right_tabs.iter().filter_map(RightTab::terminal) {
-                        terminal.update(cx, |terminal, cx| {
-                            terminal.set_cursor_style(*cursor_style, cx);
-                        });
-                    }
                 }
                 SettingsEvent::UiFontChanged | SettingsEvent::CodeFontChanged => {
                     cx.notify();
-                }
-                SettingsEvent::TerminalFontChanged(family, size) => {
-                    for terminal in this.right_tabs.iter().filter_map(RightTab::terminal) {
-                        terminal.update(cx, |terminal, cx| {
-                            terminal.set_font(family.clone(), *size, cx);
-                        });
-                    }
                 }
                 SettingsEvent::McpConfigurationChanged => {
                     this.restart_mcp_server(cx);
@@ -349,25 +269,18 @@ impl Locus {
         Self {
             window_handle: window.window_handle(),
             root_focus,
-            right_sidebar_focus: cx.focus_handle(),
             app_shell: AppShellState::new(WorkspaceShellState::new(
                 WORKSPACE_SHELL_CONFIG,
                 interface_state.left_sidebar_visible,
-                interface_state.right_sidebar_visible,
                 interface_state.left_sidebar_width,
-                interface_state.right_sidebar_width,
             )),
             header_drag_armed: false,
             settings,
             left_pane,
             content_pane,
-            right_pane,
             mcp_server,
-            right_tabs: Vec::new(),
-            selected_right_tab_id: None,
-            next_right_tab_id: 1,
-            right_tab_scroll_handle: ScrollHandle::new(),
-            terminals_need_restart: false,
+            note_canvas: None,
+            terminal_launch_pending: false,
             library_tree,
             library_watcher,
             library_watch_task,
@@ -543,20 +456,7 @@ impl Locus {
 
     fn change_library(&mut self, path: &Path, cx: &mut Context<Self>) {
         let could_reload_current_note = self.can_reload_current_note();
-        let language = self.language(cx);
-        for tab in &mut self.right_tabs {
-            if let right_tabs::RightTabContent::Canvas { view, .. } = &mut tab.content {
-                view.update(cx, |view, cx| view.synchronize(false, language, cx));
-            }
-        }
-        self.right_tabs.retain(|tab| tab.terminal().is_some());
-        if !self
-            .right_tabs
-            .iter()
-            .any(|tab| Some(tab.id) == self.selected_right_tab_id)
-        {
-            self.selected_right_tab_id = self.right_tabs.first().map(|tab| tab.id);
-        }
+        self.release_note_canvas(cx);
         self.library_watch_task = None;
         self.library_watcher = None;
         let (watcher, task, watcher_error) = Self::start_library_watcher(Some(path), cx);
@@ -635,6 +535,7 @@ impl Locus {
             self.expanded_library_nodes.clear();
             self.save_interface_state();
         }
+        self.schedule_note_canvas_selection(cx);
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
     }
@@ -705,9 +606,6 @@ impl Locus {
             self.library_tree
                 .node(path)
                 .is_some_and(|node| node.document_path.is_some())
-        }) || self.right_tabs.iter().any(|tab| {
-            Some(tab.id) == self.selected_right_tab_id
-                && matches!(&tab.content, right_tabs::RightTabContent::Canvas { .. })
         })
     }
 
@@ -727,9 +625,7 @@ impl Locus {
         let shell = self.app_shell.workspace().snapshot();
         InterfaceState {
             left_sidebar_width: shell.left_width,
-            right_sidebar_width: shell.right_width,
             left_sidebar_visible: shell.left_visible,
-            right_sidebar_visible: shell.right_visible,
             selected_library_node: self.selected_library_node.clone(),
             window_bounds: self.window_bounds,
         }
@@ -744,19 +640,10 @@ impl Locus {
     fn toggle_left_sidebar_action(
         &mut self,
         _: &ToggleLeftPanel,
-        window: &mut Window,
+        _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.toggle_panel(PanelSide::Left, window, cx);
-    }
-
-    fn toggle_right_sidebar_action(
-        &mut self,
-        _: &ToggleRightPanel,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.toggle_panel(PanelSide::Right, window, cx);
+        self.toggle_panel(cx);
     }
 
     fn navigate_back(&mut self, cx: &mut Context<Self>) {
@@ -829,42 +716,30 @@ impl Locus {
         self.begin_selected_note_load(cx);
     }
 
-    fn render_panel_resize_handle(&self, side: PanelSide, cx: &mut Context<Self>) -> Stateful<Div> {
+    fn render_panel_resize_handle(&self, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::global(cx).clone();
-        let active = self.app_shell.workspace().resize_active(side);
+        let active = self.app_shell.workspace().resize_active();
 
-        panel_resize_handle(
-            match side {
-                PanelSide::Left => "left-sidebar-resize-handle",
-                PanelSide::Right => "right-sidebar-resize-handle",
-            },
-            side,
-            active,
-            &theme,
-        )
-        .on_mouse_down(
+        panel_resize_handle("left-sidebar-resize-handle", active, &theme).on_mouse_down(
             MouseButton::Left,
             cx.listener(move |this, event: &MouseDownEvent, _, cx| {
                 if event.click_count == 2 {
-                    this.reset_panel_width(side, cx);
+                    this.reset_panel_width(cx);
                     cx.stop_propagation();
                     return;
                 }
                 this.app_shell
                     .workspace_mut()
-                    .begin_resize(side, f32::from(event.position.x));
+                    .begin_resize(f32::from(event.position.x));
                 cx.stop_propagation();
                 cx.notify();
             }),
         )
     }
 
-    fn reset_panel_width(&mut self, side: PanelSide, cx: &mut Context<Self>) {
-        let width = match side {
-            PanelSide::Left => DEFAULT_LEFT_SIDEBAR_WIDTH,
-            PanelSide::Right => DEFAULT_RIGHT_SIDEBAR_WIDTH,
-        };
-        self.app_shell.workspace_mut().reset_width(side, width);
+    fn reset_panel_width(&mut self, cx: &mut Context<Self>) {
+        let width = DEFAULT_LEFT_SIDEBAR_WIDTH;
+        self.app_shell.workspace_mut().reset_width(width);
         self.save_interface_state();
         cx.notify();
     }
@@ -921,7 +796,7 @@ impl Locus {
         .flex_none()
         .bg(transparent_black())
         .when(show_resize, |panel| {
-            panel.child(self.render_panel_resize_handle(PanelSide::Left, cx))
+            panel.child(self.render_panel_resize_handle(cx))
         })
     }
 
@@ -939,12 +814,22 @@ impl Locus {
             .filter(|node| node.document_path.is_some());
 
         let panel = if let Some(node) = selected_note {
-            oneo_gpui::WorkspacePanel::new(self.render_note(
+            let note = self.render_note(
                 node,
                 self.selected_note.as_ref(),
                 left_control_clearance,
                 content_width,
                 cx,
+            );
+            let canvas = self
+                .note_canvas
+                .as_ref()
+                .filter(|canvas| canvas.path == node.path)
+                .map(|canvas| canvas.view.clone().into_any_element());
+            oneo_gpui::WorkspacePanel::new(canvas::note_page(
+                note.into_any_element(),
+                canvas,
+                &theme,
             ))
         } else {
             oneo_gpui::WorkspacePanel::new(div().size_full())
@@ -953,36 +838,13 @@ impl Locus {
         panel.into_element().bg(theme.background)
     }
 
-    fn render_right_sidebar(&self, width: f32, show_resize: bool, cx: &mut Context<Self>) -> Div {
-        let theme = Theme::global(cx).clone();
-
-        let panel = oneo_gpui::WorkspacePanel::new(self.render_right_panel(cx));
-        let panel = if self.right_tabs.is_empty() {
-            panel
-        } else {
-            panel.header(self.render_right_titlebar(cx))
-        };
-        panel
-            .into_element()
-            .key_context("RightSidebar")
-            .on_action(cx.listener(Self::close_right_tab_action))
-            .track_focus(&self.right_sidebar_focus)
-            .w(px(width))
-            .flex_none()
-            .bg(theme.background)
-            .when(show_resize, |panel| {
-                panel.child(self.render_panel_resize_handle(PanelSide::Right, cx))
-            })
-    }
-
     fn left_pane_content(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let workspace = self.app_shell.workspace();
-        let left_content =
-            workspace.panel_content_width(PanelSide::Left, f32::from(window.viewport_size().width));
+        let left_content = workspace.panel_content_width(f32::from(window.viewport_size().width));
         let left_control_clearance = left_titlebar_control_clearance(window.is_fullscreen());
         self.render_left_sidebar(
             left_content,
-            workspace.visible(PanelSide::Left) && !workspace.transitioning(PanelSide::Left),
+            workspace.visible() && !workspace.transitioning(),
             left_control_clearance,
             cx,
         )
@@ -991,42 +853,18 @@ impl Locus {
 
     fn content_pane_content(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let left_control_clearance = left_titlebar_control_clearance(window.is_fullscreen());
-        let content_width = f32::from(window.viewport_size().width)
-            - self.app_shell.workspace().rendered_width(PanelSide::Left)
-            - self.app_shell.workspace().rendered_width(PanelSide::Right);
+        let content_width =
+            f32::from(window.viewport_size().width) - self.app_shell.workspace().rendered_width();
         self.render_content(left_control_clearance, content_width, cx)
             .into_any_element()
-    }
-
-    fn right_pane_content(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let workspace = self.app_shell.workspace();
-        let right_content = workspace
-            .panel_content_width(PanelSide::Right, f32::from(window.viewport_size().width));
-        self.render_right_sidebar(
-            right_content,
-            workspace.visible(PanelSide::Right) && !workspace.transitioning(PanelSide::Right),
-            cx,
-        )
-        .into_any_element()
     }
 
     fn advance_render_lifecycle(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let layout = self.app_shell.workspace_mut().layout(window);
         self.synchronize_canvases(window, cx);
         let panels = layout.frame;
-        for terminal in self.right_tabs.iter().filter_map(RightTab::terminal) {
-            terminal.update(cx, |terminal, _| {
-                terminal.set_available_size(
-                    panels.right_content,
-                    (f32::from(window.viewport_size().height) - TITLEBAR_HEIGHT).max(120.0),
-                );
-            });
-        }
         if layout.left_transition_finished {
             self.left_pane.update(cx, |_, cx| cx.notify());
-        }
-        if layout.right_transition_finished {
-            self.right_pane.update(cx, |_, cx| cx.notify());
         }
         if panels.left > 0.0 && self.scroll_to_selected_library_node {
             self.selected_library_scroll_anchor.scroll_to(window, cx);
@@ -1053,7 +891,7 @@ impl Render for Locus {
         let navigation_left_offset = navigation_left_offset(
             left_toggle_offset,
             panels.left,
-            self.app_shell.workspace().visible(PanelSide::Left),
+            self.app_shell.workspace().visible(),
         );
         let workspace = WorkspaceShell::new(
             panels,
@@ -1062,10 +900,6 @@ impl Render for Locus {
                 .cached(StyleRefinement::default().size_full())
                 .into_any_element(),
             self.content_pane
-                .clone()
-                .cached(StyleRefinement::default().size_full())
-                .into_any_element(),
-            self.right_pane
                 .clone()
                 .cached(StyleRefinement::default().size_full())
                 .into_any_element(),
@@ -1089,6 +923,7 @@ impl Render for Locus {
         div()
             .key_context("Locus")
             .track_focus(&self.root_focus)
+            .capture_key_down(crate::commands::capture_terminal_shortcut)
             .on_action(cx.listener(Self::new_terminal_action))
             .on_action(cx.listener(Self::open_command_palette_action))
             .on_action(cx.listener(Self::open_note_action))
@@ -1100,7 +935,6 @@ impl Render for Locus {
             .on_action(cx.listener(Self::archive_current_note_action))
             .on_action(cx.listener(Self::reload_current_note_action))
             .on_action(cx.listener(Self::toggle_left_sidebar_action))
-            .on_action(cx.listener(Self::toggle_right_sidebar_action))
             .capture_any_mouse_down(cx.listener(Self::navigation_mouse_down))
             .on_mouse_move(cx.listener(Self::resize_panel_mouse_move))
             .capture_any_mouse_up(cx.listener(Self::finish_panel_resize))

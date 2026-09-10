@@ -50,21 +50,6 @@ settings.save_error:
 settings.load_error:
   en: Could not read saved settings. Defaults are in use.
   zh-CN: 无法读取已保存的设置，当前使用默认值。
-settings.terminal.font.label:
-  en: Terminal font
-  zh-CN: 终端字体
-settings.terminal.command.label:
-  en: Default command
-  zh-CN: 默认命令
-settings.terminal.command.placeholder:
-  en: No default command
-  zh-CN: 不执行默认命令
-settings.terminal.shell.label:
-  en: Launch shell
-  zh-CN: 启动 Shell
-settings.terminal.shell.placeholder:
-  en: Use system login shell
-  zh-CN: 使用系统登录 Shell
 mcp.status.failed:
   en: Failed to start
   zh-CN: 启动失败
@@ -122,33 +107,6 @@ settings.library.path.description:
 settings.library.path.label:
   en: Library path
   zh-CN: 文档库路径
-settings.terminal.color_scheme.description:
-  en: Auto follows the current Locus appearance
-  zh-CN: 自动跟随 Locus 的当前明暗外观
-settings.terminal.color_scheme.label:
-  en: Color scheme
-  zh-CN: 配色
-settings.terminal.command.description:
-  en: Runs after each terminal starts; leave empty for the shell prompt
-  zh-CN: 每次启动终端后执行，留空则直接进入 Shell
-settings.terminal.cursor_style.description:
-  en: Default used when a terminal program does not set the cursor
-  zh-CN: 作为终端程序未指定光标时的默认样式
-settings.terminal.cursor_style.label:
-  en: Cursor style
-  zh-CN: 光标样式
-settings.terminal.font.description:
-  en: Font used by the terminal in the right sidebar
-  zh-CN: 用于右侧终端会话的字体
-settings.terminal.font_size.description:
-  en: Text size used by the terminal in the right sidebar
-  zh-CN: 用于右侧终端会话的文字大小
-settings.terminal.font_size.label:
-  en: Terminal font size
-  zh-CN: 终端字号
-settings.terminal.shell.description:
-  en: Uses the system login shell when empty
-  zh-CN: 留空时使用系统登录 Shell
 settings.mcp.client.claude.description:
   en: Adds an HTTP server; run /mcp in Claude Code to verify it.
   zh-CN: 添加 HTTP 类型服务；进入 Claude Code 后运行 /mcp 检查连接。
@@ -224,12 +182,6 @@ settings.mcp.service.label:
 settings.mcp.service.toggle:
   en: Start MCP service
   zh-CN: 启动 MCP 服务
-settings.auto_open_canvas.label:
-  en: Automatically open canvas
-  zh-CN: 自动打开画布
-settings.auto_open_canvas.description:
-  en: Open the canvas in the sidebar when entering a note that has one.
-  zh-CN: 进入有画布的笔记时，自动在侧边栏打开画布。
 
 settings.mcp.standard_access:
   en: Standard
@@ -240,3 +192,15 @@ settings.mcp.full_access:
 settings.mcp.full_scope_note:
   en: Read, edit, upload, download, move and delete notes, attachments and canvases through MCP. Uses the same service and network setting; no server file paths are returned.
   zh-CN: 通过 MCP 读取、编辑、上传、下载、移动和删除笔记、附件及画布。共用服务与局域网设置，不返回服务器文件路径。
+settings.terminal.application.label:
+  en: Terminal
+  zh-CN: 终端
+settings.terminal.application.description:
+  en: Open the selected terminal in the library root directory.
+  zh-CN: 在笔记库根目录打开所选终端。
+settings.terminal.agent.label:
+  en: Agent
+  zh-CN: Agent
+settings.terminal.agent.description:
+  en: Start this installed Agent when opening the terminal.
+  zh-CN: 打开终端时启动此 Agent，请先完成安装。

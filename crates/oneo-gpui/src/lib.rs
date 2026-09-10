@@ -23,14 +23,13 @@ mod workspace;
 mod workspace_panel;
 #[cfg(feature = "shell")]
 pub use workspace_panel::{
-    DEFAULT_LEFT_SIDEBAR_WIDTH, DEFAULT_RIGHT_SIDEBAR_WIDTH, LEFT_SIDEBAR_MIN_WIDTH,
-    RIGHT_SIDEBAR_MIN_WIDTH, WorkspacePanel, WorkspaceSidebar,
+    DEFAULT_LEFT_SIDEBAR_WIDTH, LEFT_SIDEBAR_MIN_WIDTH, WorkspacePanel, WorkspaceSidebar,
 };
 
 #[cfg(feature = "shell")]
 pub use app::{
     About, AppShell, AppShellMenuLabels, AppShellMenus, CloseSettings, CloseWindow, OpenSettings,
-    Quit, ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, set_app_shell_menus,
+    Quit, ToggleFullScreen, ToggleLeftPanel, set_app_shell_menus,
 };
 #[cfg(feature = "shell")]
 pub use button::{toolbar_dropdown_menu, toolbar_icon_button};
@@ -48,9 +47,9 @@ pub use window::{
 };
 #[cfg(feature = "shell")]
 pub use workspace::{
-    AppShellMode, AppShellState, PanelFrame, PanelSide, PanelSize, WorkspaceShell,
-    WorkspaceShellConfig, WorkspaceShellLayout, WorkspaceShellSnapshot, WorkspaceShellState,
-    panel_resize_handle, panel_toggle_button,
+    AppShellMode, AppShellState, PanelFrame, PanelSize, WorkspaceShell, WorkspaceShellConfig,
+    WorkspaceShellLayout, WorkspaceShellSnapshot, WorkspaceShellState, panel_resize_handle,
+    panel_toggle_button,
 };
 
 #[cfg(all(test, feature = "shell"))]

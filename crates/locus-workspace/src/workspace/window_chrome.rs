@@ -7,15 +7,8 @@ use locus_mcp::McpServerState;
 use rust_i18n::t;
 
 impl Locus {
-    pub(super) fn toggle_panel(
-        &mut self,
-        side: PanelSide,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.app_shell
-            .workspace_mut()
-            .toggle(side, window, cx.reduce_motion(), WINDOW_MIN_WIDTH);
+    pub(super) fn toggle_panel(&mut self, cx: &mut Context<Self>) {
+        self.app_shell.workspace_mut().toggle(cx.reduce_motion());
         self.save_interface_state();
         cx.notify();
     }
@@ -94,7 +87,7 @@ impl Locus {
             .gap(px(8.0))
             .pl(px(titlebar_content_left_padding(
                 left_control_clearance,
-                self.app_shell.workspace().rendered_width(PanelSide::Left),
+                self.app_shell.workspace().rendered_width(),
                 14.0,
             )))
             .pr(px(14.0))
@@ -124,15 +117,6 @@ impl Locus {
                 self.window_drag_region("content-center-drag-region", cx)
                     .flex_1(),
             )
-            .child(div().size(px(TITLEBAR_CONTROL_SIZE)).flex_none())
-    }
-
-    pub(super) fn render_right_titlebar(&self, cx: &mut Context<Self>) -> Div {
-        div().h(px(TITLEBAR_HEIGHT)).flex_none().child(
-            self.window_drag_region("right-title-region", cx)
-                .w_full()
-                .child(self.render_right_tab_bar(cx)),
-        )
     }
 
     pub(super) fn render_mcp_status(&self, cx: &mut Context<Self>) -> Button {

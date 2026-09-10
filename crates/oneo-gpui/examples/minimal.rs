@@ -6,15 +6,13 @@ use gpui_kit::{
 };
 use oneo_gpui::{
     AppShell, AppShellState, AppearanceChange, AppearanceControls, AppearancePreferences,
-    OpenSettings, PanelSide, SettingsShell, SettingsStore, ShellWindow, TITLEBAR_CONTROL_INSET,
-    TITLEBAR_CONTROL_SIZE, ToggleLeftPanel, ToggleRightPanel, WorkspacePanel, WorkspaceShell,
-    WorkspaceShellState, WorkspaceSidebar, panel_resize_handle, titlebar_content_left_padding,
-    titlebar_drag_region, titlebar_left_control_offset,
+    OpenSettings, SettingsShell, SettingsStore, ShellWindow, TITLEBAR_CONTROL_INSET,
+    TITLEBAR_CONTROL_SIZE, ToggleLeftPanel, WorkspacePanel, WorkspaceShell, WorkspaceShellState,
+    WorkspaceSidebar, panel_resize_handle, titlebar_content_left_padding, titlebar_drag_region,
+    titlebar_left_control_offset,
 };
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
-
-const MIN_WINDOW_WIDTH: f32 = 640.0;
 
 #[derive(Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -61,13 +59,11 @@ impl Welcome {
         }
     }
 
-    fn toggle(&mut self, side: PanelSide, window: &mut Window, cx: &mut Context<Self>) {
+    fn toggle(&mut self, cx: &mut Context<Self>) {
         if self.shell.is_settings_open() {
             return;
         }
-        self.shell
-            .workspace_mut()
-            .toggle(side, window, cx.reduce_motion(), MIN_WINDOW_WIDTH);
+        self.shell.workspace_mut().toggle(cx.reduce_motion());
         cx.notify();
     }
 
@@ -120,49 +116,38 @@ impl Welcome {
             .track_focus(&self.settings_focus)
     }
 
-    fn sidebar(&self, side: PanelSide, title: String, inset: f32, cx: &mut Context<Self>) -> Div {
+    fn sidebar(&self, title: String, inset: f32, cx: &mut Context<Self>) -> Div {
         let empty = t!(
             "empty",
             locale = self.preferences.appearance.language.locale()
         )
         .into_owned();
-        let id = match side {
-            PanelSide::Left => "left-resize",
-            PanelSide::Right => "right-resize",
-        };
-        let panel = match side {
-            PanelSide::Left => WorkspaceSidebar::new(
-                div().size_full().px_3().pb_3().child(empty),
-                cx.theme(),
-                inset,
-            )
-            .header_end(div().truncate().child(title))
-            .into_element(),
-            PanelSide::Right => pane("right-titlebar", title, &empty, inset, cx.theme()),
-        };
+        let id = "left-resize";
+        let panel = WorkspaceSidebar::new(
+            div().size_full().px_3().pb_3().child(empty),
+            cx.theme(),
+            inset,
+        )
+        .header_end(div().truncate().child(title))
+        .into_element();
         panel.bg(cx.theme().sidebar).child(
-            panel_resize_handle(
-                id,
-                side,
-                self.shell.workspace().resize_active(side),
-                cx.theme(),
-            )
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(move |this, event: &MouseDownEvent, _, cx| {
-                    if event.click_count == 2 {
-                        this.shell
-                            .workspace_mut()
-                            .reset_width(side, WorkspaceShellState::default().rendered_width(side));
-                    } else {
-                        this.shell
-                            .workspace_mut()
-                            .begin_resize(side, f32::from(event.position.x));
-                    }
-                    cx.stop_propagation();
-                    cx.notify();
-                }),
-            ),
+            panel_resize_handle(id, self.shell.workspace().resize_active(), cx.theme())
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                        if event.click_count == 2 {
+                            this.shell
+                                .workspace_mut()
+                                .reset_width(WorkspaceShellState::default().rendered_width());
+                        } else {
+                            this.shell
+                                .workspace_mut()
+                                .begin_resize(f32::from(event.position.x));
+                        }
+                        cx.stop_propagation();
+                        cx.notify();
+                    }),
+                ),
         )
     }
 }
@@ -203,15 +188,8 @@ impl Render for Welcome {
         let clearance = offset + TITLEBAR_CONTROL_SIZE + TITLEBAR_CONTROL_INSET;
         let content_inset = f32::from(window.rem_size());
         let left = self.sidebar(
-            PanelSide::Left,
             t!("navigation", locale = locale).into_owned(),
             clearance,
-            cx,
-        );
-        let right = self.sidebar(
-            PanelSide::Right,
-            t!("inspector", locale = locale).into_owned(),
-            content_inset,
             cx,
         );
         let content = pane(
@@ -228,7 +206,6 @@ impl Render for Welcome {
             frame,
             left.into_any_element(),
             content.into_any_element(),
-            right.into_any_element(),
             window,
             cx,
         )
@@ -251,11 +228,8 @@ impl Render for Welcome {
                     this.close_settings(window, cx)
                 }),
             )
-            .on_action(cx.listener(|this, _: &ToggleLeftPanel, window, cx| {
-                this.toggle(PanelSide::Left, window, cx);
-            }))
-            .on_action(cx.listener(|this, _: &ToggleRightPanel, window, cx| {
-                this.toggle(PanelSide::Right, window, cx);
+            .on_action(cx.listener(|this, _: &ToggleLeftPanel, _, cx| {
+                this.toggle(cx);
             }))
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, window, cx| {
                 if this.shell.workspace_mut().resize(
@@ -320,14 +294,11 @@ mod tests {
     }
 
     #[gpui_kit::test]
-    fn three_headers_render_and_panel_actions_reopen_sidebars(cx: &mut TestAppContext) {
+    fn headers_render_and_panel_action_reopens_sidebar(cx: &mut TestAppContext) {
         cx.update(|cx| {
             gpui_kit::component::init(cx);
             cx.set_reduce_motion(true);
-            cx.bind_keys([
-                KeyBinding::new("secondary-b", ToggleLeftPanel, None),
-                KeyBinding::new("secondary-shift-b", ToggleRightPanel, None),
-            ]);
+            cx.bind_keys([KeyBinding::new("secondary-b", ToggleLeftPanel, None)]);
         });
         let directory = tempfile::tempdir().unwrap();
         let store = SettingsStore::at_path(directory.path().join("settings.toml")).unwrap();
@@ -340,12 +311,8 @@ mod tests {
         let content = cx
             .debug_bounds("content-titlebar")
             .expect("content titlebar");
-        let right = cx
-            .debug_bounds("right-titlebar")
-            .expect("inspector titlebar");
         assert_eq!(left.origin.y, content.origin.y);
-        assert_eq!(right.origin.y, content.origin.y);
-        for header in [left, content, right] {
+        for header in [left, content] {
             assert!(header.size.width > px(0.0));
             assert_eq!(header.size.height, px(TITLEBAR_HEIGHT));
         }
@@ -356,33 +323,20 @@ mod tests {
             footer.bottom() - settings.bottom()
         );
         assert!(left.right() <= content.left());
-        assert!(content.right() <= right.left());
+        cx.update(|window, _| assert_eq!(content.right(), window.viewport_size().width));
 
         #[cfg(target_os = "macos")]
         let shortcut = "cmd-b";
         #[cfg(not(target_os = "macos"))]
         let shortcut = "ctrl-b";
         cx.simulate_keystrokes(shortcut);
-        assert!(!view.read_with(cx, |view, _| {
-            view.shell.workspace().visible(PanelSide::Left)
-        }));
+        assert!(!view.read_with(cx, |view, _| { view.shell.workspace().visible() }));
         cx.simulate_keystrokes(shortcut);
-        assert!(view.read_with(cx, |view, _| {
-            view.shell.workspace().visible(PanelSide::Left)
-        }));
+        assert!(view.read_with(cx, |view, _| { view.shell.workspace().visible() }));
         cx.dispatch_action(ToggleLeftPanel);
-        cx.dispatch_action(ToggleRightPanel);
         cx.update(|window, cx| window.draw(cx).clear(cx));
         assert!(cx.debug_bounds("workspace-left-toggle").is_some());
-        assert!(cx.debug_bounds("workspace-right-toggle").is_some());
         cx.dispatch_action(ToggleLeftPanel);
-        assert!(!view.read_with(cx, |view, _| {
-            view.shell.workspace().visible(PanelSide::Right)
-        }));
-        cx.dispatch_action(ToggleRightPanel);
-        assert!(view.read_with(cx, |view, _| {
-            view.shell.workspace().visible(PanelSide::Right)
-        }));
     }
     #[gpui_kit::test]
     fn settings_button_opens_shared_controls_and_returns_to_workspace(cx: &mut TestAppContext) {
@@ -452,8 +406,7 @@ mod tests {
             let view = view.read(cx);
             assert!(!view.shell.is_settings_open());
             assert!(view.focus.is_focused(window));
-            assert!(view.shell.workspace().visible(PanelSide::Left));
-            assert!(view.shell.workspace().visible(PanelSide::Right));
+            assert!(view.shell.workspace().visible());
         });
     }
     #[gpui_kit::test]

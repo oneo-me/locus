@@ -2,7 +2,6 @@ use super::*;
 use gpui_kit::component::{
     Sizable as _,
     button::{Button, ButtonVariants as _},
-    switch::Switch,
 };
 use rust_i18n::t;
 
@@ -76,34 +75,6 @@ impl Settings {
                 t!("settings.editor.description", locale = language.locale()).into_owned(),
                 self.render_dropdown(Dropdown::Editor, cx),
             ))
-            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
-            .child(SettingsItem::new(
-                t!(
-                    "settings.auto_open_canvas.label",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                t!(
-                    "settings.auto_open_canvas.description",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                Switch::new("auto-open-canvas")
-                    .small()
-                    .checked(self.preferences.auto_open_canvas)
-                    .accessibility_label(
-                        t!(
-                            "settings.auto_open_canvas.label",
-                            locale = language.locale()
-                        )
-                        .into_owned(),
-                    )
-                    .on_click(cx.listener(|this, checked, _, cx| {
-                        this.preferences.auto_open_canvas = *checked;
-                        this.persist();
-                        cx.notify();
-                    })),
-            ))
     }
 
     pub(super) fn render_appearance(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
@@ -162,104 +133,34 @@ impl Settings {
     }
 
     pub(super) fn render_terminal(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
-        let theme = Theme::global(cx).clone();
         let language = self.preferences.appearance.language;
         div()
             .w_full()
-            .self_stretch()
             .min_w_0()
             .flex()
             .flex_col()
-            .items_stretch()
             .child(SettingsItem::new(
-                t!("settings.terminal.font.label", locale = language.locale()).into_owned(),
                 t!(
-                    "settings.terminal.font.description",
+                    "settings.terminal.application.label",
                     locale = language.locale()
                 )
                 .into_owned(),
-                self.render_font_picker(FontKind::Terminal, cx),
+                t!(
+                    "settings.terminal.application.description",
+                    locale = language.locale()
+                )
+                .into_owned(),
+                self.render_dropdown(Dropdown::Terminal, cx),
             ))
-            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
+            .child(div().mx_5().h(px(1.0)).bg(Theme::global(cx).border))
             .child(SettingsItem::new(
+                t!("settings.terminal.agent.label", locale = language.locale()).into_owned(),
                 t!(
-                    "settings.terminal.font_size.label",
+                    "settings.terminal.agent.description",
                     locale = language.locale()
                 )
                 .into_owned(),
-                t!(
-                    "settings.terminal.font_size.description",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                self.render_dropdown(Dropdown::TerminalFontSize, cx),
-            ))
-            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
-            .child(SettingsItem::new(
-                t!("settings.terminal.shell.label", locale = language.locale()).into_owned(),
-                t!(
-                    "settings.terminal.shell.description",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                Input::new(&self.terminal_shell_input)
-                    .flex_none()
-                    .w(gpui_kit::rems(SETTINGS_CONTROL_WIDTH_REM))
-                    .aria_label(
-                        t!("settings.terminal.shell.label", locale = language.locale())
-                            .into_owned(),
-                    ),
-            ))
-            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
-            .child(SettingsItem::new(
-                t!(
-                    "settings.terminal.command.label",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                t!(
-                    "settings.terminal.command.description",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                Input::new(&self.terminal_command_input)
-                    .flex_none()
-                    .w(gpui_kit::rems(SETTINGS_CONTROL_WIDTH_REM))
-                    .aria_label(
-                        t!(
-                            "settings.terminal.command.label",
-                            locale = language.locale()
-                        )
-                        .into_owned(),
-                    ),
-            ))
-            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
-            .child(SettingsItem::new(
-                t!(
-                    "settings.terminal.color_scheme.label",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                t!(
-                    "settings.terminal.color_scheme.description",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                self.render_dropdown(Dropdown::TerminalColorScheme, cx),
-            ))
-            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
-            .child(SettingsItem::new(
-                t!(
-                    "settings.terminal.cursor_style.label",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                t!(
-                    "settings.terminal.cursor_style.description",
-                    locale = language.locale()
-                )
-                .into_owned(),
-                self.render_dropdown(Dropdown::TerminalCursorStyle, cx),
+                self.render_dropdown(Dropdown::Agent, cx),
             ))
     }
 }

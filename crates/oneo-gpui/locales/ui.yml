@@ -53,9 +53,6 @@ settings.appearance.theme.system:
 shell.toggle_left:
   en: Toggle left sidebar
   zh-CN: 显示或隐藏左侧栏
-shell.toggle_right:
-  en: Toggle right sidebar
-  zh-CN: 显示或隐藏右侧栏
 shell.empty:
   en: No content
   zh-CN: 暂无内容

@@ -1,10 +1,4 @@
 _version: 2
-workspace.canvas.open:
-  en: Open canvas
-  zh-CN: 打开画布
-workspace.canvas.close:
-  en: "Close canvas"
-  zh-CN: "关闭画布"
 menu.application.about:
   en: About Locus
   zh-CN: 关于 Locus
@@ -35,27 +29,12 @@ menu.view.title:
 menu.view.toggle_left_sidebar:
   en: Toggle Left Sidebar
   zh-CN: 切换左侧栏
-menu.view.toggle_right_sidebar:
-  en: Toggle Right Sidebar
-  zh-CN: 切换右侧栏
 menu.window.close:
   en: Close Window
   zh-CN: 关闭窗口
 menu.window.title:
   en: Window
   zh-CN: 窗口
-terminal.accessibility_label:
-  en: Terminal
-  zh-CN: 终端
-terminal.error.could_not_start:
-  en: Could not start terminal
-  zh-CN: 无法启动终端
-terminal.status.process_exited:
-  en: Process exited
-  zh-CN: 进程已退出
-terminal.status.starting:
-  en: Starting terminal…
-  zh-CN: 正在启动终端…
 mcp.status.failed:
   en: Failed to start
   zh-CN: 启动失败
@@ -101,27 +80,12 @@ workspace.settings.open:
 workspace.sidebar.hide_left:
   en: Hide left sidebar
   zh-CN: 隐藏左侧栏
-workspace.sidebar.hide_right:
-  en: Hide right sidebar
-  zh-CN: 隐藏右侧栏
 workspace.sidebar.show_left:
   en: Show left sidebar
   zh-CN: 显示左侧栏
-workspace.sidebar.empty:
-  en: No content
-  zh-CN: 暂无内容
-workspace.sidebar.show_right:
-  en: Show right sidebar
-  zh-CN: 显示右侧栏
-workspace.terminal.close_tab:
-  en: Close terminal %{id}
-  zh-CN: 关闭终端 %{id}
 workspace.terminal.new:
-  en: New terminal
-  zh-CN: 新建终端
-workspace.terminal.tab:
-  en: Terminal %{id}
-  zh-CN: 终端 %{id}
+  en: Open Agent…
+  zh-CN: 打开 Agent…
 common.ok:
   en: OK
   zh-CN: 好
@@ -200,6 +164,9 @@ workspace.note.read_error:
 workspace.note.reference_copied:
   en: Note reference copied
   zh-CN: 笔记引用已复制
-workspace.canvas.title:
-  en: Canvas
-  zh-CN: 画布
+workspace.canvas.reload:
+  en: Reload canvas
+  zh-CN: 刷新画布
+workspace.terminal.launch_error:
+  en: Could not open the terminal. Check that it is installed and try again.
+  zh-CN: 无法打开终端，请确认已安装后重试。

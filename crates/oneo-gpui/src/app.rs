@@ -2,7 +2,7 @@ mod menu;
 
 pub use menu::{
     About, AppShellMenuLabels, AppShellMenus, CloseSettings, CloseWindow, OpenSettings, Quit,
-    ToggleFullScreen, ToggleLeftPanel, ToggleRightPanel, set_app_shell_menus,
+    ToggleFullScreen, ToggleLeftPanel, set_app_shell_menus,
 };
 
 use std::cell::Cell;
@@ -18,7 +18,6 @@ use menu::bind_app_shell_keys;
 /// Owns framework initialization and reactivation of the application's main window.
 pub struct AppShell {
     application: Application,
-    right_panel_toggle: bool,
 }
 
 impl Default for AppShell {
@@ -31,17 +30,11 @@ impl AppShell {
     pub fn new() -> Self {
         Self {
             application: gpui_kit::application().with_assets(gpui_kit::assets::Assets),
-            right_panel_toggle: true,
         }
     }
 
     pub fn with_assets(mut self, assets: impl AssetSource) -> Self {
         self.application = self.application.with_assets(assets);
-        self
-    }
-
-    pub fn right_panel_toggle(mut self, enabled: bool) -> Self {
-        self.right_panel_toggle = enabled;
         self
     }
 
@@ -59,7 +52,7 @@ impl AppShell {
         self.application.run(move |cx| {
             gpui_kit::init(cx);
             init_reduce_motion(cx);
-            bind_app_shell_keys(cx, self.right_panel_toggle);
+            bind_app_shell_keys(cx);
             bind_window_actions(cx);
             match initialize(cx) {
                 Ok(window) => {
@@ -109,7 +102,7 @@ mod tests {
     #[gpui_kit::test]
     fn fullscreen_shortcut_works_without_product_action_handlers(cx: &mut TestAppContext) {
         cx.update(|cx| {
-            bind_app_shell_keys(cx, true);
+            bind_app_shell_keys(cx);
             bind_window_actions(cx);
         });
         let window = cx.add_window(|_, _| Content);

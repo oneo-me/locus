@@ -23,13 +23,6 @@ impl Settings {
                 self.preferences.code_font_family = family;
                 cx.emit(SettingsEvent::CodeFontChanged);
             }
-            FontKind::Terminal => {
-                self.preferences.terminal_font_family = family.clone();
-                cx.emit(SettingsEvent::TerminalFontChanged(
-                    family,
-                    self.preferences.terminal_font_size,
-                ));
-            }
         }
         self.persist();
         cx.notify();
@@ -41,7 +34,11 @@ impl Settings {
         _cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let language = self.preferences.appearance.language;
-        div().w(gpui_kit::rems(7.25)).flex_none().child(
+        let width = match dropdown {
+            Dropdown::Terminal | Dropdown::Agent => 12.0,
+            _ => 7.25,
+        };
+        div().w(gpui_kit::rems(width)).flex_none().child(
             Select::new(&self.choice_selects[&dropdown])
                 .w_full()
                 .accessibility_label(dropdown.label(language)),

@@ -10,17 +10,19 @@ Markdown 文档树始终是知识内容的唯一事实来源。外部 Agent 可�
 
 通过侧栏或命令面板选择笔记，使用标题栏操作复制引用、打开外部编辑器或显示所属目录。归档笔记可在设置中恢复。文件由外部工具修改后，应用重新读取变化；Git 状态用于提示正文、画布和附件的变化。
 
-笔记存在 `canvas.html` 时，可以在右栏打开画布。画布内容使用 HTML 片段，基本页面所需的 Tailwind 运行时随应用提供。离开笔记会关闭所属画布；保存文件后可刷新重新加载。自动打开画布的设置默认关闭。
+笔记存在 `canvas.html` 时，页面自动分为上下两部分：上方正文占 1/3 高度，下方画布占 2/3，各自滚动；没有画布时正文占满页面。画布使用 HTML 片段，基本页面所需的 Tailwind 运行时随应用提供。离开笔记会释放所属画布；保存文件后可通过标题栏画布按钮或画布内刷新快捷键重新加载。
 
-终端按需在当前文档库根目录创建，多个会话各自占用右栏标签。以下为 macOS 快捷键：
+在“设置 → 终端”选择系统终端或 Ghostty，并选择 Codex、pi、OpenCode 或 Claude Code。默认为系统终端与 Codex。打开 Agent 时，应用调用外部终端，在当前笔记库根目录运行对应的 `codex`、`pi`、`opencode` 或 `claude` 命令；需要先安装所选终端和 Agent。外部会话由终端软件管理，切换笔记库或退出 Locus 不结束会话，设置变化只影响后续启动。
+
+macOS 系统终端使用 Terminal，Ghostty 使用其 [AppleScript 接口](https://ghostty.org/docs/features/applescript)（需要 1.3.0 或以上）；两者均先后台启动，再创建一个 Agent 窗口并激活，复用已运行的应用。启动时加载 zsh 登录与交互配置，Agent 退出或找不到命令时保留 Shell，便于查看错误。Windows 使用系统控制台，不提供 Ghostty 选项。共享 shell 只提供左侧栏与主内容区。旧内嵌终端与自动打开画布设置不再使用，下一次保存设置时移除旧字段，其他偏好保留。以下为 macOS 快捷键：
 
 | 操作 | 快捷键 |
 | --- | --- |
 | 命令面板 | Command+E |
 | 设置 | Command+, |
-| 新建终端 | Command 与反引号组合键 |
+| 打开 Agent | Command 与反引号组合键 |
 | 刷新当前笔记或获得焦点的画布 | Command+R 或 F5 |
-| 关闭当前右栏标签 | 右栏获得焦点时 Command+W |
+| 关闭窗口 | Command+W |
 
 在设置中启用 MCP 后，可选择标准接口 `/mcp` 或完整接口 `/mcp/full`，复制对应连接地址和客户端配置。两者共用服务、端口与局域网设置；服务默认关闭，默认端口为 `2301`。标准接口保留三个发现工具及原始文件路径；完整接口通过逻辑地址读取、编辑、上传、下载、移动和删除笔记、附件、图标及画布，不返回服务器文件路径。局域网模式没有身份验证，网络客户端可以读写和永久删除库内内容。工具、传输和冲突规则见 [MCP 使用说明](crates/locus-mcp/README.md)。
 
@@ -38,14 +40,15 @@ cargo run
 
 | 位置 | 职责 |
 | --- | --- |
-| [locus-workspace](crates/locus-workspace) | 导航、笔记、命令和右栏标签编排 |
+| [locus-workspace](crates/locus-workspace) | 导航、笔记画布、命令和外部 Agent 启动 |
 | [locus-library](crates/locus-library) | 文件模型、读取、修改、观察与 Git 投影 |
 | [locus-settings](crates/locus-settings)、[locus-preferences](crates/locus-preferences) | 设置界面、偏好及配置 |
 | [locus-canvas](crates/locus-canvas) | WebView 画布、资源协议与生命周期 |
 | [locus-mcp](crates/locus-mcp) | MCP 工具与监听服务 |
 | [locus-ui](crates/locus-ui) | 笔记图标、Markdown 扩展与附件呈现 |
 | [oneo-gpui](crates/oneo-gpui) | 共享应用壳、窗口、面板与配置服务 |
-| [oneo-gpui-markdown](crates/oneo-gpui-markdown)、[oneo-gpui-terminal](crates/oneo-gpui-terminal) | Markdown 渲染与 PTY 终端 |
+| [oneo-gpui-markdown](crates/oneo-gpui-markdown) | Markdown 渲染 |
+| [oneo-gpui-terminal](crates/oneo-gpui-terminal) | 独立 PTY 组件，未接入 Locus |
 | [oneo-tool-packer](crates/oneo-tool-packer) | 构建与应用目录打包 |
 
 检查和测试整个 workspace：
@@ -63,7 +66,7 @@ npm install --prefix /tmp/locus-canvas-tests --no-save jsdom@30.0.1
 NODE_PATH=/tmp/locus-canvas-tests/node_modules node --test crates/locus-canvas/tests/templates.cjs
 ```
 
-自动化测试不代替各平台的窗口、WebView、终端输入和实际视觉体验验证。
+自动化测试不代替各平台的窗口、WebView、外部终端启动和实际视觉体验验证。
 
 ## 打包
 

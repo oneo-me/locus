@@ -34,7 +34,8 @@ impl CanvasError {
 
 #[derive(Clone, Debug)]
 pub enum CanvasEvent {
-    Close,
+    CloseWindow,
+    OpenTerminal,
     CommandPalette,
     Settings,
     OpenUrl(String),
@@ -48,7 +49,6 @@ pub struct CanvasView {
     error: Option<CanvasError>,
     loading: bool,
     focus: FocusHandle,
-    focus_pending: bool,
     dark: Arc<AtomicBool>,
 }
 
@@ -84,7 +84,8 @@ impl CanvasView {
                             return;
                         }
                         match command.as_str() {
-                            "w" => cx.emit(CanvasEvent::Close),
+                            "w" => cx.emit(CanvasEvent::CloseWindow),
+                            "`" => cx.emit(CanvasEvent::OpenTerminal),
                             "e" => cx.emit(CanvasEvent::CommandPalette),
                             "," => cx.emit(CanvasEvent::Settings),
                             "focus" => window.focus(&this.focus, cx),
@@ -107,7 +108,6 @@ impl CanvasView {
             error: None,
             loading: true,
             focus: cx.focus_handle(),
-            focus_pending: false,
             dark: Arc::new(AtomicBool::new(dark)),
         };
         #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -132,6 +132,11 @@ impl CanvasView {
         #[cfg(any(target_os = "macos", target_os = "windows"))]
         let executor = cx.background_executor().clone();
         #[cfg(any(target_os = "macos", target_os = "windows"))]
+        let terminal_message = format!("terminal:{}", uuid::Uuid::new_v4());
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        let page_script =
+            include_str!("page.js").replace("__LOCUS_TERMINAL_MESSAGE__", &terminal_message);
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
         match builder
             .with_asynchronous_custom_protocol(
                 "locus-canvas".to_owned(),
@@ -155,10 +160,10 @@ impl CanvasView {
             .with_url(CANVAS_URL)
             .with_visible(false)
             .with_focused(false)
-            .with_initialization_script(include_str!("page.js"))
+            .with_initialization_script(&page_script)
             .with_ipc_handler(move |message| {
-                if matches!(message.body().as_str(), "w" | "e" | "," | "focus") {
-                    let _ = commands.try_send(message.into_body());
+                if let Some(command) = canvas_command(message.body(), &terminal_message) {
+                    let _ = commands.try_send(command.to_owned());
                 }
             })
             .with_on_page_load_handler(move |event, _| {
@@ -197,10 +202,6 @@ impl CanvasView {
             tab.error = Some(CanvasError::Unsupported);
         }
         tab
-    }
-
-    pub fn request_focus(&mut self) {
-        self.focus_pending = true;
     }
 
     pub fn has_error(&self) -> bool {
@@ -243,11 +244,6 @@ impl CanvasView {
                 let handle = view.read(cx).handle();
                 let _ = handle.raw().evaluate_script(&theme_script(dark));
             }
-            if visible && self.focus_pending {
-                self.focus_pending = false;
-                let handle = view.read(cx).handle();
-                let _ = handle.raw().focus();
-            }
         }
         self.dark.store(dark, Ordering::Relaxed);
     }
@@ -285,6 +281,15 @@ impl CanvasView {
                     .unwrap_or_default(),
             )
             .into_any_element()
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+fn canvas_command<'a>(message: &'a str, terminal_message: &str) -> Option<&'a str> {
+    match message {
+        "w" | "e" | "," | "focus" => Some(message),
+        _ if message == terminal_message => Some("`"),
+        _ => None,
     }
 }
 
@@ -434,6 +439,19 @@ fn canvas_document(source: &str, dark: bool) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[test]
+    fn terminal_ipc_requires_the_private_shortcut_message() {
+        let token = "terminal:private-token";
+        for message in ["`", "terminal", "terminal:another-token", "codex", ""] {
+            assert_eq!(canvas_command(message, token), None);
+        }
+        assert_eq!(canvas_command(token, token), Some("`"));
+        for message in ["w", "e", ",", "focus"] {
+            assert_eq!(canvas_command(message, token), Some(message));
+        }
+    }
 
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     #[test]

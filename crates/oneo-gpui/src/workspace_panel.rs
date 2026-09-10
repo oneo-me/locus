@@ -3,8 +3,6 @@ use gpui_kit::{AnyElement, Div, div, prelude::*, px};
 
 pub const DEFAULT_LEFT_SIDEBAR_WIDTH: f32 = 252.0;
 pub const LEFT_SIDEBAR_MIN_WIDTH: f32 = DEFAULT_LEFT_SIDEBAR_WIDTH;
-pub const DEFAULT_RIGHT_SIDEBAR_WIDTH: f32 = 320.0;
-pub const RIGHT_SIDEBAR_MIN_WIDTH: f32 = DEFAULT_RIGHT_SIDEBAR_WIDTH;
 
 pub struct WorkspacePanel {
     content: AnyElement,

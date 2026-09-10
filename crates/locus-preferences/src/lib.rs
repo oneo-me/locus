@@ -4,10 +4,7 @@ pub mod config;
 mod preferences;
 pub mod storage;
 
-pub use preferences::{
-    EditorPreference, Preferences, TerminalColorScheme, TerminalCursorStyle,
-    terminal_color_scheme_label, terminal_cursor_style_label,
-};
+pub use preferences::{AgentPreference, EditorPreference, Preferences, TerminalPreference};
 
 #[cfg(test)]
 mod localization_tests;
