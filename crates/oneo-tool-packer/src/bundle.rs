@@ -1,4 +1,7 @@
-use crate::{cli::Target, config::Project};
+use crate::{
+    cli::Target,
+    config::{Project, Resource},
+};
 use anyhow::{Context, Result, bail, ensure};
 use std::{
     fs,
@@ -125,7 +128,11 @@ fn macos(
         return Err(error);
     }
     for entry in fs::read_dir(&compiled_icons)? {
-        copy_resources(&compiled_icons, &[entry?.path()], &resources)?;
+        copy_resources(
+            &compiled_icons,
+            &[Resource::Path(entry?.path())],
+            &resources,
+        )?;
     }
     copy_platform_resources(project, "macos", &resources)?;
     let mut info = plist::Value::from_file(&partial)?
@@ -219,13 +226,22 @@ fn copy_platform_resources(project: &Project, os: &str, destination: &Path) -> R
     copy_resources(&project.root, resources, destination)
 }
 
-pub fn copy_resources(root: &Path, paths: &[PathBuf], destination: &Path) -> Result<()> {
+pub fn copy_resources(root: &Path, paths: &[Resource], destination: &Path) -> Result<()> {
     for path in paths {
-        let source = root.join(path);
-        let name = source
-            .file_name()
-            .context("resource must have a filename")?;
-        crate::config::component(name.to_str().context("resource filename must be UTF-8")?)?;
+        let (source, name) = match path {
+            Resource::Path(path) => {
+                let name = path.file_name().context("resource must have a filename")?;
+                (
+                    root.join(path),
+                    name.to_str().context("resource filename must be UTF-8")?,
+                )
+            }
+            Resource::Mapped {
+                source,
+                destination,
+            } => (root.join(source), destination.as_str()),
+        };
+        crate::config::component(name)?;
         fs::create_dir_all(destination)?;
         copy_tree(&source, &destination.join(name))?;
     }
@@ -372,9 +388,9 @@ name = "App"
 identifier = "me.test.app"
 resources = ["templates"]
 [macos]
-resources = ["tools/macos"]
+resources = [{ source = "tools/macos", destination = "tools" }]
 [windows]
-resources = ["tools/windows"]
+resources = [{ source = "tools/windows", destination = "tools" }]
 "#,
             )
             .unwrap(),
@@ -388,10 +404,39 @@ resources = ["tools/windows"]
             let output = root.path().join("output").join(os);
             copy_platform_resources(&project, os, &output).unwrap();
             assert!(output.join("templates/theme.xml").is_file());
-            assert!(output.join(os).join(binary).is_file());
+            assert!(output.join("tools").join(binary).is_file());
+            let other_binary = if os == "macos" { "aapt2.exe" } else { "aapt2" };
+            assert!(!output.join("tools").join(other_binary).exists());
+            assert!(!output.join(os).exists());
             assert!(!output.join(other).exists());
             assert_eq!(fs::read_dir(&output).unwrap().count(), 2);
         }
+    }
+
+    #[test]
+    fn mapped_resources_reject_escaping_names_and_collisions() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("source"), "data").unwrap();
+        let output = root.path().join("output");
+        for destination in ["../escape", "nested/tools", "NUL"] {
+            let resource = Resource::Mapped {
+                source: "source".into(),
+                destination: destination.into(),
+            };
+            assert!(copy_resources(root.path(), &[resource], &output).is_err());
+        }
+        let resources = [
+            Resource::Mapped {
+                source: "source".into(),
+                destination: "tools".into(),
+            },
+            Resource::Mapped {
+                source: "source".into(),
+                destination: "tools".into(),
+            },
+        ];
+        assert!(copy_resources(root.path(), &resources, &output).is_err());
+        assert_eq!(fs::read_to_string(output.join("tools")).unwrap(), "data");
     }
 
     #[test]
@@ -399,7 +444,14 @@ resources = ["tools/windows"]
         let root = tempfile::tempdir().unwrap();
         fs::write(root.path().join("icon"), "image").unwrap();
         let out = root.path().join("out");
-        assert!(copy_resources(root.path(), &["icon".into(), "icon".into()], &out).is_err());
+        assert!(
+            copy_resources(
+                root.path(),
+                &[Resource::Path("icon".into()), Resource::Path("icon".into())],
+                &out
+            )
+            .is_err()
+        );
         assert_eq!(fs::read_to_string(out.join("icon")).unwrap(), "image");
     }
 }

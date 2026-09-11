@@ -13,7 +13,7 @@ pub struct Config {
     pub name: String,
     pub identifier: String,
     #[serde(default)]
-    pub resources: Vec<PathBuf>,
+    pub resources: Vec<Resource>,
     #[serde(default)]
     pub windows: Windows,
     #[serde(default)]
@@ -24,18 +24,28 @@ pub struct Config {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Macos {
     #[serde(default)]
-    pub resources: Vec<PathBuf>,
+    pub resources: Vec<Resource>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Windows {
     #[serde(default)]
-    pub resources: Vec<PathBuf>,
+    pub resources: Vec<Resource>,
     #[serde(default)]
     pub runtime_directories: Vec<PathBuf>,
     #[serde(default)]
     pub runtime_files: Vec<PathBuf>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged, deny_unknown_fields)]
+pub enum Resource {
+    Path(PathBuf),
+    Mapped {
+        source: PathBuf,
+        destination: String,
+    },
 }
 
 #[derive(Debug)]
