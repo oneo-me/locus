@@ -16,6 +16,15 @@ pub struct Config {
     pub resources: Vec<PathBuf>,
     #[serde(default)]
     pub windows: Windows,
+    #[serde(default)]
+    pub macos: Macos,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct Macos {
+    #[serde(default)]
+    pub resources: Vec<PathBuf>,
 }
 
 #[derive(Debug, Default, Deserialize)]

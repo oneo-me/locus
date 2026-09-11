@@ -73,16 +73,7 @@ pub fn create(
             executable,
             bundle.join(format!("{}.exe", project.config.bin)),
         )?;
-        copy_resources(
-            &project.root,
-            &project.config.resources,
-            &bundle.join("resources"),
-        )?;
-        copy_resources(
-            &project.root,
-            &project.config.windows.resources,
-            &bundle.join("resources"),
-        )?;
+        copy_platform_resources(project, "windows", &bundle.join("resources"))?;
         crate::windows::copy_dependencies(project, target, executable, &bundle)?;
     }
     publish(&bundle, &output, staging)?;
@@ -136,7 +127,7 @@ fn macos(
     for entry in fs::read_dir(&compiled_icons)? {
         copy_resources(&compiled_icons, &[entry?.path()], &resources)?;
     }
-    copy_resources(&project.root, &project.config.resources, &resources)?;
+    copy_platform_resources(project, "macos", &resources)?;
     let mut info = plist::Value::from_file(&partial)?
         .into_dictionary()
         .context("actool produced invalid metadata")?;
@@ -216,6 +207,16 @@ fn publish(bundle: &Path, output: &Path, staging: tempfile::TempDir) -> Result<(
         return Err(error).context("publish bundle");
     }
     Ok(())
+}
+
+fn copy_platform_resources(project: &Project, os: &str, destination: &Path) -> Result<()> {
+    copy_resources(&project.root, &project.config.resources, destination)?;
+    let resources = if os == "macos" {
+        &project.config.macos.resources
+    } else {
+        &project.config.windows.resources
+    };
+    copy_resources(&project.root, resources, destination)
 }
 
 pub fn copy_resources(root: &Path, paths: &[PathBuf], destination: &Path) -> Result<()> {
@@ -346,6 +347,50 @@ resources = ["templates"]
                 fs::read_to_string(destination.join("templates/手机主题/桌面/壁纸.svg")).unwrap(),
                 "<svg/>"
             );
+        }
+    }
+
+    #[test]
+    fn bundles_only_resources_for_the_selected_platform() {
+        let root = tempfile::tempdir().unwrap();
+        for (path, content) in [
+            ("templates/theme.xml", "template"),
+            ("tools/macos/aapt2", "mac"),
+            ("tools/windows/aapt2.exe", "windows"),
+        ] {
+            let path = root.path().join(path);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, content).unwrap();
+        }
+        let project = Project {
+            root: root.path().into(),
+            config: toml::from_str(
+                r#"
+package = "app"
+bin = "app"
+name = "App"
+identifier = "me.test.app"
+resources = ["templates"]
+[macos]
+resources = ["tools/macos"]
+[windows]
+resources = ["tools/windows"]
+"#,
+            )
+            .unwrap(),
+            version: "1.0.0".into(),
+            package_id: "app".into(),
+        };
+        for (os, other, binary) in [
+            ("macos", "windows", "aapt2"),
+            ("windows", "macos", "aapt2.exe"),
+        ] {
+            let output = root.path().join("output").join(os);
+            copy_platform_resources(&project, os, &output).unwrap();
+            assert!(output.join("templates/theme.xml").is_file());
+            assert!(output.join(os).join(binary).is_file());
+            assert!(!output.join(other).exists());
+            assert_eq!(fs::read_dir(&output).unwrap().count(), 2);
         }
     }
 
