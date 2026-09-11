@@ -56,3 +56,9 @@ shell.toggle_left:
 shell.empty:
   en: No content
   zh-CN: 暂无内容
+fps.maximum:
+  en: "Maximum FPS: %{value}. Click to show current FPS"
+  zh-CN: "最大帧率：%{value}，点击显示当前帧率"
+fps.current:
+  en: "Current FPS: %{value}. Click to show maximum FPS"
+  zh-CN: "当前帧率：%{value}，点击显示最大帧率"

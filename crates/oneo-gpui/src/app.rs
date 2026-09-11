@@ -51,6 +51,8 @@ impl AppShell {
         });
         self.application.run(move |cx| {
             gpui_kit::init(cx);
+            #[cfg(debug_assertions)]
+            gpui_kit::profiler::set_trace_enabled(true);
             init_reduce_motion(cx);
             bind_app_shell_keys(cx);
             bind_window_actions(cx);

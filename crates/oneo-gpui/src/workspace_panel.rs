@@ -115,7 +115,10 @@ impl WorkspaceSidebar {
             .p_2()
             .flex()
             .items_center()
-            .gap_2()
+            .gap_2();
+        #[cfg(debug_assertions)]
+        let footer = footer.child(crate::fps::SidebarFps);
+        let footer = footer
             .child(div().flex_1().min_w_0().children(self.footer_start))
             .child(div().flex_none().child(self.settings));
         WorkspacePanel::new(self.content)
@@ -162,5 +165,36 @@ mod tests {
         let panel = cx.debug_bounds("empty-panel").unwrap();
         let message = cx.debug_bounds("empty-message").unwrap();
         assert_eq!(message.center(), panel.center());
+    }
+
+    #[cfg(debug_assertions)]
+    #[gpui_kit::test]
+    fn sidebar_fps_is_compact_and_precedes_status(cx: &mut TestAppContext) {
+        struct Sidebar;
+        impl Render for Sidebar {
+            fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+                WorkspaceSidebar::new(div(), gpui_kit::component::Theme::global(cx), 0.)
+                    .footer_start(
+                        div()
+                            .debug_selector(|| "footer-status".to_owned())
+                            .child("MCP"),
+                    )
+                    .into_element()
+            }
+        }
+        cx.update(gpui_kit::init);
+        let (_, cx) = cx.add_window_view(|window, cx| {
+            let content = cx.new(|_| Sidebar);
+            gpui_kit::component::Root::new(content, window, cx)
+        });
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        let fps = cx.debug_bounds("sidebar-fps").unwrap();
+        let status = cx.debug_bounds("footer-status").unwrap();
+        let settings = cx.debug_bounds("open-settings").unwrap();
+        assert!(fps.right() < status.left());
+        assert!(status.right() <= settings.left());
+        assert!(fps.size.height < settings.size.height);
+        assert!(fps.size.width < settings.size.width);
+        assert_eq!(fps.center().y, settings.center().y);
     }
 }

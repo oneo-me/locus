@@ -54,3 +54,6 @@ pub use workspace::{
 
 #[cfg(all(test, feature = "shell"))]
 mod localization_tests;
+
+#[cfg(all(feature = "shell", debug_assertions))]
+mod fps;

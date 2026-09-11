@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 default = ["shell"]
-shell = ["dep:gpui-fps", "dep:gpui-kit", "dep:objc2", "dep:objc2-app-kit", "dep:raw-window-handle", "dep:rust-i18n", "dep:sys-locale"]
+shell = ["dep:gpui-kit", "dep:core-graphics", "dep:windows", "dep:objc2", "dep:objc2-app-kit", "dep:raw-window-handle", "dep:rust-i18n", "dep:sys-locale"]
 
 [[example]]
 name = "minimal"
@@ -19,8 +19,7 @@ dirs.workspace = true
 serde.workspace = true
 tempfile.workspace = true
 toml.workspace = true
-gpui-kit = { workspace = true, optional = true }
-gpui-fps = { version = "0.6.1", optional = true }
+gpui-kit = { workspace = true, optional = true, features = ["profiler"] }
 
 [dev-dependencies]
 serde_json.workspace = true
@@ -28,6 +27,7 @@ serde-saphyr.workspace = true
 gpui-kit = { workspace = true, features = ["test-support"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = { version = "0.24", optional = true }
 objc2 = { version = "0.6", optional = true }
 objc2-app-kit = { version = "0.3", optional = true, default-features = false, features = [
     "std",
@@ -41,3 +41,6 @@ objc2-app-kit = { version = "0.3", optional = true, default-features = false, fe
     "NSWorkspace",
 ] }
 raw-window-handle = { version = "0.6", optional = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", optional = true, features = ["Win32_Graphics_Gdi"] }

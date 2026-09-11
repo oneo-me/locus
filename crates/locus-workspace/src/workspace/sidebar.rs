@@ -202,7 +202,7 @@ impl Locus {
         let focus = self.library_tree_state.clone();
         let tree = Tree::new(&self.library_tree_state)
             .size_full()
-            .list_style(gpui_kit::StyleRefinement::default().size_full())
+            .list_style(gpui_kit::StyleRefinement::default().size_full().px_2())
             .item(move |_, entry, _, window, cx| {
                 owner
                     .update(cx, |this, cx| this.render_library_node(entry, window, cx))
@@ -217,7 +217,6 @@ impl Locus {
                     div()
                         .id("library-tree-focus")
                         .size_full()
-                        .px(px(8.0))
                         .on_mouse_down(gpui_kit::MouseButton::Left, move |_, window, cx| {
                             focus.update(cx, |state, cx| state.focus(window, cx));
                         })
