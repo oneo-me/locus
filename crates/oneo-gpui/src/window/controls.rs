@@ -1,10 +1,10 @@
 use gpui_kit::component::{
-    IconName, Theme,
+    Icon, IconName, Sizable as _, Theme,
     button::{Button, ButtonCustomVariant, ButtonVariants as _},
 };
 use gpui_kit::{App, Div, IntoElement, RenderOnce, Window, WindowControlArea, div, prelude::*, px};
 
-use super::TITLEBAR_HEIGHT;
+use super::{TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE, TITLEBAR_HEIGHT};
 
 pub fn content_titlebar(content: impl IntoElement) -> Div {
     div()
@@ -28,12 +28,15 @@ impl RenderOnce for WindowControls {
             .h_full()
             .flex_none()
             .flex()
+            .items_center()
+            .gap_1()
+            .px(px(TITLEBAR_CONTROL_INSET))
             .when(supported.minimize, |row| {
                 row.child(
                     control_button(
                         "window-minimize",
                         "window.minimize",
-                        IconName::WindowMinimize,
+                        Icon::new(IconName::WindowMinimize).small(),
                         cx,
                     )
                     .window_control_area(WindowControlArea::Min)
@@ -50,11 +53,12 @@ impl RenderOnce for WindowControls {
                         } else {
                             "window.maximize"
                         },
-                        if maximized {
+                        Icon::new(if maximized {
                             IconName::WindowRestore
                         } else {
                             IconName::WindowMaximize
-                        },
+                        })
+                        .small(),
                         cx,
                     )
                     .window_control_area(WindowControlArea::Max)
@@ -62,31 +66,42 @@ impl RenderOnce for WindowControls {
                 )
             })
             .child(
-                control_button("window-close", "window.close", IconName::WindowClose, cx)
-                    .window_control_area(WindowControlArea::Close)
-                    .custom(
-                        ButtonCustomVariant::new(cx)
-                            .foreground(Theme::global(cx).foreground)
-                            .hover(Theme::global(cx).danger.opacity(0.15))
-                            .active(Theme::global(cx).danger.opacity(0.25)),
-                    )
-                    .on_click(|_, window, cx| {
-                        window.dispatch_action(Box::new(crate::CloseWindow), cx)
-                    }),
+                control_button(
+                    "window-close",
+                    "window.close",
+                    div()
+                        .id("window-close-icon")
+                        .group_hover("window-close", |style| {
+                            style.text_color(gpui_kit::component::white())
+                        })
+                        .group_active("window-close", |style| {
+                            style.text_color(gpui_kit::component::white())
+                        })
+                        .child(Icon::new(IconName::WindowClose).small()),
+                    cx,
+                )
+                .group("window-close")
+                .window_control_area(WindowControlArea::Close)
+                .custom(
+                    ButtonCustomVariant::new(cx)
+                        .foreground(Theme::global(cx).foreground)
+                        .hover(Theme::global(cx).danger)
+                        .active(Theme::global(cx).danger_active),
+                )
+                .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::CloseWindow), cx)),
             )
     }
 }
 
-fn control_button(id: &'static str, key: &'static str, icon: IconName, cx: &App) -> Button {
+fn control_button(id: &'static str, key: &'static str, icon: impl IntoElement, cx: &App) -> Button {
     let label = rust_i18n::t!(key, locale = &gpui_kit::component::locale()).into_owned();
     Button::new(id)
         .debug_selector(move || id.to_owned())
         .ghost()
-        .rounded_none()
-        .w(px(46.0))
-        .h_full()
+        .small()
+        .size(px(TITLEBAR_CONTROL_SIZE))
         .p_0()
-        .icon(icon)
+        .child(icon)
         .text_color(Theme::global(cx).foreground)
         .accessibility_label(label.clone())
         .tooltip(label)
@@ -139,8 +154,14 @@ mod tests {
         let close = cx.debug_bounds("window-close").unwrap();
         assert_eq!(content.right(), controls.left());
         assert_eq!(controls.right(), px(500.0));
-        assert_eq!(close.size.height, px(TITLEBAR_HEIGHT));
-        assert_eq!(close.right(), controls.right());
+        assert_eq!(close.size.height, px(TITLEBAR_CONTROL_SIZE));
+        assert_eq!(close.size.width, close.size.height);
+        assert_eq!(close.top() - controls.top(), px(TITLEBAR_CONTROL_INSET));
+        assert_eq!(
+            controls.bottom() - close.bottom(),
+            px(TITLEBAR_CONTROL_INSET)
+        );
+        assert_eq!(controls.right() - close.right(), px(TITLEBAR_CONTROL_INSET));
         cx.simulate_click(close.center(), Default::default());
         assert_eq!(view.read_with(cx, |view, _| view.closes), 1);
         cx.update(|window, cx| {

@@ -187,7 +187,13 @@ impl SettingsShell {
                             ),
                         )
                     })
-                    .child(div().flex_none().px_3().child(self.back))
+                    .child(
+                        div()
+                            .flex_none()
+                            .px_3()
+                            .when(!cfg!(target_os = "macos"), |back| back.pt_3())
+                            .child(self.back),
+                    )
                     .child(div().min_h_0().flex_1().child(self.sidebar)),
             )
             .child(
@@ -284,11 +290,11 @@ mod tests {
         let sidebar = cx.debug_bounds("settings-sidebar").unwrap();
         assert_eq!(sidebar.size.width, px(crate::DEFAULT_LEFT_SIDEBAR_WIDTH));
         let top_inset = if cfg!(target_os = "macos") {
-            TITLEBAR_HEIGHT
+            px(TITLEBAR_HEIGHT)
         } else {
-            0.0
+            back.left() - sidebar.left()
         };
-        assert_eq!(back.top(), sidebar.top() + px(top_inset));
+        assert_eq!(back.top(), sidebar.top() + top_inset);
         cx.simulate_click(back.center(), Default::default());
         cx.update(|window, cx| {
             assert!(view.read(cx).returned);
