@@ -12,7 +12,7 @@ pub fn workspace_background(theme: &Theme) -> Hsla {
 }
 
 fn window_material_tint(dark: bool) -> Hsla {
-    Hsla::from(if dark { rgb(0x181818) } else { rgb(0xf3f3f3) }).alpha(0.92)
+    Hsla::from(if dark { rgb(0x181818) } else { rgb(0xf3f3f3) }).alpha(0.85)
 }
 
 pub fn resolves_to_dark(preference: ThemePreference, appearance: WindowAppearance) -> bool {
@@ -72,14 +72,14 @@ mod tests {
     }
 
     #[test]
-    fn window_tints_match_the_existing_material_colors() {
+    fn window_tints_use_shared_material_colors_and_opacity() {
         assert_eq!(
             window_material_tint(false),
-            Hsla::from(rgb(0xf3f3f3)).alpha(0.92)
+            Hsla::from(rgb(0xf3f3f3)).alpha(0.85)
         );
         assert_eq!(
             window_material_tint(true),
-            Hsla::from(rgb(0x181818)).alpha(0.92)
+            Hsla::from(rgb(0x181818)).alpha(0.85)
         );
     }
 }
