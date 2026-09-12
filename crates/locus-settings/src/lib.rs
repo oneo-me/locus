@@ -742,7 +742,9 @@ impl Render for Settings {
             )
             .size_full()
             .flex()
-            .bg(theme.background)
+            .when(!cfg!(target_os = "windows"), |root| {
+                root.bg(theme.background)
+            })
             .text_color(theme.foreground)
             .font_family(self.preferences.resolved_ui_font_family().to_owned())
             .child(
