@@ -62,3 +62,15 @@ fps.maximum:
 fps.current:
   en: "Current FPS: %{value}. Click to show maximum FPS"
   zh-CN: "当前帧率：%{value}，点击显示最大帧率"
+window.minimize:
+  en: Minimize
+  zh-CN: 最小化
+window.maximize:
+  en: Maximize
+  zh-CN: 最大化
+window.restore:
+  en: Restore
+  zh-CN: 还原
+window.close:
+  en: Close window
+  zh-CN: 关闭窗口

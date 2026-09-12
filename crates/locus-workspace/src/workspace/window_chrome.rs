@@ -11,36 +11,6 @@ impl Locus {
         cx.notify();
     }
 
-    pub(super) fn window_drag_region(
-        &self,
-        id: &'static str,
-        cx: &mut Context<Self>,
-    ) -> Stateful<Div> {
-        div()
-            .id(id)
-            .h_full()
-            .on_click(|event, window, _| {
-                if event.click_count() == 2 {
-                    window.titlebar_double_click();
-                }
-            })
-            .on_mouse_down_out(cx.listener(|this, _, _, _| this.header_drag_armed = false))
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|this, _, _, _| this.header_drag_armed = true),
-            )
-            .on_mouse_up(
-                MouseButton::Left,
-                cx.listener(|this, _, _, _| this.header_drag_armed = false),
-            )
-            .on_mouse_move(cx.listener(|this, _, window, _| {
-                if this.header_drag_armed {
-                    this.header_drag_armed = false;
-                    window.start_window_move();
-                }
-            }))
-    }
-
     pub(super) fn render_history_button(
         &self,
         direction: NavigationDirection,
@@ -77,44 +47,39 @@ impl Locus {
         left_control_clearance: f32,
         cx: &mut Context<Self>,
     ) -> Div {
-        div()
-            .h(px(TITLEBAR_HEIGHT))
-            .flex_none()
-            .flex()
-            .items_center()
-            .gap(px(8.0))
-            .pl(px(titlebar_content_left_padding(
-                left_control_clearance,
-                self.app_shell.workspace().rendered_width(),
-                14.0,
-            )))
-            .pr(px(14.0))
-            .child(
-                self.window_drag_region("content-title-region", cx)
-                    .min_w_0()
-                    .flex_shrink(1.0)
-                    .flex()
-                    .items_center()
-                    .text_sm()
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .child(
-                        self.selected_library_node
-                            .as_deref()
-                            .and_then(|path| self.library_tree.node(path))
-                            .map(|node| node.title.clone())
-                            .unwrap_or_else(|| {
-                                t!(
-                                    "workspace.note.no_selection",
-                                    locale = self.language(cx).locale()
-                                )
-                                .into_owned()
-                            }),
-                    ),
-            )
-            .child(
-                self.window_drag_region("content-center-drag-region", cx)
-                    .flex_1(),
-            )
+        oneo_gpui::content_titlebar(
+            oneo_gpui::titlebar_drag_region("content-titlebar")
+                .debug_selector(|| "content-titlebar-drag".to_owned())
+                .w_full()
+                .flex()
+                .items_center()
+                .pl(px(titlebar_content_left_padding(
+                    left_control_clearance,
+                    self.app_shell.workspace().rendered_width(),
+                    14.0,
+                )))
+                .pr(px(14.0))
+                .child(
+                    div()
+                        .min_w_0()
+                        .truncate()
+                        .text_sm()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child(
+                            self.selected_library_node
+                                .as_deref()
+                                .and_then(|path| self.library_tree.node(path))
+                                .map(|node| node.title.clone())
+                                .unwrap_or_else(|| {
+                                    t!(
+                                        "workspace.note.no_selection",
+                                        locale = self.language(cx).locale()
+                                    )
+                                    .into_owned()
+                                }),
+                        ),
+                ),
+        )
     }
 
     pub(super) fn render_mcp_status(&self, cx: &mut Context<Self>) -> Stateful<Div> {
@@ -149,5 +114,51 @@ impl Locus {
             .size(gpui_kit::rems(1.75))
             .text_color(color)
             .child(gpui_kit::component::Icon::new(Icon::Network).size(gpui_kit::rems(0.875)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui_kit::TestAppContext;
+
+    struct ContentHarness {
+        locus: gpui_kit::Entity<Locus>,
+    }
+
+    impl Render for ContentHarness {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            self.locus
+                .update(cx, |locus, cx| locus.render_content(124.0, 800.0, cx))
+        }
+    }
+
+    #[gpui_kit::test]
+    fn no_note_titlebar_drag_region_fills_the_available_header(cx: &mut TestAppContext) {
+        cx.update(gpui_kit::init);
+        let (_, cx) = cx.add_window_view(|window, cx| {
+            let view = cx.new(|cx| {
+                Locus::new(
+                    window,
+                    Preferences::default(),
+                    None,
+                    InterfaceState::default(),
+                    cx,
+                )
+            });
+            let content = cx.new(|_| ContentHarness { locus: view });
+            gpui_kit::component::Root::new(content, window, cx)
+        });
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        let bar = cx.debug_bounds("content-titlebar").unwrap();
+        let drag = cx.debug_bounds("content-titlebar-drag").unwrap();
+        assert_eq!(drag.left(), bar.left());
+        assert_eq!(drag.top(), bar.top());
+        assert_eq!(drag.size.height, px(TITLEBAR_HEIGHT));
+        let right = cx
+            .debug_bounds("window-controls")
+            .map_or(bar.right(), |controls| controls.left());
+        assert_eq!(drag.right(), right);
+        assert!(drag.size.width > px(0.0));
     }
 }

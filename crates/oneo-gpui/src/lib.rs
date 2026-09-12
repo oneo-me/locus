@@ -42,7 +42,7 @@ pub use settings::{
 #[cfg(feature = "shell")]
 pub use window::{
     MACOS_TRAFFIC_LIGHT_CLEARANCE, ShellWindow, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
-    TITLEBAR_HEIGHT, titlebar_content_left_padding, titlebar_drag_region,
+    TITLEBAR_HEIGHT, content_titlebar, titlebar_content_left_padding, titlebar_drag_region,
     titlebar_left_control_offset,
 };
 #[cfg(feature = "shell")]

@@ -113,3 +113,76 @@ fn hide_window(window: &mut Window) {
         }
     }
 }
+
+#[cfg(target_os = "windows")]
+fn windows_handle(window: &Window) -> Option<windows::Win32::Foundation::HWND> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    let handle = HasWindowHandle::window_handle(window).ok()?;
+    let RawWindowHandle::Win32(handle) = handle.as_raw() else {
+        return None;
+    };
+    Some(windows::Win32::Foundation::HWND(handle.hwnd.get() as *mut _))
+}
+
+#[cfg(target_os = "windows")]
+pub fn configure_windows_material(window: &Window) {
+    use windows::Win32::Graphics::Dwm::{
+        DWMSBT_MAINWINDOW, DWMWA_SYSTEMBACKDROP_TYPE, DwmSetWindowAttribute,
+    };
+    let mica_active = windows_handle(window).is_some_and(|handle| {
+        let backdrop = DWMSBT_MAINWINDOW.0;
+        unsafe {
+            DwmSetWindowAttribute(
+                handle,
+                DWMWA_SYSTEMBACKDROP_TYPE,
+                (&backdrop as *const i32).cast(),
+                std::mem::size_of_val(&backdrop) as u32,
+            )
+            .is_ok()
+        }
+    });
+    if !mica_active {
+        window.set_background_appearance(gpui_kit::WindowBackgroundAppearance::Blurred);
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub fn set_windows_material_dark(window: &Window, dark: bool) {
+    use windows::Win32::{
+        Foundation::BOOL,
+        Graphics::Dwm::{DWMWA_USE_IMMERSIVE_DARK_MODE, DwmSetWindowAttribute},
+    };
+    if let Some(handle) = windows_handle(window) {
+        let dark = BOOL::from(dark);
+        unsafe {
+            let _ = DwmSetWindowAttribute(
+                handle,
+                DWMWA_USE_IMMERSIVE_DARK_MODE,
+                (&dark as *const BOOL).cast(),
+                std::mem::size_of_val(&dark) as u32,
+            );
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub fn toggle_maximized(window: &Window) {
+    use windows::Win32::UI::WindowsAndMessaging::{SW_MAXIMIZE, SW_RESTORE, ShowWindowAsync};
+    if let Some(handle) = windows_handle(window) {
+        unsafe {
+            let _ = ShowWindowAsync(
+                handle,
+                if window.is_maximized() {
+                    SW_RESTORE
+                } else {
+                    SW_MAXIMIZE
+                },
+            );
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn toggle_maximized(window: &Window) {
+    window.zoom_window();
+}

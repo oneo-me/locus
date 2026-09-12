@@ -1,11 +1,16 @@
+mod controls;
 mod platform;
 mod titlebar;
+
+pub use controls::content_titlebar;
 
 pub use titlebar::{
     MACOS_TRAFFIC_LIGHT_CLEARANCE, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE, TITLEBAR_HEIGHT,
     titlebar_content_left_padding, titlebar_drag_region, titlebar_left_control_offset,
 };
 
+#[cfg(target_os = "windows")]
+pub(crate) use platform::set_windows_material_dark;
 pub(crate) use platform::{
     close_main_window, configure_main_window_close_behavior, configure_sidebar_material,
     init_reduce_motion,
@@ -87,6 +92,8 @@ impl ShellWindow {
                 app_owns_titlebar_drag: cfg!(target_os = "macos"),
                 window_background: if cfg!(target_os = "macos") {
                     WindowBackgroundAppearance::Blurred
+                } else if cfg!(target_os = "windows") {
+                    WindowBackgroundAppearance::MicaBackdrop
                 } else {
                     WindowBackgroundAppearance::Opaque
                 },
@@ -95,6 +102,8 @@ impl ShellWindow {
             |window, cx| {
                 configure_main_window_close_behavior(window, cx);
                 material_error = configure_sidebar_material(window).err();
+                #[cfg(target_os = "windows")]
+                platform::configure_windows_material(window);
                 let view = build(window, cx);
                 cx.new(|cx| {
                     Root::new(view, window, cx)

@@ -180,12 +180,13 @@ impl SettingsShell {
                     .text_color(self.theme.sidebar_foreground)
                     .border_r_1()
                     .border_color(self.theme.sidebar_border)
-                    .child(
-                        div()
-                            .h(px(TITLEBAR_HEIGHT))
-                            .flex_none()
-                            .child(crate::titlebar_drag_region("settings-sidebar-drag").w_full()),
-                    )
+                    .when(cfg!(target_os = "macos"), |sidebar| {
+                        sidebar.child(
+                            div().h(px(TITLEBAR_HEIGHT)).flex_none().child(
+                                crate::titlebar_drag_region("settings-sidebar-drag").w_full(),
+                            ),
+                        )
+                    })
                     .child(div().flex_none().px_3().child(self.back))
                     .child(div().min_h_0().flex_1().child(self.sidebar)),
             )
@@ -198,12 +199,9 @@ impl SettingsShell {
                     .bg(self.theme.background)
                     .flex()
                     .flex_col()
-                    .child(
-                        crate::titlebar_drag_region("settings-content-drag")
-                            .w_full()
-                            .h(px(TITLEBAR_HEIGHT))
-                            .flex_none(),
-                    )
+                    .child(crate::content_titlebar(
+                        crate::titlebar_drag_region("settings-content-drag").w_full(),
+                    ))
                     .child(div().flex_1().min_h_0().child(self.content)),
             )
     }
@@ -285,7 +283,12 @@ mod tests {
         let back = cx.debug_bounds("settings-back").unwrap();
         let sidebar = cx.debug_bounds("settings-sidebar").unwrap();
         assert_eq!(sidebar.size.width, px(crate::DEFAULT_LEFT_SIDEBAR_WIDTH));
-        assert_eq!(back.top(), sidebar.top() + px(TITLEBAR_HEIGHT));
+        let top_inset = if cfg!(target_os = "macos") {
+            TITLEBAR_HEIGHT
+        } else {
+            0.0
+        };
+        assert_eq!(back.top(), sidebar.top() + px(top_inset));
         cx.simulate_click(back.center(), Default::default());
         cx.update(|window, cx| {
             assert!(view.read(cx).returned);

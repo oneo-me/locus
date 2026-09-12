@@ -4,7 +4,7 @@ use gpui_kit::component::ThemeMode;
 use gpui_kit::{App, Hsla, Window, WindowAppearance, px, rgb};
 
 pub fn workspace_background(theme: &Theme) -> Hsla {
-    if cfg!(target_os = "macos") {
+    if cfg!(any(target_os = "macos", target_os = "windows")) {
         window_material_tint(theme.is_dark())
     } else {
         theme.sidebar
@@ -46,6 +46,8 @@ pub fn apply_preference(
         ThemeMode::Light
     };
     Theme::change(mode, Some(window), cx);
+    #[cfg(target_os = "windows")]
+    crate::window::set_windows_material_dark(window, mode == ThemeMode::Dark);
     apply_ui_font_size(ui_font_size, window, cx);
 }
 

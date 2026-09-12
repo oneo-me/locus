@@ -223,7 +223,9 @@ impl Locus {
     ) -> impl IntoElement + use<> {
         let copied = self.copied_library_node.as_deref() == Some(node.path.as_str());
         let language = self.language(cx);
-        let (left_padding, right_padding) = if node.canvas_path.is_some() {
+        let (left_padding, right_padding) = if node.canvas_path.is_some()
+            || cfg!(target_os = "windows")
+        {
             (
                 (left_control_clearance - self.app_shell.workspace().rendered_width()).max(16.0),
                 16.0,
@@ -271,28 +273,19 @@ impl Locus {
         let note_menu =
             self.render_note_menu(node, format!("note-menu-page-{}", node.path), theme, cx);
 
-        self.window_drag_region("note-titlebar-region", cx)
-            .occlude()
-            .absolute()
-            .top_0()
-            .left_0()
-            .right_0()
-            .h(px(super::TITLEBAR_HEIGHT))
+        let titlebar = oneo_gpui::titlebar_drag_region("note-titlebar-region")
+            .relative()
+            .w_full()
             .flex()
             .items_center()
-            .child(note_titlebar_background(
-                self.note_scroll_handle.clone(),
-                theme.background,
-                theme.border,
-                node.canvas_path.is_some(),
-            ))
             .child(
                 div()
                     .mx_auto()
                     .w_full()
-                    .when(node.canvas_path.is_none(), |bar| {
-                        bar.max_w(px(NOTE_MAX_WIDTH))
-                    })
+                    .when(
+                        node.canvas_path.is_none() && !cfg!(target_os = "windows"),
+                        |bar| bar.max_w(px(NOTE_MAX_WIDTH)),
+                    )
                     .h_full()
                     .flex()
                     .items_center()
@@ -348,7 +341,21 @@ impl Locus {
                     .child(edit_button)
                     .child(open_directory_button)
                     .child(note_menu),
-            )
+            );
+        div()
+            .child(note_titlebar_background(
+                self.note_scroll_handle.clone(),
+                theme.background,
+                theme.border,
+                node.canvas_path.is_some(),
+            ))
+            .child(oneo_gpui::content_titlebar(titlebar))
+            .h(px(super::TITLEBAR_HEIGHT))
+            .occlude()
+            .absolute()
+            .top_0()
+            .left_0()
+            .right_0()
     }
 }
 

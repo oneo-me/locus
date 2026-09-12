@@ -160,7 +160,7 @@ fn pane(id: &'static str, title: String, content: &str, left_inset: f32, theme: 
             .overflow_hidden()
             .child(content.to_owned()),
     )
-    .header(
+    .header(oneo_gpui::content_titlebar(
         div()
             .debug_selector(move || id.to_owned())
             .h_full()
@@ -175,7 +175,7 @@ fn pane(id: &'static str, title: String, content: &str, left_inset: f32, theme: 
                     .pr_4()
                     .child(div().truncate().child(title)),
             ),
-    )
+    ))
     .into_element()
     .bg(theme.background)
 }
