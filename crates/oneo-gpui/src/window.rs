@@ -103,7 +103,7 @@ impl ShellWindow {
                 configure_main_window_close_behavior(window, cx);
                 material_error = configure_sidebar_material(window).err();
                 #[cfg(target_os = "windows")]
-                platform::configure_windows_material(window);
+                window.set_background_appearance(WindowBackgroundAppearance::MicaBackdrop);
                 let view = build(window, cx);
                 cx.new(|cx| {
                     Root::new(view, window, cx)

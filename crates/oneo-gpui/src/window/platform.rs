@@ -125,28 +125,6 @@ fn windows_handle(window: &Window) -> Option<windows::Win32::Foundation::HWND> {
 }
 
 #[cfg(target_os = "windows")]
-pub fn configure_windows_material(window: &Window) {
-    use windows::Win32::Graphics::Dwm::{
-        DWMSBT_MAINWINDOW, DWMWA_SYSTEMBACKDROP_TYPE, DwmSetWindowAttribute,
-    };
-    let mica_active = windows_handle(window).is_some_and(|handle| {
-        let backdrop = DWMSBT_MAINWINDOW.0;
-        unsafe {
-            DwmSetWindowAttribute(
-                handle,
-                DWMWA_SYSTEMBACKDROP_TYPE,
-                (&backdrop as *const i32).cast(),
-                std::mem::size_of_val(&backdrop) as u32,
-            )
-            .is_ok()
-        }
-    });
-    if !mica_active {
-        window.set_background_appearance(gpui_kit::WindowBackgroundAppearance::Blurred);
-    }
-}
-
-#[cfg(target_os = "windows")]
 pub fn set_windows_material_dark(window: &Window, dark: bool) {
     use windows::Win32::{
         Foundation::BOOL,
