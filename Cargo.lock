@@ -5800,6 +5800,7 @@ name = "oneo-tool-packer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dunce",
  "plist",
  "serde",
  "serde_json",

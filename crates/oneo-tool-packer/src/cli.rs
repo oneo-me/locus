@@ -16,7 +16,8 @@ Build the release application configured in packer.toml.
 Targets: aarch64-apple-darwin, x86_64-apple-darwin,
          x86_64-pc-windows-msvc, aarch64-pc-windows-msvc.
 macOS bundles require macOS and Xcode. Windows directories require Windows
-and the Visual Studio C++ developer environment. No installer is generated.";
+and Visual Studio C++ tools with Windows SDK (environment loaded automatically).
+No installer is generated.";
 
 #[derive(Debug, Default)]
 pub struct Args {

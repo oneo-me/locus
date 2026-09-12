@@ -3,6 +3,8 @@ mod cargo;
 mod cli;
 mod config;
 mod windows;
+#[cfg(windows)]
+mod windows_env;
 
 use anyhow::{Context, Result, ensure};
 use std::process::Command;
@@ -44,6 +46,8 @@ fn run() -> Result<()> {
         target.triple,
         target.os
     );
+    #[cfg(windows)]
+    windows_env::prepare(&target)?;
     bundle::preflight(&project, &target)?;
     let icon_resources = if target.os == "windows" {
         Some(windows::compile_icon(&project)?)

@@ -96,6 +96,6 @@ oneo-tool-packer --target x86_64-pc-windows-msvc
 
 macOS 图标固定为根目录 `icon.icon/`，Info.plist 由工具生成，最低系统版本为 13.0。macOS 构建需要 Xcode 与 Command Line Tools，默认 ad-hoc 签名；Developer ID 签名使用 `--codesign-identity` 或 `ONEO_PACKER_CODESIGN_IDENTITY`，工具不执行公证。Release 主程序的禁用符号导出由工具统一处理；普通 `cargo build --release` 只应用项目 Cargo profile，不自动禁用导出。
 
-Windows 图标固定为根目录 `icon.ico` 并嵌入 EXE。构建环境需要 Visual Studio C++ 工具链、Windows SDK 的 `rc` 和 `dumpbin`。工具递归检查 EXE/DLL 的依赖和架构，从产物目录、配置目录及 VC 可分发目录收集运行库；系统库不复制，缺失依赖会中止打包。运行时动态加载的 DLL 需要显式声明。实现见 [windows.rs](crates/oneo-tool-packer/src/windows.rs)。
+Windows 图标固定为根目录 `icon.ico` 并嵌入 EXE。构建环境需要 Visual Studio C++ 工具链、Windows SDK 的 `rc` 和 `dumpbin`。可以直接从普通 PowerShell、CMD 或 VS Code 任务运行；当当前环境缺少 `dumpbin` 或 `rc` 时，工具会通过 `vswhere` 查找安装了 C++ 工具的 Visual Studio，按目标架构加载 `VsDevCmd.bat`，并在该环境中继续打包。环境设置仅作用于打包进程及其子进程，不修改系统环境变量。未安装工具链时，请通过 Visual Studio Installer 安装“使用 C++ 的桌面开发”和 Windows SDK。工具递归检查 EXE/DLL 的依赖和架构，从产物目录、配置目录及 VC 可分发目录收集运行库；系统库不复制，缺失依赖会中止打包。运行时动态加载的 DLL 需要显式声明。实现见 [windows.rs](crates/oneo-tool-packer/src/windows.rs)。
 
 工具在临时目录完整组装并检查产物后替换输出目录，构建、签名或资源检查失败时保留旧产物。真实 macOS 签名与 Windows 运行库完整性、启动行为仍需在目标平台验证。

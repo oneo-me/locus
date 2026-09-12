@@ -58,8 +58,9 @@ pub struct Project {
 
 impl Project {
     pub fn load(root: &Path) -> Result<Self> {
-        let root = root
-            .canonicalize()
+        // Keep ordinary Windows paths when possible: dependency build scripts
+        // may append `/file`, which is invalid after a verbatim `\\?\` prefix.
+        let root = dunce::canonicalize(root)
             .with_context(|| format!("project directory {}", root.display()))?;
         let path = root.join("packer.toml");
         let config: Config = toml::from_str(
@@ -125,6 +126,30 @@ pub fn component(value: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(windows)]
+    #[test]
+    fn loaded_project_supports_dependency_paths_with_forward_slashes() {
+        let directory = tempfile::Builder::new()
+            .prefix("packer 项目 ")
+            .tempdir()
+            .unwrap();
+        let root = directory.path();
+        std::fs::write(root.join("Cargo.toml"), "[package]\nname='app'\nversion='0.1.0'\nedition='2024'\n[workspace]\n[[bin]]\nname='app'\npath='main.rs'\n").unwrap();
+        std::fs::write(root.join("main.rs"), "fn main() {}\n").unwrap();
+        std::fs::write(
+            root.join("packer.toml"),
+            "package='app'\nbin='app'\nname='App'\nidentifier='me.app'\n",
+        )
+        .unwrap();
+        let project = super::Project::load(&root.canonicalize().unwrap()).unwrap();
+        // Mirror dependency build scripts that form filenames with format!.
+        let manifest = format!("{}/Cargo.toml", project.root.display());
+        assert_eq!(
+            std::fs::read(manifest).unwrap(),
+            std::fs::read(root.join("Cargo.toml")).unwrap()
+        );
+    }
+
     use super::*;
     #[test]
     fn output_names_cannot_escape_or_use_windows_reserved_names() {

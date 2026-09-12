@@ -39,7 +39,12 @@ pub fn preflight(project: &Project, target: &Target) -> Result<()> {
             "missing Windows icon {}",
             project.root.join("icon.ico").display()
         );
-        crate::captured(Command::new("dumpbin").arg("/help")).context(
+        crate::captured(
+            Command::new("dumpbin")
+                .arg("/headers")
+                .arg(std::env::current_exe()?),
+        )
+        .context(
             "Windows packaging requires dumpbin in the Visual Studio C++ developer environment",
         )?;
     }
