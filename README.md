@@ -88,7 +88,7 @@ oneo-tool-packer --target aarch64-apple-darwin
 oneo-tool-packer --target x86_64-pc-windows-msvc
 ```
 
-工具只构建 Release；省略 `--target` 时使用当前 Rust host。macOS 在 Mac 上生成 `.app` 目录，Windows 在 Visual Studio C++ 开发环境中生成包含 `.exe` 和运行库的目录，不生成安装程序。产物固定保存到项目根 `.build/<target>/`，`.build/` 已由 Git 忽略；平台与架构必须具备对应工具链。
+工具只构建 Release；省略 `--target` 时使用当前 Rust host。macOS 在 Mac 上生成 `.app` 目录，Windows 自动加载 Visual Studio C++ 环境并默认静态链接 CRT，生成包含 `.exe` 和仍需动态加载的运行库的目录，不生成安装程序。静态 CRT 通过目标级 Cargo 配置应用于完整依赖树；显式设置的 `RUSTFLAGS`、`CARGO_ENCODED_RUSTFLAGS` 或目标级 rustflags 环境变量遵循 Cargo 的优先级规则，可能覆盖该默认值。工具仍扫描并收集实际 DLL 依赖，不假定所有原生库都能静态链接。产物固定保存到项目根 `.build/<target>/`，`.build/` 已由 Git 忽略；平台与架构必须具备对应工具链。
 
 项目配置见 [packer.toml](packer.toml)，必填 `package`、`bin`、`name` 和 `identifier`。顶层 `resources` 声明共用资源，`[macos].resources` 和 `[windows].resources` 仅复制对应平台的附加资源；`[windows]` 下的 `runtime-directories` 指定 DLL 搜索目录，`runtime-files` 指定运行时动态加载的非系统 DLL；资源条目可以是源路径字符串，或 `{ source = "tools/macos", destination = "tools" }`，后者指定输出名称，名称不能包含目录层级；配置未知字段会报错。完整字段见 [config.rs](crates/oneo-tool-packer/src/config.rs)。
 

@@ -67,6 +67,12 @@ pub fn build_command(project: &Project, target: &Target, icon_resource: Option<&
     if target.os == "macos" {
         command.args(["--", "-C", "link-arg=-Wl,-no_exported_symbols"]);
     } else {
+        // Apply to the full target dependency graph, including native build
+        // scripts, rather than only the final binary's rustc arguments.
+        command.arg("--config").arg(format!(
+            "target.{}.rustflags=[\"-C\",\"target-feature=+crt-static\"]",
+            target.triple
+        ));
         let mut argument = std::ffi::OsString::from("link-arg=");
         argument.push(icon_resource.unwrap_or(Path::new("<temporary-icon.res>")));
         command.args(["--", "-C"]).arg(argument);
@@ -142,6 +148,39 @@ mod tests {
             assert!(args.windows(2).any(|a| a == ["--bin", "app"]));
         }
     }
+    #[test]
+    fn windows_static_crt_applies_to_dependencies_before_rustc_separator() {
+        for triple in [
+            "x86_64-pc-windows-msvc",
+            "aarch64-pc-windows-msvc",
+            "aarch64-apple-darwin",
+        ] {
+            let command = build_command(
+                &project(),
+                &Target::resolve(Some(triple), "").unwrap(),
+                None,
+            );
+            let args: Vec<_> = command
+                .get_args()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect();
+            let separator = args.iter().position(|arg| arg == "--").unwrap();
+            let config =
+                format!("target.{triple}.rustflags=[\"-C\",\"target-feature=+crt-static\"]");
+            assert_eq!(
+                args[..separator]
+                    .windows(2)
+                    .any(|pair| pair == ["--config", config.as_str()]),
+                triple.ends_with("msvc")
+            );
+            assert!(
+                !args[separator..]
+                    .iter()
+                    .any(|arg| arg.contains("crt-static"))
+            );
+        }
+    }
+
     #[test]
     fn selects_only_the_requested_package_artifact() {
         let input = b"{\"reason\":\"compiler-artifact\",\"package_id\":\"other\",\"target\":{\"name\":\"app\"},\"executable\":\"/wrong\"}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///tmp/app#0.1.0\",\"target\":{\"name\":\"app\"},\"executable\":\"/custom target/app\"}\n";
