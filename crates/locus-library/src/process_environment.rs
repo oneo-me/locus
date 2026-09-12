@@ -3,11 +3,46 @@ use std::process::Command;
 
 pub fn command(program: impl AsRef<OsStr>) -> Command {
     let mut command = Command::new(program);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     #[cfg(target_os = "macos")]
     if let Some(path) = login_shell_path() {
         command.env("PATH", path);
     }
     command
+}
+
+#[cfg(all(test, target_os = "windows"))]
+mod windows_tests {
+    #[test]
+    fn background_command_has_no_console_and_preserves_output() {
+        let output = super::command(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "process_environment::windows_tests::console_probe",
+                "--ignored",
+                "--nocapture",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        assert!(String::from_utf8_lossy(&output.stdout).contains("background output"));
+    }
+
+    #[test]
+    #[ignore = "invoked as a child process to inspect its console"]
+    fn console_probe() {
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn GetConsoleWindow() -> *mut std::ffi::c_void;
+        }
+        // This Win32 query has no preconditions and does not dereference the handle.
+        assert!(unsafe { GetConsoleWindow() }.is_null());
+        println!("background output");
+    }
 }
 
 #[cfg(target_os = "macos")]

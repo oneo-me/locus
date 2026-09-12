@@ -91,7 +91,12 @@ fn vscode_command(path: &Path) -> Command {
         command
     };
     #[cfg(target_os = "windows")]
-    let mut command = Command::new("code.cmd");
+    let mut command = {
+        use std::os::windows::process::CommandExt;
+        let mut command = Command::new("code.cmd");
+        command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        command
+    };
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     let mut command = Command::new("code");
 
