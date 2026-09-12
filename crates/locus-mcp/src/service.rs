@@ -10,9 +10,11 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use locus_library::{LibraryNode, LibraryTree, load_note};
+use locus_library::{
+    LIBRARY_REFERENCE_SCHEME, LibraryNode, LibraryTree, library_reference_path, load_note,
+};
 
-const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path, call resolve_article directly; do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; sibling regular files are attachments, excluding index.md, icon.png, and canvas.html. canvas.html holds the note canvas as an HTML fragment; see locus://standard/canvas for authoring. Do not recreate CRUD or attachment tools through MCP.";
+const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path or locus:// address, call resolve_article directly with the path parameter (not uri); do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; sibling regular files are attachments, excluding index.md, icon.png, and canvas.html. canvas.html holds the note canvas as an HTML fragment; see locus://standard/canvas for authoring. Do not recreate CRUD or attachment tools through MCP.";
 
 #[derive(Clone)]
 pub(super) struct LocusMcp {
@@ -23,6 +25,7 @@ pub(super) struct LocusMcp {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ListArticlesRequest {
+    /// Library-relative article path or locus:// address; empty or locus:// lists the root.
     #[serde(default)]
     parent: String,
     cursor: Option<usize>,
@@ -39,6 +42,7 @@ struct SearchArticlesRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ResolveArticleRequest {
+    /// Library-relative article path or locus:// address, optionally ending in /index.md.
     path: String,
 }
 
@@ -53,7 +57,7 @@ impl LocusMcp {
 
     #[tool(
         name = "list_articles",
-        description = "Lists direct child articles for a parent identifier with cursor pagination. Each result includes article metadata, Markdown body lineCount, attachmentCount, childCount, and absolute local file and directory paths for native editing.",
+        description = "Lists direct child articles for a library-relative parent path or locus:// address with cursor pagination. Empty parent or locus:// lists the library root. Each result includes article metadata, Markdown body lineCount, attachmentCount, childCount, and absolute local file and directory paths for native editing.",
         annotations(
             title = "List child articles",
             read_only_hint = true,
@@ -89,7 +93,7 @@ impl LocusMcp {
 
     #[tool(
         name = "resolve_article",
-        description = "Resolves a known library-relative article path to public metadata, attachmentCount, and absolute local file and directory paths. Accepts an optional trailing /index.md. Use this instead of search when the path is already known.",
+        description = "Resolves a known library-relative article path or locus:// address supplied in the path parameter to public metadata, attachmentCount, and absolute local file and directory paths. Accepts an optional trailing /index.md. Use this instead of search when the path is already known.",
         annotations(
             title = "Resolve an article path",
             read_only_hint = true,
@@ -301,7 +305,14 @@ fn article_parent(path: &str) -> &str {
 }
 
 fn normalize_article_path(raw: &str, allow_empty: bool) -> Result<String, String> {
-    let mut path = raw.trim().replace('\\', "/");
+    let raw = raw.trim();
+    let mut path = if raw == LIBRARY_REFERENCE_SCHEME {
+        String::new()
+    } else if raw.starts_with(LIBRARY_REFERENCE_SCHEME) {
+        library_reference_path(raw).ok_or_else(|| "文章路径无效。".to_owned())?
+    } else {
+        raw.replace('\\', "/")
+    };
     path = path.trim_matches('/').to_owned();
     if path == "index.md" {
         path.clear();
@@ -398,13 +409,88 @@ mod tests {
     }
 
     #[test]
-    fn article_paths_accept_index_suffix_and_reject_traversal() {
+    fn encoded_addresses_resolve_and_list_the_same_files_as_relative_paths() {
+        let root = tempfile::tempdir().unwrap();
+        let parent = "旅行 计划%#";
+        let child = format!("{parent}/literal%2e");
+        std::fs::create_dir_all(root.path().join(&child)).unwrap();
+        for path in [parent, &child] {
+            std::fs::write(root.path().join(path).join("index.md"), "Body").unwrap();
+        }
+        let service = LocusMcp::new(Some(root.path().to_path_buf()));
+        let resolved = service
+            .resolve_article_value(ResolveArticleRequest {
+                path: "locus://旅行%20计划%25%23/literal%252e/index.md".into(),
+            })
+            .unwrap();
+        let relative = service
+            .resolve_article_value(ResolveArticleRequest {
+                path: child.clone(),
+            })
+            .unwrap();
+        assert_eq!(resolved, relative);
+        assert_eq!(resolved["path"], child);
+        let listed = service
+            .list_articles_value(ListArticlesRequest {
+                parent: "locus://旅行%20计划%25%23".into(),
+                cursor: None,
+                limit: None,
+            })
+            .unwrap();
+        assert_eq!(listed["parent"], parent);
+        assert_eq!(listed["articles"][0], resolved);
+    }
+
+    #[test]
+    fn article_paths_accept_relative_paths_and_library_addresses() {
+        for path in [
+            "projects/locus",
+            "projects/locus/index.md",
+            "locus://projects/locus",
+            " locus://projects/locus/index.md ",
+        ] {
+            assert_eq!(
+                normalize_article_path(path, false).unwrap(),
+                "projects/locus"
+            );
+        }
         assert_eq!(
-            normalize_article_path("projects/locus/index.md", false).unwrap(),
-            "projects/locus"
+            normalize_article_path("locus://旅行%20计划/100%25%23", false).unwrap(),
+            "旅行 计划/100%#"
         );
-        assert!(normalize_article_path("../outside", false).is_err());
-        assert_eq!(normalize_article_path("", true).unwrap(), "");
+        assert_eq!(
+            normalize_article_path("locus://literal%252e", false).unwrap(),
+            "literal%2e"
+        );
+        assert_eq!(
+            normalize_article_path("literal%2e", false).unwrap(),
+            "literal%2e"
+        );
+        for root in ["", "locus://", "index.md", "locus://index.md"] {
+            assert_eq!(normalize_article_path(root, true).unwrap(), "");
+            assert!(normalize_article_path(root, false).is_err());
+        }
+    }
+
+    #[test]
+    fn article_paths_reject_invalid_addresses_and_traversal() {
+        for path in [
+            "../outside",
+            "locus://projects/../outside",
+            "locus://projects/%2e%2e/outside",
+            "locus:///projects/locus",
+            "locus://projects//locus",
+            "locus://projects%2flocus",
+            "locus://projects%5clocus",
+            "locus://note%00",
+            "locus://%FF",
+            "locus://note?query",
+            "locus://note#fragment",
+        ] {
+            for allow_empty in [false, true] {
+                assert!(normalize_article_path(path, allow_empty).is_err(), "{path}");
+            }
+        }
     }
 
     #[test]

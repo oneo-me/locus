@@ -11,6 +11,12 @@ The service is disabled by default. Local-network mode exposes both endpoints wi
 
 The full endpoint never asks the client to edit server files. A client still needs to supply upload bytes and save download bytes. Original note text and user metadata are returned faithfully, including any paths already written by the author.
 
+## Standard discovery paths
+
+`resolve_article` accepts a library-relative path or a `locus://` address in its `path` parameter, for example `{"path":"locus://projects/example"}`. Either form may end in `/index.md`. `list_articles.parent` accepts the same forms; an empty parent or `locus://` lists the library root. The root cannot be resolved as an article. Returned `path` values remain library-relative.
+
+Logical addresses use the same single percent-decoding pass as application navigation, including encoded spaces, `%` and `#`. Invalid address segments and encoded traversal are rejected. Plain relative paths are not percent-decoded.
+
 ## Addresses and content
 
 A note has a logical address such as `locus://projects/example`. `locus://` is the library root for browsing and export. Names follow portable filename rules. Spaces, `%` and `#` use percent encoding in addresses; the application decodes each address once for navigation and canvas templates. A content target identifies its owner and resource:

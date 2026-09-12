@@ -337,6 +337,36 @@ mod tests {
         assert_eq!(article["lineCount"], 2);
         assert_eq!(article["childCount"], 0);
 
+        for path in ["notes", "locus://notes", "locus://notes/index.md"] {
+            let resolved = client
+                .call_tool(
+                    CallToolRequestParams::new("resolve_article")
+                        .with_arguments(json!({"path": path}).as_object().unwrap().clone()),
+                )
+                .await
+                .unwrap();
+            assert_eq!(resolved.is_error, Some(false));
+            assert_eq!(resolved.structured_content.unwrap(), *article);
+        }
+        for parent in ["locus://", "locus://notes"] {
+            let listed = client
+                .call_tool(
+                    CallToolRequestParams::new("list_articles")
+                        .with_arguments(json!({"parent": parent}).as_object().unwrap().clone()),
+                )
+                .await
+                .unwrap();
+            assert_eq!(listed.is_error, Some(false));
+            let listed = listed.structured_content.unwrap();
+            if parent == "locus://" {
+                assert_eq!(listed["articles"][0], *article);
+                assert_eq!(listed["parent"], "");
+            } else {
+                assert_eq!(listed["parent"], "notes");
+                assert_eq!(listed["articles"], json!([]));
+            }
+        }
+
         client.cancel().await.unwrap();
         drop(controller);
     }
