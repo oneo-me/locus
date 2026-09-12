@@ -166,7 +166,9 @@ impl SettingsShell {
         div()
             .size_full()
             .flex()
-            .bg(self.theme.background)
+            .when(!cfg!(target_os = "windows"), |root| {
+                root.bg(self.theme.background)
+            })
             .text_color(self.theme.foreground)
             .child(
                 div()
@@ -176,7 +178,9 @@ impl SettingsShell {
                     .flex_none()
                     .flex()
                     .flex_col()
-                    .bg(self.theme.sidebar)
+                    .when(!cfg!(target_os = "windows"), |sidebar| {
+                        sidebar.bg(self.theme.sidebar)
+                    })
                     .text_color(self.theme.sidebar_foreground)
                     .border_r_1()
                     .border_color(self.theme.sidebar_border)

@@ -4,7 +4,10 @@ use gpui_kit::component::ThemeMode;
 use gpui_kit::{App, Hsla, Window, WindowAppearance, px, rgb};
 
 pub fn workspace_background(theme: &Theme) -> Hsla {
-    if cfg!(any(target_os = "macos", target_os = "windows")) {
+    if cfg!(target_os = "windows") {
+        // Mica supplies its own theme-aware tint through the native backdrop.
+        theme.transparent
+    } else if cfg!(target_os = "macos") {
         window_material_tint(theme.is_dark())
     } else {
         theme.sidebar
