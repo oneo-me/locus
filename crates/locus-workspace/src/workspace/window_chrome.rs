@@ -7,7 +7,7 @@ use rust_i18n::t;
 impl Locus {
     pub(super) fn toggle_panel(&mut self, cx: &mut Context<Self>) {
         self.app_shell.workspace_mut().toggle(cx.reduce_motion());
-        self.save_interface_state();
+        self.save_interface_state(cx);
         cx.notify();
     }
 

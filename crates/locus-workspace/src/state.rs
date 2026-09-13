@@ -32,6 +32,39 @@ impl Default for InterfaceState {
     }
 }
 
+pub(crate) struct InterfaceStateWriter {
+    store: Result<SettingsStore, String>,
+    pending: Option<gpui_kit::Task<()>>,
+}
+
+impl InterfaceStateWriter {
+    pub(crate) fn new() -> Self {
+        Self {
+            store: state_store(),
+            pending: None,
+        }
+    }
+
+    pub(crate) fn save(&mut self, state: InterfaceState, executor: &gpui_kit::BackgroundExecutor) {
+        let previous = self.pending.take();
+        let store = self.store.clone();
+        self.pending = Some(executor.spawn(async move {
+            if let Some(previous) = previous {
+                previous.await;
+            }
+            if let Err(error) =
+                store.and_then(|store| store.save(&state).map_err(|error| format!("{error:#}")))
+            {
+                eprintln!("无法保存界面状态：{error}");
+            }
+        }));
+    }
+
+    pub(crate) fn finish(&mut self) -> Option<gpui_kit::Task<()>> {
+        self.pending.take()
+    }
+}
+
 impl InterfaceState {
     pub fn load() -> (Self, Option<String>) {
         match state_store()
@@ -43,12 +76,6 @@ impl InterfaceState {
             }
             Err(error) => (Self::default(), Some(format!("无法读取界面状态：{error}"))),
         }
-    }
-
-    pub fn save(&self) -> Result<(), String> {
-        state_store()?
-            .save(self)
-            .map_err(|error| format!("{error:#}"))
     }
 
     fn normalize(&mut self) {
@@ -94,6 +121,44 @@ fn state_store() -> Result<SettingsStore, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[gpui_kit::test]
+    async fn background_saves_preserve_order_and_finish_with_latest_state(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        let directory = tempfile::tempdir().unwrap();
+        let store = SettingsStore::at_path(directory.path().join("state.toml")).unwrap();
+        let executor = cx.executor();
+        let (release, blocked) = async_channel::bounded::<()>(1);
+        let mut writer = InterfaceStateWriter {
+            store: Ok(store.clone()),
+            pending: Some(executor.spawn(async move {
+                blocked.recv().await.unwrap();
+            })),
+        };
+        let older = InterfaceState {
+            selected_library_node: Some("older".into()),
+            ..InterfaceState::default()
+        };
+        writer.save(older, &executor);
+        let latest = InterfaceState {
+            left_sidebar_visible: false,
+            selected_library_node: Some("latest".into()),
+            window_bounds: Some(Bounds::new(
+                gpui_kit::point(px(120.0), px(80.0)),
+                size(px(1280.0), px(960.0)),
+            )),
+            ..InterfaceState::default()
+        };
+        writer.save(latest.clone(), &executor);
+        executor.run_until_parked();
+        assert!(!store.path().exists());
+        let completion = writer.finish().unwrap();
+        assert!(writer.finish().is_none());
+        release.send(()).await.unwrap();
+        completion.await;
+        assert_eq!(store.load::<InterfaceState>().unwrap(), latest);
+    }
 
     #[test]
     fn removed_sidebar_fields_do_not_discard_the_selected_note_or_left_sidebar() {

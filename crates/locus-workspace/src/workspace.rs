@@ -26,7 +26,9 @@ use self::canvas::NoteCanvas;
 use self::navigation::LibraryNavigation;
 use self::pane::LocusPane;
 use crate::sidebar_order::SidebarOrderState;
-use crate::state::{InterfaceState, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH};
+use crate::state::{
+    InterfaceState, InterfaceStateWriter, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH,
+};
 use crate::{NewTerminal, OpenSettings, ReloadCurrentNote, ToggleLeftPanel};
 use gpui_kit::component::Theme;
 use locus_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
@@ -113,6 +115,7 @@ pub struct Locus {
     note_scroll_handle: ScrollHandle,
     window_bounds: Option<Bounds<Pixels>>,
     window_bounds_save_task: Option<Task<()>>,
+    interface_state_writer: InterfaceStateWriter,
 }
 
 impl Locus {
@@ -246,24 +249,26 @@ impl Locus {
         .detach();
         cx.observe_window_bounds(window, |this, window, cx| {
             this.window_bounds = Some(window.inner_window_bounds().get_bounds());
-            if this.window_bounds_save_task.is_none() {
-                this.window_bounds_save_task = Some(cx.spawn(async move |this, cx| {
-                    cx.background_executor()
-                        .timer(WINDOW_BOUNDS_SAVE_DEBOUNCE)
-                        .await;
-                    this.update(cx, |this, _| {
-                        this.window_bounds_save_task.take();
-                        this.save_interface_state();
-                    })
-                    .ok();
-                }));
-            }
+            this.window_bounds_save_task = Some(cx.spawn(async move |this, cx| {
+                cx.background_executor()
+                    .timer(WINDOW_BOUNDS_SAVE_DEBOUNCE)
+                    .await;
+                this.update(cx, |this, cx| {
+                    this.save_interface_state(cx);
+                })
+                .ok();
+            }));
         })
         .detach();
-        cx.on_app_quit(|this, _| {
+        cx.on_app_quit(|this, cx| {
             this.window_bounds_save_task.take();
-            this.save_interface_state();
-            async {}
+            this.save_interface_state(cx);
+            let pending_save = this.interface_state_writer.finish();
+            async move {
+                if let Some(task) = pending_save {
+                    task.await;
+                }
+            }
         })
         .detach();
 
@@ -315,6 +320,7 @@ impl Locus {
             note_scroll_handle: ScrollHandle::new(),
             window_bounds: interface_state.window_bounds,
             window_bounds_save_task: None,
+            interface_state_writer: InterfaceStateWriter::new(),
         }
     }
 
@@ -479,7 +485,7 @@ impl Locus {
         self.expanded_library_nodes.clear();
         self.sync_library_tree(cx);
         self.scroll_to_selected_library_node = false;
-        self.save_interface_state();
+        self.save_interface_state(cx);
         self.update_app_menus_if_reload_state_changed(could_reload_current_note, cx);
         cx.notify();
     }
@@ -539,7 +545,7 @@ impl Locus {
         } else if selected_path.is_some() {
             self.clear_library_selection(cx);
             self.expanded_library_nodes.clear();
-            self.save_interface_state();
+            self.save_interface_state(cx);
         }
         self.sync_library_tree(cx);
         self.schedule_note_canvas_selection(cx);
@@ -638,10 +644,9 @@ impl Locus {
         }
     }
 
-    fn save_interface_state(&self) {
-        if let Err(error) = self.interface_state().save() {
-            eprintln!("无法保存界面状态：{error}");
-        }
+    fn save_interface_state(&mut self, cx: &Context<Self>) {
+        self.interface_state_writer
+            .save(self.interface_state(), cx.background_executor());
     }
 
     fn toggle_left_sidebar_action(
@@ -747,7 +752,7 @@ impl Locus {
     fn reset_panel_width(&mut self, cx: &mut Context<Self>) {
         let width = DEFAULT_LEFT_SIDEBAR_WIDTH;
         self.app_shell.workspace_mut().reset_width(width);
-        self.save_interface_state();
+        self.save_interface_state(cx);
         cx.notify();
     }
 
@@ -777,7 +782,7 @@ impl Locus {
         let panel_resized = self.app_shell.workspace_mut().finish_resize();
         let library_drag_ended = self.dragged_library_node.take().is_some();
         if panel_resized {
-            self.save_interface_state();
+            self.save_interface_state(cx);
         }
         if panel_resized || library_drag_ended {
             cx.notify();

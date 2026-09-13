@@ -413,7 +413,7 @@ impl Locus {
         self.expanded_library_nodes = expanded_paths_for_selection(&path, expand_selected);
         self.sync_library_tree(cx);
         self.scroll_to_selected_library_node = true;
-        self.save_interface_state();
+        self.save_interface_state(cx);
         if selection_changed {
             self.schedule_note_canvas_selection(cx);
             self.begin_selected_note_load(cx);
