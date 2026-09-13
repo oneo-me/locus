@@ -38,6 +38,8 @@ The host waits for the page's resources, imports `main.js` once and awaits `main
 
 The canvas fills the content area below the title and metadata. Summary and custom YAML fields remain visible above it; long metadata can scroll independently. The canvas is excluded from attachment lists and counts. It has no separate tab, automatic-opening switch, refresh button, or context menu.
 
+Use Cmd/Ctrl+A to select all, Cmd/Ctrl+C to copy, Cmd/Ctrl+X to cut, and Cmd/Ctrl+V to paste. These commands act on the focused input or the page selection using native WebView behavior. Cut and paste require an editable target. On macOS, the same commands are available in the Edit menu.
+
 Saving a file does not reload an open canvas. With canvas focus, press Cmd/Ctrl+R or F5 to reload its owning note's canvas and rerun scripts. Leaving and reopening the note also reloads it. In-memory interaction state is lost on refresh or departure. An empty or unreadable file produces a recoverable message; fix it and refresh.
 
 Combine multiple views in one canvas using tabs, sections, or disclosure panels. Preserve other sections' state during internal navigation. Use unique DOM IDs, scoped selectors, and separate script scopes.

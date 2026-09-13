@@ -1,4 +1,5 @@
-use gpui_kit::{App, KeyBinding, MenuItem, actions};
+use gpui_kit::component::input::{Copy, Cut, Paste, SelectAll};
+use gpui_kit::{App, KeyBinding, MenuItem, OsAction, actions};
 use oneo_gpui::Language;
 use oneo_gpui::{AppShellMenuLabels, AppShellMenus, set_app_shell_menus};
 use rust_i18n::t;
@@ -82,6 +83,7 @@ pub fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: 
                     .into(),
             },
         )
+        .edit_items(edit_menu_items(language))
         .view_items_before_panels([
             MenuItem::action(
                 t!("menu.view.command_palette", locale = language.locale()).into_owned(),
@@ -96,9 +98,88 @@ pub fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: 
     );
 }
 
+fn edit_menu_items(language: Language) -> [MenuItem; 5] {
+    [
+        MenuItem::os_action(
+            t!("menu.edit.cut", locale = language.locale()).into_owned(),
+            Cut,
+            OsAction::Cut,
+        ),
+        MenuItem::os_action(
+            t!("menu.edit.copy", locale = language.locale()).into_owned(),
+            Copy,
+            OsAction::Copy,
+        ),
+        MenuItem::os_action(
+            t!("menu.edit.paste", locale = language.locale()).into_owned(),
+            Paste,
+            OsAction::Paste,
+        ),
+        MenuItem::separator(),
+        MenuItem::os_action(
+            t!("menu.edit.select_all", locale = language.locale()).into_owned(),
+            SelectAll,
+            OsAction::SelectAll,
+        ),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[gpui_kit::test]
+    fn edit_menu_routes_standard_shortcuts_to_native_editing(cx: &mut gpui_kit::TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            bind_keys(cx);
+            for (language, names) in [
+                (Language::English, ["Cut", "Copy", "Paste", "Select All"]),
+                (Language::Chinese, ["剪切", "复制", "粘贴", "全选"]),
+            ] {
+                let menu = edit_menu_items(language);
+                let expected: [(Box<dyn gpui_kit::Action>, OsAction, &str); 4] = [
+                    (Box::new(Cut), OsAction::Cut, "secondary-x"),
+                    (Box::new(Copy), OsAction::Copy, "secondary-c"),
+                    (Box::new(Paste), OsAction::Paste, "secondary-v"),
+                    (Box::new(SelectAll), OsAction::SelectAll, "secondary-a"),
+                ];
+                let items: Vec<_> = menu
+                    .iter()
+                    .filter_map(|item| match item {
+                        MenuItem::Action {
+                            name,
+                            action,
+                            os_action,
+                            disabled,
+                            ..
+                        } => Some((name, action, os_action, disabled)),
+                        _ => None,
+                    })
+                    .collect();
+                assert_eq!(items.len(), expected.len());
+                for (
+                    (name, action, os_action, disabled),
+                    ((expected_action, native, key), label),
+                ) in items.into_iter().zip(expected.into_iter().zip(names))
+                {
+                    assert_eq!(name, label);
+                    assert!(action.partial_eq(expected_action.as_ref()));
+                    assert!(*os_action == Some(native));
+                    assert!(!disabled);
+                    let keystroke = gpui_kit::Keystroke::parse(key).unwrap();
+                    assert!(
+                        cx.key_bindings()
+                            .borrow()
+                            .bindings_for_action(action.as_ref())
+                            .any(|binding| binding
+                                .match_keystrokes(std::slice::from_ref(&keystroke))
+                                == Some(false))
+                    );
+                }
+            }
+        });
+    }
 
     #[test]
     fn new_terminal_shortcut_is_a_valid_key_binding() {

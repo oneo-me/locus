@@ -11,6 +11,18 @@ menu.application.settings:
 menu.edit.title:
   en: Edit
   zh-CN: 编辑
+menu.edit.cut:
+  en: Cut
+  zh-CN: 剪切
+menu.edit.copy:
+  en: Copy
+  zh-CN: 复制
+menu.edit.paste:
+  en: Paste
+  zh-CN: 粘贴
+menu.edit.select_all:
+  en: Select All
+  zh-CN: 全选
 menu.file.title:
   en: File
   zh-CN: 文件

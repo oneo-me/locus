@@ -58,3 +58,12 @@ test('window, palette and settings shortcuts retain their application commands',
     for (const key of ['w', 'e', ',']) canvas.press({ key });
     assert.deepEqual(canvas.messages, ['w', 'e', ',']);
 });
+
+test('editing shortcuts keep their native WebView behavior', () => {
+    const canvas = page();
+    for (const key of ['a', 'c', 'x', 'v']) {
+        assert.equal(canvas.press({ key }), false);
+        assert.equal(canvas.press({ key, metaKey: false, ctrlKey: true }), false);
+    }
+    assert.deepEqual(canvas.messages, []);
+});
