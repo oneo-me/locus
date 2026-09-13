@@ -13,8 +13,9 @@ mod watcher;
 
 pub use access::{ContentTarget, LibraryAccess, Resource, content_version};
 pub use canvas::{
-    ASSETS_DIRECTORY, CANVAS_DIRECTORY, CANVAS_FILE, is_reserved_directory, load_canvas,
-    load_canvas_resource, load_canvas_template, load_library_resource,
+    ASSETS_DIRECTORY, CANVAS_CONFIG_FILE, CANVAS_DIRECTORY, CANVAS_FILE, CANVAS_MAIN_FILE,
+    CanvasSource, is_reserved_directory, load_canvas, load_canvas_resource, load_library_resource,
+    resolve_canvas,
 };
 pub use mutations::{archive_note, restore_archived_note, update_note_icon};
 pub use reference::{LIBRARY_REFERENCE_SCHEME, library_reference_path};

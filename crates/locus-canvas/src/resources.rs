@@ -51,3 +51,25 @@ pub(crate) fn resource_mime(name: &str) -> String {
         .first_or_octet_stream()
         .to_string()
 }
+
+pub(crate) fn canvas_base(root: &Path, directory: &Path) -> io::Result<String> {
+    let root = root.canonicalize()?;
+    let directory = directory.canonicalize()?;
+    let path = directory
+        .strip_prefix(root)
+        .map_err(|_| io::Error::other("Canvas is outside the library"))?;
+    if path.as_os_str().is_empty() {
+        return Ok("./".to_owned());
+    }
+    let parts: Vec<_> = path
+        .iter()
+        .map(|part| {
+            percent_encoding::utf8_percent_encode(
+                &part.to_string_lossy(),
+                percent_encoding::NON_ALPHANUMERIC,
+            )
+            .to_string()
+        })
+        .collect();
+    Ok(format!("/{LIBRARY_PREFIX}{}/canvas/", parts.join("/")))
+}

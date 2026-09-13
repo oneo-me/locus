@@ -166,16 +166,6 @@ impl CanvasView {
                                 let mut dependencies = dependencies.lock().unwrap();
                                 if request.uri().path() == "/canvas.html" {
                                     *dependencies = super::export::Dependencies::default();
-                                } else if request.uri().path() == "/_locus/template" {
-                                    if let Some(uri) = request
-                                        .uri()
-                                        .query()
-                                        .and_then(|query| query.strip_prefix("uri="))
-                                        && let Ok(uri) =
-                                            percent_encoding::percent_decode_str(uri).decode_utf8()
-                                    {
-                                        dependencies.templates.insert(uri.into_owned());
-                                    }
                                 } else {
                                     let path = request
                                         .uri()
@@ -192,6 +182,13 @@ impl CanvasView {
                                             .unwrap_or_default()
                                             .into_owned()
                                     };
+                                    if request
+                                        .headers()
+                                        .get("sec-fetch-dest")
+                                        .is_some_and(|value| value == "style")
+                                    {
+                                        dependencies.stylesheets.insert(name.clone());
+                                    }
                                     dependencies.resources.insert(name);
                                 }
                             }
@@ -396,27 +393,6 @@ fn canvas_response(
     language: Language,
 ) -> wry::http::Response<Vec<u8>> {
     use wry::http::{Method, Response, StatusCode};
-    if request.uri().path() == "/_locus/template" {
-        let source = request
-            .uri()
-            .query()
-            .and_then(|query| query.strip_prefix("uri="))
-            .and_then(|uri| percent_encoding::percent_decode_str(uri).decode_utf8().ok())
-            .filter(|_| request.method() == Method::GET)
-            .and_then(|uri| locus_library::load_canvas_template(root, &uri).ok());
-        return Response::builder()
-            .status(if source.is_some() {
-                StatusCode::OK
-            } else {
-                StatusCode::NOT_FOUND
-            })
-            .header("Content-Type", "text/plain; charset=utf-8")
-            .header("Cache-Control", "no-store")
-            .header("X-Content-Type-Options", "nosniff")
-            .header("Content-Security-Policy", CANVAS_POLICY)
-            .body(super::resources::rewrite_resources(&source.unwrap_or_default()).into_bytes())
-            .expect("canvas template response headers are valid");
-    }
     if request.method() == Method::GET && request.uri().path() != "/canvas.html" {
         let name = request
             .uri()
@@ -466,23 +442,26 @@ fn canvas_response(
             .body(bytes)
             .expect("canvas resource response headers are valid");
     }
-    let (status, source) = if request.method() != Method::GET
-        || request.uri().path() != "/canvas.html"
-    {
+    let (status, document) = if request.method() != Method::GET {
         (StatusCode::NOT_FOUND, String::new())
     } else {
-        match locus_library::load_canvas(root, directory) {
-            Ok(source) if !source.trim().is_empty() => (StatusCode::OK, source),
-            result => {
-                let message = match result {
-                    Ok(_) => rust_i18n::t!("canvas.empty", locale = language.locale()).into_owned(),
-                    Err(_) => {
-                        rust_i18n::t!("canvas.read_error", locale = language.locale()).into_owned()
-                    }
-                };
+        match locus_library::resolve_canvas(root, directory)
+            .and_then(|canvas| resolved_document(root, &canvas, dark))
+        {
+            Ok(document) => (StatusCode::OK, document),
+            Err(error) => {
+                let message = rust_i18n::t!("canvas.read_error", locale = language.locale());
+                let detail = error
+                    .to_string()
+                    .replace('&', "&amp;")
+                    .replace('<', "&lt;")
+                    .replace('>', "&gt;");
                 (
                     StatusCode::NOT_FOUND,
-                    format!("<main class=\"p-4\"><p>{message}</p></main>"),
+                    canvas_document(
+                        &format!("<main class=\"p-4\"><p>{message}</p><pre>{detail}</pre></main>"),
+                        dark,
+                    ),
                 )
             }
         }
@@ -491,7 +470,7 @@ fn canvas_response(
         .status(status)
         .header("Content-Type", "text/html; charset=utf-8")
         .header("Cache-Control", "no-store")
-        .body(canvas_document(&source, dark).into_bytes())
+        .body(document.into_bytes())
         .expect("static canvas response headers are valid")
 }
 
@@ -502,20 +481,55 @@ fn theme_script(dark: bool) -> String {
     )
 }
 
-const CANVAS_POLICY: &str = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+const CANVAS_POLICY: &str = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'";
 
 pub(crate) fn canvas_document(source: &str, dark: bool) -> String {
+    canvas_document_with_data(source, dark, "./", &serde_json::Value::Null, "", "")
+}
+
+pub(crate) fn resolved_document(
+    root: &Path,
+    canvas: &locus_library::CanvasSource,
+    dark: bool,
+) -> std::io::Result<String> {
+    let base = super::resources::canvas_base(root, canvas.directory())?;
+    Ok(canvas_document_with_data(
+        canvas.html(),
+        dark,
+        &base,
+        canvas.data(),
+        "",
+        &canvas_entry(),
+    ))
+}
+
+pub(crate) fn canvas_entry() -> String {
+    let lifecycle = include_str!("main.js");
+    format!(
+        "<script>{lifecycle}\nwindow.addEventListener('load', () => runCanvas(() => import(new URL('main.js', document.baseURI).href)), {{once:true}});</script>"
+    )
+}
+
+pub(crate) fn canvas_document_with_data(
+    source: &str,
+    dark: bool,
+    base: &str,
+    data: &serde_json::Value,
+    bootstrap: &str,
+    entry: &str,
+) -> String {
     let source = super::resources::rewrite_resources(source);
+    let data = serde_json::to_string(data).unwrap().replace('<', "\\u003c");
     let tailwind = include_str!("../assets/tailwindcss/browser-4.3.3.js");
-    let templates = include_str!("templates.js");
+    let runtime = include_str!("runtime.js");
     let theme = if dark { "dark" } else { "light" };
     format!(
         r#"<!doctype html><html class="{theme}" style="color-scheme:{theme}"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="{base}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="{CANVAS_POLICY}">
 <style>html,body{{margin:0;width:100%;height:100%;}}body{{overflow-wrap:anywhere;}}</style>
 <style type="text/tailwindcss">@custom-variant dark (&:where(.dark, .dark *));</style>
-<script>{tailwind}</script><script>{templates}</script></head><body>{source}</body></html>"#
+{bootstrap}<script>{tailwind}</script><script>{runtime}</script></head><body>{source}<script type="application/json" id="locus-canvas-data">{data}</script>{entry}</body></html>"#
     )
 }
 
@@ -547,46 +561,31 @@ mod tests {
 
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     #[test]
-    fn template_protocol_returns_raw_canvas_and_enforces_the_library_boundary() {
+    fn template_entry_uses_its_own_resource_base_and_passes_data() {
         use wry::http::{Request, StatusCode};
         let root = tempfile::tempdir().unwrap();
-        let note = root.path().join("travel");
-        std::fs::create_dir(&note).unwrap();
-        write_fixture(note.join("index.md"), "Travel").unwrap();
+        let caller = root.path().join("caller");
+        write_fixture(caller.join("index.md"), "Caller").unwrap();
         write_fixture(
-            note.join("canvas/index.html"),
-            "<script>window.template = 42;</script>",
+            caller.join("canvas/index.json"),
+            r#"{"template":"locus://template","data":{"answer":"</script>"}}"#,
         )
         .unwrap();
-        for (method, uri, status) in [
-            ("GET", "locus://travel", StatusCode::OK),
-            ("POST", "locus://travel", StatusCode::NOT_FOUND),
-            ("GET", "file:///travel", StatusCode::NOT_FOUND),
-            ("GET", "locus://../travel", StatusCode::NOT_FOUND),
-            ("GET", "locus://%2e%2e/travel", StatusCode::NOT_FOUND),
-            ("GET", "locus://missing", StatusCode::NOT_FOUND),
-        ] {
-            let uri = format!(
-                "/_locus/template?uri={}",
-                percent_encoding::utf8_percent_encode(uri, percent_encoding::NON_ALPHANUMERIC)
-            );
-            let request = Request::builder()
-                .method(method)
-                .uri(uri)
-                .body(Vec::new())
-                .unwrap();
-            let response =
-                canvas_response(root.path(), root.path(), &request, false, Language::English);
-            assert_eq!(response.status(), status);
-            assert_eq!(response.headers()["Cache-Control"], "no-store");
-            assert_eq!(
-                response.headers()["Content-Type"],
-                "text/plain; charset=utf-8"
-            );
-            if status == StatusCode::OK {
-                assert_eq!(response.body(), b"<script>window.template = 42;</script>");
-            }
-        }
+        let template = root.path().join("template");
+        write_fixture(template.join("index.md"), "Template").unwrap();
+        write_fixture(template.join("canvas/index.html"), "<output></output>").unwrap();
+        write_fixture(
+            template.join("canvas/main.js"),
+            "export async function main(data) {}",
+        )
+        .unwrap();
+        let request = Request::builder().uri(CANVAS_URL).body(Vec::new()).unwrap();
+        let response = canvas_response(root.path(), &caller, &request, false, Language::English);
+        assert_eq!(response.status(), StatusCode::OK);
+        let html = std::str::from_utf8(response.body()).unwrap();
+        assert!(html.contains("<base href=\"/_locus/resource/template/canvas/\">"));
+        assert!(html.contains(r#"{"answer":"\u003c/script>"}"#));
+        assert!(!html.contains("loadCanvas"));
     }
 
     #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -600,6 +599,11 @@ mod tests {
         write_fixture(directory.join("index.md"), "First note").unwrap();
         let file = directory.join(locus_library::CANVAS_FILE);
         write_fixture(&file, "<p>First version</p>").unwrap();
+        write_fixture(
+            directory.join("canvas/main.js"),
+            "export async function main(data) {}",
+        )
+        .unwrap();
         let request = Request::builder().uri(CANVAS_URL).body(Vec::new()).unwrap();
         let response = canvas_response(root.path(), &directory, &request, false, Language::English);
         assert_eq!(response.status(), StatusCode::OK);

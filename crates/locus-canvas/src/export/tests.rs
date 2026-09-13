@@ -6,42 +6,39 @@ fn note(root: &Path, name: &str, source: &str) -> std::path::PathBuf {
     fs::create_dir_all(directory.join("canvas")).unwrap();
     fs::write(directory.join("index.md"), "---\ntitle: Canvas\n---\n").unwrap();
     fs::write(directory.join("canvas/index.html"), source).unwrap();
+    fs::write(
+        directory.join("canvas/main.js"),
+        "export async function main(data) {}\n",
+    )
+    .unwrap();
     directory
 }
 
 #[test]
-fn single_html_contains_nested_templates_data_theme_and_runtime() {
+fn template_export_contains_resolved_markup_data_theme_and_main() {
     let root = tempfile::tempdir().unwrap();
-    let directory = note(
-        root.path(),
-        "note",
-        r#"<script>locus.loadCanvas('locus://parent', {answer: 42});</script>"#,
-    );
-    note(
-        root.path(),
-        "parent",
-        r#"<script>locus.loadCanvas('locus://child', document.currentScript.canvas.data);</script>"#,
-    );
-    note(
-        root.path(),
-        "child",
-        "<button>Nested child</button><script>window.answer = document.currentScript.canvas.data.answer;</script>",
-    );
+    let directory = note(root.path(), "note", "unused");
+    fs::remove_file(directory.join("canvas/index.html")).unwrap();
+    fs::write(
+        directory.join("canvas/index.json"),
+        r#"{"template":"locus://template","data":{"answer":42}}"#,
+    )
+    .unwrap();
+    let template = note(root.path(), "template", "<output>Template</output>");
+    fs::write(template.join("canvas/main.js"), "export async function main(data) { document.querySelector('output').textContent = data.answer; }").unwrap();
     let export = prepare_download(root.path(), &directory, true, Dependencies::default()).unwrap();
     assert_eq!(export.files.len(), 1);
     let html = String::from_utf8(export.files["canvas.html"].clone()).unwrap();
-    assert!(html.starts_with("<!doctype html>"));
     assert!(html.contains("class=\"dark\""));
-    assert!(html.contains("answer: 42"));
-    assert!(html.contains("Nested child"));
-    assert!(html.contains("\\u003c/script>"));
-    assert!(html.contains(include_str!("../../assets/tailwindcss/browser-4.3.3.js")));
+    assert!(html.contains(r#"{"answer":42}"#));
+    assert!(html.contains("<output>Template</output>"));
+    assert!(html.contains("data:text/javascript;base64,"));
+    assert!(html.contains("runCanvas(() => import('data:"));
     assert!(!html.contains(root.path().to_str().unwrap()));
     let destination = root.path().join("Downloads");
     let output = export.save(&destination, "需求").unwrap();
     assert_eq!(output, destination.join("需求.html"));
     assert_eq!(fs::read_to_string(output).unwrap(), html);
-    assert_eq!(fs::read_dir(destination).unwrap().count(), 1);
 }
 
 #[test]
@@ -102,25 +99,25 @@ fn directory_preserves_only_referenced_attachments_and_their_dependencies() {
 #[test]
 fn observed_dynamic_dependencies_and_template_resources_are_included() {
     let root = tempfile::tempdir().unwrap();
-    let directory = note(
-        root.path(),
-        "note",
-        "<script>locus.loadCanvas('locus://' + 'dynamic');</script>",
-    );
-    note(root.path(), "dynamic", "<img src='picture.png'>");
+    let directory = note(root.path(), "note", "unused");
+    fs::remove_file(directory.join("canvas/index.html")).unwrap();
+    fs::write(
+        directory.join("canvas/index.json"),
+        r#"{"template":"locus://dynamic","data":null}"#,
+    )
+    .unwrap();
+    let template = note(root.path(), "dynamic", "<img src='picture.png'>");
     fs::write(directory.join("canvas/picture.png"), "caller image").unwrap();
-    fs::write(root.path().join("dynamic/picture.png"), "template image").unwrap();
+    fs::write(template.join("canvas/picture.png"), "template image").unwrap();
+    fs::write(template.join("canvas/observed.json"), "{}").unwrap();
     let dependencies = Dependencies {
-        templates: ["locus://dynamic".to_owned()].into(),
-        ..Default::default()
+        imports: BTreeSet::new(),
+        stylesheets: BTreeSet::new(),
+        resources: ["_locus/resource/dynamic/canvas/observed.json".to_owned()].into(),
     };
     let export = prepare_download(root.path(), &directory, false, dependencies).unwrap();
-    let destination = tempfile::tempdir().unwrap();
-    export.write_files(destination.path()).unwrap();
-    assert_eq!(
-        fs::read_to_string(destination.path().join("picture.png")).unwrap(),
-        "caller image"
-    );
+    assert_eq!(export.files["picture.png"], b"template image");
+    assert_eq!(export.files["observed.json"], b"{}");
 }
 
 #[test]
@@ -130,8 +127,6 @@ fn invalid_missing_and_empty_dependencies_fail_without_writing() {
         " ",
         "<img src='missing.png'>",
         "<img src='../outside.png'>",
-        "<script>locus.loadCanvas('locus://missing');</script>",
-        "<script>locus.loadCanvas('locus://empty');</script>",
         "<a href='index.md'>Note</a>",
     ] {
         let directory = note(root.path(), "note", source);
@@ -144,25 +139,22 @@ fn invalid_missing_and_empty_dependencies_fail_without_writing() {
 }
 
 #[test]
-fn cycles_are_deduplicated_and_online_resources_remain_online() {
+fn module_cycles_are_deduplicated_and_online_resources_remain_online() {
     let root = tempfile::tempdir().unwrap();
     let directory = note(
         root.path(),
         "note",
-        "<img src='https://example.com/map.png'><script>locus.loadCanvas('locus://a');</script>",
+        "<img src='https://example.com/map.png'>",
     );
-    note(
-        root.path(),
-        "a",
-        "<script>locus.loadCanvas('locus://b');</script>",
-    );
-    note(
-        root.path(),
-        "b",
-        "<script>locus.loadCanvas('locus://a');</script>",
-    );
+    fs::write(
+        directory.join("canvas/main.js"),
+        "import './a.js'; export async function main(data) {}",
+    )
+    .unwrap();
+    fs::write(directory.join("canvas/a.js"), "import './b.js';").unwrap();
+    fs::write(directory.join("canvas/b.js"), "import './a.js';").unwrap();
     let export = prepare_download(root.path(), &directory, false, Dependencies::default()).unwrap();
-    assert_eq!(export.files.len(), 1);
+    assert_eq!(export.files.len(), 4);
     assert!(
         String::from_utf8(export.files["canvas.html"].clone())
             .unwrap()
@@ -396,4 +388,81 @@ fn export_includes_nested_canvas_assets_and_cross_note_content() {
         fs::read(output.join("_locus/resource/other/assets/image.png")).unwrap(),
         [4, 5, 6]
     );
+}
+
+#[test]
+fn json_data_includes_caller_assets_and_css_source_without_executing_css_imports() {
+    let root = tempfile::tempdir().unwrap();
+    let caller = note(root.path(), "caller", "unused");
+    let template = note(root.path(), "template", "<p>Preview</p>");
+    fs::remove_file(caller.join("canvas/index.html")).unwrap();
+    fs::write(caller.join("canvas/index.json"), r#"{"template":"locus://template","data":{"css":"locus://caller/canvas/theme.css","photo":"locus://caller/assets/photo.png"}}"#).unwrap();
+    fs::write(
+        caller.join("canvas/theme.css"),
+        "@import 'tailwindcss'; :root { --color: red; }",
+    )
+    .unwrap();
+    fs::create_dir(caller.join("assets")).unwrap();
+    fs::write(caller.join("assets/photo.png"), [4, 2]).unwrap();
+    fs::write(
+        template.join("canvas/main.js"),
+        "export async function main(data) { await fetch(data.css); }",
+    )
+    .unwrap();
+    let export = prepare_download(root.path(), &caller, false, Dependencies::default()).unwrap();
+    assert_eq!(
+        export.files["_locus/resource/caller/assets/photo.png"],
+        [4, 2]
+    );
+    assert_eq!(
+        export.files["_locus/resource/caller/canvas/theme.css"],
+        b"@import 'tailwindcss'; :root { --color: red; }"
+    );
+}
+
+#[test]
+fn module_imports_and_import_meta_urls_use_the_module_while_fetch_uses_the_page() {
+    let root = tempfile::tempdir().unwrap();
+    let note = note(root.path(), "note", "<p>Module</p>");
+    fs::create_dir(note.join("canvas/scripts")).unwrap();
+    fs::write(
+        note.join("canvas/main.js"),
+        "import './scripts/view.js'; export async function main(data) {}",
+    )
+    .unwrap();
+    fs::write(note.join("canvas/scripts/view.js"), "import './helper.js'; fetch('data.json'); const image = new URL('./photo.png', import.meta.url);").unwrap();
+    fs::write(
+        note.join("canvas/scripts/helper.js"),
+        "export const value = 42;",
+    )
+    .unwrap();
+    fs::write(note.join("canvas/scripts/photo.png"), [1, 2]).unwrap();
+    fs::write(note.join("canvas/data.json"), "{\"correct\":true}").unwrap();
+    fs::write(note.join("canvas/scripts/data.json"), "{\"wrong\":true}").unwrap();
+    let export = prepare_download(root.path(), &note, false, Dependencies::default()).unwrap();
+    assert_eq!(export.files["data.json"], b"{\"correct\":true}");
+    assert!(!export.files.contains_key("scripts/data.json"));
+    assert!(export.files.contains_key("scripts/helper.js"));
+    assert_eq!(export.files["scripts/photo.png"], [1, 2]);
+}
+
+#[test]
+fn an_import_back_to_main_preserves_its_module_identity() {
+    let root = tempfile::tempdir().unwrap();
+    let directory = note(root.path(), "note", "<p>Module cycle</p>");
+    fs::write(
+        directory.join("canvas/main.js"),
+        "import './helper.js'; export const value = 42; export async function main(data) {}",
+    )
+    .unwrap();
+    fs::write(
+        directory.join("canvas/helper.js"),
+        "import { value } from './main.js'; export function read() { return value; }",
+    )
+    .unwrap();
+    let export = prepare_download(root.path(), &directory, false, Dependencies::default()).unwrap();
+    assert!(export.files.contains_key("main.js"));
+    assert!(export.files.contains_key("helper.js"));
+    let html = std::str::from_utf8(&export.files["canvas.html"]).unwrap();
+    assert!(html.contains("runCanvas(() => import(new URL('main.js', document.baseURI).href))"));
 }

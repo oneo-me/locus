@@ -66,7 +66,13 @@ fn archives_directories_and_canvas_remain_operable_without_native_paths() {
         .write_text(&canvas, "<div>Canvas</div>", "missing")
         .unwrap();
     assert_eq!(
-        crate::load_canvas_template(root.path(), note.uri()).unwrap(),
+        crate::load_canvas(
+            root.path(),
+            &root
+                .path()
+                .join(crate::library_reference_path(note.uri()).unwrap())
+        )
+        .unwrap(),
         "<div>Canvas</div>"
     );
     let manifest = library.export_manifest("locus://目录").unwrap();
@@ -447,7 +453,7 @@ fn emitted_addresses_resolve_in_navigation_and_canvas_templates() {
         let path = crate::library_reference_path(uri).unwrap();
         assert!(tree.node(&path).is_some(), "{uri}");
         assert_eq!(
-            crate::load_canvas_template(root.path(), uri).unwrap(),
+            crate::load_canvas(root.path(), &root.path().join(&path)).unwrap(),
             "<p>Template</p>"
         );
     }

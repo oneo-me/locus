@@ -13,7 +13,8 @@ use std::{
 
 #[derive(Clone, Default)]
 pub(crate) struct Dependencies {
-    pub(crate) templates: BTreeSet<String>,
+    pub(crate) imports: BTreeSet<String>,
+    pub(crate) stylesheets: BTreeSet<String>,
     pub(crate) resources: BTreeSet<String>,
 }
 
@@ -172,83 +173,116 @@ pub(crate) fn prepare_download(
     dark: bool,
     mut dependencies: Dependencies,
 ) -> io::Result<CanvasDownload> {
-    let source = super::resources::rewrite_resources(&locus_library::load_canvas(root, directory)?);
-    if source.trim().is_empty() {
-        return Err(io::Error::other("Canvas is empty"));
-    }
-    let mut templates = BTreeMap::new();
+    let canvas = locus_library::resolve_canvas(root, directory)?;
+    let directory = canvas.directory();
+    let source = super::resources::rewrite_resources(canvas.html());
+    let base = super::resources::canvas_base(root, directory)?;
+    let base = base.trim_start_matches('/');
+    dependencies.resources = dependencies
+        .resources
+        .into_iter()
+        .map(|name| name.strip_prefix(base).unwrap_or(&name).to_owned())
+        .collect();
+    dependencies.stylesheets = dependencies
+        .stylesheets
+        .into_iter()
+        .map(|name| name.strip_prefix(base).unwrap_or(&name).to_owned())
+        .collect();
+    dependencies.resources.insert("main.js".to_owned());
     let mut resources = BTreeMap::new();
+    let mut parsed_stylesheets = BTreeSet::new();
+    let mut main_is_dependency = false;
     discover(
         &source,
         SourceKind::Html,
         &directory.join("canvas"),
         &mut dependencies,
     )?;
-    loop {
-        if let Some(uri) = dependencies.templates.pop_first() {
-            let key = locus_library::library_reference_path(&uri)
-                .ok_or_else(|| io::Error::other("Invalid template address"))?;
-            if templates.contains_key(&key) {
-                continue;
-            }
-            let template = locus_library::load_canvas_template(root, &uri)
-                .map_err(|error| io::Error::other(format!("{uri}: {error}")))?;
-            if template.trim().is_empty() {
-                return Err(io::Error::other(format!("Empty template: {uri}")));
-            }
-            let template = super::resources::rewrite_resources(&template);
-            discover(
-                &template,
-                SourceKind::Html,
-                &directory.join("canvas"),
-                &mut dependencies,
-            )?;
-            templates.insert(key, template);
-        } else if let Some(name) = dependencies.resources.pop_first() {
-            let name = super::resources::resource_key(&name).to_owned();
-            if resources.contains_key(&name) {
-                continue;
-            }
-            let mut bytes = super::resources::read_resource(root, directory, &name)
-                .map_err(|error| io::Error::other(format!("{name}: {error}")))?;
-            if matches!(
-                Path::new(&name).extension().and_then(|ext| ext.to_str()),
-                Some("css" | "js" | "mjs" | "json" | "svg")
-            ) {
-                let text = std::str::from_utf8(&bytes).map_err(io::Error::other)?;
-                let kind = if name.ends_with(".svg") {
-                    SourceKind::Html
-                } else if name.ends_with(".css") {
-                    SourceKind::Css
-                } else {
-                    SourceKind::Script
-                };
-                let text = super::resources::rewrite_resources(text);
-                let mut discovered = Dependencies::default();
-                let parent = Path::new(&name).parent().unwrap_or(Path::new(""));
-                discover(
-                    &text,
-                    kind,
-                    &directory.join("canvas").join(parent),
-                    &mut discovered,
-                )?;
-                dependencies.templates.extend(discovered.templates);
-                for resource in discovered.resources {
-                    let resource = if resource.starts_with(super::resources::LIBRARY_PREFIX)
-                        || !matches!(kind, SourceKind::Css)
-                    {
-                        resource
-                    } else {
-                        normalize_resource(&parent.join(resource).to_string_lossy())?
-                    };
-                    dependencies.resources.insert(resource);
-                }
-                bytes = text.into_bytes();
-            }
-            resources.insert(name, bytes);
-        } else {
-            break;
+    discover(
+        &super::resources::rewrite_resources(
+            &serde_json::to_string(canvas.data()).map_err(io::Error::other)?,
+        ),
+        SourceKind::Data,
+        &directory.join("canvas"),
+        &mut dependencies,
+    )?;
+    dependencies.resources.append(&mut dependencies.imports);
+    while let Some(name) = dependencies.resources.pop_first() {
+        let name = super::resources::resource_key(&name).to_owned();
+        if resources.contains_key(&name)
+            && (!dependencies.stylesheets.contains(&name) || parsed_stylesheets.contains(&name))
+        {
+            continue;
         }
+        let mut bytes = super::resources::read_resource(root, directory, &name)
+            .map_err(|error| io::Error::other(format!("{name}: {error}")))?;
+        if matches!(
+            Path::new(&name).extension().and_then(|ext| ext.to_str()),
+            Some("css" | "js" | "mjs" | "json" | "svg")
+        ) {
+            let text = super::resources::rewrite_resources(
+                std::str::from_utf8(&bytes).map_err(io::Error::other)?,
+            );
+            let kind = if name.ends_with(".svg") {
+                SourceKind::Html
+            } else if name.ends_with(".css") && dependencies.stylesheets.contains(&name) {
+                SourceKind::Css
+            } else if name.ends_with(".js") || name.ends_with(".mjs") {
+                SourceKind::Script
+            } else {
+                SourceKind::Data
+            };
+            if matches!(kind, SourceKind::Css) {
+                parsed_stylesheets.insert(name.clone());
+            }
+            let parent = Path::new(&name).parent().unwrap_or(Path::new(""));
+            let physical = if matches!(kind, SourceKind::Script | SourceKind::Data) {
+                directory.join("canvas")
+            } else if let Some(path) = name.strip_prefix(super::resources::LIBRARY_PREFIX) {
+                let path = percent_encoding::percent_decode_str(path)
+                    .decode_utf8()
+                    .map_err(io::Error::other)?;
+                root.join(path.as_ref()).parent().unwrap().to_path_buf()
+            } else {
+                directory.join("canvas").join(parent)
+            };
+            let mut discovered = Dependencies::default();
+            discover(&text, kind, &physical, &mut discovered)?;
+            for import in discovered.imports {
+                let import = if import.starts_with(super::resources::LIBRARY_PREFIX) {
+                    import
+                } else {
+                    normalize_resource(&parent.join(import).to_string_lossy())?
+                };
+                if import == "main.js" || import.strip_prefix(base) == Some("main.js") {
+                    main_is_dependency = true;
+                }
+                dependencies.resources.insert(import);
+            }
+            let parent = if matches!(kind, SourceKind::Script | SourceKind::Data) {
+                Path::new("")
+            } else {
+                parent
+            };
+            for stylesheet in discovered.stylesheets {
+                let stylesheet = if stylesheet.starts_with(super::resources::LIBRARY_PREFIX) {
+                    stylesheet
+                } else {
+                    normalize_resource(&parent.join(stylesheet).to_string_lossy())?
+                };
+                dependencies.stylesheets.insert(stylesheet);
+            }
+            for resource in discovered.resources {
+                let resource = if resource.starts_with(super::resources::LIBRARY_PREFIX) {
+                    resource
+                } else {
+                    normalize_resource(&parent.join(resource).to_string_lossy())?
+                };
+                dependencies.resources.insert(resource);
+            }
+            bytes = text.into_bytes();
+        }
+        resources.insert(name, bytes);
     }
     let encoded: BTreeMap<_, _> = resources
         .iter()
@@ -263,16 +297,7 @@ pub(crate) fn prepare_download(
             )
         })
         .collect();
-    let templates: BTreeMap<_, _> = templates
-        .into_iter()
-        .map(|(key, source)| {
-            (
-                key,
-                source.replace("/_locus/resource/", "./_locus/resource/"),
-            )
-        })
-        .collect();
-    let bundle = serde_json::json!({"templates": templates, "resources": encoded});
+    let bundle = serde_json::json!({"resources": encoded});
     let bundle = serde_json::to_string(&bundle)
         .map_err(io::Error::other)?
         .replace('<', "\\u003c");
@@ -282,14 +307,37 @@ pub(crate) fn prepare_download(
         .replace('<', "\\u003c");
     let bootstrap = format!("<script>({runtime})(JSON.parse({bundle}));</script>");
     let source = source.replace("/_locus/resource/", "./_locus/resource/");
-    let html = super::view::canvas_document(&source, dark).replacen(
-        "<script>",
-        &format!("{bootstrap}<script>"),
-        1,
+    let main = std::str::from_utf8(&resources["main.js"]).map_err(io::Error::other)?;
+    let inline_main = !main.contains("import") && !main_is_dependency;
+    let entry = if inline_main {
+        let lifecycle = include_str!("main.js");
+        let main = main.replace("/_locus/resource/", "./_locus/resource/");
+        let module = format!("data:text/javascript;base64,{}", STANDARD.encode(main));
+        format!(
+            "<script>{lifecycle}\nwindow.addEventListener('load', () => runCanvas(() => import('{module}')), {{once:true}});</script>"
+        )
+    } else {
+        super::view::canvas_entry()
+    };
+    let html = super::view::canvas_document_with_data(
+        &source,
+        dark,
+        "./",
+        canvas.data(),
+        &bootstrap,
+        &entry,
     );
+    let html = if inline_main {
+        html.replace(
+            "script-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline' data:",
+        )
+    } else {
+        html
+    };
     let mut exported = BTreeMap::new();
     for (name, bytes) in resources {
-        if name.contains('?') {
+        if name.contains('?') || (inline_main && name == "main.js") {
             continue;
         }
         let decoded = if name.starts_with(super::resources::LIBRARY_PREFIX) {
@@ -340,8 +388,11 @@ static RESOURCE_CALL: LazyLock<Regex> = LazyLock::new(|| {
 });
 static CSS_IMPORT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?i)@import\s+["']([^"']+)["']"#).unwrap());
-static TEMPLATE_CALL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"\bloadCanvas\s*\(\s*["'`](locus://[^"'`]+)["'`]\s*[,)]"#).unwrap()
+static MODULE_IMPORT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"\b(?:from\s*|import\s*(?:\(\s*)?)["']([^"']+)["']"#).unwrap());
+
+static MODULE_URL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"\bnew\s+URL\s*\(\s*["']([^"']+)["']\s*,\s*import\.meta\.url\s*\)"#).unwrap()
 });
 
 #[derive(Clone, Copy)]
@@ -349,6 +400,7 @@ enum SourceKind {
     Html,
     Css,
     Script,
+    Data,
 }
 
 fn discover(
@@ -357,9 +409,14 @@ fn discover(
     directory: &Path,
     dependencies: &mut Dependencies,
 ) -> io::Result<()> {
-    for captures in TEMPLATE_CALL.captures_iter(source) {
-        if !captures[1].contains("${") {
-            dependencies.templates.insert(captures[1].to_owned());
+    if matches!(kind, SourceKind::Script | SourceKind::Html) {
+        for captures in MODULE_IMPORT
+            .captures_iter(source)
+            .chain(MODULE_URL.captures_iter(source))
+        {
+            if let Some(name) = local_name(&captures[1])? {
+                dependencies.imports.insert(name);
+            }
         }
     }
     for captures in STRINGS.captures_iter(source) {
@@ -368,6 +425,7 @@ fn discover(
             discover_css(value, dependencies)?;
         }
         if let Ok(Some(name)) = local_name(value)
+            && !dependencies.imports.contains(&name)
             && !name.eq_ignore_ascii_case("index.md")
             && !name.eq_ignore_ascii_case("canvas.html")
             && !name.ends_with('/')
@@ -379,11 +437,13 @@ fn discover(
             dependencies.resources.insert(name);
         }
     }
-    for captures in RESOURCE_CALL.captures_iter(source) {
-        if !captures[1].contains("${")
-            && let Some(name) = local_name(&captures[1])?
-        {
-            dependencies.resources.insert(name);
+    if matches!(kind, SourceKind::Script | SourceKind::Html) {
+        for captures in RESOURCE_CALL.captures_iter(source) {
+            if !captures[1].contains("${")
+                && let Some(name) = local_name(&captures[1])?
+            {
+                dependencies.resources.insert(name);
+            }
         }
     }
     match kind {
@@ -394,6 +454,11 @@ fn discover(
             let tokenizer = Tokenizer::new(ResourceUrls::default(), Default::default());
             let _ = tokenizer.feed(&input);
             tokenizer.end();
+            for url in tokenizer.sink.stylesheets.into_inner() {
+                if let Some(name) = local_name(&url)? {
+                    dependencies.stylesheets.insert(name);
+                }
+            }
             for url in tokenizer.sink.urls.into_inner() {
                 if let Some(name) = local_name(&url)? {
                     dependencies.resources.insert(name);
@@ -401,12 +466,17 @@ fn discover(
             }
             discover_css(&tokenizer.sink.styles.into_inner(), dependencies)?;
         }
-        SourceKind::Script => {}
+        SourceKind::Script | SourceKind::Data => {}
     }
     Ok(())
 }
 
 fn discover_css(source: &str, dependencies: &mut Dependencies) -> io::Result<()> {
+    for captures in CSS_IMPORT.captures_iter(source) {
+        if let Some(name) = local_name(&captures[1])? {
+            dependencies.stylesheets.insert(name);
+        }
+    }
     for captures in CSS_URL
         .captures_iter(source)
         .chain(CSS_IMPORT.captures_iter(source))
@@ -414,6 +484,9 @@ fn discover_css(source: &str, dependencies: &mut Dependencies) -> io::Result<()>
         if !captures[1].contains("${")
             && let Some(name) = local_name(&captures[1])?
         {
+            if name.ends_with(".css") {
+                dependencies.stylesheets.insert(name.clone());
+            }
             dependencies.resources.insert(name);
         }
     }
@@ -446,6 +519,7 @@ fn local_name(url: &str) -> io::Result<Option<String>> {
 
 #[derive(Default)]
 struct ResourceUrls {
+    stylesheets: RefCell<Vec<String>>,
     urls: RefCell<Vec<String>>,
     styles: RefCell<String>,
     in_style: Cell<bool>,
@@ -467,7 +541,20 @@ impl TokenSink for ResourceUrls {
             if tag.kind != TagKind::StartTag {
                 return TokenSinkResult::Continue;
             }
+            let stylesheet = tag.name.as_ref() == "link"
+                && tag.attrs.iter().any(|attribute| {
+                    attribute.name.local.as_ref() == "rel"
+                        && attribute
+                            .value
+                            .split_ascii_whitespace()
+                            .any(|value| value.eq_ignore_ascii_case("stylesheet"))
+                });
             for attribute in tag.attrs {
+                if stylesheet && attribute.name.local.as_ref() == "href" {
+                    self.stylesheets
+                        .borrow_mut()
+                        .push(attribute.value.to_string());
+                }
                 let name = attribute.name.local.as_ref();
                 if matches!(name, "src" | "poster" | "href" | "xlink:href") {
                     self.urls.borrow_mut().push(attribute.value.to_string());

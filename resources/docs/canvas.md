@@ -1,27 +1,38 @@
 # Canvas authoring
 
-Each note can own one canvas: `canvas/index.html` under the note directory containing `index.md`. Create or edit that file directly when using the standard MCP endpoint and local filesystem tools. On the full MCP endpoint, read or write the note's `canvas` content target through its content tools, respecting content versions. Use `canvas_file` with a relative `name` for other files under `canvas/`, including nested paths; upload tools accept binary resources.
+Each note can own one canvas under `canvas/`. Choose exactly one entry:
 
+- `index.html`: an HTML fragment with a required `main.js` ES module exporting `async function main(data)`.
+- `index.json`: a template invocation containing exactly `template` and `data`. Do not also create `index.html` or a caller bootstrap script.
+
+With the standard MCP endpoint, edit files using local filesystem tools. On the full endpoint, the `canvas` content target addresses `canvas/index.html`; use `canvas_file` with `name: "index.json"`, `name: "main.js"`, or another relative path for the other canvas files. Respect content versions; upload tools accept binary resources.
 A canvas replaces the Markdown reading area. Keep only YAML frontmatter in `index.md` when authoring a canvas note; put independently maintained prose in another note. Do not automatically discard existing Markdown when updating an existing mixed note. Do not use a Markdown `canvas` fence or an attachment reference to display a canvas.
 
 ## HTML format
 
-Write an HTML fragment, not a complete page: omit `<!doctype html>`, `<html>`, `<head>`, and `<body>`. The host uses the note title, so do not set a separate page title. Tailwind CSS is already available. Fragments can contain Tailwind classes, `<style>`, `<style type="text/tailwindcss">`, and `<script>`.
+Write an HTML fragment, not a complete page: omit `<!doctype html>`, `<html>`, `<head>`, and `<body>`. The host supplies the note title, theme and Tailwind. Keep markup in `index.html`, initialization and interaction in `main.js`, and substantial styles in a CSS file. Small styles and non-executable JSON/text data blocks can remain in the fragment. Local third-party scripts may use ordinary `<script src>` tags.
+
+`canvas/index.html`:
 
 ```html
-<main class="min-h-full bg-white p-6 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
-  <h1 class="mb-4 text-xl font-semibold">Counter</h1>
-  <button id="counter" class="rounded-lg bg-blue-600 px-4 py-2 text-white">Clicks: 0</button>
-  <script>
-    (() => {
-      let count = 0;
-      document.getElementById('counter').addEventListener('click', function () {
-        this.textContent = `Clicks: ${++count}`;
-      });
-    })();
-  </script>
+<link rel="stylesheet" href="style.css">
+<main class="min-h-full p-6">
+  <button id="counter">Clicks: 0</button>
 </main>
 ```
+
+`canvas/main.js`:
+
+```js
+export async function main(data) {
+  let count = 0;
+  document.getElementById('counter').addEventListener('click', function () {
+    this.textContent = `Clicks: ${++count}`;
+  });
+}
+```
+
+The host waits for the page's resources, imports `main.js` once and awaits `main(data)`. A directly opened HTML canvas receives `null`; a template receives the exact JSON `data` value. Even static canvases must export a main function, which may do nothing. The host reports entry/configuration errors, module import failures, missing main and rejected main calls; fix the cause and refresh. Initialization belongs in main, not in an automatically executed bootstrap. Timers and later event handlers own their subsequent errors.
 
 ## Presentation and lifecycle
 
@@ -29,7 +40,7 @@ The canvas fills the content area below the title and metadata. Summary and cust
 
 Saving a file does not reload an open canvas. With canvas focus, press Cmd/Ctrl+R or F5 to reload its owning note's canvas and rerun scripts. Leaving and reopening the note also reloads it. In-memory interaction state is lost on refresh or departure. An empty or unreadable file produces a recoverable message; fix it and refresh.
 
-Combine multiple views in one file using tabs, sections, or disclosure panels. Preserve other sections' state during internal navigation. Use unique DOM IDs, scoped selectors, and separate script scopes.
+Combine multiple views in one canvas using tabs, sections, or disclosure panels. Preserve other sections' state during internal navigation. Use unique DOM IDs, scoped selectors, and separate script scopes.
 
 The canvas uses the available content width. Use `dark:` classes or `.dark` selectors to follow the application theme; theme changes do not reload the page.
 
@@ -37,7 +48,7 @@ For a page that scrolls, use `min-h-full` (`min-height:100%`) on the root so the
 
 ## Resources and network policy
 
-Styles and scripts can be inline or reference files under the note’s `canvas/` directory. Relative URLs resolve from `canvas/index.html`; nested directories, JavaScript modules, CSS, images, fonts and data files are supported, without an extension allowlist. For example, `<img src="photo.jpg" alt="Photo description">` loads a local image. URL-encode filenames containing spaces or non-ASCII characters. Data and blob images are supported.
+Relative HTML resource URLs and fetches resolve from the rendering canvas’s directory; module imports resolve from their importing module, and CSS URLs from their stylesheet. Thus a template’s relative resources belong to the template, not the calling note; nested directories, JavaScript modules, CSS, images, fonts and data files are supported, without an extension allowlist. For example, `<img src="photo.jpg" alt="Photo description">` loads a local image. URL-encode filenames containing spaces or non-ASCII characters. Data and blob images are supported.
 
 Local resources are read on request without caching. Canvas subdirectories and hidden resource files are allowed. Paths must remain in the resource tree; symbolic links and directory browsing are unavailable. Use explicit library addresses to read other note resources. Read `locus-docs://attachments` through MCP for Markdown attachment syntax.
 
@@ -45,38 +56,33 @@ HTTPS images and HTTPS data requests are allowed, including map tiles and map da
 
 ## Reusable templates
 
-Any note's canvas can serve as a template. Call:
+Any note with `canvas/index.html` and `canvas/main.js` can serve as a template. A caller writes only `canvas/index.json`:
 
-```html
-<script>
-locus.loadCanvas('locus://templates/message', { message: 'Template input' })
-  .catch(error => {
-    document.body.textContent = 'Unable to load the template. Refresh to retry.';
-    console.error(error);
-  });
-</script>
+```json
+{
+  "template": "locus://templates/message",
+  "data": { "message": "Template input" }
+}
 ```
 
-`await locus.loadCanvas(uri, data)` reads the template fragment, appends a container to the current page, and runs its scripts with the supplied input. It resolves to `undefined`; there is no returned renderer or exported object and no container argument. The address identifies an existing note in the current library, without a resource suffix. Percent-encode special characters in note addresses; the empty library-root address is not a template.
+The two fields are required, and extra fields are rejected. `template` identifies an existing note in the current library, without a resource suffix. It must resolve directly to an HTML canvas, not another JSON invocation; chained or cyclic template configurations are rejected. HTML and JSON entries are mutually exclusive. `data` can be any JSON value; the template's main defines, validates and handles its input schema. The host does not merge inputs or infer defaults.
 
-Templates interpret their input and own rendering and interaction. At the start of an inline classic script, capture `document.currentScript.canvas`: `data` is the caller's input and `root` is the inserted container. Save this context before asynchronous work; `document.currentScript` is not available later in a callback.
+For this example, the template's HTML contains `<p class="result"></p>`, and its main module contains:
 
-```html
-<p class="result"></p>
-<script>
-(() => {
-  const canvas = document.currentScript.canvas;
-  if (!canvas) return;
-  canvas.root.querySelector('.result').textContent = canvas.data.message;
-})();
-</script>
+```js
+export async function main(data) {
+  if (data === null) {
+    document.querySelector('.result').textContent = 'Call this template with message data.';
+    return;
+  }
+  if (typeof data.message !== 'string') throw new TypeError('message must be a string');
+  document.querySelector('.result').textContent = data.message;
+}
 ```
 
-Template scripts execute in file order. Imported fragments support inline classic JavaScript, local `script src`, module scripts and JSON data blocks. External and module scripts wait for their load event before later scripts run; use `document.currentScript.canvas` in classic external scripts as well. Modules do not expose `document.currentScript`. Load failures, invalid fragments, and synchronous script errors reject the Promise and remove the inserted container. Global side effects already performed by scripts are not rolled back. Resolution waits for script execution and external/module script loading, not scripts’ subsequent network requests or asynchronous work; templates handle those states and errors themselves.
+The template supplies the entire canvas content and uses the same theme and security policy as an ordinary canvas. It may import helper modules and load local CSS or other resources. Pass caller-owned resources as explicit `locus://` addresses in `data`; relative addresses belong to the template. Template edits take effect when the caller refreshes or reopens. There is no imperative template loader or per-script context.
 
-Templates run in the caller's page with the same Tailwind, theme, and content security policy, without an iframe or separate sandbox. Relative resources use the calling canvas directory. Use explicit `locus://` resource addresses for files belonging to the template note. Scope scripts and styles carefully: repeated loads do not isolate globals, CSS, or duplicate IDs. Nested template calls are allowed; authors must prevent cycles and manage timers, subscriptions, and other resources. When a template is opened directly, `document.currentScript.canvas` is absent; provide a preview or explanatory message if needed.
-
-Template addresses identify existing notes in the current library. The host reads their fixed `canvas/index.html`; parent traversal, hidden paths, symbolic links, non-note directories, and paths outside the library are rejected. Every call rereads the file. Template edits affect an existing caller only after refresh or reopening. Templates cannot be navigated to as separate WebView pages. Arbitrary file access and remote scripts remain blocked.
+Template addresses reject parent traversal, hidden paths, symbolic links, non-note directories and paths outside the library. Encoded addresses are decoded once. Reading raw `canvas/index.json` through a library resource URL returns its JSON contents, not rendered HTML.
 
 ## Library resources and note data
 
@@ -95,16 +101,15 @@ Use these addresses from a canvas:
 
 Static HTML/CSS resource addresses and image/link attributes accept these addresses. For dynamic resource constructors, modules or Workers, use `locus.resourceUrl(uri)` to obtain the host URL, for example `new Worker(locus.resourceUrl('locus://example/canvas/worker.js'))`. The helper only maps an address; the host validates access. Encoded note names and resource filenames are decoded once. Parent traversal and symlinks are rejected; note paths cannot pass through reserved resource directories. Library paths never grant arbitrary filesystem access.
 
-```html
-<img src="locus://projects/example/assets/photo.png" alt="Example">
-<script>
-(async () => {
+```js
+export async function main(data) {
   const response = await fetch('locus://projects/example/index.md?part=yaml');
   if (!response.ok) throw new Error('Unable to read note data');
   const yamlSource = await response.text();
   console.log(yamlSource);
-})();
-</script>
+}
 ```
 
 Downloads include referenced nested canvas files and library resources, and snapshot referenced YAML/body responses for offline fetch. Dynamic dependencies must have been loaded before downloading. Online data still requires a network connection.
+
+Downloads resolve the template and preserve its data and resource ownership. Self-contained main modules are embedded as data URLs and imported with the same lifecycle as live canvases. Main modules with imports or `import.meta`, and modules imported by other modules, remain files to preserve module resolution and identity. The export permits its embedded data module in the script policy. Native module imports and Workers may require a local HTTP server when a browser blocks file-origin requests.
