@@ -555,11 +555,32 @@ impl FullMcp {
 
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for FullMcp {
+    async fn list_resources(
+        &self,
+        request: Option<rmcp::model::PaginatedRequestParams>,
+        _: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<rmcp::model::ListResourcesResult, rmcp::ErrorData> {
+        crate::docs::list(request)
+    }
+
+    async fn read_resource(
+        &self,
+        request: rmcp::model::ReadResourceRequestParams,
+        _: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<rmcp::model::ReadResourceResponse, rmcp::ErrorData> {
+        crate::docs::read(&request.uri)
+    }
+
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("locus-full", env!("CARGO_PKG_VERSION")))
-            .with_protocol_version(ProtocolVersion::V_2025_11_25)
-            .with_instructions(INSTRUCTIONS)
+        ServerInfo::new(
+            ServerCapabilities::builder()
+                .enable_tools()
+                .enable_resources()
+                .build(),
+        )
+        .with_server_info(Implementation::new("locus-full", env!("CARGO_PKG_VERSION")))
+        .with_protocol_version(ProtocolVersion::V_2025_11_25)
+        .with_instructions(format!("{INSTRUCTIONS} {}", crate::docs::INSTRUCTIONS))
     }
     fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]> {
         Cow::Owned(vec![ProtocolVersion::V_2025_11_25])

@@ -11,6 +11,19 @@ The service is disabled by default. Local-network mode exposes both endpoints wi
 
 The full endpoint never asks the client to edit server files. A client still needs to supply upload bytes and save download bytes. Original note text and user metadata are returned faithfully, including any paths already written by the author.
 
+## Built-in software documentation
+
+Both endpoints expose read-only English Markdown through MCP `resources/list` and `resources/read`:
+
+| URI | Specification |
+| --- | --- |
+| `locus-docs://attachments` | Attachment ownership, gallery and file-reference syntax. |
+| `locus-docs://canvas` | Canvas authoring, lifecycle, local/network resources and templates. |
+
+Read the relevant resource before authoring note attachments or canvases. These addresses identify software documentation, not library notes; do not pass them to article or content tools. Resources remain available when no library is selected and cannot be overridden by library content. Unknown URIs return a resource-not-found error.
+
+The source files live in [`resources/docs`](../../resources/docs). The same files are embedded at compile time for MCP access and copied by the packer to `Contents/Resources/docs` on macOS or `resources/docs` in the Windows portable directory. Documentation therefore follows the running application version and requires no separate file access by the client.
+
 ## Standard discovery paths
 
 `resolve_article` accepts a library-relative path or a `locus://` address in its `path` parameter, for example `{"path":"locus://projects/example"}`. Either form may end in `/index.md`. `list_articles.parent` accepts the same forms; an empty parent or `locus://` lists the library root. The root cannot be resolved as an article. Returned `path` values remain library-relative.

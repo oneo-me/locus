@@ -2,3 +2,4 @@ package = "locus"
 bin = "locus"
 name = "Locus"
 identifier = "me.oneo.locus"
+resources = [{ source = "resources/docs", destination = "docs" }]

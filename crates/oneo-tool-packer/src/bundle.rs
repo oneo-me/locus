@@ -372,6 +372,24 @@ resources = ["templates"]
     }
 
     #[test]
+    fn locus_bundle_contains_the_builtin_documentation() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let config: crate::config::Config =
+            toml::from_str(&fs::read_to_string(root.join("packer.toml")).unwrap()).unwrap();
+        let output = tempfile::tempdir().unwrap();
+        for platform in ["Locus.app/Contents/Resources", "Locus/resources"] {
+            let destination = output.path().join(platform);
+            copy_resources(&root, &config.resources, &destination).unwrap();
+            for name in ["attachments.md", "canvas.md"] {
+                assert_eq!(
+                    fs::read(destination.join("docs").join(name)).unwrap(),
+                    fs::read(root.join("resources/docs").join(name)).unwrap()
+                );
+            }
+        }
+    }
+
+    #[test]
     fn bundles_only_resources_for_the_selected_platform() {
         let root = tempfile::tempdir().unwrap();
         for (path, content) in [

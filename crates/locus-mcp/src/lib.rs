@@ -4,6 +4,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::path::PathBuf;
 use std::thread::{self, JoinHandle};
 
+mod docs;
 mod full;
 mod service;
 
@@ -278,6 +279,75 @@ mod tests {
         ));
         let released = TcpListener::bind((Ipv4Addr::LOCALHOST, port)).unwrap();
         drop(released);
+    }
+
+    #[tokio::test]
+    async fn both_endpoints_expose_builtin_docs_without_a_library() {
+        use rmcp::model::{ReadResourceRequestParams, ResourceContents};
+
+        let reserved = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = reserved.local_addr().unwrap().port();
+        drop(reserved);
+        let configuration = McpConfiguration {
+            library_path: None,
+            enabled: true,
+            port,
+            local_network: false,
+        };
+        let controller = McpServerController::new(&configuration);
+        assert!(matches!(controller.state(), McpServerState::Running));
+        for endpoint in ["mcp", "mcp/full"] {
+            let transport = StreamableHttpClientTransport::from_uri(format!(
+                "http://127.0.0.1:{port}/{endpoint}"
+            ));
+            let client = ().serve(transport).await.unwrap();
+            let info = client.peer_info().unwrap();
+            assert!(info.capabilities.resources.is_some());
+            assert!(
+                info.instructions
+                    .as_ref()
+                    .unwrap()
+                    .contains("locus-docs://attachments")
+            );
+            let listed = client.list_resources(None).await.unwrap();
+            assert!(listed.next_cursor.is_none());
+            assert_eq!(listed.resources.len(), 2);
+            for (resource, expected) in listed.resources.iter().zip([
+                include_str!("../../../resources/docs/attachments.md"),
+                include_str!("../../../resources/docs/canvas.md"),
+            ]) {
+                assert_eq!(resource.mime_type.as_deref(), Some("text/markdown"));
+                assert_eq!(resource.size, Some(expected.len() as u64));
+                let result = client
+                    .read_resource(ReadResourceRequestParams::new(&resource.uri))
+                    .await
+                    .unwrap();
+                let value = serde_json::to_value(result).unwrap();
+                let contents: Vec<ResourceContents> =
+                    serde_json::from_value(value["contents"].clone()).unwrap();
+                assert_eq!(
+                    contents,
+                    vec![
+                        ResourceContents::text(expected, &resource.uri)
+                            .with_mime_type("text/markdown")
+                    ]
+                );
+            }
+            for uri in [
+                "locus-docs://missing",
+                "locus-docs://canvas/../attachments",
+                "locus://standard/canvas",
+                "file:///etc/passwd",
+            ] {
+                assert!(
+                    client
+                        .read_resource(ReadResourceRequestParams::new(uri))
+                        .await
+                        .is_err()
+                );
+            }
+            client.cancel().await.unwrap();
+        }
     }
 
     #[tokio::test]

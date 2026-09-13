@@ -14,7 +14,7 @@ use locus_library::{
     LIBRARY_REFERENCE_SCHEME, LibraryNode, LibraryTree, library_reference_path, load_note,
 };
 
-const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path or locus:// address, call resolve_article directly with the path parameter (not uri); do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; sibling regular files are attachments, excluding index.md, icon.png, and canvas.html. canvas.html holds the note canvas as an HTML fragment; see locus://standard/canvas for authoring. Do not recreate CRUD or attachment tools through MCP.";
+const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path or locus:// address, call resolve_article directly with the path parameter (not uri); do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; sibling regular files are attachments, excluding index.md, icon.png, and canvas.html. canvas.html holds the note canvas as an HTML fragment; read the built-in locus-docs://canvas MCP resource for authoring. Do not recreate CRUD or attachment tools through MCP.";
 
 #[derive(Clone)]
 pub(super) struct LocusMcp {
@@ -226,11 +226,32 @@ impl LocusMcp {
 
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for LocusMcp {
+    async fn list_resources(
+        &self,
+        request: Option<rmcp::model::PaginatedRequestParams>,
+        _: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<rmcp::model::ListResourcesResult, rmcp::ErrorData> {
+        crate::docs::list(request)
+    }
+
+    async fn read_resource(
+        &self,
+        request: rmcp::model::ReadResourceRequestParams,
+        _: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<rmcp::model::ReadResourceResponse, rmcp::ErrorData> {
+        crate::docs::read(&request.uri)
+    }
+
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("locus", env!("CARGO_PKG_VERSION")))
-            .with_protocol_version(ProtocolVersion::V_2025_11_25)
-            .with_instructions(MCP_INSTRUCTIONS)
+        ServerInfo::new(
+            ServerCapabilities::builder()
+                .enable_tools()
+                .enable_resources()
+                .build(),
+        )
+        .with_server_info(Implementation::new("locus", env!("CARGO_PKG_VERSION")))
+        .with_protocol_version(ProtocolVersion::V_2025_11_25)
+        .with_instructions(format!("{MCP_INSTRUCTIONS} {}", crate::docs::INSTRUCTIONS))
     }
 
     fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]> {
