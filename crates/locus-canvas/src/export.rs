@@ -41,7 +41,7 @@ impl CanvasDownload {
             match std::fs::create_dir(&directory) {
                 Ok(()) => {
                     if let Err(error) = self.write_files(&directory) {
-                        let _ = std::fs::remove_dir(&directory);
+                        let _ = std::fs::remove_dir_all(&directory);
                         return Err(error);
                     }
                     return Ok(directory);
@@ -102,6 +102,10 @@ impl CanvasDownload {
         }
         let mut pending = Vec::new();
         for (name, bytes) in &self.files {
+            let path = directory.join(name);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
             let mut file = tempfile::NamedTempFile::new_in(directory)?;
             file.write_all(bytes)?;
             file.as_file().sync_all()?;
@@ -168,13 +172,18 @@ pub(crate) fn prepare_download(
     dark: bool,
     mut dependencies: Dependencies,
 ) -> io::Result<CanvasDownload> {
-    let source = locus_library::load_canvas(root, directory)?;
+    let source = super::resources::rewrite_resources(&locus_library::load_canvas(root, directory)?);
     if source.trim().is_empty() {
         return Err(io::Error::other("Canvas is empty"));
     }
     let mut templates = BTreeMap::new();
     let mut resources = BTreeMap::new();
-    discover(&source, SourceKind::Html, directory, &mut dependencies)?;
+    discover(
+        &source,
+        SourceKind::Html,
+        &directory.join("canvas"),
+        &mut dependencies,
+    )?;
     loop {
         if let Some(uri) = dependencies.templates.pop_first() {
             let key = locus_library::library_reference_path(&uri)
@@ -187,13 +196,20 @@ pub(crate) fn prepare_download(
             if template.trim().is_empty() {
                 return Err(io::Error::other(format!("Empty template: {uri}")));
             }
-            discover(&template, SourceKind::Html, directory, &mut dependencies)?;
+            let template = super::resources::rewrite_resources(&template);
+            discover(
+                &template,
+                SourceKind::Html,
+                &directory.join("canvas"),
+                &mut dependencies,
+            )?;
             templates.insert(key, template);
         } else if let Some(name) = dependencies.resources.pop_first() {
+            let name = super::resources::resource_key(&name).to_owned();
             if resources.contains_key(&name) {
                 continue;
             }
-            let bytes = locus_library::load_canvas_resource(root, directory, &name)
+            let mut bytes = super::resources::read_resource(root, directory, &name)
                 .map_err(|error| io::Error::other(format!("{name}: {error}")))?;
             if matches!(
                 Path::new(&name).extension().and_then(|ext| ext.to_str()),
@@ -207,7 +223,27 @@ pub(crate) fn prepare_download(
                 } else {
                     SourceKind::Script
                 };
-                discover(text, kind, directory, &mut dependencies)?;
+                let text = super::resources::rewrite_resources(text);
+                let mut discovered = Dependencies::default();
+                let parent = Path::new(&name).parent().unwrap_or(Path::new(""));
+                discover(
+                    &text,
+                    kind,
+                    &directory.join("canvas").join(parent),
+                    &mut discovered,
+                )?;
+                dependencies.templates.extend(discovered.templates);
+                for resource in discovered.resources {
+                    let resource = if resource.starts_with(super::resources::LIBRARY_PREFIX)
+                        || !matches!(kind, SourceKind::Css)
+                    {
+                        resource
+                    } else {
+                        normalize_resource(&parent.join(resource).to_string_lossy())?
+                    };
+                    dependencies.resources.insert(resource);
+                }
+                bytes = text.into_bytes();
             }
             resources.insert(name, bytes);
         } else {
@@ -221,9 +257,18 @@ pub(crate) fn prepare_download(
                 name,
                 format!(
                     "data:{};base64,{}",
-                    mime_guess::from_path(name).first_or_octet_stream(),
+                    super::resources::resource_mime(name),
                     STANDARD.encode(bytes)
                 ),
+            )
+        })
+        .collect();
+    let templates: BTreeMap<_, _> = templates
+        .into_iter()
+        .map(|(key, source)| {
+            (
+                key,
+                source.replace("/_locus/resource/", "./_locus/resource/"),
             )
         })
         .collect();
@@ -236,13 +281,49 @@ pub(crate) fn prepare_download(
         .map_err(io::Error::other)?
         .replace('<', "\\u003c");
     let bootstrap = format!("<script>({runtime})(JSON.parse({bundle}));</script>");
+    let source = source.replace("/_locus/resource/", "./_locus/resource/");
     let html = super::view::canvas_document(&source, dark).replacen(
         "<script>",
         &format!("{bootstrap}<script>"),
         1,
     );
-    resources.insert("canvas.html".to_owned(), html.into_bytes());
-    Ok(CanvasDownload { files: resources })
+    let mut exported = BTreeMap::new();
+    for (name, bytes) in resources {
+        if name.contains('?') {
+            continue;
+        }
+        let decoded = if name.starts_with(super::resources::LIBRARY_PREFIX) {
+            percent_encoding::percent_decode_str(&name)
+                .decode_utf8()
+                .map_err(io::Error::other)?
+                .into_owned()
+        } else {
+            name.clone()
+        };
+        let bytes = if matches!(
+            Path::new(&decoded).extension().and_then(|ext| ext.to_str()),
+            Some("css" | "js" | "mjs" | "svg" | "html")
+        ) {
+            let text = std::str::from_utf8(&bytes).map_err(io::Error::other)?;
+            {
+                let depth = Path::new(&decoded)
+                    .parent()
+                    .unwrap_or(Path::new(""))
+                    .components()
+                    .count();
+                text.replace(
+                    "/_locus/resource/",
+                    &format!("{}_locus/resource/", "../".repeat(depth)),
+                )
+                .into_bytes()
+            }
+        } else {
+            bytes
+        };
+        exported.insert(decoded, bytes);
+    }
+    exported.insert("canvas.html".to_owned(), html.into_bytes());
+    Ok(CanvasDownload { files: exported })
 }
 
 static STRINGS: LazyLock<Regex> = LazyLock::new(|| {
@@ -263,6 +344,7 @@ static TEMPLATE_CALL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"\bloadCanvas\s*\(\s*["'`](locus://[^"'`]+)["'`]\s*[,)]"#).unwrap()
 });
 
+#[derive(Clone, Copy)]
 enum SourceKind {
     Html,
     Css,
@@ -286,11 +368,13 @@ fn discover(
             discover_css(value, dependencies)?;
         }
         if let Ok(Some(name)) = local_name(value)
-            && !name.contains(['/', '\\'])
             && !name.eq_ignore_ascii_case("index.md")
             && !name.eq_ignore_ascii_case("canvas.html")
-            && std::fs::symlink_metadata(directory.join(&name))
-                .is_ok_and(|metadata| !metadata.is_dir())
+            && !name.ends_with('/')
+            && !name.contains("${")
+            && (name.starts_with(super::resources::LIBRARY_PREFIX)
+                || std::fs::symlink_metadata(directory.join(&name))
+                    .is_ok_and(|metadata| !metadata.is_dir()))
         {
             dependencies.resources.insert(name);
         }
@@ -338,6 +422,9 @@ fn discover_css(source: &str, dependencies: &mut Dependencies) -> io::Result<()>
 
 fn local_name(url: &str) -> io::Result<Option<String>> {
     let url = url.trim();
+    if let Some(path) = url.strip_prefix("/_locus/resource/") {
+        return Ok(Some(format!("{}{path}", super::resources::LIBRARY_PREFIX)));
+    }
     if url.is_empty()
         || url.starts_with(['#', '?'])
         || url.starts_with("//")
@@ -421,4 +508,23 @@ fn srcset_urls(mut source: &str) -> Vec<String> {
         }
     }
     urls
+}
+
+fn normalize_resource(path: &str) -> io::Result<String> {
+    let mut parts = Vec::new();
+    if path.starts_with('/') || path.contains('\\') {
+        return Err(io::Error::other("Invalid resource path"));
+    }
+    for part in path.split('/') {
+        match part {
+            "" | "." => (),
+            ".." => {
+                if parts.pop().is_none() {
+                    return Err(io::Error::other("Resource leaves the canvas"));
+                }
+            }
+            _ => parts.push(part),
+        }
+    }
+    Ok(parts.join("/"))
 }

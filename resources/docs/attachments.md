@@ -1,8 +1,8 @@
 # Attachments
 
-A note is a directory containing `index.md`. Ordinary files in that same directory are its attachments. `index.md`, `icon.png`, and `canvas.html` are reserved note resources, not ordinary attachments.
+A note is a directory containing `index.md`. Ordinary files in its `assets/` directory are its attachments. `assets/icon.png` is the reserved note icon and is excluded from attachments. `canvas/index.html` is the canvas entry; all files under `canvas/` belong to the canvas. `assets` and `canvas` are reserved directory names and cannot identify notes.
 
-Reference existing attachments by their actual same-directory filenames. Do not use absolute paths, parent paths, or missing files. Items are displayed in reference order.
+Reference existing attachments by their actual `assets/<filename>` paths. Do not use absolute paths, parent paths, or missing files. Items are displayed in reference order.
 
 ## Images
 
@@ -10,8 +10,8 @@ Use a `gallery` fenced block for one image or a gallery. Include only Markdown i
 
 ````markdown
 ```gallery
-![Materials and tools on a workbench](workbench.jpg)
-![Detail of the woven fabric](woven-detail.jpg)
+![Materials and tools on a workbench](assets/workbench.jpg)
+![Detail of the woven fabric](assets/woven-detail.jpg)
 ```
 ````
 
@@ -21,9 +21,9 @@ Use an `attachments` fenced block for files of any format. Include only Markdown
 
 ````markdown
 ```attachments
-[field-summary.pdf](field-summary.pdf)
-[source-data.csv](source-data.csv)
-[source-bundle.zip](source-bundle.zip)
+[field-summary.pdf](assets/field-summary.pdf)
+[source-data.csv](assets/source-data.csv)
+[source-bundle.zip](assets/source-bundle.zip)
 ```
 ````
 

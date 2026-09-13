@@ -176,12 +176,23 @@ impl CanvasView {
                                     {
                                         dependencies.templates.insert(uri.into_owned());
                                     }
-                                } else if let Ok(name) = percent_encoding::percent_decode_str(
-                                    request.uri().path().trim_start_matches('/'),
-                                )
-                                .decode_utf8()
-                                {
-                                    dependencies.resources.insert(name.into_owned());
+                                } else {
+                                    let path = request
+                                        .uri()
+                                        .path_and_query()
+                                        .map(|value| value.as_str())
+                                        .unwrap_or_default();
+                                    let name = path.trim_start_matches('/');
+                                    let name = if name.starts_with(super::resources::LIBRARY_PREFIX)
+                                    {
+                                        name.to_owned()
+                                    } else {
+                                        percent_encoding::percent_decode_str(name)
+                                            .decode_utf8()
+                                            .unwrap_or_default()
+                                            .into_owned()
+                                    };
+                                    dependencies.resources.insert(name);
                                 }
                             }
                             responder.respond(response);
@@ -403,18 +414,44 @@ fn canvas_response(
             .header("Cache-Control", "no-store")
             .header("X-Content-Type-Options", "nosniff")
             .header("Content-Security-Policy", CANVAS_POLICY)
-            .body(source.unwrap_or_default().into_bytes())
+            .body(super::resources::rewrite_resources(&source.unwrap_or_default()).into_bytes())
             .expect("canvas template response headers are valid");
     }
     if request.method() == Method::GET && request.uri().path() != "/canvas.html" {
-        let name = request.uri().path().strip_prefix('/').unwrap_or_default();
-        let resource = percent_encoding::percent_decode_str(name)
-            .decode_utf8()
+        let name = request
+            .uri()
+            .path_and_query()
+            .map(|value| value.as_str())
+            .unwrap_or_default()
+            .trim_start_matches('/');
+        let decoded;
+        let name = if name.starts_with(super::resources::LIBRARY_PREFIX) {
+            name
+        } else {
+            decoded = percent_encoding::percent_decode_str(name)
+                .decode_utf8()
+                .unwrap_or_default();
+            &decoded
+        };
+        let resource = super::resources::read_resource(root, directory, name)
             .ok()
-            .and_then(|name| {
-                let bytes = locus_library::load_canvas_resource(root, directory, &name).ok()?;
-                let mime = mime_guess::from_path(name.as_ref()).first_or_octet_stream();
-                Some((bytes, mime.to_string()))
+            .map(|bytes| {
+                let mime = super::resources::resource_mime(name);
+                let bytes = if matches!(
+                    mime.as_str(),
+                    "text/css"
+                        | "text/javascript"
+                        | "application/javascript"
+                        | "text/html"
+                        | "image/svg+xml"
+                ) {
+                    std::str::from_utf8(&bytes)
+                        .map(|text| super::resources::rewrite_resources(text).into_bytes())
+                        .unwrap_or(bytes)
+                } else {
+                    bytes
+                };
+                (bytes, mime)
             });
         let (status, bytes, mime) = match resource {
             Some((bytes, mime)) => (StatusCode::OK, bytes, mime),
@@ -468,6 +505,7 @@ fn theme_script(dark: bool) -> String {
 const CANVAS_POLICY: &str = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
 
 pub(crate) fn canvas_document(source: &str, dark: bool) -> String {
+    let source = super::resources::rewrite_resources(source);
     let tailwind = include_str!("../assets/tailwindcss/browser-4.3.3.js");
     let templates = include_str!("templates.js");
     let theme = if dark { "dark" } else { "light" };
@@ -483,6 +521,15 @@ pub(crate) fn canvas_document(source: &str, dark: bool) -> String {
 
 #[cfg(test)]
 mod tests {
+    fn write_fixture(
+        path: impl AsRef<std::path::Path>,
+        contents: impl AsRef<[u8]>,
+    ) -> std::io::Result<()> {
+        let path = path.as_ref();
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        std::fs::write(path, contents)
+    }
+
     use super::*;
 
     #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -505,9 +552,9 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let note = root.path().join("travel");
         std::fs::create_dir(&note).unwrap();
-        std::fs::write(note.join("index.md"), "Travel").unwrap();
-        std::fs::write(
-            note.join("canvas.html"),
+        write_fixture(note.join("index.md"), "Travel").unwrap();
+        write_fixture(
+            note.join("canvas/index.html"),
             "<script>window.template = 42;</script>",
         )
         .unwrap();
@@ -550,9 +597,9 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let directory = root.path().join("first");
         fs::create_dir(&directory).unwrap();
-        fs::write(directory.join("index.md"), "First note").unwrap();
+        write_fixture(directory.join("index.md"), "First note").unwrap();
         let file = directory.join(locus_library::CANVAS_FILE);
-        fs::write(&file, "<p>First version</p>").unwrap();
+        write_fixture(&file, "<p>First version</p>").unwrap();
         let request = Request::builder().uri(CANVAS_URL).body(Vec::new()).unwrap();
         let response = canvas_response(root.path(), &directory, &request, false, Language::English);
         assert_eq!(response.status(), StatusCode::OK);
@@ -564,13 +611,13 @@ mod tests {
         );
         let other = root.path().join("other");
         fs::create_dir(&other).unwrap();
-        fs::write(other.join("index.md"), "Other note").unwrap();
-        fs::write(
+        write_fixture(other.join("index.md"), "Other note").unwrap();
+        write_fixture(
             other.join(locus_library::CANVAS_FILE),
             "<p>Other canvas</p>",
         )
         .unwrap();
-        fs::write(&file, "<p>Latest version</p>").unwrap();
+        write_fixture(&file, "<p>Latest version</p>").unwrap();
         let response = canvas_response(root.path(), &directory, &request, true, Language::English);
         let html = String::from_utf8(response.into_body()).unwrap();
         assert!(html.contains("<p>Latest version</p>"));
@@ -581,7 +628,7 @@ mod tests {
             canvas_response(root.path(), &directory, &request, false, Language::English).status(),
             StatusCode::NOT_FOUND
         );
-        fs::write(&file, "<p>Restored</p>").unwrap();
+        write_fixture(&file, "<p>Restored</p>").unwrap();
         assert_eq!(
             canvas_response(root.path(), &directory, &request, false, Language::English).status(),
             StatusCode::OK
@@ -594,7 +641,7 @@ mod tests {
                 StatusCode::NOT_FOUND
             );
         }
-        fs::write(&file, " ").unwrap();
+        write_fixture(&file, " ").unwrap();
         assert_eq!(
             canvas_response(root.path(), &directory, &request, false, Language::English).status(),
             StatusCode::NOT_FOUND
@@ -652,8 +699,8 @@ mod tests {
     fn relative_images_are_served_as_bytes_with_decoded_names() {
         use wry::http::{Request, StatusCode};
         let root = tempfile::tempdir().unwrap();
-        std::fs::write(root.path().join("index.md"), "Note").unwrap();
-        std::fs::write(root.path().join("照片 1.png"), [0, 128, 255]).unwrap();
+        write_fixture(root.path().join("index.md"), "Note").unwrap();
+        write_fixture(root.path().join("canvas/照片 1.png"), [0, 128, 255]).unwrap();
         let request = Request::builder()
             .uri(
                 "/".to_owned()

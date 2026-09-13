@@ -89,14 +89,15 @@ fn moving_tree_updates_real_markdown_links_and_preserves_code() {
     library
         .create_note(
             "locus://source",
-            "[Other](../other/index.md)\n![Image](image.png)",
+            "[Other](../other/index.md)\n![Image](assets/image.png)",
         )
         .unwrap();
     library
         .create_note("locus://source/child", "Child")
         .unwrap();
     library.create_note("locus://other", "[Note](locus://source)\n[Child](../source/child/index.md)\n[Reference][x]\n\n[x]: locus://source\n\n`[Code](locus://source)`").unwrap();
-    fs::write(root.path().join("source/image.png"), [1, 2]).unwrap();
+    fs::create_dir(root.path().join("source/assets")).unwrap();
+    fs::write(root.path().join("source/assets/image.png"), [1, 2]).unwrap();
     let plan = library
         .plan_move("locus://source", "locus://group/destination")
         .unwrap();
@@ -131,7 +132,7 @@ fn moving_tree_updates_real_markdown_links_and_preserves_code() {
         .unwrap()
         .0;
     assert!(moved.contains("../../other/index.md"), "{moved}");
-    assert!(moved.contains("(image.png)"));
+    assert!(moved.contains("(assets/image.png)"));
 }
 
 #[test]
@@ -176,15 +177,7 @@ fn unsafe_targets_and_reserved_attachment_names_are_rejected() {
     ] {
         assert!(library.create_directory(uri).is_err(), "{uri}");
     }
-    for name in [
-        "../outside",
-        "index.md",
-        "ICON.PNG",
-        "canvas.html",
-        ".secret",
-        "a/b",
-        "x:stream",
-    ] {
+    for name in ["../outside", "ICON.PNG", ".secret", "a/b", "x:stream"] {
         let target = ContentTarget::new("locus://note", Resource::Attachment { name: name.into() });
         assert!(
             library.write_text(&target, "Bad", "missing").is_err(),
@@ -206,9 +199,10 @@ fn symlinked_ancestors_and_resources_never_escape_library() {
     assert!(library.create_note("locus://escape/note", "Bad").is_err());
     library.create_note("locus://note", "Good").unwrap();
     fs::write(outside.path().join("secret"), "Secret").unwrap();
+    fs::create_dir(root.path().join("note/assets")).unwrap();
     symlink(
         outside.path().join("secret"),
-        root.path().join("note/link.txt"),
+        root.path().join("note/assets/link.txt"),
     )
     .unwrap();
     let target = ContentTarget::new(
@@ -246,16 +240,16 @@ fn icon_upload_and_removal_keep_body_and_custom_metadata() {
         .write_content(&target, &mut source, "missing")
         .unwrap();
     assert_eq!(
-        image::image_dimensions(root.path().join("note/icon.png")).unwrap(),
+        image::image_dimensions(root.path().join("note/assets/icon.png")).unwrap(),
         (64, 32)
     );
     let description = library.describe("locus://note").unwrap();
-    assert_eq!(description["metadata"]["icon"], "icon.png");
+    assert_eq!(description["metadata"]["icon"], "assets/icon.png");
     assert_eq!(description["metadata"]["custom"], json!(["a", "b"]));
     library
         .delete_content(&target, written["version"].as_str().unwrap())
         .unwrap();
-    assert!(!root.path().join("note/icon.png").exists());
+    assert!(!root.path().join("note/assets/icon.png").exists());
     assert!(library.describe("locus://note").unwrap()["metadata"]["icon"].is_null());
     let text = library
         .read_text(&ContentTarget::new("locus://note", Resource::Note))
@@ -355,10 +349,10 @@ fn attachment_moves_update_markdown_links_across_notes_without_overwriting() {
     let root = tempfile::tempdir().unwrap();
     let library = LibraryAccess::new(Some(root.path().to_owned()));
     library
-        .create_note("locus://source", "![Image](image.png)")
+        .create_note("locus://source", "![Image](assets/image.png)")
         .unwrap();
     library
-        .create_note("locus://destination", "[Image](../source/image.png)")
+        .create_note("locus://destination", "[Image](../source/assets/image.png)")
         .unwrap();
     let source = ContentTarget::new(
         "locus://source",
@@ -384,14 +378,14 @@ fn attachment_moves_update_markdown_links_across_notes_without_overwriting() {
             .read_text(&ContentTarget::new("locus://source", Resource::Note))
             .unwrap()
             .0,
-        "![Image](../destination/new.png)"
+        "![Image](../destination/assets/new.png)"
     );
     assert_eq!(
         library
             .read_text(&ContentTarget::new("locus://destination", Resource::Note))
             .unwrap()
             .0,
-        "[Image](new.png)"
+        "[Image](assets/new.png)"
     );
     library.write_text(&source, "Keep", "missing").unwrap();
     assert!(
@@ -455,6 +449,114 @@ fn emitted_addresses_resolve_in_navigation_and_canvas_templates() {
         assert_eq!(
             crate::load_canvas_template(root.path(), uri).unwrap(),
             "<p>Template</p>"
+        );
+    }
+}
+
+#[test]
+fn resource_directories_are_not_notes_and_canvas_files_round_trip() {
+    let root = tempfile::tempdir().unwrap();
+    let library = LibraryAccess::new(Some(root.path().to_owned()));
+    library
+        .create_note(
+            "locus://note",
+            "---\ntitle: Note\nitems: [1, 2]\n---\nBody\n",
+        )
+        .unwrap();
+    for uri in [
+        "locus://assets",
+        "locus://note/canvas",
+        "locus://note/Assets/child",
+    ] {
+        assert!(library.create_note(uri, "Invalid").is_err());
+        assert!(library.create_directory(uri).is_err());
+    }
+    let target = ContentTarget::new(
+        "locus://note",
+        Resource::CanvasFile {
+            name: "scripts/.data/config.json".into(),
+        },
+    );
+    library
+        .write_text(&target, "{\"value\":42}", "missing")
+        .unwrap();
+    assert_eq!(library.read_text(&target).unwrap().0, "{\"value\":42}");
+    assert_eq!(
+        library.list("locus://note", 0, 20).unwrap()["entries"],
+        json!([])
+    );
+    assert_eq!(library.describe("locus://note").unwrap()["childCount"], 0);
+    let bytes =
+        crate::load_library_resource(root.path(), "locus://note/canvas/scripts/.data/config.json")
+            .unwrap();
+    assert_eq!(bytes, b"{\"value\":42}");
+    assert_eq!(
+        crate::load_library_resource(root.path(), "locus://note/index.md?part=body").unwrap(),
+        b"Body\n"
+    );
+    assert_eq!(
+        crate::load_library_resource(root.path(), "locus://note/index.md?part=yaml").unwrap(),
+        b"title: Note\nitems: [1, 2]"
+    );
+    let attachment = ContentTarget::new(
+        "locus://note",
+        Resource::Attachment {
+            name: "index.md".into(),
+        },
+    );
+    library
+        .write_text(&attachment, "Attachment", "missing")
+        .unwrap();
+    assert_eq!(
+        crate::load_library_resource(root.path(), "locus://note/assets/index.md").unwrap(),
+        b"Attachment"
+    );
+    assert_eq!(
+        crate::LibraryTree::load(Some(root.path()))
+            .node("note")
+            .unwrap()
+            .attachments[0]
+            .name,
+        "index.md"
+    );
+    for uri in [
+        "locus://note/assets/../index.md",
+        "locus://note/canvas/%2e%2e/index.md",
+        "locus://note/index.md?part=wrong",
+    ] {
+        assert!(crate::load_library_resource(root.path(), uri).is_err());
+    }
+}
+
+#[test]
+fn note_data_handles_empty_yaml_bom_and_crlf_without_losing_body() {
+    let root = tempfile::tempdir().unwrap();
+    let library = LibraryAccess::new(Some(root.path().to_owned()));
+    for (name, source, yaml, body) in [
+        ("empty", "---\n---\nBody\n", "", "Body\n"),
+        (
+            "windows",
+            "\u{feff}---\r\ntitle: Note\r\nlist: [1, 2]\r\n---\r\nBody\r\n",
+            "title: Note\r\nlist: [1, 2]",
+            "Body\r\n",
+        ),
+        ("plain", "Body\n", "", "Body\n"),
+    ] {
+        let uri = format!("locus://{name}");
+        library.create_note(&uri, source).unwrap();
+        assert_eq!(
+            crate::load_library_resource(root.path(), &format!("{uri}/index.md?part=yaml"))
+                .unwrap(),
+            yaml.as_bytes()
+        );
+        assert_eq!(
+            crate::load_library_resource(root.path(), &format!("{uri}/index.md?part=body"))
+                .unwrap(),
+            body.as_bytes()
+        );
+        assert_eq!(
+            crate::load_library_resource(root.path(), &format!("{uri}/index.md")).unwrap(),
+            source.as_bytes()
         );
     }
 }

@@ -41,7 +41,7 @@ A note has a logical address such as `locus://projects/example`. `locus://` is t
 {"uri":"locus://projects/example","resource":{"kind":"attachment","name":"diagram.png"}}
 ```
 
-The four resource kinds refer to the note's Markdown, its HTML canvas fragment, its icon and its ordinary attachments. Attachment names cannot address reserved note, icon or canvas files. Canvas scripts, styles, images and data are ordinary same-note attachments. Templates are other notes' canvas resources, read through the same tools; runtime template calls use `locus.loadCanvas('locus://template-note', data)`.
+The five resource kinds are `note` (`index.md`), `canvas` (`canvas/index.html`), `canvas_file` (any other relative file path under `canvas/`), `icon` (`assets/icon.png`) and `attachment` (a filename under `assets/`). Canvas resources may include nested directories, scripts, styles, images and data. `assets` and `canvas` are reserved directory names and cannot identify notes. Attachment filenames cannot address the reserved icon. Templates are other notes' canvas resources, read through the same tools; runtime template calls use `locus.loadCanvas('locus://template-note', data)`.
 
 Hidden and excluded directories, symlinked entries, traversal and nonportable names are rejected. A directory with unmanaged content cannot be moved or recursively deleted through this endpoint. Neither root deletion nor root renaming is available.
 

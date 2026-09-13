@@ -106,10 +106,12 @@ pub(super) fn document_change(
             .into_iter()
             .flatten()
             .any(|path| path == document_path);
-        let changes_attachment = paths
-            .into_iter()
-            .flatten()
-            .any(|path| parent_path(path) == directory);
+        let changes_attachment = paths.into_iter().flatten().any(|path| {
+            parent_path(path) == directory
+                || path.strip_prefix(directory).is_some_and(|suffix| {
+                    suffix.starts_with("/assets/") || suffix.starts_with("/canvas/")
+                })
+        });
         if !changes_document && !changes_attachment {
             continue;
         }

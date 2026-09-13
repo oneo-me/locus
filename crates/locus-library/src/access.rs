@@ -18,6 +18,7 @@ pub const MAX_TEXT_BYTES: u64 = 8 * 1024 * 1024;
 pub enum Resource {
     Note,
     Canvas,
+    CanvasFile { name: String },
     Icon,
     Attachment { name: String },
 }
@@ -94,7 +95,15 @@ impl LibraryAccess {
         if target.resource != Resource::Note {
             require_file(&directory.join("index.md"))?;
         }
-        Ok(directory.join(resource_name(&target.resource)?))
+        crate::canvas::regular_path(&directory, &resource_name(&target.resource)?, false)
+            .map_err(io_error)
+    }
+
+    fn prepare_resource_parents(&self, target: &ContentTarget) -> Result<(), String> {
+        let directory = self.directory(&target.uri)?;
+        crate::canvas::regular_path(&directory, &resource_name(&target.resource)?, true)
+            .map_err(io_error)?;
+        Ok(())
     }
 
     pub fn validate_write(&self, target: &ContentTarget, expected: &str) -> Result<(), String> {
@@ -177,6 +186,7 @@ impl LibraryAccess {
         let current = optional_version(&path)?;
         check_version(current.as_deref(), expected)?;
         let directory = path.parent().ok_or("invalid_target")?;
+        self.prepare_resource_parents(target)?;
         let mut pending = tempfile::NamedTempFile::new_in(directory).map_err(io_error)?;
         std::io::copy(source, &mut pending).map_err(io_error)?;
         if matches!(target.resource, Resource::Note | Resource::Canvas) {
@@ -190,7 +200,8 @@ impl LibraryAccess {
         if target.resource == Resource::Icon {
             let document = ContentTarget::new(&target.uri, Resource::Note);
             let (content, note_version) = self.read_text(&document)?;
-            let updated = crate::mutations::set_frontmatter_scalar(&content, "icon", "icon.png")?;
+            let updated =
+                crate::mutations::set_frontmatter_scalar(&content, "icon", "assets/icon.png")?;
             let bytes = crate::mutations::prepare_icon(pending.path())?;
             pending.as_file_mut().set_len(0).map_err(io_error)?;
             pending
@@ -356,15 +367,33 @@ impl LibraryAccess {
                 .file_name()
                 .into_string()
                 .map_err(|_| "invalid_name: Non-UTF-8 library name.".to_owned())?;
-            if name.starts_with('.') || name == "node_modules" {
+            if name.starts_with('.')
+                || name == "node_modules"
+                || crate::is_reserved_directory(&name)
+            {
                 continue;
             }
             let kind = entry.file_type().map_err(io_error)?;
             if kind.is_dir() {
                 children += 1;
             }
-            if kind.is_file() && note.is_some() {
+            if kind.is_file() && note.is_some() && name == "index.md" {
                 files.push(json!({"name": name, "resource": resource_for_name(&name), "size": entry.metadata().map_err(io_error)?.len()}));
+            }
+        }
+        if note.is_some() {
+            for folder in ["assets", "canvas"] {
+                let path = directory.join(folder);
+                match fs::symlink_metadata(&path) {
+                    Ok(metadata) if metadata.file_type().is_dir() => {
+                        collect_resources(&path, folder, "", &mut files)?
+                    }
+                    Ok(_) => {
+                        return Err("unsafe_target: Resource directory must be ordinary.".into());
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+                    Err(error) => return Err(io_error(error)),
+                }
             }
         }
         files.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
@@ -387,6 +416,7 @@ impl LibraryAccess {
                 .map_err(|_| "invalid_name: Non-UTF-8 library name.".to_owned())?;
             if !name.starts_with('.')
                 && name != "node_modules"
+                && !crate::is_reserved_directory(&name)
                 && entry.file_type().map_err(io_error)?.is_dir()
             {
                 names.push(name);
@@ -444,6 +474,7 @@ impl LibraryAccess {
                     .map_err(|_| "invalid_name".to_owned())?;
                 if name.starts_with('.')
                     || name == "node_modules"
+                    || crate::is_reserved_directory(&name)
                     || !entry.file_type().map_err(io_error)?.is_dir()
                 {
                     continue;
@@ -537,6 +568,9 @@ fn uri_segments(uri: &str) -> Result<Vec<String>, String> {
     path.split('/')
         .map(|name| {
             validate_name(name)?;
+            if crate::is_reserved_directory(name) {
+                return Err("reserved_name: assets and canvas cannot be notes.".into());
+            }
             Ok(name.to_owned())
         })
         .collect()
@@ -566,20 +600,24 @@ fn parent_uri(uri: &str) -> Result<(String, String), String> {
     Ok((canonical_uri(&segments), name))
 }
 
-fn resource_name(resource: &Resource) -> Result<&str, String> {
+fn resource_name(resource: &Resource) -> Result<String, String> {
     match resource {
-        Resource::Note => Ok("index.md"),
-        Resource::Canvas => Ok("canvas.html"),
-        Resource::Icon => Ok("icon.png"),
+        Resource::Note => Ok("index.md".into()),
+        Resource::Canvas => Ok(crate::CANVAS_FILE.into()),
+        Resource::Icon => Ok("assets/icon.png".into()),
+        Resource::CanvasFile { name } => {
+            if name.eq_ignore_ascii_case("index.html") {
+                return Err("reserved_name: Use the canvas resource for its entry.".into());
+            }
+            crate::canvas::validate_resource_path(name).map_err(io_error)?;
+            Ok(format!("canvas/{name}"))
+        }
         Resource::Attachment { name } => {
             validate_name(name)?;
-            if ["index.md", "canvas.html", "icon.png"]
-                .iter()
-                .any(|reserved| name.eq_ignore_ascii_case(reserved))
-            {
-                return Err("reserved_name: Use the note, canvas or icon resource.".into());
+            if name.eq_ignore_ascii_case("icon.png") {
+                return Err("reserved_name: Use the icon resource.".into());
             }
-            Ok(name)
+            Ok(format!("assets/{name}"))
         }
     }
 }
@@ -587,10 +625,42 @@ fn resource_name(resource: &Resource) -> Result<&str, String> {
 fn resource_for_name(name: &str) -> Resource {
     match name {
         "index.md" => Resource::Note,
-        "canvas.html" => Resource::Canvas,
-        "icon.png" => Resource::Icon,
-        _ => Resource::Attachment {
-            name: name.to_owned(),
-        },
+        "canvas/index.html" => Resource::Canvas,
+        "assets/icon.png" => Resource::Icon,
+        _ => {
+            if let Some(name) = name.strip_prefix("canvas/") {
+                Resource::CanvasFile {
+                    name: name.to_owned(),
+                }
+            } else {
+                Resource::Attachment {
+                    name: name.strip_prefix("assets/").unwrap_or(name).to_owned(),
+                }
+            }
+        }
     }
+}
+
+fn collect_resources(
+    directory: &Path,
+    folder: &str,
+    prefix: &str,
+    files: &mut Vec<Value>,
+) -> Result<(), String> {
+    for entry in fs::read_dir(directory).map_err(io_error)? {
+        let entry = entry.map_err(io_error)?;
+        let name = entry
+            .file_name()
+            .into_string()
+            .map_err(|_| "invalid_name")?;
+        let relative = format!("{prefix}{name}");
+        let kind = entry.file_type().map_err(io_error)?;
+        if kind.is_dir() && folder == "canvas" {
+            collect_resources(&entry.path(), folder, &format!("{relative}/"), files)?;
+        } else if kind.is_file() && (folder == "canvas" || !name.starts_with('.')) {
+            let name = format!("{folder}/{relative}");
+            files.push(json!({"name": name, "resource": resource_for_name(&name), "size": entry.metadata().map_err(io_error)?.len()}));
+        }
+    }
+    Ok(())
 }

@@ -10,7 +10,7 @@ use super::repository::{RepositoryChange, document_change};
 use super::{ArchivedNote, Attachment, ChangeStatus, DocumentIcon, ImageSize, LibraryNode};
 
 const DOCUMENT_FILE: &str = "index.md";
-const DOCUMENT_ICON_FILE: &str = "icon.png";
+const DOCUMENT_ICON_FILE: &str = "assets/icon.png";
 
 #[derive(Default)]
 pub(super) struct DocumentMetadata {
@@ -70,6 +70,7 @@ pub(super) fn scan_children(
             || file_type.is_symlink()
             || name.starts_with('.')
             || name == "node_modules"
+            || super::is_reserved_directory(&name)
         {
             continue;
         }
@@ -119,6 +120,10 @@ pub(super) fn scan_children(
         };
         let canvas_path = path.join(super::CANVAS_FILE);
         let canvas_path = (has_document
+            && path
+                .join(super::CANVAS_DIRECTORY)
+                .symlink_metadata()
+                .is_ok_and(|metadata| metadata.file_type().is_dir())
             && canvas_path
                 .symlink_metadata()
                 .is_ok_and(|metadata| metadata.file_type().is_file()))
@@ -163,7 +168,7 @@ fn relative_path(root: &Path, path: &Path) -> String {
 }
 
 fn regular_icon(directory: &Path) -> Option<DocumentIcon> {
-    let path = directory.join(DOCUMENT_ICON_FILE);
+    let path = super::canvas::regular_path(directory, DOCUMENT_ICON_FILE, false).ok()?;
     let metadata = path.symlink_metadata().ok()?;
     if !metadata.is_file() || metadata.file_type().is_symlink() {
         return None;
@@ -177,6 +182,13 @@ fn regular_icon(directory: &Path) -> Option<DocumentIcon> {
 
 fn read_attachments(directory: &Path) -> Result<Vec<Attachment>, std::io::Error> {
     let mut attachments = Vec::new();
+    let directory = directory.join(super::ASSETS_DIRECTORY);
+    if !directory
+        .symlink_metadata()
+        .is_ok_and(|metadata| metadata.file_type().is_dir())
+    {
+        return Ok(attachments);
+    }
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
         let file_type = entry.file_type()?;
@@ -185,9 +197,7 @@ fn read_attachments(directory: &Path) -> Result<Vec<Attachment>, std::io::Error>
         if file_type.is_file()
             && !file_type.is_symlink()
             && !name.starts_with('.')
-            && name != DOCUMENT_FILE
-            && !name.eq_ignore_ascii_case(DOCUMENT_ICON_FILE)
-            && !name.eq_ignore_ascii_case(super::CANVAS_FILE)
+            && !name.eq_ignore_ascii_case("icon.png")
         {
             let path = entry.path();
             let metadata = entry.metadata()?;
@@ -273,14 +283,19 @@ pub(super) fn frontmatter_parts(content: &str) -> Option<(&str, &str)> {
     let rest = content
         .strip_prefix("---\r\n")
         .or_else(|| content.strip_prefix("---\n"))?;
-    if let Some(end) = rest.find("\n---\r\n") {
-        return Some((&rest[..end], &rest[end + 6..]));
+    let mut offset = 0;
+    for line in rest.split_inclusive('\n') {
+        if line.trim_end_matches(['\r', '\n']) == "---" {
+            let yaml = &rest[..offset];
+            let yaml = yaml
+                .strip_suffix("\r\n")
+                .or_else(|| yaml.strip_suffix('\n'))
+                .unwrap_or(yaml);
+            return Some((yaml, &rest[offset + line.len()..]));
+        }
+        offset += line.len();
     }
-    if let Some(end) = rest.find("\n---\n") {
-        return Some((&rest[..end], &rest[end + 5..]));
-    }
-    rest.strip_suffix("\n---")
-        .map(|frontmatter| (frontmatter, ""))
+    None
 }
 
 fn optional_string(value: Option<serde_json::Value>) -> Option<String> {

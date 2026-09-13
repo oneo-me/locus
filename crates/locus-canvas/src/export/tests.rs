@@ -3,9 +3,9 @@ use std::fs;
 
 fn note(root: &Path, name: &str, source: &str) -> std::path::PathBuf {
     let directory = root.join(name);
-    fs::create_dir_all(&directory).unwrap();
+    fs::create_dir_all(directory.join("canvas")).unwrap();
     fs::write(directory.join("index.md"), "---\ntitle: Canvas\n---\n").unwrap();
-    fs::write(directory.join("canvas.html"), source).unwrap();
+    fs::write(directory.join("canvas/index.html"), source).unwrap();
     directory
 }
 
@@ -53,21 +53,21 @@ fn directory_preserves_only_referenced_attachments_and_their_dependencies() {
         r#"<link rel=stylesheet href=style.css><script src="app.js"></script><img src="photo%20one.png?size=2"><a href="report.pdf">Report</a>"#,
     );
     fs::write(
-        directory.join("style.css"),
+        directory.join("canvas/style.css"),
         "@import 'nested.css'; main { background: url('photo%20one.png'); }",
     )
     .unwrap();
-    fs::write(directory.join("nested.css"), "p { color: red; }").unwrap();
+    fs::write(directory.join("canvas/nested.css"), "p { color: red; }").unwrap();
     fs::write(
-        directory.join("app.js"),
+        directory.join("canvas/app.js"),
         "fetch('data.json').then(r => r.json());",
     )
     .unwrap();
-    fs::write(directory.join("data.json"), "{\"value\":42}").unwrap();
-    fs::write(directory.join("photo one.png"), [0, 255, 42]).unwrap();
-    fs::write(directory.join("report.pdf"), b"pdf bytes").unwrap();
-    fs::write(directory.join("unrelated.txt"), "private").unwrap();
-    fs::write(directory.join(".secret"), "private").unwrap();
+    fs::write(directory.join("canvas/data.json"), "{\"value\":42}").unwrap();
+    fs::write(directory.join("canvas/photo one.png"), [0, 255, 42]).unwrap();
+    fs::write(directory.join("canvas/report.pdf"), b"pdf bytes").unwrap();
+    fs::write(directory.join("canvas/unrelated.txt"), "private").unwrap();
+    fs::write(directory.join("canvas/.secret"), "private").unwrap();
     let export = prepare_download(root.path(), &directory, false, Dependencies::default()).unwrap();
     let destination = tempfile::tempdir().unwrap();
     export.write_files(destination.path()).unwrap();
@@ -108,7 +108,7 @@ fn observed_dynamic_dependencies_and_template_resources_are_included() {
         "<script>locus.loadCanvas('locus://' + 'dynamic');</script>",
     );
     note(root.path(), "dynamic", "<img src='picture.png'>");
-    fs::write(directory.join("picture.png"), "caller image").unwrap();
+    fs::write(directory.join("canvas/picture.png"), "caller image").unwrap();
     fs::write(root.path().join("dynamic/picture.png"), "template image").unwrap();
     let dependencies = Dependencies {
         templates: ["locus://dynamic".to_owned()].into(),
@@ -176,8 +176,11 @@ fn symlinked_resources_are_rejected() {
     let root = tempfile::tempdir().unwrap();
     let directory = note(root.path(), "note", "<img src='link.png'>");
     fs::write(root.path().join("outside.png"), "secret").unwrap();
-    std::os::unix::fs::symlink(root.path().join("outside.png"), directory.join("link.png"))
-        .unwrap();
+    std::os::unix::fs::symlink(
+        root.path().join("outside.png"),
+        directory.join("canvas/link.png"),
+    )
+    .unwrap();
     assert!(prepare_download(root.path(), &directory, false, Dependencies::default()).is_err());
 }
 
@@ -185,7 +188,7 @@ fn symlinked_resources_are_rejected() {
 fn directory_export_preserves_existing_files_and_rejects_conflicts() {
     let root = tempfile::tempdir().unwrap();
     let directory = note(root.path(), "note", "<p>Ready</p><img src='picture.png'>");
-    fs::write(directory.join("picture.png"), [1, 2, 3]).unwrap();
+    fs::write(directory.join("canvas/picture.png"), [1, 2, 3]).unwrap();
     let export = prepare_download(root.path(), &directory, false, Dependencies::default()).unwrap();
     let destination = tempfile::tempdir().unwrap();
     fs::write(destination.path().join("unrelated.txt"), "keep").unwrap();
@@ -211,9 +214,9 @@ fn directory_export_preserves_existing_files_and_rejects_conflicts() {
     );
     assert!(export.write_files(destination.path()).is_err());
     assert!(export.write_files(&root.path().join("missing")).is_err());
-    assert!(export.write_files(&directory).is_err());
+    assert!(export.write_files(&directory.join("canvas")).is_err());
     assert_eq!(
-        fs::read_to_string(directory.join("canvas.html")).unwrap(),
+        fs::read_to_string(directory.join("canvas/index.html")).unwrap(),
         "<p>Ready</p><img src='picture.png'>"
     );
 }
@@ -226,7 +229,7 @@ fn srcset_keeps_data_urls_intact_and_collects_local_candidates() {
         "note",
         "<img srcset='data:image/png;base64,AP8q 1x, large.png 2x'>",
     );
-    fs::write(directory.join("large.png"), [1, 2, 3]).unwrap();
+    fs::write(directory.join("canvas/large.png"), [1, 2, 3]).unwrap();
     let export = prepare_download(root.path(), &directory, false, Dependencies::default()).unwrap();
     assert_eq!(export.files.len(), 2);
 }
@@ -264,7 +267,7 @@ fn script_url_constructors_are_not_css_dependencies() {
         "note",
         r#"<script>function parse(e) { return new URL(e); } class Map { setURL(e) { this.url = e; } }</script><style>p { background: url('image.png'); }</style>"#,
     );
-    fs::write(directory.join("image.png"), [1, 2, 3]).unwrap();
+    fs::write(directory.join("canvas/image.png"), [1, 2, 3]).unwrap();
     let export = prepare_download(root.path(), &directory, false, Dependencies::default()).unwrap();
     assert_eq!(export.files.len(), 2);
 }
@@ -310,7 +313,7 @@ fn single_html_downloads_skip_dangling_symlinks() {
 fn exports_create_named_directories_without_overwriting_previous_downloads() {
     let root = tempfile::tempdir().unwrap();
     let source = note(root.path(), "note", "<p>First</p><img src='image.png'>");
-    fs::write(source.join("image.png"), [1, 2, 3]).unwrap();
+    fs::write(source.join("canvas/image.png"), [1, 2, 3]).unwrap();
     let export = prepare_download(root.path(), &source, false, Dependencies::default()).unwrap();
     let parent = root.path().join("Downloads");
     let first = export.save(&parent, "旅行计划").unwrap();
@@ -346,11 +349,51 @@ fn failed_directory_export_cleans_its_new_directory() {
     let export = CanvasDownload {
         files: [
             ("canvas.html".to_owned(), vec![1]),
-            ("missing/file".to_owned(), vec![1]),
+            ("canvas.html/file".to_owned(), vec![1]),
         ]
         .into(),
     };
     assert!(export.save(root.path(), "Incomplete").is_err());
     assert!(!root.path().join("Incomplete").exists());
     assert_eq!(fs::read_dir(root.path()).unwrap().count(), 0);
+}
+
+#[test]
+fn export_includes_nested_canvas_assets_and_cross_note_content() {
+    let root = tempfile::tempdir().unwrap();
+    let directory = note(
+        root.path(),
+        "note",
+        r#"<link href="styles/main.css" rel="stylesheet"><img src="locus://other/assets/image.png"><script>const data = {photos: ['locus://other/assets/data-only.png']}; fetch('locus://other/index.md?part=body')</script>"#,
+    );
+    let other = note(root.path(), "other", "<p>Other</p>");
+    fs::create_dir(directory.join("canvas/styles")).unwrap();
+    fs::write(
+        directory.join("canvas/styles/main.css"),
+        "p{background:url('../image.png')}",
+    )
+    .unwrap();
+    fs::write(directory.join("canvas/image.png"), [1, 2, 3]).unwrap();
+    fs::create_dir(other.join("assets")).unwrap();
+    fs::write(other.join("assets/image.png"), [4, 5, 6]).unwrap();
+    fs::write(other.join("assets/data-only.png"), [7, 8, 9]).unwrap();
+    fs::write(other.join("index.md"), "---\ntitle: Other\n---\nBody").unwrap();
+    let export = prepare_download(root.path(), &directory, false, Dependencies::default()).unwrap();
+    assert_eq!(export.files["image.png"], [1, 2, 3]);
+    assert_eq!(
+        export.files["_locus/resource/other/assets/data-only.png"],
+        [7, 8, 9]
+    );
+    assert_eq!(
+        export.files["_locus/resource/other/assets/image.png"],
+        [4, 5, 6]
+    );
+    let html = String::from_utf8(export.files["canvas.html"].clone()).unwrap();
+    assert!(html.contains("./_locus/resource/other/assets/image.png"));
+    assert!(html.contains("index.md?part=body"));
+    let output = export.save(root.path(), "Export").unwrap();
+    assert_eq!(
+        fs::read(output.join("_locus/resource/other/assets/image.png")).unwrap(),
+        [4, 5, 6]
+    );
 }

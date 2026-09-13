@@ -10,6 +10,12 @@ bundle => {
     };
     const localName = value => {
         const url = new URL(value, location.href);
+        const library = url.pathname.indexOf('/_locus/resource/');
+        if (url.protocol === base.protocol && url.host === base.host && library >= 0) {
+            const key = url.pathname.slice(library + 1);
+            const exact = key + url.search;
+            return Object.hasOwn(bundle.resources, exact) ? exact : key;
+        }
         if (url.protocol !== base.protocol || url.host !== base.host || !url.pathname.startsWith(base.pathname)) return null;
         return decode(url.pathname.slice(base.pathname.length));
     };

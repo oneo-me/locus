@@ -14,7 +14,7 @@ use locus_library::{
     LIBRARY_REFERENCE_SCHEME, LibraryNode, LibraryTree, library_reference_path, load_note,
 };
 
-const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path or locus:// address, call resolve_article directly with the path parameter (not uri); do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; sibling regular files are attachments, excluding index.md, icon.png, and canvas.html. canvas.html holds the note canvas as an HTML fragment; read the built-in locus-docs://canvas MCP resource for authoring. Do not recreate CRUD or attachment tools through MCP.";
+const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path or locus:// address, call resolve_article directly with the path parameter (not uri); do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; assets/ holds attachments and the reserved assets/icon.png icon; assets and canvas are reserved directories, never notes. canvas/index.html holds the note canvas as an HTML fragment; read the built-in locus-docs://canvas MCP resource for authoring. Do not recreate CRUD or attachment tools through MCP.";
 
 #[derive(Clone)]
 pub(super) struct LocusMcp {
@@ -293,7 +293,7 @@ fn article_value(
     let body = load_note(document_path)
         .map_err(|error| format!("无法读取 {}：{error}", document_path.display()))?;
     let icon = if node.icon_image.is_some() {
-        Some("icon.png")
+        Some("assets/icon.png")
     } else {
         node.icon.as_deref()
     };
@@ -395,6 +395,15 @@ fn create_excerpt(content: &str, query: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    fn write_fixture(
+        path: impl AsRef<std::path::Path>,
+        contents: impl AsRef<[u8]>,
+    ) -> std::io::Result<()> {
+        let path = path.as_ref();
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        std::fs::write(path, contents)
+    }
+
     use super::*;
 
     #[test]
@@ -402,9 +411,9 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let directory = root.path().join("note");
         std::fs::create_dir(&directory).unwrap();
-        std::fs::write(directory.join("index.md"), "---\ntitle: Note\n---\nBody").unwrap();
-        std::fs::write(directory.join("canvas.html"), "<p>Canvas</p>").unwrap();
-        std::fs::write(directory.join("file.txt"), "Attachment").unwrap();
+        write_fixture(directory.join("index.md"), "---\ntitle: Note\n---\nBody").unwrap();
+        write_fixture(directory.join("canvas/index.html"), "<p>Canvas</p>").unwrap();
+        write_fixture(directory.join("assets/file.txt"), "Attachment").unwrap();
         let service = LocusMcp::new(Some(root.path().to_path_buf()));
         let resolved = service
             .resolve_article_value(ResolveArticleRequest {
@@ -436,7 +445,7 @@ mod tests {
         let child = format!("{parent}/literal%2e");
         std::fs::create_dir_all(root.path().join(&child)).unwrap();
         for path in [parent, &child] {
-            std::fs::write(root.path().join(path).join("index.md"), "Body").unwrap();
+            write_fixture(root.path().join(path).join("index.md"), "Body").unwrap();
         }
         let service = LocusMcp::new(Some(root.path().to_path_buf()));
         let resolved = service

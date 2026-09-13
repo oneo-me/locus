@@ -12,7 +12,10 @@ mod scanner;
 mod watcher;
 
 pub use access::{ContentTarget, LibraryAccess, Resource, content_version};
-pub use canvas::{CANVAS_FILE, load_canvas, load_canvas_resource, load_canvas_template};
+pub use canvas::{
+    ASSETS_DIRECTORY, CANVAS_DIRECTORY, CANVAS_FILE, is_reserved_directory, load_canvas,
+    load_canvas_resource, load_canvas_template, load_library_resource,
+};
 pub use mutations::{archive_note, restore_archived_note, update_note_icon};
 pub use reference::{LIBRARY_REFERENCE_SCHEME, library_reference_path};
 pub use scanner::load_note;
@@ -135,6 +138,15 @@ fn find_node<'a>(nodes: &'a [LibraryNode], path: &str) -> Option<&'a LibraryNode
 
 #[cfg(test)]
 mod tests {
+    fn write_fixture(
+        path: impl AsRef<std::path::Path>,
+        contents: impl AsRef<[u8]>,
+    ) -> std::io::Result<()> {
+        let path = path.as_ref();
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        std::fs::write(path, contents)
+    }
+
     use std::fs;
     use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -167,8 +179,8 @@ mod tests {
         let library = TestLibrary::new();
         let directory = library.0.join("note");
         fs::create_dir(&directory).unwrap();
-        fs::write(directory.join("index.md"), "---\ntitle: Note\n---\nBody").unwrap();
-        fs::write(directory.join("file.txt"), "attachment").unwrap();
+        write_fixture(directory.join("index.md"), "---\ntitle: Note\n---\nBody").unwrap();
+        write_fixture(directory.join("assets/file.txt"), "attachment").unwrap();
         assert!(
             LibraryTree::load(Some(&library.0))
                 .node("note")
@@ -177,7 +189,7 @@ mod tests {
                 .is_none()
         );
         let canvas = directory.join(CANVAS_FILE);
-        fs::write(&canvas, [0xff]).unwrap();
+        write_fixture(&canvas, [0xff]).unwrap();
         let tree = LibraryTree::load(Some(&library.0));
         let node = tree.node("note").unwrap();
         assert_eq!(node.canvas_path.as_deref(), Some(canvas.as_path()));
@@ -189,12 +201,12 @@ mod tests {
             ["file.txt"]
         );
         assert!(load_canvas(&library.0, &directory).is_err());
-        fs::write(&canvas, "<button>First</button>").unwrap();
+        write_fixture(&canvas, "<button>First</button>").unwrap();
         assert_eq!(
             load_canvas(&library.0, &directory).unwrap(),
             "<button>First</button>"
         );
-        fs::write(&canvas, "<button>Latest</button>").unwrap();
+        write_fixture(&canvas, "<button>Latest</button>").unwrap();
         assert_eq!(
             load_canvas(&library.0, &directory).unwrap(),
             "<button>Latest</button>"
@@ -216,10 +228,11 @@ mod tests {
         let outside = TestLibrary::new();
         let directory = library.0.join("note");
         fs::create_dir(&directory).unwrap();
-        fs::write(directory.join("index.md"), "Note").unwrap();
-        fs::write(outside.0.join("index.md"), "Outside").unwrap();
-        fs::write(outside.0.join(CANVAS_FILE), "Outside canvas").unwrap();
+        write_fixture(directory.join("index.md"), "Note").unwrap();
+        write_fixture(outside.0.join("index.md"), "Outside").unwrap();
+        write_fixture(outside.0.join(CANVAS_FILE), "Outside canvas").unwrap();
         assert!(load_canvas(&library.0, &outside.0).is_err());
+        fs::create_dir(directory.join("canvas")).unwrap();
         std::os::unix::fs::symlink(outside.0.join(CANVAS_FILE), directory.join(CANVAS_FILE))
             .unwrap();
         assert!(load_canvas(&library.0, &directory).is_err());
@@ -235,7 +248,7 @@ mod tests {
         let note_directory = library.0.join("notes");
         fs::create_dir(&note_directory).unwrap();
         let document_path = note_directory.join("index.md");
-        fs::write(
+        write_fixture(
             &document_path,
             "---\ntitle: Notes\nsummary: Metadata only.\nstatus: active\npriority: 2\ngraph: false\n---\n# Body",
         )
@@ -268,7 +281,7 @@ mod tests {
         let document_path = note_directory.join("index.md");
         let mut document = b"---\ntitle: Notes\n---\n".to_vec();
         document.push(0xff);
-        fs::write(&document_path, document).unwrap();
+        write_fixture(&document_path, document).unwrap();
 
         let tree = LibraryTree::load(Some(&library.0));
         assert_eq!(tree.node("notes").unwrap().title, "Notes");
@@ -280,9 +293,9 @@ mod tests {
         let library = TestLibrary::new();
         let note_directory = library.0.join("notes");
         fs::create_dir(&note_directory).unwrap();
-        fs::write(note_directory.join("index.md"), "---\ntitle: Notes\n---\n").unwrap();
-        let icon_path = note_directory.join("icon.png");
-        fs::write(&icon_path, [1]).unwrap();
+        write_fixture(note_directory.join("index.md"), "---\ntitle: Notes\n---\n").unwrap();
+        let icon_path = note_directory.join("assets/icon.png");
+        write_fixture(&icon_path, [1]).unwrap();
         let first = LibraryTree::load(Some(&library.0))
             .node("notes")
             .unwrap()
@@ -290,7 +303,7 @@ mod tests {
             .clone()
             .unwrap();
 
-        fs::write(&icon_path, [1, 2]).unwrap();
+        write_fixture(&icon_path, [1, 2]).unwrap();
         let second = LibraryTree::load(Some(&library.0))
             .node("notes")
             .unwrap()
@@ -308,12 +321,12 @@ mod tests {
         let parent = library.0.join("parent");
         let child = parent.join("child");
         fs::create_dir_all(&child).unwrap();
-        fs::write(
+        write_fixture(
             parent.join("index.md"),
             "---\ntitle: Parent\narchived: true\n---\n",
         )
         .unwrap();
-        fs::write(
+        write_fixture(
             child.join("index.md"),
             "---\ntitle: Child\narchived: true\n---\n",
         )
@@ -337,7 +350,7 @@ mod tests {
         let note_directory = library.0.join("notes");
         fs::create_dir(&note_directory).unwrap();
         let document_path = note_directory.join("index.md");
-        fs::write(
+        write_fixture(
             &document_path,
             "---\ntitle: Notes\narchived: true\n---\nBody",
         )

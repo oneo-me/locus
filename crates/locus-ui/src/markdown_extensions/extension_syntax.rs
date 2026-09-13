@@ -142,7 +142,11 @@ fn collect_attachment_links(
 }
 
 fn local_attachment<'a>(attachments: &'a [Attachment], source: &str) -> Option<&'a Attachment> {
-    let path = Path::new(source);
+    let source = source.strip_prefix("assets/")?;
+    let source = percent_encoding::percent_decode_str(source)
+        .decode_utf8()
+        .ok()?;
+    let path = Path::new(source.as_ref());
     let mut components = path.components();
     let Component::Normal(name) = components.next()? else {
         return None;
@@ -180,23 +184,34 @@ mod tests {
     fn gallery_accepts_only_local_images_with_alt_text() {
         let attachments = [attachment("sea.jpg", true)];
         let items = gallery_items(
-            "![Sea](sea.jpg)\n![Coast](sea.jpg)",
+            "![Sea](assets/sea.jpg)\n![Coast](assets/sea.jpg)",
             &attachments,
             Language::Chinese,
         )
         .unwrap();
         assert_eq!(items[0].attachment.name, "sea.jpg");
         assert_eq!(items.len(), 2);
-        assert!(gallery_items("![](sea.jpg)", &attachments, Language::Chinese).is_err());
+        assert!(gallery_items("![](assets/sea.jpg)", &attachments, Language::Chinese).is_err());
         assert!(gallery_items("![Sea](../sea.jpg)", &attachments, Language::Chinese).is_err());
     }
 
     #[test]
     fn attachment_links_require_the_file_name_as_the_label() {
         let attachments = [attachment("report.pdf", false)];
-        let items =
-            attachment_items("[report.pdf](report.pdf)", &attachments, Language::Chinese).unwrap();
+        let items = attachment_items(
+            "[report.pdf](assets/report.pdf)",
+            &attachments,
+            Language::Chinese,
+        )
+        .unwrap();
         assert_eq!(items[0].name, "report.pdf");
-        assert!(attachment_items("[Report](report.pdf)", &attachments, Language::Chinese).is_err());
+        assert!(
+            attachment_items(
+                "[Report](assets/report.pdf)",
+                &attachments,
+                Language::Chinese
+            )
+            .is_err()
+        );
     }
 }

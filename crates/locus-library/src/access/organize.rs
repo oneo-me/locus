@@ -14,20 +14,13 @@ impl LibraryAccess {
             {
                 continue;
             }
-            for entry in fs::read_dir(path).map_err(io_error)? {
-                let entry = entry.map_err(io_error)?;
-                let name = entry
-                    .file_name()
-                    .into_string()
-                    .map_err(|_| "invalid_name".to_owned())?;
-                if name.starts_with('.') || name == "node_modules" {
-                    continue;
-                }
-                if !entry.file_type().map_err(io_error)?.is_file() {
-                    continue;
-                }
-                let target = ContentTarget::new(&directory, resource_for_name(&name));
-                entries.push(self.stat(&target)?);
+            for file in self.describe(&directory)?["files"]
+                .as_array()
+                .ok_or("invalid_manifest")?
+            {
+                let resource: Resource = serde_json::from_value(file["resource"].clone())
+                    .map_err(|_| "invalid_resource")?;
+                entries.push(self.stat(&ContentTarget::new(&directory, resource))?);
             }
         }
         entries.sort_by_key(Value::to_string);
@@ -51,8 +44,12 @@ impl LibraryAccess {
                     .file_name()
                     .into_string()
                     .map_err(|_| "invalid_name".to_owned())?;
-                if name.starts_with('.')
-                    || name == "node_modules"
+                let in_canvas = path
+                    .strip_prefix(&root)
+                    .map_err(|_| "invalid_target")?
+                    .components()
+                    .any(|part| part.as_os_str() == "canvas");
+                if (!in_canvas && (name.starts_with('.') || name == "node_modules"))
                     || !(kind.is_dir() || kind.is_file())
                 {
                     return Err("unmanaged_content: Directory contains hidden, excluded or non-regular entries; move or remove them explicitly outside MCP before changing this tree.".into());
@@ -172,11 +169,20 @@ impl LibraryAccess {
         check_version(optional_version(&source_path)?.as_deref(), expected)?;
         check_version(optional_version(&destination_path)?.as_deref(), "missing")?;
         let mut source_segments = uri_segments(&source.uri)?;
-        source_segments.push(resource_name(&source.resource)?.to_owned());
+        source_segments.extend(
+            resource_name(&source.resource)?
+                .split('/')
+                .map(str::to_owned),
+        );
         let mut destination_segments = uri_segments(&destination.uri)?;
-        destination_segments.push(resource_name(&destination.resource)?.to_owned());
+        destination_segments.extend(
+            resource_name(&destination.resource)?
+                .split('/')
+                .map(str::to_owned),
+        );
         let edits = self.link_edits(&source_segments, &destination_segments)?;
         check_version(optional_version(&source_path)?.as_deref(), expected)?;
+        self.prepare_resource_parents(destination)?;
         fs::hard_link(&source_path, &destination_path).map_err(io_error)?;
         if let Err(error) = fs::remove_file(&source_path) {
             fs::remove_file(&destination_path).map_err(io_error)?;
@@ -343,7 +349,10 @@ fn rewrite_url(
         .find(['#', '?'])
         .map_or((url, ""), |at| (&url[..at], &url[at..]));
     if address.starts_with("locus://") {
-        let original = uri_segments(address).ok()?;
+        let original = crate::library_reference_path(address)?
+            .split('/')
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
         let mapped = remap(&original, source, destination);
         return (mapped != original).then(|| format!("{}{suffix}", canonical_uri(&mapped)));
     }

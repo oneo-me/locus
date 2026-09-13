@@ -58,3 +58,16 @@ test('missing templates reject and encoded template addresses resolve without a 
     await assert.rejects(dom.window.locus.loadCanvas('locus://模版/hello world/'), /Cannot load/);
     dom.window.close();
 });
+
+test('cross-note YAML and body snapshots are separate from original note bytes', async () => {
+    const encode = text => 'data:text/plain;base64,' + Buffer.from(text).toString('base64');
+    const dom = page({templates: {}, resources: {
+        '_locus/resource/other/index.md?part=yaml': encode('title: Other'),
+        '_locus/resource/other/index.md?part=body': encode('Body'),
+        '_locus/resource/other/index.md': encode('---\ntitle: Other\n---\nBody'),
+    }});
+    assert.equal(await (await dom.window.fetch('locus://other/index.md?part=yaml')).text(), 'title: Other');
+    assert.equal(await (await dom.window.fetch('locus://other/index.md?part=body')).text(), 'Body');
+    assert.equal(await (await dom.window.fetch('locus://other/index.md')).text(), '---\ntitle: Other\n---\nBody');
+    dom.window.close();
+});

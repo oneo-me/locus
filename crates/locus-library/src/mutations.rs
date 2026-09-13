@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader};
 
-const DOCUMENT_ICON_FILE: &str = "icon.png";
+const DOCUMENT_ICON_FILE: &str = "assets/icon.png";
 const DOCUMENT_ICON_SIZE: u32 = 64;
 const MAX_SOURCE_IMAGE_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_DOCUMENT_ICON_BYTES: usize = 256 * 1024;
@@ -30,7 +30,8 @@ pub fn update_note_icon(document_path: &Path, source_path: &Path) -> Result<(), 
     let directory = document_path
         .parent()
         .ok_or_else(|| "笔记路径无效。".to_owned())?;
-    let icon_path = directory.join(DOCUMENT_ICON_FILE);
+    let icon_path = crate::canvas::regular_path(directory, DOCUMENT_ICON_FILE, true)
+        .map_err(|error| error.to_string())?;
     let previous_icon = match icon_path.symlink_metadata() {
         Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => {
             return Err("笔记图标路径无法安全写入。".to_owned());
@@ -335,6 +336,15 @@ pub(super) fn write_atomically(path: &Path, content: &[u8]) -> Result<(), String
 
 #[cfg(test)]
 mod tests {
+    fn write_fixture(
+        path: impl AsRef<std::path::Path>,
+        contents: impl AsRef<[u8]>,
+    ) -> std::io::Result<()> {
+        let path = path.as_ref();
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        std::fs::write(path, contents)
+    }
+
     use super::*;
 
     #[test]
@@ -351,8 +361,8 @@ mod tests {
     #[test]
     fn adds_frontmatter_when_setting_an_icon() {
         assert_eq!(
-            set_frontmatter_scalar("# Notes\n", "icon", "icon.png").unwrap(),
-            "---\nicon: icon.png\n---\n# Notes\n"
+            set_frontmatter_scalar("# Notes\n", "icon", "assets/icon.png").unwrap(),
+            "---\nicon: assets/icon.png\n---\n# Notes\n"
         );
     }
 
@@ -362,10 +372,10 @@ mod tests {
             set_frontmatter_scalar(
                 "---\n'icon': 🧭\ntitle: Notes\n---\nBody",
                 "icon",
-                "icon.png"
+                "assets/icon.png"
             )
             .unwrap(),
-            "---\nicon: icon.png\ntitle: Notes\n---\nBody"
+            "---\nicon: assets/icon.png\ntitle: Notes\n---\nBody"
         );
     }
 
@@ -415,7 +425,7 @@ mod tests {
         ));
         fs::create_dir(&directory).unwrap();
         let document = directory.join("index.md");
-        fs::write(&document, "---\ntitle: Notes\nicon: 🧭\n---\nBody").unwrap();
+        write_fixture(&document, "---\ntitle: Notes\nicon: 🧭\n---\nBody").unwrap();
         let source = directory.join("source.png");
         DynamicImage::new_rgba8(128, 64)
             .save_with_format(&source, ImageFormat::Png)
@@ -425,7 +435,7 @@ mod tests {
 
         assert_eq!(
             fs::read_to_string(&document).unwrap(),
-            "---\ntitle: Notes\nicon: icon.png\n---\nBody"
+            "---\ntitle: Notes\nicon: assets/icon.png\n---\nBody"
         );
         let icon = image::open(directory.join(DOCUMENT_ICON_FILE)).unwrap();
         assert_eq!((icon.width(), icon.height()), (64, 32));

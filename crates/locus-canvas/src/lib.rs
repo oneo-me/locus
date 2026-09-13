@@ -27,3 +27,5 @@ mod tests {
         }
     }
 }
+
+mod resources;

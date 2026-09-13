@@ -76,6 +76,9 @@ fn relevant_relative_path(root: &Path, path: &Path) -> Option<PathBuf> {
         if index == 0 && name == ".git" {
             return Some(relative.to_path_buf());
         }
+        if name == "canvas" {
+            return Some(relative.to_path_buf());
+        }
         if name.starts_with('.') || name == "node_modules" {
             return None;
         }

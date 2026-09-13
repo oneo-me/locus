@@ -1,77 +1,177 @@
-use std::{fs, io, path::Path};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+};
 
-pub const CANVAS_FILE: &str = "canvas.html";
+pub const CANVAS_FILE: &str = "canvas/index.html";
+pub const ASSETS_DIRECTORY: &str = "assets";
+pub const CANVAS_DIRECTORY: &str = "canvas";
 
-pub fn load_canvas_template(root: &Path, uri: &str) -> io::Result<String> {
-    let invalid = || {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Invalid canvas template address",
-        )
-    };
-    let path = crate::library_reference_path(uri).ok_or_else(invalid)?;
-    let mut directory = root.canonicalize()?;
-    for name in path.split('/') {
-        if name.is_empty()
-            || name.starts_with('.')
-            || name.ends_with(['.', ' '])
-            || name.contains(['/', '\\', ':', '\0'])
-            || name == "node_modules"
-        {
-            return Err(invalid());
-        }
-        directory.push(name);
-        if !fs::symlink_metadata(&directory)?.file_type().is_dir() {
-            return Err(invalid());
+pub fn is_reserved_directory(name: &str) -> bool {
+    name.eq_ignore_ascii_case(ASSETS_DIRECTORY) || name.eq_ignore_ascii_case(CANVAS_DIRECTORY)
+}
+
+pub(crate) fn validate_resource_path(relative: &str) -> io::Result<()> {
+    for part in relative.split('/') {
+        if part.is_empty() || matches!(part, "." | "..") || part.contains(['\\', ':', '\0']) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Invalid resource path",
+            ));
         }
     }
-    load_canvas(root, &directory)
+    Ok(())
+}
+
+pub(crate) fn regular_path(
+    base: &Path,
+    relative: &str,
+    create_parents: bool,
+) -> io::Result<PathBuf> {
+    validate_resource_path(relative)?;
+    let mut path = base.to_path_buf();
+    let parts: Vec<_> = relative.split('/').collect();
+    for (index, part) in parts.iter().enumerate() {
+        path.push(part);
+        if index + 1 < parts.len() {
+            if create_parents && !path.try_exists()? {
+                fs::create_dir(&path)?;
+            }
+            match fs::symlink_metadata(&path) {
+                Ok(metadata) if metadata.file_type().is_dir() => (),
+                Err(error) if error.kind() == io::ErrorKind::NotFound && !create_parents => (),
+                _ => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "Resource parents must be ordinary directories",
+                    ));
+                }
+            }
+        }
+    }
+    Ok(path)
+}
+
+fn note_directory(root: &Path, uri: &str) -> io::Result<PathBuf> {
+    let path = crate::library_reference_path(uri)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid note address"))?;
+    if path.split('/').any(|name| {
+        name.starts_with('.')
+            || name.ends_with(['.', ' '])
+            || name == "node_modules"
+            || is_reserved_directory(name)
+    }) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Invalid note address",
+        ));
+    }
+    let path = regular_path(&root.canonicalize()?, &format!("{path}/index.md"), false)?;
+    require_regular_file(&path)?;
+    Ok(path.parent().unwrap().to_path_buf())
+}
+
+pub fn load_canvas_template(root: &Path, uri: &str) -> io::Result<String> {
+    load_canvas(root, &note_directory(root, uri)?)
 }
 
 pub fn load_canvas(root: &Path, directory: &Path) -> io::Result<String> {
     let directory = canvas_directory(root, directory)?;
-    let path = directory.join(CANVAS_FILE);
+    let path = regular_path(&directory, CANVAS_FILE, false)?;
     require_regular_file(&path)?;
     fs::read_to_string(path)
 }
 
 pub fn load_canvas_resource(root: &Path, directory: &Path, name: &str) -> io::Result<Vec<u8>> {
-    if name.is_empty()
-        || name.starts_with('.')
-        || name.ends_with(['.', ' '])
-        || name.contains(['/', '\\', ':', '\0'])
-        || name.eq_ignore_ascii_case("index.md")
-        || name.eq_ignore_ascii_case(CANVAS_FILE)
-    {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Invalid canvas resource",
-        ));
-    }
     let directory = canvas_directory(root, directory)?;
-    let path = directory.join(name);
+    let path = regular_path(&directory, &format!("canvas/{name}"), false)?;
     require_regular_file(&path)?;
     fs::read(path)
 }
 
-fn canvas_directory(root: &Path, directory: &Path) -> io::Result<std::path::PathBuf> {
-    let root = root.canonicalize()?;
-    let directory = directory.canonicalize()?;
-    if !directory.starts_with(&root) {
-        return Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            "Canvas is outside the library",
-        ));
+pub fn load_library_resource(root: &Path, uri: &str) -> io::Result<Vec<u8>> {
+    let (address, part) = uri
+        .split_once('?')
+        .map_or((uri, None), |(address, query)| (address, Some(query)));
+    let path = crate::library_reference_path(address)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid resource address"))?;
+    let parts: Vec<_> = path.split('/').collect();
+    let boundary = parts
+        .iter()
+        .position(|name| is_reserved_directory(name) || *name == "index.md")
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Expected assets, canvas or index.md",
+            )
+        })?;
+    let note = format!(
+        "locus://{}",
+        address
+            .strip_prefix("locus://")
+            .unwrap()
+            .split('/')
+            .take(boundary)
+            .collect::<Vec<_>>()
+            .join("/")
+    );
+    let directory = note_directory(root, &note)?;
+    let relative = parts[boundary..].join("/");
+    let file = regular_path(&directory, &relative, false)?;
+    require_regular_file(&file)?;
+    let bytes = fs::read(file)?;
+    match part {
+        None => Ok(bytes),
+        Some("part=yaml" | "part=body") if relative == "index.md" => {
+            let text = std::str::from_utf8(&bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+            let (yaml, body) = crate::scanner::frontmatter_parts(text).unwrap_or(("", text));
+            Ok(if part == Some("part=yaml") {
+                yaml
+            } else {
+                body
+            }
+            .as_bytes()
+            .to_vec())
+        }
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Invalid content part",
+        )),
     }
-    require_regular_file(&directory.join("index.md"))?;
-    Ok(directory)
+}
+
+fn canvas_directory(root: &Path, directory: &Path) -> io::Result<PathBuf> {
+    let canonical_root = root.canonicalize()?;
+    let relative = directory
+        .strip_prefix(root)
+        .or_else(|_| directory.strip_prefix(&canonical_root))
+        .map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "Canvas is outside the library",
+            )
+        })?;
+    let root = canonical_root;
+    if relative.as_os_str().is_empty() {
+        require_regular_file(&root.join("index.md"))?;
+        return Ok(root);
+    }
+    let file = regular_path(
+        &root,
+        &format!("{}/index.md", relative.to_string_lossy()),
+        false,
+    )?;
+    require_regular_file(&file)?;
+    Ok(directory.to_path_buf())
 }
 
 fn require_regular_file(path: &Path) -> io::Result<()> {
     if !fs::symlink_metadata(path)?.file_type().is_file() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "Canvas files must be regular files",
+            "Resources must be regular files",
         ));
     }
     Ok(())
@@ -79,6 +179,15 @@ fn require_regular_file(path: &Path) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    fn write_fixture(
+        path: impl AsRef<std::path::Path>,
+        contents: impl AsRef<[u8]>,
+    ) -> std::io::Result<()> {
+        let path = path.as_ref();
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        std::fs::write(path, contents)
+    }
+
     use super::*;
 
     #[test]
@@ -86,15 +195,15 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let note = root.path().join("旅行");
         fs::create_dir(&note).unwrap();
-        fs::write(note.join("index.md"), "Travel").unwrap();
-        fs::write(note.join(CANVAS_FILE), "<p>Template</p>").unwrap();
+        write_fixture(note.join("index.md"), "Travel").unwrap();
+        write_fixture(note.join(CANVAS_FILE), "<p>Template</p>").unwrap();
         for uri in ["locus://旅行", "locus://%E6%97%85%E8%A1%8C"] {
             assert_eq!(
                 load_canvas_template(root.path(), uri).unwrap(),
                 "<p>Template</p>"
             );
         }
-        fs::write(note.join(CANVAS_FILE), "Updated").unwrap();
+        write_fixture(note.join(CANVAS_FILE), "Updated").unwrap();
         assert_eq!(
             load_canvas_template(root.path(), "locus://旅行").unwrap(),
             "Updated"
@@ -135,8 +244,8 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let outside = tempfile::tempdir().unwrap();
         for path in [root.path(), outside.path()] {
-            fs::write(path.join("index.md"), "Note").unwrap();
-            fs::write(path.join(CANVAS_FILE), "Template").unwrap();
+            write_fixture(path.join("index.md"), "Note").unwrap();
+            write_fixture(path.join(CANVAS_FILE), "Template").unwrap();
         }
         symlink(outside.path(), root.path().join("outside")).unwrap();
         symlink(root.path(), root.path().join("inside")).unwrap();
@@ -145,7 +254,8 @@ mod tests {
         }
         let note = root.path().join("note");
         fs::create_dir(&note).unwrap();
-        fs::write(note.join("index.md"), "Note").unwrap();
+        write_fixture(note.join("index.md"), "Note").unwrap();
+        fs::create_dir(note.join("canvas")).unwrap();
         symlink(outside.path().join(CANVAS_FILE), note.join(CANVAS_FILE)).unwrap();
         assert!(load_canvas_template(root.path(), "locus://note").is_err());
     }
@@ -155,13 +265,13 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let note = root.path().join("note");
         fs::create_dir(&note).unwrap();
-        fs::write(note.join("index.md"), "Note").unwrap();
-        fs::write(note.join("照片 1.png"), [0, 128, 255]).unwrap();
+        write_fixture(note.join("index.md"), "Note").unwrap();
+        write_fixture(note.join("canvas/照片 1.png"), [0, 128, 255]).unwrap();
         assert_eq!(
             load_canvas_resource(root.path(), &note, "照片 1.png").unwrap(),
             [0, 128, 255]
         );
-        fs::write(note.join("照片 1.png"), [42]).unwrap();
+        write_fixture(note.join("canvas/照片 1.png"), [42]).unwrap();
         assert_eq!(
             load_canvas_resource(root.path(), &note, "照片 1.png").unwrap(),
             [42]
@@ -189,8 +299,8 @@ mod tests {
             );
         }
         let outside = tempfile::tempdir().unwrap();
-        fs::write(outside.path().join("index.md"), "Outside").unwrap();
-        fs::write(outside.path().join("photo.png"), [1]).unwrap();
+        write_fixture(outside.path().join("index.md"), "Outside").unwrap();
+        write_fixture(outside.path().join("canvas/photo.png"), [1]).unwrap();
         assert!(load_canvas_resource(root.path(), outside.path(), "photo.png").is_err());
         fs::remove_file(note.join("index.md")).unwrap();
         assert!(load_canvas_resource(root.path(), &note, "照片 1.png").is_err());
@@ -200,11 +310,14 @@ mod tests {
     #[test]
     fn resources_reject_symlinks_and_directories() {
         let root = tempfile::tempdir().unwrap();
-        fs::write(root.path().join("index.md"), "Note").unwrap();
-        fs::write(root.path().join("photo.png"), [1]).unwrap();
-        std::os::unix::fs::symlink(root.path().join("photo.png"), root.path().join("link.png"))
-            .unwrap();
-        fs::create_dir(root.path().join("folder.png")).unwrap();
+        write_fixture(root.path().join("index.md"), "Note").unwrap();
+        write_fixture(root.path().join("canvas/photo.png"), [1]).unwrap();
+        std::os::unix::fs::symlink(
+            root.path().join("canvas/photo.png"),
+            root.path().join("canvas/link.png"),
+        )
+        .unwrap();
+        fs::create_dir(root.path().join("canvas/folder.png")).unwrap();
         for name in ["link.png", "folder.png"] {
             assert!(load_canvas_resource(root.path(), root.path(), name).is_err());
         }
