@@ -606,7 +606,10 @@ fn resource_name(resource: &Resource) -> Result<String, String> {
         Resource::Canvas => Ok(crate::CANVAS_FILE.into()),
         Resource::Icon => Ok("assets/icon.png".into()),
         Resource::CanvasFile { name } => {
-            if name.eq_ignore_ascii_case("index.html") {
+            if name.split('/').any(|part| part == "node_modules") {
+                return Err("reserved_name: Installed dependencies are not canvas content.".into());
+            }
+            if name.eq_ignore_ascii_case("package.json") {
                 return Err("reserved_name: Use the canvas resource for its entry.".into());
             }
             crate::canvas::validate_resource_path(name).map_err(io_error)?;
@@ -625,7 +628,7 @@ fn resource_name(resource: &Resource) -> Result<String, String> {
 fn resource_for_name(name: &str) -> Resource {
     match name {
         "index.md" => Resource::Note,
-        "canvas/index.html" => Resource::Canvas,
+        "canvas/package.json" => Resource::Canvas,
         "assets/icon.png" => Resource::Icon,
         _ => {
             if let Some(name) = name.strip_prefix("canvas/") {
@@ -654,6 +657,9 @@ fn collect_resources(
             .into_string()
             .map_err(|_| "invalid_name")?;
         let relative = format!("{prefix}{name}");
+        if folder == "canvas" && name == "node_modules" {
+            continue;
+        }
         let kind = entry.file_type().map_err(io_error)?;
         if kind.is_dir() && folder == "canvas" {
             collect_resources(&entry.path(), folder, &format!("{relative}/"), files)?;

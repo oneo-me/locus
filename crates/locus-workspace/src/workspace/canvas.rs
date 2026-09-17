@@ -178,7 +178,11 @@ impl Locus {
             && let Some(root) = self.current_library_path(cx).map(Path::to_path_buf)
         {
             let language = self.language(cx);
-            let view = cx.new(|cx| CanvasView::new(&root, &node.directory, language, window, cx));
+            let runtime = self
+                .canvas_runtime
+                .get_or_insert_with(|| std::sync::Arc::new(locus_canvas::CanvasRuntime::new(&root)))
+                .clone();
+            let view = cx.new(|cx| CanvasView::new(runtime, &node.directory, language, window, cx));
             let subscription = cx.subscribe_in(&view, window, |this, view, event, window, cx| {
                 if this.app_shell.is_settings_open()
                     || !this

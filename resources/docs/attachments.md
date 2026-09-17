@@ -1,6 +1,6 @@
 # Attachments
 
-A note is a directory containing `index.md`. Ordinary files in its `assets/` directory are its attachments. `assets/icon.png` is the reserved note icon and is excluded from attachments. `canvas/index.html` is the canvas entry; all files under `canvas/` belong to the canvas. `assets` and `canvas` are reserved directory names and cannot identify notes.
+A note is a directory containing `index.md`. Ordinary files in its `assets/` directory are its attachments. `assets/icon.png` is the reserved note icon and is excluded from attachments. `canvas/package.json` declares the React canvas entry; source files under `canvas/` belong to the canvas, while installed `node_modules/` are excluded from content resources. `assets` and `canvas` are reserved directory names and cannot identify notes.
 
 Reference existing attachments by their actual `assets/<filename>` paths. Do not use absolute paths, parent paths, or missing files. Items are displayed in reference order.
 

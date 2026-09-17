@@ -63,7 +63,7 @@ fn archives_directories_and_canvas_remain_operable_without_native_paths() {
     assert_eq!(library.search("标题", 0, 10).unwrap()["total"], 1);
     let canvas = ContentTarget::new(note.uri(), Resource::Canvas);
     library
-        .write_text(&canvas, "<div>Canvas</div>", "missing")
+        .write_text(&canvas, r#"{"exports":"./src/index.tsx"}"#, "missing")
         .unwrap();
     assert_eq!(
         crate::load_canvas(
@@ -73,7 +73,7 @@ fn archives_directories_and_canvas_remain_operable_without_native_paths() {
                 .join(crate::library_reference_path(note.uri()).unwrap())
         )
         .unwrap(),
-        "<div>Canvas</div>"
+        r#"{"exports":"./src/index.tsx"}"#
     );
     let manifest = library.export_manifest("locus://目录").unwrap();
     assert!(!manifest.to_string().contains(root.path().to_str().unwrap()));
@@ -307,7 +307,7 @@ fn manifest_and_chunks_reconstruct_notes_canvas_and_binary_attachments() {
     library
         .write_text(
             &ContentTarget::new("locus://group/note", Resource::Canvas),
-            "<p>Canvas</p>",
+            r#"{"exports":"./src/index.tsx"}"#,
             "missing",
         )
         .unwrap();
@@ -428,7 +428,7 @@ fn reference_labels_and_code_inside_link_labels_are_not_rewritten() {
 }
 
 #[test]
-fn emitted_addresses_resolve_in_navigation_and_canvas_templates() {
+fn emitted_addresses_resolve_in_navigation_and_canvas_packages() {
     let root = tempfile::tempdir().unwrap();
     let library = LibraryAccess::new(Some(root.path().to_owned()));
     for uri in [
@@ -441,7 +441,7 @@ fn emitted_addresses_resolve_in_navigation_and_canvas_templates() {
         library
             .write_text(
                 &ContentTarget::new(uri, Resource::Canvas),
-                "<p>Template</p>",
+                r#"{"exports":"./src/index.tsx"}"#,
                 "missing",
             )
             .unwrap();
@@ -454,7 +454,7 @@ fn emitted_addresses_resolve_in_navigation_and_canvas_templates() {
         assert!(tree.node(&path).is_some(), "{uri}");
         assert_eq!(
             crate::load_canvas(root.path(), &root.path().join(&path)).unwrap(),
-            "<p>Template</p>"
+            r#"{"exports":"./src/index.tsx"}"#
         );
     }
 }
@@ -563,6 +563,90 @@ fn note_data_handles_empty_yaml_bom_and_crlf_without_losing_body() {
         assert_eq!(
             crate::load_library_resource(root.path(), &format!("{uri}/index.md")).unwrap(),
             source.as_bytes()
+        );
+    }
+}
+
+#[test]
+fn legacy_canvases_stay_untouched_and_dependencies_are_not_note_resources() {
+    let root = tempfile::tempdir().unwrap();
+    let library = LibraryAccess::new(Some(root.path().to_owned()));
+    library.create_note("locus://note", "Note").unwrap();
+    let canvas = root.path().join("note/canvas");
+    fs::create_dir(&canvas).unwrap();
+    for (name, content) in [
+        ("index.html", "<p>Old</p>"),
+        ("main.js", "old()"),
+        ("index.json", "{}"),
+    ] {
+        fs::write(canvas.join(name), content).unwrap();
+    }
+    assert!(
+        crate::LibraryTree::load(Some(root.path()))
+            .node("note")
+            .unwrap()
+            .canvas_path
+            .is_none()
+    );
+    library
+        .write_text(
+            &ContentTarget::new("locus://note", Resource::Canvas),
+            r#"{"exports":"./src/index.tsx"}"#,
+            "missing",
+        )
+        .unwrap();
+    assert!(
+        crate::LibraryTree::load(Some(root.path()))
+            .node("note")
+            .unwrap()
+            .canvas_path
+            .is_some()
+    );
+    let version = library.inspect_tree("locus://note").unwrap()["version"].clone();
+    let modules = canvas.join("node_modules/installed");
+    fs::create_dir_all(&modules).unwrap();
+    fs::write(modules.join("index.js"), "dependency").unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(modules.join("index.js"), modules.join("link.js")).unwrap();
+    assert_eq!(
+        library.inspect_tree("locus://note").unwrap()["version"],
+        version
+    );
+    assert!(
+        !library
+            .export_manifest("locus://note")
+            .unwrap()
+            .to_string()
+            .contains("node_modules")
+    );
+    assert!(
+        library
+            .read_text(&ContentTarget::new(
+                "locus://note",
+                Resource::CanvasFile {
+                    name: "node_modules/installed/index.js".into()
+                }
+            ))
+            .is_err()
+    );
+    let plan = library
+        .plan_move("locus://note", "locus://renamed")
+        .unwrap();
+    library
+        .move_tree(
+            "locus://note",
+            "locus://renamed",
+            plan["version"].as_str().unwrap(),
+        )
+        .unwrap();
+    for (name, content) in [
+        ("index.html", "<p>Old</p>"),
+        ("main.js", "old()"),
+        ("index.json", "{}"),
+    ] {
+        assert_eq!(
+            fs::read_to_string(root.path().join("renamed/canvas").join(name)).unwrap(),
+            content
         );
     }
 }

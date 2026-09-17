@@ -2,3 +2,4 @@
 AGENTS.md
 .DS_Store
 .build/
+node_modules/

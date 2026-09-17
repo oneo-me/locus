@@ -84,6 +84,7 @@ pub struct Locus {
     content_pane: Entity<LocusPane>,
     mcp_server: McpServerController,
     note_canvas: Option<NoteCanvas>,
+    canvas_runtime: Option<std::sync::Arc<locus_canvas::CanvasRuntime>>,
     terminal_launch_pending: bool,
     canvas_download_pending: bool,
     library_tree: LibraryTree,
@@ -289,6 +290,7 @@ impl Locus {
             content_pane,
             mcp_server,
             note_canvas: None,
+            canvas_runtime: None,
             canvas_download_pending: false,
             terminal_launch_pending: false,
             library_tree,
@@ -464,6 +466,7 @@ impl Locus {
     fn change_library(&mut self, path: &Path, cx: &mut Context<Self>) {
         let could_reload_current_note = self.can_reload_current_note();
         self.release_note_canvas(cx);
+        self.canvas_runtime = None;
         self.library_watch_task = None;
         self.library_watcher = None;
         let (watcher, task, watcher_error) = Self::start_library_watcher(Some(path), cx);

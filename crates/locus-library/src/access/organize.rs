@@ -49,6 +49,9 @@ impl LibraryAccess {
                     .map_err(|_| "invalid_target")?
                     .components()
                     .any(|part| part.as_os_str() == "canvas");
+                if in_canvas && name == "node_modules" && kind.is_dir() {
+                    continue;
+                }
                 if (!in_canvas && (name.starts_with('.') || name == "node_modules"))
                     || !(kind.is_dir() || kind.is_file())
                 {

@@ -14,7 +14,7 @@ use locus_library::{
     LIBRARY_REFERENCE_SCHEME, LibraryNode, LibraryTree, library_reference_path, load_note,
 };
 
-const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path or locus:// address, call resolve_article directly with the path parameter (not uri); do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; assets/ holds attachments and the reserved assets/icon.png icon; assets and canvas are reserved directories, never notes. canvas/index.html and canvas/main.js define an HTML canvas with an exported async main(data); mutually exclusive canvas/index.json invokes a template with template and data fields; read the built-in locus-docs://canvas MCP resource for authoring. Do not recreate CRUD or attachment tools through MCP.";
+const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path or locus:// address, call resolve_article directly with the path parameter (not uri); do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; assets/ holds attachments and the reserved assets/icon.png icon; assets and canvas are reserved directories, never notes. canvas/package.json declares a React component package with an exports source entry; Locus starts Vite using system Node.js and npm, renders the default component, and hot-reloads edits. Import other note components with locus:note/path. Read the built-in locus-docs://canvas resource before authoring. Do not recreate CRUD or attachment tools through MCP.";
 
 #[derive(Clone)]
 pub(super) struct LocusMcp {
@@ -412,7 +412,11 @@ mod tests {
         let directory = root.path().join("note");
         std::fs::create_dir(&directory).unwrap();
         write_fixture(directory.join("index.md"), "---\ntitle: Note\n---\nBody").unwrap();
-        write_fixture(directory.join("canvas/index.html"), "<p>Canvas</p>").unwrap();
+        write_fixture(
+            directory.join("canvas/package.json"),
+            r#"{"exports":"./src/index.tsx"}"#,
+        )
+        .unwrap();
         write_fixture(directory.join("assets/file.txt"), "Attachment").unwrap();
         let service = LocusMcp::new(Some(root.path().to_path_buf()));
         let resolved = service

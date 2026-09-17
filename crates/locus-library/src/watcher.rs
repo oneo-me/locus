@@ -67,6 +67,12 @@ fn relevant_relative_path(root: &Path, path: &Path) -> Option<PathBuf> {
     if relative.as_os_str().is_empty() {
         return Some(PathBuf::new());
     }
+    if relative
+        .components()
+        .any(|part| part.as_os_str() == "node_modules")
+    {
+        return None;
+    }
 
     for (index, component) in relative.components().enumerate() {
         let Component::Normal(component) = component else {
