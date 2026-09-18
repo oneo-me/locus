@@ -173,15 +173,3 @@ workspace.note.reference_copied:
 workspace.terminal.launch_error:
   en: Could not open the terminal. Check that it is installed and try again.
   zh-CN: 无法打开终端，请确认已安装后重试。
-workspace.canvas.download:
-  en: Download canvas
-  zh-CN: 下载画布
-workspace.canvas.downloaded:
-  en: Canvas saved
-  zh-CN: 画布已保存
-workspace.canvas.download_error:
-  en: Couldn’t download canvas. Check its files and try again.
-  zh-CN: 无法下载画布，请检查相关文件后重试。
-workspace.canvas.directory_required:
-  en: Choose an export directory in Settings first.
-  zh-CN: 请先在设置中选择导出目录。

@@ -24,14 +24,6 @@ if (await readFile(marker, 'utf8').catch(() => '') !== fingerprint) {
   await runNpm(directory, ['ci', '--ignore-scripts', '--no-audit', '--no-fund']);
   await writeFile(marker, fingerprint);
 }
-if (process.argv[2] === '--export') {
-  const [, , , root, note, output, origin, page, dark] = process.argv;
-  const response = await fetch(`${origin}/__locus/dependencies?page=${encodeURIComponent(page)}`);
-  if (!response.ok) throw new Error('Could not collect canvas resources for export');
-  const { exportCanvas } = await import('./export.mjs');
-  await exportCanvas(root, note, output, { resources: await response.json(), dark: dark === 'true' });
-  process.exit(0);
-}
 const { startServer } = await import('./server.mjs');
 server = await startServer(process.argv[2]);
 process.stdout.write(`LOCUS_READY http://127.0.0.1:${server.httpServer.address().port}\n`);

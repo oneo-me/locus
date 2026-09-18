@@ -4582,7 +4582,6 @@ dependencies = [
  "rust-i18n",
  "serde-saphyr 1.2.0",
  "sha2 0.10.9",
- "tempfile",
  "uuid",
 ]
 
@@ -4627,7 +4626,6 @@ dependencies = [
 name = "locus-preferences"
 version = "0.1.0"
 dependencies = [
- "dirs 6.0.0",
  "gpui-kit",
  "oneo-gpui",
  "rust-i18n",

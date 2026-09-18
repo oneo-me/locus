@@ -469,50 +469,6 @@ impl Settings {
         .detach();
     }
 
-    fn choose_export_directory(&mut self, cx: &mut Context<Self>) {
-        let receiver = cx.prompt_for_paths(PathPromptOptions {
-            files: false,
-            directories: true,
-            multiple: false,
-            prompt: Some(
-                t!(
-                    "settings.export.choose_prompt",
-                    locale = self.preferences.appearance.language.locale()
-                )
-                .into_owned()
-                .into(),
-            ),
-        });
-        cx.spawn(async move |this, cx| {
-            let result = receiver.await;
-            let _ = this.update(cx, |this, cx| {
-                match result {
-                    Ok(Ok(Some(paths))) => {
-                        if let Some(path) = paths.into_iter().next() {
-                            let previous = this.preferences.export_directory.replace(path);
-                            this.persist();
-                            if this.error.is_some() {
-                                this.preferences.export_directory = previous;
-                            }
-                        }
-                    }
-                    Ok(Ok(None)) => {}
-                    _ => {
-                        this.error = Some(
-                            t!(
-                                "settings.export.choose_error",
-                                locale = this.preferences.appearance.language.locale()
-                            )
-                            .into_owned(),
-                        );
-                    }
-                }
-                cx.notify();
-            });
-        })
-        .detach();
-    }
-
     fn sync_choice_selects(&self, window: &mut Window, cx: &mut Context<Self>) {
         let language = self.preferences.appearance.language;
         for dropdown in Dropdown::ALL {

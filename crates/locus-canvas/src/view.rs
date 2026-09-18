@@ -43,7 +43,6 @@ pub enum CanvasEvent {
 
 pub struct CanvasView {
     runtime: Arc<super::CanvasRuntime>,
-    directory: std::path::PathBuf,
     language: Language,
     visible: bool,
     #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -105,7 +104,6 @@ impl CanvasView {
         let dark = Theme::global(cx).is_dark();
         let mut tab = Self {
             runtime,
-            directory: directory.to_path_buf(),
             language,
             visible: false,
             #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -244,17 +242,6 @@ impl CanvasView {
             self.loading = false;
             self.error = Some(CanvasError::Unsupported);
         }
-    }
-
-    pub fn prepare_download(
-        &self,
-        cx: &App,
-    ) -> gpui_kit::Task<std::io::Result<super::CanvasDownload>> {
-        let runtime = self.runtime.clone();
-        let directory = self.directory.clone();
-        let dark = self.dark.load(Ordering::Relaxed);
-        cx.background_executor()
-            .spawn(async move { super::export::prepare_download(&runtime, &directory, dark) })
     }
 
     pub fn has_error(&self) -> bool {

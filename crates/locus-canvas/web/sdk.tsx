@@ -1,5 +1,4 @@
 import { createContext, useContext, useSyncExternalStore } from 'react';
-import exportedResources from 'virtual:locus-resources';
 
 export interface CanvasContext {
   note: string;
@@ -14,11 +13,6 @@ export function useCanvas(): CanvasContext {
 }
 
 export function resourceUrl(address: string): string {
-  if (exportedResources) {
-    const target = exportedResources[address];
-    if (!target) throw new Error(`Resource is not included in this export: ${address}`);
-    return new URL(target, document.baseURI).href;
-  }
   return `/__locus/resource?uri=${encodeURIComponent(address)}`;
 }
 

@@ -1,9 +1,7 @@
 rust_i18n::i18n!("locales", fallback = "en");
 
-mod export;
 mod service;
 mod view;
-pub use export::CanvasDownload;
 pub use service::CanvasRuntime;
 
 pub use view::{CanvasEvent, CanvasView};

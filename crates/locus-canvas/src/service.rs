@@ -22,7 +22,6 @@ const FILES: &[(&str, &str)] = &[
     ("host.tsx", include_str!("../web/host.tsx")),
     ("host.css", include_str!("../web/host.css")),
     ("sdk.tsx", include_str!("../web/sdk.tsx")),
-    ("export.mjs", include_str!("../web/export.mjs")),
 ];
 
 pub struct CanvasRuntime {
@@ -75,37 +74,6 @@ impl CanvasRuntime {
                     .is_some()
             })
         })
-    }
-
-    pub(crate) fn export(&self, directory: &Path, output: &Path, dark: bool) -> io::Result<()> {
-        let url = self.page_url(directory)?;
-        let (origin, page) = url
-            .split_once("/notes/")
-            .ok_or_else(|| io::Error::other("Invalid canvas URL"))?;
-        let note = format!("locus://{}", page.trim_end_matches('/'));
-        let host = runtime_directory()?;
-        let mut child = locus_library::background_command("node")
-            .arg(host.join("launch.mjs"))
-            .arg("--export")
-            .arg(&self.root)
-            .arg(note)
-            .arg(output)
-            .arg(origin)
-            .arg(format!("/notes/{page}"))
-            .arg(dark.to_string())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
-        let input = child.stdin.take();
-        let result = child.wait_with_output()?;
-        drop(input);
-        if !result.status.success() {
-            return Err(io::Error::other(
-                String::from_utf8_lossy(&result.stderr).into_owned(),
-            ));
-        }
-        Ok(())
     }
 
     pub fn page_url(&self, directory: &Path) -> io::Result<String> {

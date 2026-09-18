@@ -7,7 +7,6 @@ publish = false
 [dependencies]
 dirs.workspace = true
 sha2.workspace = true
-tempfile.workspace = true
 percent-encoding.workspace = true
 async-channel.workspace = true
 gpui-kit.workspace = true
@@ -23,4 +22,3 @@ wry = { package = "lb-wry", version = "0.53.3" }
 [dev-dependencies]
 gpui-kit = { workspace = true, features = ["test-support"] }
 serde-saphyr.workspace = true
-tempfile.workspace = true

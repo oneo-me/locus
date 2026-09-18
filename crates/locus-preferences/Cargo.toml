@@ -5,7 +5,6 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-dirs.workspace = true
 oneo-gpui.workspace = true
 gpui-kit.workspace = true
 rust-i18n.workspace = true

@@ -74,7 +74,7 @@ export default function Canvas() {
 
 The host supplies Tailwind's theme and base reset once. Utilities are compiled from each referenced canvas package's source, including cross-note components. Use `dark:` for the application theme; `useTheme()` from `@locus/canvas` returns `light` or `dark` and reacts without reloading. Use CSS Modules or scoped classes for ordinary components. Place design-system variables on an explicit theme container; avoid global `body`, `html` and `:root` overrides in reusable components. Configure popup/portal containers to inherit the intended theme. Independent packages do not isolate global CSS.
 
-shadcn components are ordinary React source files. Add their dependencies and theme variables to the owning package; use relative imports or aliases explicitly supported by the host, rather than assuming a separate Vite project. Large styles belong in CSS files. Bundle fonts locally. Use module imports for images, CSS and Workers so Vite can resolve and export their dependencies.
+shadcn components are ordinary React source files. Add their dependencies and theme variables to the owning package; use relative imports or aliases explicitly supported by the host, rather than assuming a separate Vite project. Large styles belong in CSS files. Bundle fonts locally. Use module imports for images, CSS and Workers so Vite can resolve their dependencies.
 
 The following SDK functions are supplied by `@locus/canvas`:
 
@@ -96,10 +96,8 @@ Supported resources are `locus://<note>/index.md`, `index.md?part=yaml`, `index.
 
 The service listens only on loopback. It permits local scripts/styles/fonts, HTTPS images/data, local/blob Workers and standard browser DOM APIs. Remote executable scripts, remote styles/fonts, frames, form submission and arbitrary filesystem access are not available. Network requests still need service-side CORS support. Components have no native Shell or arbitrary filesystem bridge. HTTP/HTTPS external links open in the system browser.
 
-## Lifecycle and export
+## Lifecycle
 
 In both Debug and Release, the shared canvas runtime is extracted to `~/.oneo/locus/canvas/<runtime-content-hash>/`. This directory contains the host source and installed host dependencies; Vite's per-library cache is under `node_modules/.vite/<library-path-hash>/`. Note dependencies remain in each note's `canvas/node_modules/`. Previous runtime cache directories are not automatically migrated or deleted.
 
 React owns component state and effects. Release timers, subscriptions, observers and event handlers in effect cleanup. Leaving a note releases its WebView and in-memory state; the service stays available for other notes in the same library and stops when its owner is released. Theme changes do not reload. Native editing shortcuts, focus, application shortcuts and hiding during application overlays retain their normal behavior.
-
-Downloading runs a production Vite build of the selected note and its component dependencies. The result includes `canvas.html`, JS/CSS chunks and imported assets. Literal library-resource addresses are snapshotted; dynamically constructed addresses must have been loaded by the selected page before export. Online data remains online. Export does not capture temporary React state or add native bridges. Use a local static HTTP server to open the export when browser file-origin restrictions prevent module loading. Output names are sanitized, existing files/directories are never overwritten, and incomplete new output is removed on failure.

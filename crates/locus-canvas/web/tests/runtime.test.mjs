@@ -7,7 +7,6 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { openLibrary, notePath } from '../library.mjs';
 import { startServer } from '../server.mjs';
-import { exportCanvas } from '../export.mjs';
 
 async function fixture(t) {
   const root = await mkdtemp(path.join(tmpdir(), 'locus-canvas-'));
@@ -98,7 +97,7 @@ test('the system runtime bootstraps an empty host cache and exits with its owner
   await note('example', 'export default function Canvas() { return null; }');
   const host = path.join(root, 'host');
   await mkdir(host);
-  for (const name of ['package.json', 'package-lock.json', 'launch.mjs', 'server.mjs', 'plugin.mjs', 'library.mjs', 'packages.mjs', 'host.tsx', 'host.css', 'sdk.tsx', 'export.mjs']) {
+  for (const name of ['package.json', 'package-lock.json', 'launch.mjs', 'server.mjs', 'plugin.mjs', 'library.mjs', 'packages.mjs', 'host.tsx', 'host.css', 'sdk.tsx']) {
     await copyFile(new URL(`../${name}`, import.meta.url), path.join(host, name));
   }
   const child = spawn(process.execPath, [path.join(host, 'launch.mjs'), root], { stdio: ['pipe', 'pipe', 'pipe'] });
@@ -190,21 +189,4 @@ test('one Vite server serves routes, compiles React and cross-note imports, and 
   assert.equal(await resource.text(), 'Body');
   const denied = await fetch(`${base}/@fs${root}/caller/index.md`);
   assert.equal(denied.status, 403);
-});
-
-test('export builds a standalone React app and snapshots explicitly referenced note data', async t => {
-  const { root, note } = await fixture(t);
-  await note('shared', 'export default function Shared() { return <p>Shared export</p>; }');
-  await note('caller', 'import Shared from "locus:shared"; import {readText} from "@locus/canvas"; export default function Canvas() { return <Shared/>; } export const data = () => readText("locus://caller/index.md?part=body");');
-  const output = path.join(root, 'output');
-  await exportCanvas(root, 'locus://caller', output, { install: false });
-  const html = await readFile(path.join(output, 'canvas.html'), 'utf8');
-  assert.match(html, /assets\//);
-  assert.doesNotMatch(html, /@vite\/client|host\.tsx/);
-  const resourceFiles = await readdir(path.join(output, 'resources'));
-  assert.equal(await readFile(path.join(output, 'resources', resourceFiles[0]), 'utf8'), 'Body');
-  const assets = await readdir(path.join(output, 'assets'));
-  const js = (await Promise.all(assets.filter(name => name.endsWith('.js')).map(name => readFile(path.join(output, 'assets', name), 'utf8')))).join('\n');
-  assert.match(js, /Shared export/);
-  assert.doesNotMatch(js, /__LOCUS_RESOURCE_MAP__|\/@id\/locus:/);
 });

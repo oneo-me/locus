@@ -11,7 +11,7 @@ const mime = { '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg
   '.webp': 'image/webp', '.gif': 'image/gif', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2',
   '.woff': 'font/woff', '.mp4': 'video/mp4', '.pdf': 'application/pdf', '.js': 'text/javascript', '.html': 'text/html' };
 
-export function locusPlugin(library, { install = true, onResource, resourceModule } = {}) {
+export function locusPlugin(library, { install = true } = {}) {
   const packages = new Packages();
   let server;
   const resources = new Map();
@@ -26,7 +26,6 @@ export function locusPlugin(library, { install = true, onResource, resourceModul
     enforce: 'pre',
     async resolveId(id) {
       if (id === '@locus/canvas') return path.join(hostDirectory, 'sdk.tsx');
-      if (id === 'virtual:locus-resources') return '\0locus-resources';
       if (/^(react|react-dom)(\/|$)/.test(id)) return require.resolve(id);
       if (id === 'tailwindcss' || id.startsWith('tailwindcss/')) return require.resolve(id === 'tailwindcss' ? 'tailwindcss/index.css' : id);
       if (id.startsWith('locus-style:')) return id;
@@ -55,7 +54,6 @@ export function locusPlugin(library, { install = true, onResource, resourceModul
       return source;
     },
     async load(id) {
-      if (id === '\0locus-resources') return resourceModule ?? 'export default null;';
       const directory = styles.get(id);
       if (directory) return `@reference ${JSON.stringify(require.resolve('tailwindcss/theme.css'))};
 @import ${JSON.stringify(require.resolve('tailwindcss/utilities.css'))} source(none);
@@ -128,7 +126,6 @@ export function locusPlugin(library, { install = true, onResource, resourceModul
         try {
           const address = url.searchParams.get('uri') ?? '';
           const resource = await library.resource(address);
-          onResource?.(request.headers.referer, address);
           if (!resources.has(resource.file)) resources.set(resource.file, new Set());
           resources.get(resource.file).add(address.split('?')[0]);
           server.watcher.add(resource.file);

@@ -26,25 +26,6 @@ impl Settings {
                 .on_click(cx.listener(|this, _, _, cx| this.choose_library(cx))),
             &theme,
         );
-        let export_path = self
-            .preferences
-            .resolved_export_directory()
-            .map(|path| path.display().to_string())
-            .unwrap_or_else(|| {
-                t!("settings.export.not_selected", locale = language.locale()).into_owned()
-            });
-        let export_control = directory_control(
-            export_path.clone(),
-            Button::new("choose-export-directory")
-                .accessibility_label(
-                    t!("settings.export.choose_prompt", locale = language.locale()).into_owned(),
-                )
-                .tooltip(export_path)
-                .label(t!("settings.export.choose", locale = language.locale()).into_owned())
-                .on_click(cx.listener(|this, _, _, cx| this.choose_export_directory(cx))),
-            &theme,
-        );
-
         div()
             .w_full()
             .self_stretch()
@@ -60,12 +41,6 @@ impl Settings {
                 )
                 .into_owned(),
                 path_control,
-            ))
-            .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
-            .child(SettingsItem::new(
-                t!("settings.export.directory", locale = language.locale()).into_owned(),
-                t!("settings.export.description", locale = language.locale()).into_owned(),
-                export_control,
             ))
             .child(div().mx(ui_rem(20.0)).h(px(1.0)).bg(theme.border))
             .child(SettingsItem::new(
