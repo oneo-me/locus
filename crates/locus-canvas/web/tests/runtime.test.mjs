@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { createContext, SourceTextModule } from 'node:vm';
 import { openLibrary, notePath } from '../library.mjs';
 import { startServer } from '../server.mjs';
 
@@ -24,6 +25,57 @@ async function fixture(t) {
   }
   return { root, note };
 }
+
+test('React dependencies execute as browser modules and share identity across notes', async t => {
+  const { root, note } = await fixture(t);
+  await note('shared', 'import { useState } from "react"; export default function Shared() { return <p>{useState(1)[0]}</p>; }');
+  await note('caller', 'import Shared from "locus:shared"; export default function Canvas() { return <Shared/>; }');
+  const server = await startServer(root, { install: false });
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+  async function source(url) {
+    const response = await fetch(new URL(url, base));
+    assert.equal(response.status, 200);
+    return response.text();
+  }
+  function dependency(code, name) {
+    const urls = [...code.matchAll(/(?:from\s*|import\s*)["']([^"']+)["']/g)].map(match => match[1]);
+    const url = urls.find(url => name.test(url));
+    assert.ok(url, `Missing dependency ${name}: ${code.slice(0, 1000)}`);
+    return new URL(url, base).href;
+  }
+  const host = await source('/host.tsx');
+  const sdk = await source('/sdk.tsx');
+  const caller = await source(`/__locus/entry.tsx?note=${Buffer.from('locus://caller').toString('base64url')}&import`);
+  const shared = await source(dependency(caller, /\.locus-packages.*index\.tsx/));
+  const react = dependency(host, /\/(?:react\/index|react)\.js/);
+  assert.equal(dependency(sdk, /\/(?:react\/index|react)\.js/), react);
+  assert.equal(dependency(shared, /\/(?:react\/index|react)\.js/), react);
+  const jsx = dependency(host, /(?:react\/jsx-dev-runtime|react_jsx-dev-runtime)\.js/);
+  assert.equal(dependency(caller, /(?:react\/jsx-dev-runtime|react_jsx-dev-runtime)\.js/), jsx);
+  assert.equal(dependency(shared, /(?:react\/jsx-dev-runtime|react_jsx-dev-runtime)\.js/), jsx);
+  const dom = dependency(host, /(?:react-dom\/client|react-dom_client)\.js/);
+  const context = createContext({ console });
+  const modules = new Map();
+  async function load(specifier, importer) {
+    const url = new URL(specifier, importer.identifier).href;
+    if (!modules.has(url)) modules.set(url, source(url).then(code => new SourceTextModule(code, { context, identifier: url })));
+    return modules.get(url);
+  }
+  const probe = new SourceTextModule(`
+    import React from ${JSON.stringify(react)};
+    import DOM from ${JSON.stringify(dom)};
+    import JSX from ${JSON.stringify(jsx)};
+    export const element = JSX.jsxDEV('p', { children: 'Canvas' }, undefined, false);
+    export const valid = React.isValidElement(element);
+    export const createRoot = DOM.createRoot;
+  `, { context, identifier: base });
+  await probe.link(load);
+  await probe.evaluate();
+  assert.equal(probe.namespace.valid, true);
+  assert.equal(probe.namespace.element.props.children, 'Canvas');
+  assert.equal(typeof probe.namespace.createRoot, 'function');
+});
 
 test('note and resource resolution rejects traversal, symlinks and non-notes', async t => {
   const { root, note } = await fixture(t);

@@ -26,7 +26,6 @@ export function locusPlugin(library, { install = true } = {}) {
     enforce: 'pre',
     async resolveId(id) {
       if (id === '@locus/canvas') return path.join(hostDirectory, 'sdk.tsx');
-      if (/^(react|react-dom)(\/|$)/.test(id)) return require.resolve(id);
       if (id === 'tailwindcss' || id.startsWith('tailwindcss/')) return require.resolve(id === 'tailwindcss' ? 'tailwindcss/index.css' : id);
       if (id.startsWith('locus-style:')) return id;
       const token = id.startsWith('/__locus/entry.tsx?') ? new URL(id, 'http://localhost').searchParams.get('note') : null;
