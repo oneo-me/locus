@@ -1,6 +1,5 @@
 use super::*;
 use gpui_kit::Focusable as _;
-use gpui_kit::component::WindowExt as _;
 use locus_canvas::{CanvasEvent, CanvasView};
 
 pub(super) struct NoteCanvas {
@@ -129,11 +128,8 @@ impl Locus {
         cx.notify();
     }
 
-    pub(super) fn synchronize_canvases(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let visible = !self.app_shell.is_settings_open()
-            && self.command_palette_state == super::command_palette::CommandPaletteState::Hidden
-            && !window.has_active_dialog(cx)
-            && !window.has_active_sheet(cx);
+    pub(super) fn synchronize_canvases(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        let visible = !self.app_shell.is_settings_open();
         let language = self.language(cx);
         if let Some(canvas) = &self.note_canvas {
             let visible = visible && self.selected_library_node.as_deref() == Some(&canvas.path);
@@ -158,7 +154,13 @@ pub(super) fn canvas_page(
         .flex()
         .flex_col()
         .overflow_hidden()
-        .child(div().h(px(super::TITLEBAR_HEIGHT)).flex_none())
+        .when(canvas.is_none(), |page| page.bg(theme.background))
+        .child(
+            div()
+                .h(px(super::TITLEBAR_HEIGHT))
+                .flex_none()
+                .bg(theme.background),
+        )
         .when_some(metadata, |page, metadata| {
             page.child(
                 div()
@@ -180,7 +182,8 @@ pub(super) fn canvas_page(
                 .min_w_0()
                 .flex_1()
                 .overflow_hidden()
-                .pl(px(1.0))
+                .border_l_1()
+                .border_color(theme.border)
                 .debug_selector(|| "canvas-region".to_owned())
                 .children(canvas),
         )

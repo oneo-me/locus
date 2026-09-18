@@ -3,8 +3,8 @@ canvas.service_stopped:
   en: The canvas service stopped. Reload the canvas to restart it.
   zh-CN: 画布服务已停止，请刷新画布以重新启动。
 canvas.unsupported:
-  en: Canvas requires macOS or Windows.
-  zh-CN: 画布需要 macOS 或 Windows。
+  en: Canvas requires macOS.
+  zh-CN: 画布需要 macOS。
 canvas.error:
   en: Could not open canvas
   zh-CN: 无法打开画布

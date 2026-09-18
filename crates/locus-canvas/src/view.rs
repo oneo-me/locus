@@ -10,13 +10,13 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-use gpui_wry::WebView;
+#[cfg(target_os = "macos")]
+use oneo_gpui_webview::{NewWindowResponse, PageLoadEvent, WebView, WebViewBuilder};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum CanvasError {
     Load(String),
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[cfg(not(target_os = "macos"))]
     Unsupported,
 }
 
@@ -24,7 +24,7 @@ impl CanvasError {
     fn label(&self, _language: Language) -> String {
         match self {
             Self::Load(detail) => detail.clone(),
-            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+            #[cfg(not(target_os = "macos"))]
             Self::Unsupported => {
                 rust_i18n::t!("canvas.unsupported", locale = _language.locale()).into_owned()
             }
@@ -45,7 +45,7 @@ pub struct CanvasView {
     runtime: Arc<super::CanvasRuntime>,
     language: Language,
     visible: bool,
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     webview: Option<Entity<WebView>>,
     error: Option<CanvasError>,
     loading: bool,
@@ -69,11 +69,11 @@ impl CanvasView {
                     .update_in(cx, |this, window, cx| {
                         if command == "loaded" {
                             this.loading = false;
-                            #[cfg(any(target_os = "macos", target_os = "windows"))]
+                            #[cfg(target_os = "macos")]
                             if let Some(view) = &this.webview {
-                                let _ = view.read(cx).handle().raw().evaluate_script(
-                                    &theme_script(this.dark.load(Ordering::Relaxed)),
-                                );
+                                let _ = view.read(cx).evaluate_script(&theme_script(
+                                    this.dark.load(Ordering::Relaxed),
+                                ));
                             }
                             cx.notify();
                             return;
@@ -106,7 +106,7 @@ impl CanvasView {
             runtime,
             language,
             visible: false,
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            #[cfg(target_os = "macos")]
             webview: None,
             error: None,
             loading: true,
@@ -173,22 +173,17 @@ impl CanvasView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        #[cfg(target_os = "macos")]
         {
             let loading_events = commands.clone();
             let navigation_events = commands.clone();
             let new_window_events = commands.clone();
             let page_url = url.to_owned();
-            let builder = wry::WebViewBuilder::new();
-            #[cfg(target_os = "windows")]
-            let builder = {
-                use wry::WebViewBuilderExtWindows;
-                builder.with_default_context_menus(false)
-            };
+            let builder = WebViewBuilder::new();
             let terminal_message = format!("terminal:{}", uuid::Uuid::new_v4());
             let page_script =
                 include_str!("page.js").replace("__LOCUS_TERMINAL_MESSAGE__", &terminal_message);
-            match builder
+            let builder = builder
                 .with_url(url)
                 .with_visible(false)
                 .with_focused(false)
@@ -203,7 +198,7 @@ impl CanvasView {
                     }
                 })
                 .with_on_page_load_handler(move |event, _| {
-                    if matches!(event, wry::PageLoadEvent::Finished) {
+                    if matches!(event, PageLoadEvent::Finished) {
                         let _ = loading_events.try_send("loaded".to_owned());
                     }
                 })
@@ -216,19 +211,13 @@ impl CanvasView {
                 })
                 .with_new_window_req_handler(move |url, _| {
                     forward_external_url(&url, &new_window_events);
-                    wry::NewWindowResponse::Deny
+                    NewWindowResponse::Deny
                 })
-                .with_download_started_handler(|_, _| false)
-                .build_as_child(window)
-            {
-                Ok(raw) => {
-                    let webview = cx.new(|cx| {
-                        let mut view = WebView::new(raw, window, cx);
-                        view.hide();
-                        view
-                    });
-                    self.focus = webview.read(cx).focus_handle(cx);
-                    self.webview = Some(webview);
+                .with_download_started_handler(|_, _| false);
+            match WebView::new(builder, window, cx) {
+                Ok(view) => {
+                    self.focus = view.focus_handle(cx);
+                    self.webview = Some(cx.new(|_| view));
                 }
                 Err(error) => {
                     self.loading = false;
@@ -236,7 +225,7 @@ impl CanvasView {
                 }
             }
         }
-        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        #[cfg(not(target_os = "macos"))]
         {
             let _ = (url, commands, window, cx);
             self.loading = false;
@@ -249,9 +238,9 @@ impl CanvasView {
     }
 
     pub fn reload(&mut self, cx: &mut Context<Self>) {
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        #[cfg(target_os = "macos")]
         if let Some(view) = &self.webview {
-            if let Err(error) = view.read(cx).handle().raw().reload() {
+            if let Err(error) = view.read(cx).reload() {
                 self.error = Some(CanvasError::Load(error.to_string()));
             } else {
                 self.error = None;
@@ -268,29 +257,25 @@ impl CanvasView {
             cx.notify();
         }
         let visible = visible && self.error.is_none() && !self.loading;
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        #[cfg(target_os = "macos")]
         if let Some(view) = &self.webview {
             view.update(cx, |view, cx| {
-                if view.visible() != visible {
-                    if visible {
-                        view.show();
-                    } else {
-                        view.hide();
-                    }
+                if view.is_visible() != visible {
+                    view.set_visible(visible);
                     cx.notify();
                 }
             });
             if self.dark.load(Ordering::Relaxed) != dark {
-                let handle = view.read(cx).handle();
-                let _ = handle.raw().evaluate_script(&theme_script(dark));
+                let _ = view.read(cx).evaluate_script(&theme_script(dark));
             }
         }
         self.dark.store(dark, Ordering::Relaxed);
     }
 
-    fn render_content(&self, language: Language) -> AnyElement {
+    fn render_content(&self, language: Language, cx: &App) -> AnyElement {
         if self.loading && self.error.is_none() {
             return div()
+                .bg(Theme::global(cx).background)
                 .size_full()
                 .track_focus(&self.focus)
                 .flex()
@@ -299,13 +284,14 @@ impl CanvasView {
                 .child(gpui_kit::component::spinner::Spinner::new())
                 .into_any_element();
         }
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        #[cfg(target_os = "macos")]
         if let Some(view) = &self.webview
             && self.error.is_none()
         {
             return view.clone().into_any_element();
         }
         div()
+            .bg(Theme::global(cx).background)
             .size_full()
             .flex()
             .flex_col()
@@ -324,7 +310,7 @@ impl CanvasView {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(target_os = "macos")]
 fn canvas_command<'a>(message: &'a str, terminal_message: &str) -> Option<&'a str> {
     match message {
         "w" | "e" | "," | "focus" => Some(message),
@@ -342,12 +328,12 @@ impl Focusable for CanvasView {
 }
 
 impl Render for CanvasView {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        self.render_content(self.language)
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.render_content(self.language, cx)
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(target_os = "macos")]
 fn forward_external_url(url: &str, events: &async_channel::Sender<String>) {
     if url.starts_with("http://127.0.0.1:") {
         return;

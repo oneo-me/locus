@@ -19,7 +19,6 @@ use gpui_kit::{
     AnyElement, Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent,
     MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render, ScrollHandle, Stateful,
     StyleRefinement, Subscription, Task, WeakFocusHandle, Window, div, prelude::*, px,
-    transparent_black,
 };
 
 use self::canvas::NoteCanvas;
@@ -807,7 +806,9 @@ impl Locus {
         .into_element()
         .w(px(width))
         .flex_none()
-        .bg(transparent_black())
+        .bg(oneo_gpui::appearance::theme::workspace_background(
+            Theme::global(cx),
+        ))
         .when(show_resize, |panel| {
             panel.child(self.render_panel_resize_handle(cx))
         })
@@ -839,7 +840,11 @@ impl Locus {
             oneo_gpui::WorkspacePanel::new(div().size_full())
                 .header(self.render_content_titlebar(left_control_clearance, cx))
         };
-        panel.into_element().bg(theme.background)
+        let native_canvas = cfg!(target_os = "macos")
+            && selected_note.is_some_and(|node| node.canvas_path.is_some());
+        panel
+            .into_element()
+            .when(!native_canvas, |panel| panel.bg(theme.background))
     }
 
     fn left_pane_content(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
@@ -963,7 +968,10 @@ impl Render for Locus {
                     this.advance_render_lifecycle(window, cx);
                 });
             })
-            .bg(oneo_gpui::appearance::theme::workspace_background(&theme))
+            .when(
+                !cfg!(target_os = "macos") || self.app_shell.is_settings_open(),
+                |root| root.bg(oneo_gpui::appearance::theme::workspace_background(&theme)),
+            )
             .font_family(ui_font_family)
             .text_color(theme.foreground)
             .when(self.app_shell.is_settings_open(), |root| {

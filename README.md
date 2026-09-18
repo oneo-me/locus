@@ -45,7 +45,8 @@ cargo run
 | [locus-workspace](crates/locus-workspace) | 导航、笔记画布、命令和外部 Agent 启动 |
 | [locus-library](crates/locus-library) | 文件模型、读取、修改、观察与 Git 投影 |
 | [locus-settings](crates/locus-settings)、[locus-preferences](crates/locus-preferences) | 设置界面、偏好及配置 |
-| [locus-canvas](crates/locus-canvas) | WebView 画布、资源协议与生命周期 |
+| [locus-canvas](crates/locus-canvas) | macOS WebView 画布、资源协议与生命周期 |
+| [oneo-gpui-webview](crates/oneo-gpui-webview) | macOS WebKit 与 GPUI 分层合成、原生输入与焦点 |
 | [locus-mcp](crates/locus-mcp) | MCP 工具与监听服务 |
 | [locus-ui](crates/locus-ui) | 笔记图标、Markdown 扩展与附件呈现 |
 | [oneo-gpui](crates/oneo-gpui) | 共享应用壳、窗口、面板与配置服务 |

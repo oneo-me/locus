@@ -3458,17 +3458,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41f3ea75672348f37d94472e579f5979ee19b744d0fa5aaadc2fe129ccafa80b"
 
 [[package]]
-name = "gpui-wry"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4b1524e5ddb45c54d545b01b973def017b4383016903ae4b116d9e444e6a376"
-dependencies = [
- "anyhow",
- "gpui-pre",
- "lb-wry",
-]
-
-[[package]]
 name = "granit-parser"
 version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4574,10 +4563,9 @@ dependencies = [
  "async-channel",
  "dirs 6.0.0",
  "gpui-kit",
- "gpui-wry",
- "lb-wry",
  "locus-library",
  "oneo-gpui",
+ "oneo-gpui-webview",
  "percent-encoding",
  "rust-i18n",
  "serde-saphyr 1.2.0",
@@ -5788,6 +5776,18 @@ dependencies = [
  "gpui-kit",
  "libc",
  "serde",
+]
+
+[[package]]
+name = "oneo-gpui-webview"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cc",
+ "gpui-kit",
+ "lb-wry",
+ "objc2 0.6.4",
+ "raw-window-handle",
 ]
 
 [[package]]

@@ -1,0 +1,20 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<title>WebKit composition</title>
+<style>
+  body { margin: 0; padding: 2rem; font: 16px system-ui; background: Canvas; color: CanvasText; }
+  .motion { height: 12rem; background: repeating-linear-gradient(90deg, #3582aa 0 3rem, #88bbc1 3rem 6rem); background-size: 12rem; animation: move 2s linear infinite; }
+  @keyframes move { to { background-position-x: 12rem; } }
+  @media (prefers-reduced-motion: reduce) { .motion { animation: none; } }
+  textarea { display: block; width: 90%; height: 8rem; margin: 2rem 0; font: inherit; }
+</style>
+<div class="motion"></div>
+<h1>WebKit page</h1>
+<p>The page continues running beneath the GPUI overlay. Scroll, select text, and test an input method.</p>
+<p><a href="#end">Link cursor</a> · <span style="cursor: crosshair">Crosshair cursor</span></p>
+<label for="input">Text input</label><textarea id="input">中文输入、选择、复制和粘贴</textarea>
+<button onclick="this.textContent = 'Page clicks: ' + (++window.count)">Page clicks: 0</button>
+<script>window.count = 0;</script>
+<div style="height: 100vh"></div>
+<p id="end">End of scrollable content</p>

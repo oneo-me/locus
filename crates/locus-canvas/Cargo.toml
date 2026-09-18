@@ -14,10 +14,9 @@ locus-library.workspace = true
 oneo-gpui.workspace = true
 rust-i18n.workspace = true
 
-[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
-gpui-wry = "0.6"
+[target.'cfg(target_os = "macos")'.dependencies]
+oneo-gpui-webview.workspace = true
 uuid.workspace = true
-wry = { package = "lb-wry", version = "0.53.3" }
 
 [dev-dependencies]
 gpui-kit = { workspace = true, features = ["test-support"] }
