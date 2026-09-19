@@ -16,9 +16,10 @@ mod window_chrome;
 
 use gpui_kit::component::{ElementExt as _, Root};
 use gpui_kit::{
-    AnyElement, Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render, ScrollHandle, Stateful,
-    StyleRefinement, Subscription, Task, WeakFocusHandle, Window, div, prelude::*, px,
+    AnyElement, App, Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
+    ScrollHandle, Stateful, StyleRefinement, Subscription, Task, WeakFocusHandle, Window, div,
+    prelude::*, px,
 };
 
 use self::canvas::NoteCanvas;
@@ -958,8 +959,10 @@ impl Render for Locus {
             .on_action(cx.listener(Self::reload_current_note_action))
             .on_action(cx.listener(Self::toggle_left_sidebar_action))
             .capture_any_mouse_down(cx.listener(Self::navigation_mouse_down))
-            .on_mouse_move(cx.listener(Self::resize_panel_mouse_move))
-            .capture_any_mouse_up(cx.listener(Self::finish_panel_resize))
+            .child(workspace_drag_events(
+                cx.listener(Self::resize_panel_mouse_move),
+                cx.listener(Self::finish_panel_resize),
+            ))
             .size_full()
             .relative()
             .flex()
@@ -1052,9 +1055,116 @@ fn navigation_left_offset(
     (rendered_left_width - TITLEBAR_CONTROL_INSET - TITLEBAR_NAVIGATION_WIDTH).max(collapsed_offset)
 }
 
+fn workspace_drag_events(
+    on_move: impl Fn(&MouseMoveEvent, &mut Window, &mut App) + 'static,
+    on_up: impl Fn(&MouseUpEvent, &mut Window, &mut App) + 'static,
+) -> impl IntoElement {
+    gpui_kit::canvas(
+        |_, _, _| (),
+        move |_, _, window, _| {
+            window.on_mouse_event(move |event: &MouseMoveEvent, phase, window, cx| {
+                if phase.capture() {
+                    on_move(event, window, cx);
+                }
+            });
+            window.on_mouse_event(move |event: &MouseUpEvent, phase, window, cx| {
+                if phase.capture() {
+                    on_up(event, window, cx);
+                }
+            });
+        },
+    )
+    .absolute()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[gpui_kit::test]
+    fn sidebar_drag_crosses_occluding_content_and_stops_on_release(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        struct Harness {
+            shell: WorkspaceShellState,
+        }
+        impl Render for Harness {
+            fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+                div()
+                    .size_full()
+                    .child(workspace_drag_events(
+                        cx.listener(|this: &mut Self, event: &MouseMoveEvent, _, cx| {
+                            if this.shell.resize(f32::from(event.position.x), 1200.) {
+                                cx.notify();
+                            }
+                        }),
+                        cx.listener(|this, _, _, cx| {
+                            this.shell.finish_resize();
+                            cx.notify();
+                        }),
+                    ))
+                    .child(div().w(px(50.)).h_full().on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                            this.shell.begin_resize(f32::from(event.position.x));
+                            cx.notify();
+                        }),
+                    ))
+                    .child(
+                        div()
+                            .absolute()
+                            .left(px(50.))
+                            .top_0()
+                            .w(px(600.))
+                            .h_full()
+                            .occlude(),
+                    )
+            }
+        }
+        let (view, cx) = cx.add_window_view(|_, _| Harness {
+            shell: WorkspaceShellState::default(),
+        });
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        let initial = view.read_with(cx, |v, _| v.shell.snapshot().left_width);
+        cx.simulate_mouse_down(
+            gpui_kit::point(px(25.), px(25.)),
+            MouseButton::Left,
+            gpui_kit::Modifiers::default(),
+        );
+        cx.simulate_mouse_move(
+            gpui_kit::point(px(125.), px(25.)),
+            Some(MouseButton::Left),
+            gpui_kit::Modifiers::default(),
+        );
+        assert_eq!(
+            view.read_with(cx, |v, _| v.shell.snapshot().left_width),
+            initial + 100.
+        );
+        cx.simulate_mouse_move(
+            gpui_kit::point(px(75.), px(25.)),
+            Some(MouseButton::Left),
+            gpui_kit::Modifiers::default(),
+        );
+        assert_eq!(
+            view.read_with(cx, |v, _| v.shell.snapshot().left_width),
+            initial + 50.
+        );
+        cx.simulate_mouse_up(
+            gpui_kit::point(px(75.), px(25.)),
+            MouseButton::Left,
+            gpui_kit::Modifiers::default(),
+        );
+        cx.simulate_mouse_move(
+            gpui_kit::point(px(200.), px(25.)),
+            None,
+            gpui_kit::Modifiers::default(),
+        );
+        assert_eq!(
+            view.read_with(cx, |v, _| v.shell.snapshot().left_width),
+            initial + 50.
+        );
+        assert!(!view.read_with(cx, |v, _| v.shell.resize_active()));
+    }
 
     #[test]
     fn mcp_receives_the_selected_library_and_listener_preferences() {

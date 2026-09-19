@@ -5,15 +5,25 @@
 @property(nonatomic, strong) NSResponder *firstResponder;
 @property(nonatomic) BOOL areCursorRectsEnabled;
 @property(nonatomic) BOOL isKeyWindow;
-@property(nonatomic) BOOL selectedCursorRect;
+@property(nonatomic) BOOL gpuiCursorRects;
 @property(nonatomic) NSUInteger disables;
 @property(nonatomic) NSUInteger enables;
 @property(nonatomic) NSUInteger resets;
+@property(nonatomic) NSUInteger invalidations;
+@property(nonatomic, weak) NSView *invalidatedView;
 @end
 @implementation TestWindow
 - (void)disableCursorRects { self.areCursorRectsEnabled = NO; self.disables++; }
 - (void)enableCursorRects { self.areCursorRectsEnabled = YES; self.enables++; }
-- (void)resetCursorRects { self.resets++; self.selectedCursorRect = NO; }
+- (void)resetCursorRects {
+    self.resets++;
+    self.gpuiCursorRects = YES;
+}
+- (void)invalidateCursorRectsForView:(NSView *)view {
+    assert(self.areCursorRectsEnabled);
+    self.invalidations++;
+    self.invalidatedView = view;
+}
 - (BOOL)makeFirstResponder:(NSResponder *)responder {
     self.firstResponder = responder;
     return YES;
@@ -29,6 +39,7 @@
 @end
 @implementation TestView
 - (NSWindow *)window { return (NSWindow *)self.testWindow; }
+- (void)discardCursorRects { self.testWindow.gpuiCursorRects = NO; }
 - (void)mouseMoved:(NSEvent *)event { self.moves++; }
 - (void)mouseDown:(NSEvent *)event { self.downs++; }
 - (void)mouseUp:(NSEvent *)event { self.ups++; }
@@ -51,6 +62,13 @@
 }
 @end
 
+@interface TestPointer : OneoWebViewPointer
+@property(nonatomic) NSUInteger cursorResets;
+@end
+@implementation TestPointer
+- (void)resetWebCursor { self.cursorResets++; }
+@end
+
 @interface TestEvent : NSObject
 @property(nonatomic, strong) NSWindow *window;
 @property(nonatomic) NSEventType type;
@@ -58,6 +76,11 @@
 @end
 @implementation TestEvent
 @end
+
+static bool countRoute(void *context, double x, double y, bool down) {
+    (*(NSUInteger *)context)++;
+    return false;
+}
 
 int main(void) {
     @autoreleasepool {
@@ -70,10 +93,18 @@ int main(void) {
         TestRouter *router = [TestRouter new];
         router.webView = web;
         router.eligible = YES;
-        OneoWebViewPointer *pointer = [OneoWebViewPointer new];
+        TestPointer *pointer = [TestPointer new];
+        router.pointer = pointer;
         pointer.gpuiView = gpui;
         pointer.routers = [NSHashTable weakObjectsHashTable];
         [pointer.routers addObject:router];
+        NSUInteger routeCalls = 0;
+        OneoWebViewRouter *nativeRouter = [OneoWebViewRouter new];
+        nativeRouter.gpuiView = gpui;
+        nativeRouter.webView = web;
+        nativeRouter.pointer = pointer;
+        nativeRouter.route = countRoute;
+        nativeRouter.context = &routeCalls;
         TestEvent *event = [TestEvent new];
         event.window = (NSWindow *)window;
         event.type = NSEventTypeMouseMoved;
@@ -83,14 +114,18 @@ int main(void) {
         assert([pointer handleEvent:(NSEvent *)event] == (NSEvent *)event);
         assert(gpui.moves == 1 && window.firstResponder == web);
         assert(!window.areCursorRectsEnabled && window.disables == 1);
+        assert(!window.gpuiCursorRects);
+        assert(window.invalidations == 1 && window.invalidatedView == gpui);
         [pointer handleEvent:(NSEvent *)event];
-        assert(gpui.moves == 2 && window.disables == 1);
+        assert(gpui.moves == 2 && window.disables == 1 && window.invalidations == 1);
+        assert(pointer.cursorResets == 1);
 
         // Moving onto an occluding GPUI surface restores automatic cursor updates.
+        NSUInteger resets = window.resets;
         router.eligible = NO;
         assert([pointer handleEvent:(NSEvent *)event] == (NSEvent *)event);
         assert(gpui.moves == 3 && window.firstResponder == web);
-        assert(window.areCursorRectsEnabled && window.enables == 1 && window.resets == 2);
+        assert(window.areCursorRectsEnabled && window.enables == 1 && window.resets == resets + 1);
 
         // GPUI first-responder delivery is left to AppKit, without a duplicate.
         window.firstResponder = gpui;
@@ -143,27 +178,31 @@ int main(void) {
             object:window]];
         assert(window.areCursorRectsEnabled);
 
-        // Reactivating through GPUI can leave its cursor rectangle selected.
+        // Titlebar activation retains GPUI focus; entry invalidates before suspension.
         window.isKeyWindow = NO;
+        router.eligible = NO;
+        event.type = NSEventTypeLeftMouseDown;
         NSUInteger disables = window.disables;
+        NSUInteger invalidations = window.invalidations;
         [pointer handleEvent:(NSEvent *)event];
         assert(window.areCursorRectsEnabled && window.disables == disables);
         window.isKeyWindow = YES;
         window.firstResponder = gpui;
-        window.selectedCursorRect = YES;
-        router.eligible = NO;
+        window.gpuiCursorRects = YES;
+        event.type = NSEventTypeLeftMouseUp;
         [pointer handleEvent:(NSEvent *)event];
-        assert(window.selectedCursorRect && window.areCursorRectsEnabled);
+        assert(window.areCursorRectsEnabled);
+        event.type = NSEventTypeMouseMoved;
         router.eligible = YES;
         [pointer handleEvent:(NSEvent *)event];
-        assert(!window.selectedCursorRect && !window.areCursorRectsEnabled);
+        assert(!window.gpuiCursorRects && !window.areCursorRectsEnabled);
         assert(window.firstResponder == gpui);
+        assert(window.invalidations == invalidations + 1 && window.invalidatedView == gpui);
 
         // AppKit can reenable rectangles during activation even while we own them.
         window.areCursorRectsEnabled = YES;
-        window.selectedCursorRect = YES;
         [pointer handleEvent:(NSEvent *)event];
-        assert(!window.selectedCursorRect && !window.areCursorRectsEnabled);
+        assert(!window.gpuiCursorRects && !window.areCursorRectsEnabled);
         [pointer restoreCursor];
 
         // Web clicks reach GPUI outside-click listeners, with balanced drag/up events.
@@ -186,15 +225,46 @@ int main(void) {
             assert([pointer handleEvent:(NSEvent *)event] == (NSEvent *)event);
             assert(gpui.ups == i + 1 && !pointer.forwardedButtons);
             router.hidden = NO;
-            // A press starting on GPUI remains on AppKit's normal path.
+            // A GPUI press keeps its drag and release even over an eligible page.
             event.type = sequences[i][0];
-            [pointer handleEvent:(NSEvent *)event];
+            assert([pointer handleEvent:(NSEvent *)event] == (NSEvent *)event);
+            assert(pointer.gpuiButtons);
+            assert(![nativeRouter viewAtWindowPoint:NSZeroPoint mouseDown:NO]);
+            assert(![nativeRouter hitTest:NSZeroPoint]);
+            assert(routeCalls == 0);
+            NSUInteger cursorResets = pointer.cursorResets;
+            router.eligible = YES;
+            event.type = sequences[i][1];
+            assert([pointer handleEvent:(NSEvent *)event] == (NSEvent *)event);
+            assert(window.areCursorRectsEnabled && !pointer.activeRouter);
+            assert(pointer.cursorResets == cursorResets);
             event.type = sequences[i][2];
+            assert([pointer handleEvent:(NSEvent *)event] == (NSEvent *)event);
+            assert(!pointer.gpuiButtons);
+            assert(gpui.downs == i + 1 && gpui.ups == i + 1 && gpui.drags == i + 1);
+            event.type = NSEventTypeMouseMoved;
             [pointer handleEvent:(NSEvent *)event];
-            assert(gpui.downs == i + 1 && gpui.ups == i + 1);
+            assert(pointer.activeRouter == router && pointer.cursorResets == cursorResets + 1);
         }
-        event.type = NSEventTypeMouseMoved;
+        router.eligible = NO;
+        event.type = NSEventTypeLeftMouseDown;
+        [pointer handleEvent:(NSEvent *)event];
+        assert(pointer.gpuiButtons);
+        [pointer windowResignedKey:[NSNotification notificationWithName:NSWindowDidResignKeyNotification
+            object:window]];
+        assert(!pointer.gpuiButtons && !pointer.forwardedButtons);
         router.eligible = YES;
+        event.type = NSEventTypeMouseMoved;
+
+        router.eligible = NO;
+        event.type = NSEventTypeLeftMouseDown;
+        [pointer handleEvent:(NSEvent *)event];
+        assert(pointer.gpuiButtons);
+        router.eligible = YES;
+        event.type = NSEventTypeMouseMoved;
+        [pointer handleEvent:(NSEvent *)event];
+        assert(!pointer.gpuiButtons && pointer.activeRouter == router);
+        [pointer restoreCursor];
 
         // Do not undo another owner's pre-existing cursor-management suspension.
         window.areCursorRectsEnabled = NO;

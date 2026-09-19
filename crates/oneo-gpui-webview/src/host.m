@@ -4,29 +4,14 @@
 
 typedef bool (*OneoHitTest)(void *, double, double, bool);
 
+@class OneoWebViewPointer;
+
 @interface OneoWebViewRouter : NSView
 @property(nonatomic, weak) NSView *gpuiView;
 @property(nonatomic, weak) NSView *webView;
 @property(nonatomic) void *context;
 @property(nonatomic) OneoHitTest route;
-@end
-
-@implementation OneoWebViewRouter
-- (NSView *)viewAtWindowPoint:(NSPoint)point mouseDown:(BOOL)down {
-    if (self.hidden || !self.route || !self.gpuiView || !self.webView) return nil;
-    NSPoint local = [self.gpuiView convertPoint:point fromView:nil];
-    double y = self.gpuiView.isFlipped ? local.y : NSHeight(self.gpuiView.bounds) - local.y;
-    if (!self.route(self.context, local.x, y, down)) return nil;
-    NSView *parent = self.webView.superview;
-    return [self.webView hitTest:[parent convertPoint:point fromView:nil]];
-}
-- (NSView *)hitTest:(NSPoint)point {
-    if (self.hidden || !self.route || !self.gpuiView || !self.webView) return nil;
-    NSEventType type = NSApp.currentEvent.type;
-    BOOL down = type == NSEventTypeLeftMouseDown || type == NSEventTypeRightMouseDown ||
-                type == NSEventTypeOtherMouseDown;
-    return [self viewAtWindowPoint:[self.superview convertPoint:point toView:nil] mouseDown:down];
-}
+@property(nonatomic, weak) OneoWebViewPointer *pointer;
 @end
 
 // Mouse movement follows AppKit's first responder, independently of hitTest:.
@@ -37,15 +22,39 @@ typedef bool (*OneoHitTest)(void *, double, double, bool);
 @property(nonatomic, weak) OneoWebViewRouter *activeRouter;
 @property(nonatomic, weak) NSWindow *cursorWindow;
 @property(nonatomic) NSEventMask forwardedButtons;
+@property(nonatomic) NSEventMask gpuiButtons;
 - (NSEvent *)handleEvent:(NSEvent *)event;
 - (void)windowResignedKey:(NSNotification *)notification;
 - (void)restoreCursor;
+- (void)resetWebCursor;
+@end
+
+@implementation OneoWebViewRouter
+- (NSView *)viewAtWindowPoint:(NSPoint)point mouseDown:(BOOL)down {
+    if (self.pointer.gpuiButtons || self.hidden || !self.route || !self.gpuiView || !self.webView) return nil;
+    NSPoint local = [self.gpuiView convertPoint:point fromView:nil];
+    double y = self.gpuiView.isFlipped ? local.y : NSHeight(self.gpuiView.bounds) - local.y;
+    if (!self.route(self.context, local.x, y, down)) return nil;
+    NSView *parent = self.webView.superview;
+    return [self.webView hitTest:[parent convertPoint:point fromView:nil]];
+}
+- (NSView *)hitTest:(NSPoint)point {
+    if (self.pointer.gpuiButtons || self.hidden || !self.route || !self.gpuiView || !self.webView) return nil;
+    NSEventType type = NSApp.currentEvent.type;
+    BOOL down = type == NSEventTypeLeftMouseDown || type == NSEventTypeRightMouseDown ||
+                type == NSEventTypeOtherMouseDown;
+    return [self viewAtWindowPoint:[self.superview convertPoint:point toView:nil] mouseDown:down];
+}
 @end
 
 @implementation OneoWebViewPointer
 - (void)windowResignedKey:(NSNotification *)notification {
     self.forwardedButtons = 0;
+    self.gpuiButtons = 0;
     [self restoreCursor];
+}
+- (void)resetWebCursor {
+    [NSCursor.arrowCursor set];
 }
 - (void)restoreCursor {
     NSWindow *window = self.cursorWindow;
@@ -83,8 +92,14 @@ typedef bool (*OneoHitTest)(void *, double, double, bool);
         default: return;
     }
     if (down) {
-        if (!web) return;
+        if (!web) {
+            self.gpuiButtons |= button;
+            return;
+        }
         self.forwardedButtons |= button;
+    } else if (self.gpuiButtons & button) {
+        if (up) self.gpuiButtons &= ~button;
+        return;
     } else if (!(self.forwardedButtons & button)) {
         return;
     }
@@ -99,6 +114,7 @@ typedef bool (*OneoHitTest)(void *, double, double, bool);
         [self restoreCursor];
         return event;
     }
+    if (event.type == NSEventTypeMouseMoved) self.gpuiButtons = 0;
     BOOL visible = NO;
     for (OneoWebViewRouter *router in self.routers) visible |= !router.hidden;
     if (!visible) {
@@ -114,7 +130,7 @@ typedef bool (*OneoHitTest)(void *, double, double, bool);
     }
     OneoWebViewRouter *target = nil;
     for (OneoWebViewRouter *router in self.routers) {
-        if ([router viewAtWindowPoint:event.locationInWindow mouseDown:NO]) {
+        if (!self.gpuiButtons && [router viewAtWindowPoint:event.locationInWindow mouseDown:NO]) {
             target = router;
             break;
         }
@@ -122,17 +138,21 @@ typedef bool (*OneoHitTest)(void *, double, double, bool);
     [self forwardButtonEvent:event toWebView:target != nil];
     if (target.hidden || !target.webView) target = nil;
     if (target) {
+        BOOL entering = self.activeRouter != target;
         self.activeRouter = target;
         NSWindow *window = gpui.window;
         if (window.areCursorRectsEnabled) {
             // WebKit sets its cursor asynchronously. Window-wide GPUI cursor
             // rectangles must not overwrite it while the pointer is on the page.
+            // Match GPUI cursor changes while AppKit still manages rectangles.
+            [window invalidateCursorRectsForView:gpui];
             [window disableCursorRects];
             self.cursorWindow = window;
-            // Activation can leave a cursor rectangle selected. Clear that
-            // selection while management is suspended, before WebKit updates.
-            [window resetCursorRects];
+            [gpui discardCursorRects];
+            entering = YES;
         }
+        // WebKit may retain its cached arrow and never replace a GPUI resize cursor.
+        if (entering) [self resetWebCursor];
     } else {
         [self restoreCursor];
     }
@@ -219,6 +239,7 @@ void *oneo_webview_create(void *web, void *gpui, void *context, OneoHitTest rout
     host.router.hidden = YES;
     [gpuiView.superview addSubview:host.router positioned:NSWindowAbove relativeTo:gpuiView];
     host.pointer = pointerForView(gpuiView);
+    host.router.pointer = host.pointer;
     [host.pointer.routers addObject:host.router];
     return (__bridge_retained void *)host;
 }
