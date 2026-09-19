@@ -1,7 +1,7 @@
 _version: 2
-canvas.service_stopped:
-  en: The canvas service stopped. Reload the canvas to restart it.
-  zh-CN: 画布服务已停止，请刷新画布以重新启动。
+canvas.read_error:
+  en: Could not read canvas. Fix the files and reload.
+  zh-CN: 无法读取画布，请修复文件后刷新。
 canvas.unsupported:
   en: Canvas requires macOS.
   zh-CN: 画布需要 macOS。

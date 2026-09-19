@@ -609,7 +609,7 @@ fn resource_name(resource: &Resource) -> Result<String, String> {
             if name.split('/').any(|part| part == "node_modules") {
                 return Err("reserved_name: Installed dependencies are not canvas content.".into());
             }
-            if name.eq_ignore_ascii_case("package.json") {
+            if name.eq_ignore_ascii_case("index.html") {
                 return Err("reserved_name: Use the canvas resource for its entry.".into());
             }
             crate::canvas::validate_resource_path(name).map_err(io_error)?;
@@ -628,7 +628,7 @@ fn resource_name(resource: &Resource) -> Result<String, String> {
 fn resource_for_name(name: &str) -> Resource {
     match name {
         "index.md" => Resource::Note,
-        "canvas/package.json" => Resource::Canvas,
+        "canvas/index.html" => Resource::Canvas,
         "assets/icon.png" => Resource::Icon,
         _ => {
             if let Some(name) = name.strip_prefix("canvas/") {

@@ -63,7 +63,7 @@ fn archives_directories_and_canvas_remain_operable_without_native_paths() {
     assert_eq!(library.search("标题", 0, 10).unwrap()["total"], 1);
     let canvas = ContentTarget::new(note.uri(), Resource::Canvas);
     library
-        .write_text(&canvas, r#"{"exports":"./src/index.tsx"}"#, "missing")
+        .write_text(&canvas, "<div>Canvas</div>", "missing")
         .unwrap();
     assert_eq!(
         crate::load_canvas(
@@ -73,7 +73,7 @@ fn archives_directories_and_canvas_remain_operable_without_native_paths() {
                 .join(crate::library_reference_path(note.uri()).unwrap())
         )
         .unwrap(),
-        r#"{"exports":"./src/index.tsx"}"#
+        "<div>Canvas</div>"
     );
     let manifest = library.export_manifest("locus://目录").unwrap();
     assert!(!manifest.to_string().contains(root.path().to_str().unwrap()));
@@ -307,7 +307,7 @@ fn manifest_and_chunks_reconstruct_notes_canvas_and_binary_attachments() {
     library
         .write_text(
             &ContentTarget::new("locus://group/note", Resource::Canvas),
-            r#"{"exports":"./src/index.tsx"}"#,
+            "<p>Canvas</p>",
             "missing",
         )
         .unwrap();
@@ -428,7 +428,7 @@ fn reference_labels_and_code_inside_link_labels_are_not_rewritten() {
 }
 
 #[test]
-fn emitted_addresses_resolve_in_navigation_and_canvas_packages() {
+fn emitted_addresses_resolve_in_navigation_and_canvas_templates() {
     let root = tempfile::tempdir().unwrap();
     let library = LibraryAccess::new(Some(root.path().to_owned()));
     for uri in [
@@ -441,7 +441,7 @@ fn emitted_addresses_resolve_in_navigation_and_canvas_packages() {
         library
             .write_text(
                 &ContentTarget::new(uri, Resource::Canvas),
-                r#"{"exports":"./src/index.tsx"}"#,
+                "<p>Template</p>",
                 "missing",
             )
             .unwrap();
@@ -454,7 +454,7 @@ fn emitted_addresses_resolve_in_navigation_and_canvas_packages() {
         assert!(tree.node(&path).is_some(), "{uri}");
         assert_eq!(
             crate::load_canvas(root.path(), &root.path().join(&path)).unwrap(),
-            r#"{"exports":"./src/index.tsx"}"#
+            "<p>Template</p>"
         );
     }
 }
@@ -568,17 +568,20 @@ fn note_data_handles_empty_yaml_bom_and_crlf_without_losing_body() {
 }
 
 #[test]
-fn legacy_canvases_stay_untouched_and_dependencies_are_not_note_resources() {
+fn react_sources_stay_untouched_and_dependencies_are_not_note_resources() {
     let root = tempfile::tempdir().unwrap();
     let library = LibraryAccess::new(Some(root.path().to_owned()));
     library.create_note("locus://note", "Note").unwrap();
     let canvas = root.path().join("note/canvas");
     fs::create_dir(&canvas).unwrap();
     for (name, content) in [
-        ("index.html", "<p>Old</p>"),
-        ("main.js", "old()"),
-        ("index.json", "{}"),
+        ("package.json", r#"{"exports":"./src/index.tsx"}"#),
+        (
+            "src/index.tsx",
+            "export default function Canvas() { return null; }",
+        ),
     ] {
+        fs::create_dir_all(canvas.join(name).parent().unwrap()).unwrap();
         fs::write(canvas.join(name), content).unwrap();
     }
     assert!(
@@ -591,7 +594,7 @@ fn legacy_canvases_stay_untouched_and_dependencies_are_not_note_resources() {
     library
         .write_text(
             &ContentTarget::new("locus://note", Resource::Canvas),
-            r#"{"exports":"./src/index.tsx"}"#,
+            "<p>Restored HTML</p>",
             "missing",
         )
         .unwrap();
@@ -640,9 +643,11 @@ fn legacy_canvases_stay_untouched_and_dependencies_are_not_note_resources() {
         )
         .unwrap();
     for (name, content) in [
-        ("index.html", "<p>Old</p>"),
-        ("main.js", "old()"),
-        ("index.json", "{}"),
+        ("package.json", r#"{"exports":"./src/index.tsx"}"#),
+        (
+            "src/index.tsx",
+            "export default function Canvas() { return null; }",
+        ),
     ] {
         assert_eq!(
             fs::read_to_string(root.path().join("renamed/canvas").join(name)).unwrap(),

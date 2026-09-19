@@ -89,6 +89,7 @@ impl EditorPreference {
 #[serde(default)]
 pub struct Preferences {
     pub library_path: Option<PathBuf>,
+    pub export_directory: Option<PathBuf>,
     pub editor: EditorPreference,
     #[serde(flatten)]
     pub appearance: AppearancePreferences,
@@ -106,6 +107,7 @@ impl Default for Preferences {
     fn default() -> Self {
         Self {
             library_path: DEFAULT_LIBRARY_PATH.map(PathBuf::from),
+            export_directory: None,
             editor: EditorPreference::System,
             appearance: AppearancePreferences::default(),
             ui_font_family: DEFAULT_UI_FONT_FAMILY.to_owned(),
@@ -121,6 +123,10 @@ impl Default for Preferences {
 }
 
 impl Preferences {
+    pub fn resolved_export_directory(&self) -> Option<PathBuf> {
+        self.export_directory.clone().or_else(dirs::download_dir)
+    }
+
     pub fn load() -> (Self, Option<String>) {
         match settings_store()
             .and_then(|store| store.load::<Self>().map_err(|error| format!("{error:#}")))
@@ -182,6 +188,7 @@ mod tests {
     fn preferences_round_trip() {
         let preferences = Preferences {
             library_path: Some(PathBuf::from("/tmp/笔记")),
+            export_directory: Some(PathBuf::from("/tmp/导出")),
             editor: EditorPreference::VisualStudioCode,
             appearance: AppearancePreferences {
                 theme: ThemePreference::Dark,
@@ -204,6 +211,7 @@ mod tests {
         let restored: Preferences = store.load().unwrap();
 
         assert_eq!(restored.library_path, preferences.library_path);
+        assert_eq!(restored.export_directory, preferences.export_directory);
         assert_eq!(restored.editor, preferences.editor);
         assert_eq!(restored.appearance.theme, preferences.appearance.theme);
         assert_eq!(
@@ -259,24 +267,37 @@ auto_open_canvas = false
     }
 
     #[test]
-    fn removed_export_setting_does_not_affect_other_preferences() {
+    fn export_directory_uses_system_downloads_unless_explicitly_configured() {
+        let preferences = Preferences::default();
+        assert!(preferences.export_directory.is_none());
+        assert_eq!(
+            preferences.resolved_export_directory(),
+            dirs::download_dir()
+        );
+        let preferences = Preferences {
+            export_directory: Some(PathBuf::from("/tmp/exports")),
+            ..Preferences::default()
+        };
+        assert_eq!(
+            preferences.resolved_export_directory(),
+            Some(PathBuf::from("/tmp/exports"))
+        );
+    }
+
+    #[test]
+    fn existing_settings_gain_the_default_export_directory_without_losing_choices() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("settings.toml");
-        std::fs::write(
-            &path,
-            "export_directory = '/tmp/exports'\nlibrary_path = '/tmp/notes'\nmcp_enabled = true\n",
-        )
-        .unwrap();
-        let store = oneo_gpui::SettingsStore::at_path(path.clone()).unwrap();
+        std::fs::write(&path, "library_path = '/tmp/notes'\nmcp_enabled = true\n").unwrap();
+        let store = oneo_gpui::SettingsStore::at_path(path).unwrap();
         let preferences: Preferences = store.load().unwrap();
+        assert!(preferences.export_directory.is_none());
+        assert_eq!(
+            preferences.resolved_export_directory(),
+            dirs::download_dir()
+        );
         assert_eq!(preferences.library_path, Some(PathBuf::from("/tmp/notes")));
         assert!(preferences.mcp_enabled);
-        store.save(&preferences).unwrap();
-        let saved = std::fs::read_to_string(path).unwrap();
-        assert!(!saved.contains("export_directory"));
-        let restored: Preferences = store.load().unwrap();
-        assert_eq!(restored.library_path, preferences.library_path);
-        assert!(restored.mcp_enabled);
     }
 
     #[test]

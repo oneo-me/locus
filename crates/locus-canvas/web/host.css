@@ -1,9 +1,0 @@
-@layer theme, base, components, utilities;
-@import 'tailwindcss/theme.css' layer(theme);
-@import 'tailwindcss/preflight.css' layer(base);
-@custom-variant dark (&:where(.dark, .dark *));
-
-html, body, #root { height: 100%; min-height: 100%; }
-body { margin: 0; font-family: system-ui, sans-serif; }
-.locus-error { padding: 1rem; }
-.locus-error pre { white-space: pre-wrap; overflow-wrap: anywhere; }

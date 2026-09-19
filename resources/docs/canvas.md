@@ -1,103 +1,121 @@
 # Canvas authoring
 
-Locus canvases are React component packages generated and maintained by Agents. Each note owns `canvas/package.json`, source files and assets. Locus starts one local Vite service for the active library using the computer's Node.js and npm. It supplies the React root, note routes, React 19.3, React DOM, Tailwind CSS 4.3, dependency installation and hot module replacement. Node.js and npm are not bundled: install Node.js 20.19+ or 22.12+ (or a newer supported major) with npm. Initial host/package installation needs access to the npm registry; installed, unchanged dependencies can run offline.
+Each note can own one canvas under `canvas/`. Choose exactly one entry:
 
-## Package and entry
+- `index.html`: an HTML fragment with a required `main.js` ES module exporting `async function main(data)`.
+- `index.json`: a template invocation containing exactly `template` and `data`. Do not also create `index.html` or a caller bootstrap script.
 
-Create `index.md` with accurate YAML frontmatter. A canvas fills the reading area below the note title and metadata. Keep independently maintained prose in another note; do not automatically discard existing Markdown. `canvas/` and `assets/` are reserved directories, never child notes.
+With the standard MCP endpoint, edit files using local filesystem tools. On the full endpoint, the `canvas` content target addresses `canvas/index.html`; use `canvas_file` with `name: "index.json"`, `name: "main.js"`, or another relative path for the other canvas files. Respect content versions; upload tools accept binary resources.
+A canvas replaces the Markdown reading area. Keep only YAML frontmatter in `index.md` when authoring a canvas note; put independently maintained prose in another note. Do not automatically discard existing Markdown when updating an existing mixed note. Do not use a Markdown `canvas` fence or an attachment reference to display a canvas.
 
-`canvas/package.json`:
+## HTML format
+
+Write an HTML fragment, not a complete page: omit `<!doctype html>`, `<html>`, `<head>`, and `<body>`. The host supplies the note title, theme and Tailwind. Keep markup in `index.html`, initialization and interaction in `main.js`, and substantial styles in a CSS file. Small styles and non-executable JSON/text data blocks can remain in the fragment. Local third-party scripts may use ordinary `<script src>` tags.
+
+`canvas/index.html`:
+
+```html
+<link rel="stylesheet" href="style.css">
+<main class="min-h-full p-6">
+  <button id="counter">Clicks: 0</button>
+</main>
+```
+
+`canvas/main.js`:
+
+```js
+export async function main(data) {
+  let count = 0;
+  document.getElementById('counter').addEventListener('click', function () {
+    this.textContent = `Clicks: ${++count}`;
+  });
+}
+```
+
+The host waits for the page's resources, imports `main.js` once and awaits `main(data)`. A directly opened HTML canvas receives `null`; a template receives the exact JSON `data` value. Even static canvases must export a main function, which may do nothing. The host reports entry/configuration errors, module import failures, missing main and rejected main calls; fix the cause and refresh. Initialization belongs in main, not in an automatically executed bootstrap. Timers and later event handlers own their subsequent errors.
+
+## Presentation and lifecycle
+
+The native canvas is supported on macOS. WebKit renders below the GPUI layer, keeping application overlays visible and interactive while the page runs. Settings hides and retains the page.
+
+The canvas fills the content area below the title and metadata. Summary and custom YAML fields remain visible above it; long metadata can scroll independently. The canvas is excluded from attachment lists and counts. It has no separate tab, automatic-opening switch, refresh button, or context menu.
+
+Use Cmd/Ctrl+A to select all, Cmd/Ctrl+C to copy, Cmd/Ctrl+X to cut, and Cmd/Ctrl+V to paste. These commands act on the focused input or the page selection using native WebView behavior. Cut and paste require an editable target. On macOS, the same commands are available in the Edit menu.
+
+Saving a file does not reload an open canvas. With canvas focus, press Cmd/Ctrl+R or F5 to reload its owning note's canvas and rerun scripts. Leaving and reopening the note also reloads it. In-memory interaction state is lost on refresh or departure. An empty or unreadable file produces a recoverable message; fix it and refresh.
+
+Combine multiple views in one canvas using tabs, sections, or disclosure panels. Preserve other sections' state during internal navigation. Use unique DOM IDs, scoped selectors, and separate script scopes.
+
+The canvas uses the available content width. Use `dark:` classes or `.dark` selectors to follow the application theme; theme changes do not reload the page.
+
+For a page that scrolls, use `min-h-full` (`min-height:100%`) on the root so the background continues below the first viewport. The host fixes the heights of `html` and `body`; `h-full` locks the root to one viewport. Use `h-full` only for a fixed frame with independently scrolling inner regions. Avoid a fixed pixel height for the whole page.
+
+## Resources and network policy
+
+Relative HTML resource URLs and fetches resolve from the rendering canvas’s directory; module imports resolve from their importing module, and CSS URLs from their stylesheet. Thus a template’s relative resources belong to the template, not the calling note; nested directories, JavaScript modules, CSS, images, fonts and data files are supported, without an extension allowlist. For example, `<img src="photo.jpg" alt="Photo description">` loads a local image. URL-encode filenames containing spaces or non-ASCII characters. Data and blob images are supported.
+
+Local resources are read on request without caching. Canvas subdirectories and hidden resource files are allowed. Paths must remain in the resource tree; symbolic links, installed `node_modules` and directory browsing are unavailable. Use explicit library addresses to read other note resources. Read `locus-docs://attachments` through MCP for Markdown attachment syntax.
+
+HTTPS images and HTTPS data requests are allowed, including map tiles and map data. Cross-origin requests still require server CORS permission. Canvas-local and blob Web Workers are allowed. Remote scripts, remote CSS and fonts, iframes, form submission, and arbitrary local file access are blocked. Basic canvases and local images work offline. Network features send requests to the corresponding service; handle failures and retries within the page. HTTP/HTTPS links open in the system browser.
+
+## Reusable templates
+
+Any note with `canvas/index.html` and `canvas/main.js` can serve as a template. A caller writes only `canvas/index.json`:
 
 ```json
 {
-  "name": "example-canvas",
-  "private": true,
-  "type": "module",
-  "exports": { ".": "./src/index.tsx" },
-  "peerDependencies": { "react": "^19.3.0", "react-dom": "^19.3.0" }
+  "template": "locus://templates/message",
+  "data": { "message": "Template input" }
 }
 ```
 
-`canvas/src/index.tsx`:
+The two fields are required, and extra fields are rejected. `template` identifies an existing note in the current library, without a resource suffix. It must resolve directly to an HTML canvas, not another JSON invocation; chained or cyclic template configurations are rejected. HTML and JSON entries are mutually exclusive. `data` can be any JSON value; the template's main defines, validates and handles its input schema. The host does not merge inputs or infer defaults.
 
-```tsx
-import { useState } from 'react';
-import { useCanvas } from '@locus/canvas';
+For this example, the template's HTML contains `<p class="result"></p>`, and its main module contains:
 
-export default function Canvas() {
-  const { note } = useCanvas();
-  const [count, setCount] = useState(0);
-  return <main className="min-h-screen bg-white p-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-    <p>{note}</p>
-    <button onClick={() => setCount(count + 1)}>Count: {count}</button>
-  </main>;
+```js
+export async function main(data) {
+  if (data === null) {
+    document.querySelector('.result').textContent = 'Call this template with message data.';
+    return;
+  }
+  if (typeof data.message !== 'string') throw new TypeError('message must be a string');
+  document.querySelector('.result').textContent = data.message;
 }
 ```
 
-Export a default React component. Do not create another React root, HTML shell, Vite configuration or development server. Additional named exports and explicit package subpath exports are supported. Entries must be relative source files within the owning canvas directory. Do not add React or React DOM to dependencies/devDependencies; declare compatible peerDependencies. The host resolves them to one shared instance. `@locus/canvas` is a host module; do not install it from npm.
+The template supplies the entire canvas content and uses the same theme and security policy as an ordinary canvas. It may import helper modules and load local CSS or other resources. Pass caller-owned resources as explicit `locus://` addresses in `data`; relative addresses belong to the template. Template edits take effect when the caller refreshes or reopens. There is no imperative template loader or per-script context.
 
-Declare ordinary browser packages in the note's `dependencies`. Locus runs system npm in that package, preserves its `package-lock.json`, and rechecks dependencies when the manifest changes. Installation is serialized within the service. Lifecycle scripts are disabled during automatic installation; dependencies requiring such scripts need an explicitly managed installation by the Agent. Keep `node_modules/` out of Git with a canvas `.gitignore`. Installed dependencies are excluded from note resources and library change notifications.
+Template addresses reject parent traversal, hidden paths, symbolic links, non-note directories and paths outside the library. Encoded addresses are decoded once. Reading raw `canvas/index.json` through a library resource URL returns its JSON contents, not rendered HTML.
 
-The JSON files above are standard npm manifests and lockfiles, not Locus application configuration. Locus maintains the common Vite, React plugin and Tailwind compiler configuration. A note cannot supply server-side plugins or a separate Vite configuration.
+## Library resources and note data
 
-## Agent workflow
+Use these addresses from a canvas:
 
-1. Read the note's requirements and existing component packages; inspect public exports before reusing them.
-2. Create or edit the package manifest, TSX components, CSS and local assets. Preserve existing note contents unless changing them is authorized.
-3. Open the note in Locus. Saving source triggers Vite/React hot updates. Editing a referenced note updates active consumers as well. New dependencies/configuration may cause a full reload; hot updates do not guarantee preservation of all local state.
-4. Correct module/compiler errors shown by Vite and component failures shown by the host. Cmd/Ctrl+R or F5 retries loading; a stopped service is restarted on retry. Missing Node/npm or failed installation produces a recoverable host error.
-5. Run appropriate source/behavior checks. Visual and animation acceptance remains the user's task.
+| Address | Result |
+| --- | --- |
+| `locus://projects/example/assets/photo.png` | An attachment or reserved icon |
+| `locus://templates/example/canvas/index.html` | Raw canvas entry fragment |
+| `locus://templates/example/canvas/styles/theme.css` | Any file in a canvas directory |
+| `locus://projects/example/index.md` | Complete note text, including frontmatter |
+| `locus://projects/example/index.md?part=yaml` | YAML source without fence delimiters; empty when absent |
+| `locus://projects/example/index.md?part=body` | Markdown body without frontmatter |
 
-The standard MCP endpoint returns original paths for filesystem edits. On the full endpoint, the `canvas` resource is `canvas/package.json`; `canvas_file` with `name: "src/index.tsx"` or another relative name addresses other files. Use content versions and the existing binary upload protocol. The host only recognizes a package manifest as a canvas entry. Existing HTML/main.js and JSON-template files are not converted, executed or deleted automatically.
+`fetch('locus://...')` returns a standard Response. Use `.text()` for YAML, Markdown and HTML, `.json()` for JSON files, or `.blob()`/`.arrayBuffer()` for binary data. Reads return current saved content and never write notes. Missing, invalid or unsafe targets return 404. YAML remains source text rather than a lossy metadata projection.
 
-## Cross-note composition
+Static HTML/CSS resource addresses and image/link attributes accept these addresses. For dynamic resource constructors, modules or Workers, use `locus.resourceUrl(uri)` to obtain the host URL, for example `new Worker(locus.resourceUrl('locus://example/canvas/worker.js'))`. The helper only maps an address; the host validates access. Encoded note names and resource filenames are decoded once. Parent traversal and symlinks are rejected; note paths cannot pass through reserved resource directories. Library paths never grant arbitrary filesystem access.
 
-Use the public component entry of another note:
-
-```tsx
-import Requirements from 'locus:templates/requirements';
-import { Button } from 'locus:design/basalt';
-import { useState } from 'react';
-
-export default function Canvas() {
-  const [selected, setSelected] = useState(null);
-  return <Requirements selected={selected} onSelect={setSelected}
-    toolbar={<Button onClick={() => setSelected(null)}>Clear selection</Button>} />;
+```js
+export async function main(data) {
+  const response = await fetch('locus://projects/example/index.md?part=yaml');
+  if (!response.ok) throw new Error('Unable to read note data');
+  const yamlSource = await response.text();
+  console.log(yamlSource);
 }
 ```
 
-`locus:templates/requirements` resolves that note's `exports["."]`. An import such as `locus:design/basalt#ui` resolves `exports["./ui"]`. Paths may be URI encoded once. Dependencies resolve from the package that imports them. Vite watches the original source, so there is no copied component or separate server per note. Components can share props, callbacks, children, Context and state in the same React tree. Design reusable interfaces explicitly; an arbitrary whole-page component does not automatically expose replaceable sections.
+Use the canvas titlebar download button to export saved content. Settings → General → Export directory selects the destination; the default is the system Downloads directory. A self-contained canvas produces a single HTML file; referenced files produce a folder with `canvas.html`. Existing output names are numbered instead of overwritten. In-memory interaction state is not exported.
 
-`useCanvas().note` identifies the displayed/calling note even inside imported components. To read resources owned by a reusable package, use module-relative imports/`new URL('./file', import.meta.url)` or explicit library addresses. Do not interpret the caller's note address as the component package's directory.
+Downloads include referenced nested canvas files and library resources, and snapshot referenced YAML/body responses for offline fetch. Dynamic dependencies must have been loaded before downloading. Online data still requires a network connection.
 
-## Styles and resources
-
-The host supplies Tailwind's theme and base reset once. Utilities are compiled from each referenced canvas package's source, including cross-note components. Use `dark:` for the application theme; `useTheme()` from `@locus/canvas` returns `light` or `dark` and reacts without reloading. Use CSS Modules or scoped classes for ordinary components. Place design-system variables on an explicit theme container; avoid global `body`, `html` and `:root` overrides in reusable components. Configure popup/portal containers to inherit the intended theme. Independent packages do not isolate global CSS.
-
-shadcn components are ordinary React source files. Add their dependencies and theme variables to the owning package; use relative imports or aliases explicitly supported by the host, rather than assuming a separate Vite project. Large styles belong in CSS files. Bundle fonts locally. Use module imports for images, CSS and Workers so Vite can resolve their dependencies.
-
-The following SDK functions are supplied by `@locus/canvas`:
-
-- `useCanvas()` returns `{ note }`, the displayed note's logical address.
-- `useTheme()` observes the application theme.
-- `resourceUrl(address)` maps a library resource to an HTTP URL for fetch, images and other browser consumers.
-- `readText(address)` reads saved UTF-8 note/resource content and rejects non-success responses.
-- `subscribeResource(address, listener)` subscribes to changes in a previously loaded resource and returns an unsubscribe function; use it inside a React effect and return that cleanup.
-
-```tsx
-import { readText, resourceUrl } from '@locus/canvas';
-
-const yaml = await readText('locus://projects/example/index.md?part=yaml');
-const body = await readText('locus://projects/example/index.md?part=body');
-const data = await fetch(resourceUrl('locus://projects/example/canvas/data.json')).then(r => r.json());
-```
-
-Supported resources are `locus://<note>/index.md`, `index.md?part=yaml`, `index.md?part=body`, `assets/<file>` and `canvas/<file>`. YAML is returned as source text; missing frontmatter returns an empty string. Missing/unsafe resources return 404. Addresses are decoded once. Traversal, symbolic links, installed `node_modules` and arbitrary filesystem access are rejected. Library APIs are read-only.
-
-The service listens only on loopback. It permits local scripts/styles/fonts, HTTPS images/data, local/blob Workers and standard browser DOM APIs. Remote executable scripts, remote styles/fonts, frames, form submission and arbitrary filesystem access are not available. Network requests still need service-side CORS support. Components have no native Shell or arbitrary filesystem bridge. HTTP/HTTPS external links open in the system browser.
-
-## Lifecycle
-
-In both Debug and Release, the shared canvas runtime is extracted to `~/.oneo/locus/canvas/<runtime-content-hash>/`. This directory contains the host source and installed host dependencies; Vite's per-library cache is under `node_modules/.vite/<library-path-hash>/`. Note dependencies remain in each note's `canvas/node_modules/`. Previous runtime cache directories are not automatically migrated or deleted.
-
-React owns component state and effects. Release timers, subscriptions, observers and event handlers in effect cleanup. Leaving a note releases its WebView and in-memory state; the service stays available for other notes in the same library and stops when its owner is released. Theme changes do not reload. The native canvas is supported on macOS. WebKit renders below the GPUI layer, so application overlays remain visible and interactive while the page keeps running behind them. Opening settings hides the retained page; returning restores it. Native editing shortcuts, input methods, focus and application shortcuts retain their normal behavior.
+Downloads resolve the template and preserve its data and resource ownership. Self-contained main modules are embedded as data URLs and imported with the same lifecycle as live canvases. Main modules with imports or `import.meta`, and modules imported by other modules, remain files to preserve module resolution and identity. The export permits its embedded data module in the script policy. Native module imports and Workers may require a local HTTP server when a browser blocks file-origin requests.

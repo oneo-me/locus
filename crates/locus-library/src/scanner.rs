@@ -118,7 +118,11 @@ pub(super) fn scan_children(
         } else {
             Vec::new()
         };
-        let canvas_path = path.join(super::CANVAS_FILE);
+        let canvas_path = [super::CANVAS_FILE, super::CANVAS_CONFIG_FILE]
+            .into_iter()
+            .map(|name| path.join(name))
+            .find(|file| file.symlink_metadata().is_ok())
+            .unwrap_or_else(|| path.join(super::CANVAS_FILE));
         let canvas_path = (has_document
             && path
                 .join(super::CANVAS_DIRECTORY)

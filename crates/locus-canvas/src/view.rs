@@ -6,7 +6,7 @@ use gpui_kit::{
 use oneo_gpui::Language;
 use std::path::Path;
 use std::sync::{
-    Arc,
+    Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
 
@@ -42,7 +42,9 @@ pub enum CanvasEvent {
 }
 
 pub struct CanvasView {
-    runtime: Arc<super::CanvasRuntime>,
+    root: std::path::PathBuf,
+    directory: std::path::PathBuf,
+    dependencies: Arc<Mutex<super::export::Dependencies>>,
     language: Language,
     visible: bool,
     #[cfg(target_os = "macos")]
@@ -51,12 +53,11 @@ pub struct CanvasView {
     loading: bool,
     focus: FocusHandle,
     dark: Arc<AtomicBool>,
-    _monitor: Option<gpui_kit::Task<()>>,
 }
 
 impl CanvasView {
     pub fn new(
-        runtime: Arc<super::CanvasRuntime>,
+        root: &Path,
         directory: &Path,
         language: Language,
         window: &mut Window,
@@ -103,7 +104,9 @@ impl CanvasView {
         .detach();
         let dark = Theme::global(cx).is_dark();
         let mut tab = Self {
-            runtime,
+            root: root.to_path_buf(),
+            directory: directory.to_path_buf(),
+            dependencies: Arc::new(Mutex::new(super::export::Dependencies::default())),
             language,
             visible: false,
             #[cfg(target_os = "macos")]
@@ -112,63 +115,15 @@ impl CanvasView {
             loading: true,
             focus: cx.focus_handle(),
             dark: Arc::new(AtomicBool::new(dark)),
-            _monitor: None,
         };
-        let runtime = tab.runtime.clone();
-        let directory = directory.to_path_buf();
-        cx.spawn_in(window, async move |this, cx| {
-            let result = cx
-                .background_spawn(async move { runtime.page_url(&directory) })
-                .await;
-            let _ = this.update_in(cx, |this, window, cx| {
-                match result {
-                    Ok(url) => this.connect(
-                        &format!("{url}?lang={}", this.language.locale()),
-                        commands,
-                        window,
-                        cx,
-                    ),
-                    Err(error) => {
-                        this.loading = false;
-                        this.error = Some(CanvasError::Load(error.to_string()));
-                    }
-                }
-                cx.notify();
-            });
-        })
-        .detach();
-        tab._monitor = Some(cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor()
-                    .timer(std::time::Duration::from_secs(1))
-                    .await;
-                let alive = this.update(cx, |this, cx| {
-                    if this.runtime.has_exited() {
-                        this.loading = false;
-                        this.error = Some(CanvasError::Load(
-                            rust_i18n::t!(
-                                "canvas.service_stopped",
-                                locale = this.language.locale()
-                            )
-                            .into_owned(),
-                        ));
-                        cx.notify();
-                        false
-                    } else {
-                        true
-                    }
-                });
-                if !matches!(alive, Ok(true)) {
-                    break;
-                }
-            }
-        }));
+        tab.connect(root, directory, commands, window, cx);
         tab
     }
 
     fn connect(
         &mut self,
-        url: &str,
+        root: &Path,
+        directory: &Path,
         commands: async_channel::Sender<String>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -178,13 +133,69 @@ impl CanvasView {
             let loading_events = commands.clone();
             let navigation_events = commands.clone();
             let new_window_events = commands.clone();
-            let page_url = url.to_owned();
+            let root = root.to_path_buf();
+            let directory = directory.to_path_buf();
+            let page_dark = self.dark.clone();
+            let language = self.language;
+            let executor = cx.background_executor().clone();
+            let dependencies = self.dependencies.clone();
             let builder = WebViewBuilder::new();
             let terminal_message = format!("terminal:{}", uuid::Uuid::new_v4());
             let page_script =
                 include_str!("page.js").replace("__LOCUS_TERMINAL_MESSAGE__", &terminal_message);
             let builder = builder
-                .with_url(url)
+                .with_asynchronous_custom_protocol(
+                    "locus-canvas".to_owned(),
+                    move |_, request, responder| {
+                        let root = root.clone();
+                        let directory = directory.clone();
+                        let page_dark = page_dark.clone();
+                        let dependencies = dependencies.clone();
+                        executor
+                            .spawn(async move {
+                                let response = canvas_response(
+                                    &root,
+                                    &directory,
+                                    &request,
+                                    page_dark.load(Ordering::Relaxed),
+                                    language,
+                                );
+                                if response.status().is_success() {
+                                    let mut dependencies = dependencies.lock().unwrap();
+                                    if request.uri().path() == "/canvas.html" {
+                                        *dependencies = super::export::Dependencies::default();
+                                    } else {
+                                        let path = request
+                                            .uri()
+                                            .path_and_query()
+                                            .map(|value| value.as_str())
+                                            .unwrap_or_default();
+                                        let name = path.trim_start_matches('/');
+                                        let name =
+                                            if name.starts_with(super::resources::LIBRARY_PREFIX) {
+                                                name.to_owned()
+                                            } else {
+                                                percent_encoding::percent_decode_str(name)
+                                                    .decode_utf8()
+                                                    .unwrap_or_default()
+                                                    .into_owned()
+                                            };
+                                        if request
+                                            .headers()
+                                            .get("sec-fetch-dest")
+                                            .is_some_and(|value| value == "style")
+                                        {
+                                            dependencies.stylesheets.insert(name.clone());
+                                        }
+                                        dependencies.resources.insert(name);
+                                    }
+                                }
+                                responder.respond(response);
+                            })
+                            .detach();
+                    },
+                )
+                .with_url(CANVAS_URL)
                 .with_visible(false)
                 .with_focused(false)
                 .with_initialization_script(format!(
@@ -203,7 +214,7 @@ impl CanvasView {
                     }
                 })
                 .with_navigation_handler(move |url| {
-                    if url.split('#').next() == Some(page_url.as_str()) {
+                    if is_canvas_url(&url) {
                         return true;
                     }
                     forward_external_url(&url, &navigation_events);
@@ -227,10 +238,23 @@ impl CanvasView {
         }
         #[cfg(not(target_os = "macos"))]
         {
-            let _ = (url, commands, window, cx);
+            let _ = (root, directory, commands, window, cx);
             self.loading = false;
             self.error = Some(CanvasError::Unsupported);
         }
+    }
+
+    pub fn prepare_download(
+        &self,
+        cx: &App,
+    ) -> gpui_kit::Task<std::io::Result<super::CanvasDownload>> {
+        let root = self.root.clone();
+        let directory = self.directory.clone();
+        let dependencies = self.dependencies.lock().unwrap().clone();
+        let dark = self.dark.load(Ordering::Relaxed);
+        cx.background_executor().spawn(async move {
+            super::export::prepare_download(&root, &directory, dark, dependencies)
+        })
     }
 
     pub fn has_error(&self) -> bool {
@@ -335,7 +359,7 @@ impl Render for CanvasView {
 
 #[cfg(target_os = "macos")]
 fn forward_external_url(url: &str, events: &async_channel::Sender<String>) {
-    if url.starts_with("http://127.0.0.1:") {
+    if url.starts_with("http://locus-canvas.localhost") {
         return;
     }
     if let Some((scheme, address)) = url.split_once("://")
@@ -346,6 +370,107 @@ fn forward_external_url(url: &str, events: &async_channel::Sender<String>) {
     }
 }
 
+#[cfg(target_os = "macos")]
+const CANVAS_URL: &str = "locus-canvas://localhost/canvas.html";
+
+#[cfg(target_os = "macos")]
+fn is_canvas_url(url: &str) -> bool {
+    matches!(
+        url.split('#').next(),
+        Some(CANVAS_URL | "http://locus-canvas.localhost/canvas.html")
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn canvas_response(
+    root: &Path,
+    directory: &Path,
+    request: &wry::http::Request<Vec<u8>>,
+    dark: bool,
+    language: Language,
+) -> wry::http::Response<Vec<u8>> {
+    use wry::http::{Method, Response, StatusCode};
+    if request.method() == Method::GET && request.uri().path() != "/canvas.html" {
+        let name = request
+            .uri()
+            .path_and_query()
+            .map(|value| value.as_str())
+            .unwrap_or_default()
+            .trim_start_matches('/');
+        let decoded;
+        let name = if name.starts_with(super::resources::LIBRARY_PREFIX) {
+            name
+        } else {
+            decoded = percent_encoding::percent_decode_str(name)
+                .decode_utf8()
+                .unwrap_or_default();
+            &decoded
+        };
+        let resource = super::resources::read_resource(root, directory, name)
+            .ok()
+            .map(|bytes| {
+                let mime = super::resources::resource_mime(name);
+                let bytes = if matches!(
+                    mime.as_str(),
+                    "text/css"
+                        | "text/javascript"
+                        | "application/javascript"
+                        | "text/html"
+                        | "image/svg+xml"
+                ) {
+                    std::str::from_utf8(&bytes)
+                        .map(|text| super::resources::rewrite_resources(text).into_bytes())
+                        .unwrap_or(bytes)
+                } else {
+                    bytes
+                };
+                (bytes, mime)
+            });
+        let (status, bytes, mime) = match resource {
+            Some((bytes, mime)) => (StatusCode::OK, bytes, mime),
+            None => (StatusCode::NOT_FOUND, Vec::new(), "text/plain".to_owned()),
+        };
+        return Response::builder()
+            .status(status)
+            .header("Content-Type", mime)
+            .header("Cache-Control", "no-store")
+            .header("X-Content-Type-Options", "nosniff")
+            .header("Content-Security-Policy", CANVAS_POLICY)
+            .body(bytes)
+            .expect("canvas resource response headers are valid");
+    }
+    let (status, document) = if request.method() != Method::GET {
+        (StatusCode::NOT_FOUND, String::new())
+    } else {
+        match locus_library::resolve_canvas(root, directory)
+            .and_then(|canvas| resolved_document(root, &canvas, dark))
+        {
+            Ok(document) => (StatusCode::OK, document),
+            Err(error) => {
+                let message = rust_i18n::t!("canvas.read_error", locale = language.locale());
+                let detail = error
+                    .to_string()
+                    .replace('&', "&amp;")
+                    .replace('<', "&lt;")
+                    .replace('>', "&gt;");
+                (
+                    StatusCode::NOT_FOUND,
+                    canvas_document(
+                        &format!("<main class=\"p-4\"><p>{message}</p><pre>{detail}</pre></main>"),
+                        dark,
+                    ),
+                )
+            }
+        }
+    };
+    Response::builder()
+        .status(status)
+        .header("Content-Type", "text/html; charset=utf-8")
+        .header("Cache-Control", "no-store")
+        .body(document.into_bytes())
+        .expect("static canvas response headers are valid")
+}
+
 fn theme_script(dark: bool) -> String {
     let theme = if dark { "dark" } else { "light" };
     format!(
@@ -353,16 +478,288 @@ fn theme_script(dark: bool) -> String {
     )
 }
 
+const CANVAS_POLICY: &str = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'";
+
+pub(crate) fn canvas_document(source: &str, dark: bool) -> String {
+    canvas_document_with_data(source, dark, "./", &serde_json::Value::Null, "", "")
+}
+
+pub(crate) fn resolved_document(
+    root: &Path,
+    canvas: &locus_library::CanvasSource,
+    dark: bool,
+) -> std::io::Result<String> {
+    let base = super::resources::canvas_base(root, canvas.directory())?;
+    Ok(canvas_document_with_data(
+        canvas.html(),
+        dark,
+        &base,
+        canvas.data(),
+        "",
+        &canvas_entry(),
+    ))
+}
+
+pub(crate) fn canvas_entry() -> String {
+    let lifecycle = include_str!("main.js");
+    format!(
+        "<script>{lifecycle}\nwindow.addEventListener('load', () => runCanvas(() => import(new URL('main.js', document.baseURI).href)), {{once:true}});</script>"
+    )
+}
+
+pub(crate) fn canvas_document_with_data(
+    source: &str,
+    dark: bool,
+    base: &str,
+    data: &serde_json::Value,
+    bootstrap: &str,
+    entry: &str,
+) -> String {
+    let source = super::resources::rewrite_resources(source);
+    let data = serde_json::to_string(data).unwrap().replace('<', "\\u003c");
+    let tailwind = include_str!("../assets/tailwindcss/browser-4.3.3.js");
+    let runtime = include_str!("runtime.js");
+    let theme = if dark { "dark" } else { "light" };
+    format!(
+        r#"<!doctype html><html class="{theme}" style="color-scheme:{theme}"><head>
+<base href="{base}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{CANVAS_POLICY}">
+<style>html,body{{margin:0;width:100%;height:100%;}}body{{overflow-wrap:anywhere;}}</style>
+<style type="text/tailwindcss">@custom-variant dark (&:where(.dark, .dark *));</style>
+{bootstrap}<script>{tailwind}</script><script>{runtime}</script></head><body>{source}<script type="application/json" id="locus-canvas-data">{data}</script>{entry}</body></html>"#
+    )
+}
+
 #[cfg(test)]
 mod tests {
+    fn write_fixture(
+        path: impl AsRef<std::path::Path>,
+        contents: impl AsRef<[u8]>,
+    ) -> std::io::Result<()> {
+        let path = path.as_ref();
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        std::fs::write(path, contents)
+    }
+
     use super::*;
+
+    #[cfg(target_os = "macos")]
     #[test]
-    fn native_commands_require_the_terminal_token() {
-        assert_eq!(canvas_command("`", "terminal:token"), None);
-        assert_eq!(
-            canvas_command("terminal:token", "terminal:token"),
-            Some("`")
+    fn terminal_ipc_requires_the_private_shortcut_message() {
+        let token = "terminal:private-token";
+        for message in ["`", "terminal", "terminal:another-token", "codex", ""] {
+            assert_eq!(canvas_command(message, token), None);
+        }
+        assert_eq!(canvas_command(token, token), Some("`"));
+        for message in ["w", "e", ",", "focus"] {
+            assert_eq!(canvas_command(message, token), Some(message));
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn template_entry_uses_its_own_resource_base_and_passes_data() {
+        use wry::http::{Request, StatusCode};
+        let root = tempfile::tempdir().unwrap();
+        let caller = root.path().join("caller");
+        write_fixture(caller.join("index.md"), "Caller").unwrap();
+        write_fixture(
+            caller.join("canvas/index.json"),
+            r#"{"template":"locus://template","data":{"answer":"</script>"}}"#,
+        )
+        .unwrap();
+        let template = root.path().join("template");
+        write_fixture(template.join("index.md"), "Template").unwrap();
+        write_fixture(template.join("canvas/index.html"), "<output></output>").unwrap();
+        write_fixture(
+            template.join("canvas/main.js"),
+            "export async function main(data) {}",
+        )
+        .unwrap();
+        let request = Request::builder().uri(CANVAS_URL).body(Vec::new()).unwrap();
+        let response = canvas_response(root.path(), &caller, &request, false, Language::English);
+        assert_eq!(response.status(), StatusCode::OK);
+        let html = std::str::from_utf8(response.body()).unwrap();
+        assert!(html.contains("<base href=\"/_locus/resource/template/canvas/\">"));
+        assert!(html.contains(r#"{"answer":"\u003c/script>"}"#));
+        assert!(!html.contains("loadCanvas"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn refresh_reads_the_latest_file_from_the_original_note_and_recovers_from_removal() {
+        use std::fs;
+        use wry::http::{Request, StatusCode};
+        let root = tempfile::tempdir().unwrap();
+        let directory = root.path().join("first");
+        fs::create_dir(&directory).unwrap();
+        write_fixture(directory.join("index.md"), "First note").unwrap();
+        let file = directory.join(locus_library::CANVAS_FILE);
+        write_fixture(&file, "<p>First version</p>").unwrap();
+        write_fixture(
+            directory.join("canvas/main.js"),
+            "export async function main(data) {}",
+        )
+        .unwrap();
+        let request = Request::builder().uri(CANVAS_URL).body(Vec::new()).unwrap();
+        let response = canvas_response(root.path(), &directory, &request, false, Language::English);
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()["Cache-Control"], "no-store");
+        assert!(
+            String::from_utf8(response.into_body())
+                .unwrap()
+                .contains("<p>First version</p>")
         );
-        assert_eq!(canvas_command("focus", "terminal:token"), Some("focus"));
+        let other = root.path().join("other");
+        fs::create_dir(&other).unwrap();
+        write_fixture(other.join("index.md"), "Other note").unwrap();
+        write_fixture(
+            other.join(locus_library::CANVAS_FILE),
+            "<p>Other canvas</p>",
+        )
+        .unwrap();
+        write_fixture(&file, "<p>Latest version</p>").unwrap();
+        let response = canvas_response(root.path(), &directory, &request, true, Language::English);
+        let html = String::from_utf8(response.into_body()).unwrap();
+        assert!(html.contains("<p>Latest version</p>"));
+        assert!(!html.contains("<p>Other canvas</p>"));
+        assert!(html.contains("<html class=\"dark\""));
+        fs::remove_file(&file).unwrap();
+        assert_eq!(
+            canvas_response(root.path(), &directory, &request, false, Language::English).status(),
+            StatusCode::NOT_FOUND
+        );
+        write_fixture(&file, "<p>Restored</p>").unwrap();
+        assert_eq!(
+            canvas_response(root.path(), &directory, &request, false, Language::English).status(),
+            StatusCode::OK
+        );
+        for path in ["/index.md", "/../other/canvas.html", "/file.txt"] {
+            let request = Request::builder().uri(path).body(Vec::new()).unwrap();
+            assert_eq!(
+                canvas_response(root.path(), &directory, &request, false, Language::English)
+                    .status(),
+                StatusCode::NOT_FOUND
+            );
+        }
+        write_fixture(&file, " ").unwrap();
+        assert_eq!(
+            canvas_response(root.path(), &directory, &request, false, Language::English).status(),
+            StatusCode::NOT_FOUND
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn navigation_allows_page_reload_and_fragments_but_no_other_internal_page() {
+        for url in [
+            CANVAS_URL,
+            "locus-canvas://localhost/canvas.html#section",
+            "http://locus-canvas.localhost/canvas.html",
+        ] {
+            assert!(is_canvas_url(url));
+        }
+        for url in [
+            "locus-canvas://localhost/index.md",
+            "https://example.com",
+            "about:blank",
+        ] {
+            assert!(!is_canvas_url(url));
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn external_navigation_forwards_web_links_only() {
+        let (sender, receiver) = async_channel::bounded::<String>(16);
+        for url in [
+            "https://example.com/a?q=1#part",
+            "http://example.com",
+            "HTTPS://example.com",
+        ] {
+            forward_external_url(url, &sender);
+            assert_eq!(receiver.try_recv().unwrap(), format!("url:{url}"));
+        }
+        for url in [
+            "about:blank",
+            "about:blank#part",
+            "#part",
+            "file:///tmp/test",
+            "javascript:alert(1)",
+            "data:text/html,test",
+            "locus://standard",
+            "https://",
+        ] {
+            forward_external_url(url, &sender);
+            assert!(receiver.try_recv().is_err());
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn relative_images_are_served_as_bytes_with_decoded_names() {
+        use wry::http::{Request, StatusCode};
+        let root = tempfile::tempdir().unwrap();
+        write_fixture(root.path().join("index.md"), "Note").unwrap();
+        write_fixture(root.path().join("canvas/照片 1.png"), [0, 128, 255]).unwrap();
+        let request = Request::builder()
+            .uri(
+                "/".to_owned()
+                    + &percent_encoding::utf8_percent_encode(
+                        "照片 1.png",
+                        percent_encoding::NON_ALPHANUMERIC,
+                    )
+                    .to_string()
+                    + "?v=1",
+            )
+            .body(Vec::new())
+            .unwrap();
+        let response =
+            canvas_response(root.path(), root.path(), &request, false, Language::English);
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()["Content-Type"], "image/png");
+        assert_eq!(response.headers()["Content-Security-Policy"], CANVAS_POLICY);
+        assert_eq!(response.headers()["Cache-Control"], "no-store");
+        assert_eq!(response.body(), &[0, 128, 255]);
+        for uri in [
+            "/%2e%2e%2fphoto.png",
+            "/%2fphoto.png",
+            "/%5cphoto.png",
+            "/%FF.png",
+            "/%69ndex.md",
+            "/.secret",
+            "/missing.png",
+        ] {
+            let request = Request::builder().uri(uri).body(Vec::new()).unwrap();
+            assert_eq!(
+                canvas_response(root.path(), root.path(), &request, false, Language::English)
+                    .status(),
+                StatusCode::NOT_FOUND,
+                "{uri}"
+            );
+        }
+        let request = Request::builder()
+            .method("POST")
+            .uri("/photo.png")
+            .body(Vec::new())
+            .unwrap();
+        assert_eq!(
+            canvas_response(root.path(), root.path(), &request, false, Language::English).status(),
+            StatusCode::NOT_FOUND
+        );
+    }
+
+    #[test]
+    fn document_contains_offline_tailwind_and_preserves_inline_programs() {
+        let source = "<style>.test{color:red}</style><button class=\"p-4\">Run</button><script>window.value=42;</script>";
+        let document = canvas_document(source, true);
+        assert!(document.contains(source));
+        assert!(document.contains("@custom-variant dark"));
+        assert!(document.contains("<html class=\"dark\""));
+        assert!(!document.contains("<script src="));
+        assert!(document.contains("connect-src 'self' https:"));
+        assert!(document.contains("worker-src 'self' blob:"));
+        assert!(document.contains("img-src 'self' https: data: blob:"));
+        assert!(document.contains("frame-src 'none'"));
     }
 }

@@ -23,7 +23,7 @@ const DOCUMENTS: &[Document] = &[
     Document {
         uri: "locus-docs://canvas",
         name: "Canvas authoring",
-        description: "English specification for React canvas packages, cross-note components, resources, and lifecycle.",
+        description: "English specification for canvas fragments, resources, lifecycle, and templates.",
         text: include_str!("../../../resources/docs/canvas.md"),
     },
 ];
