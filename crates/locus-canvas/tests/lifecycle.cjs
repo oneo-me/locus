@@ -75,3 +75,23 @@ test('template relative URLs retain template ownership and library addresses ret
         assert.equal(image.src, locus.resourceUrl(address));
     } finally { dom.window.close(); }
 });
+
+test('note links retain their navigation addresses while resource links are mapped', async () => {
+    const dom = page({});
+    try {
+        const { document, locus } = dom.window;
+        document.body.innerHTML = `<a href="locus://diary/2026/entry"><span>Open note</span></a>
+            <a href="locus://旅行%20计划/100%25" target="_blank">Encoded note</a>
+            <a href="locus://diary/2026/assets/photo.png">Attachment</a>`;
+        await Promise.resolve();
+        const links = document.querySelectorAll('a');
+        assert.equal(links[0].getAttribute('href'), 'locus://diary/2026/entry');
+        assert.equal(links[1].getAttribute('href'), 'locus://旅行%20计划/100%25');
+        assert.equal(links[2].href, locus.resourceUrl('locus://diary/2026/assets/photo.png'));
+        links[0].href = 'locus://diary/2026/another';
+        await Promise.resolve();
+        assert.equal(links[0].getAttribute('href'), 'locus://diary/2026/another');
+        const address = 'locus://diary/2026/entry/index.md?part=body';
+        assert.equal(await (await dom.window.fetch(address)).text(), locus.resourceUrl(address));
+    } finally { dom.window.close(); }
+});

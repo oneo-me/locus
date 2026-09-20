@@ -8,8 +8,9 @@
     const rewriteElement = element => {
         for (const attribute of ['src', 'href', 'poster', 'srcset', 'style']) {
             const value = element.getAttribute(attribute);
-            if (value?.includes('locus://')) element.setAttribute(attribute,
-                value.replace(/locus:\/\/[^\s"'<>),]+/g, resourceUrl));
+            if (!value?.includes('locus://')) continue;
+            const rewritten = value.replace(/locus:\/\/[^\s"'`<>)]*\/(?:assets|canvas)\/[^\s"'`<>)]*|locus:\/\/[^\s"'`<>)]*\/index\.md(?:\?part=(?:yaml|body))?/g, resourceUrl);
+            if (rewritten !== value) element.setAttribute(attribute, rewritten);
         }
     };
     new MutationObserver(records => {

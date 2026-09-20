@@ -105,6 +105,8 @@ Use these addresses from a canvas:
 
 Static HTML/CSS resource addresses and image/link attributes accept these addresses. For dynamic resource constructors, modules or Workers, use `locus.resourceUrl(uri)` to obtain the host URL, for example `new Worker(locus.resourceUrl('locus://example/canvas/worker.js'))`. The helper only maps an address; the host validates access. Encoded note names and resource filenames are decoded once. Parent traversal and symlinks are rejected; note paths cannot pass through reserved resource directories. Library paths never grant arbitrary filesystem access.
 
+To open a note inside Locus, use a canonical note address in an anchor, for example `<a href="locus://projects/example">Open note</a>`. This works for static and dynamically created links, including linked cards. Do not append `/index.md`, a query, or a fragment, and do not pass navigation addresses to `locus.resourceUrl`; file addresses are for resource reads. Note links use the current library and the workspace's normal selection and back/forward history. Missing or archived targets leave the current selection unchanged. A new-window target still opens the note in the current workspace. HTTP/HTTPS links continue to open in the system browser. Exported HTML preserves note addresses but does not provide Locus navigation or bundle linked notes.
+
 ```js
 export async function main(data) {
   const response = await fetch('locus://projects/example/index.md?part=yaml');

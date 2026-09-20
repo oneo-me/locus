@@ -39,6 +39,7 @@ pub enum CanvasEvent {
     CommandPalette,
     Settings,
     OpenUrl(String),
+    OpenNote(String),
 }
 
 pub struct CanvasView {
@@ -84,6 +85,10 @@ impl CanvasView {
                         }
                         if let Some(url) = command.strip_prefix("url:") {
                             cx.emit(CanvasEvent::OpenUrl(url.to_owned()));
+                            return;
+                        }
+                        if let Some(path) = command.strip_prefix("note:") {
+                            cx.emit(CanvasEvent::OpenNote(path.to_owned()));
                             return;
                         }
                         match command.as_str() {
@@ -217,11 +222,11 @@ impl CanvasView {
                     if is_canvas_url(&url) {
                         return true;
                     }
-                    forward_external_url(&url, &navigation_events);
+                    forward_navigation(&url, &navigation_events);
                     false
                 })
                 .with_new_window_req_handler(move |url, _| {
-                    forward_external_url(&url, &new_window_events);
+                    forward_navigation(&url, &new_window_events);
                     NewWindowResponse::Deny
                 })
                 .with_download_started_handler(|_, _| false);
@@ -358,7 +363,11 @@ impl Render for CanvasView {
 }
 
 #[cfg(target_os = "macos")]
-fn forward_external_url(url: &str, events: &async_channel::Sender<String>) {
+fn forward_navigation(url: &str, events: &async_channel::Sender<String>) {
+    if let Some(path) = locus_library::library_reference_path(url) {
+        let _ = events.try_send(format!("note:{path}"));
+        return;
+    }
     if url.starts_with("http://locus-canvas.localhost") {
         return;
     }
@@ -670,15 +679,24 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn external_navigation_forwards_web_links_only() {
+    fn navigation_forwards_web_links_and_note_references() {
         let (sender, receiver) = async_channel::bounded::<String>(16);
         for url in [
             "https://example.com/a?q=1#part",
             "http://example.com",
             "HTTPS://example.com",
         ] {
-            forward_external_url(url, &sender);
+            forward_navigation(url, &sender);
             assert_eq!(receiver.try_recv().unwrap(), format!("url:{url}"));
+        }
+        for (url, path) in [
+            ("locus://standard", "standard"),
+            ("locus://diary/2026/entry", "diary/2026/entry"),
+            ("locus://旅行%20计划/100%25", "旅行 计划/100%"),
+            ("locus://literal%252e", "literal%2e"),
+        ] {
+            forward_navigation(url, &sender);
+            assert_eq!(receiver.try_recv().unwrap(), format!("note:{path}"));
         }
         for url in [
             "about:blank",
@@ -687,10 +705,14 @@ mod tests {
             "file:///tmp/test",
             "javascript:alert(1)",
             "data:text/html,test",
-            "locus://standard",
+            "locus://",
+            "locus://note/%2e%2e",
+            "locus://note%2Fother",
+            "locus://note?query",
+            "locus://note#fragment",
             "https://",
         ] {
-            forward_external_url(url, &sender);
+            forward_navigation(url, &sender);
             assert!(receiver.try_recv().is_err());
         }
     }

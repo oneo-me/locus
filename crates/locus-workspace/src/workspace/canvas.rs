@@ -196,6 +196,7 @@ impl Locus {
                     }
                     CanvasEvent::Settings => window.dispatch_action(Box::new(OpenSettings), cx),
                     CanvasEvent::OpenUrl(url) => cx.open_url(url),
+                    CanvasEvent::OpenNote(path) => this.open_library_reference(path, cx),
                 }
             });
             self.note_canvas = Some(NoteCanvas {
