@@ -128,7 +128,7 @@ impl Locus {
 
         let mut command = Command::new(palette).group(application);
         if self.current_note_node().is_some() {
-            let current_note = CommandGroup::new()
+            let mut current_note = CommandGroup::new()
                 .label(
                     t!(
                         "workspace.command_palette.current_note",
@@ -198,6 +198,14 @@ impl Locus {
                         .action(Box::new(ArchiveCurrentNote))
                         .disabled(self.pending_note_action.is_some()),
                 );
+            for shortcut in self.note_shortcut_commands(cx) {
+                current_note = current_note.item(
+                    CommandItem::new()
+                        .label(shortcut.label.clone())
+                        .icon(shortcut.icon())
+                        .action(shortcut.action()),
+                );
+            }
             command = command.separator().group(current_note);
         }
 
@@ -385,7 +393,7 @@ impl Locus {
         self.begin_closing_command_palette(window, cx);
     }
 
-    fn current_note_node(&self) -> Option<&LibraryNode> {
+    pub(super) fn current_note_node(&self) -> Option<&LibraryNode> {
         self.selected_library_node
             .as_deref()
             .and_then(|path| self.library_tree.node(path))
@@ -443,8 +451,17 @@ impl Locus {
         else {
             return;
         };
+        self.edit_note_at_path(&document_path, window, cx);
+    }
+
+    pub(super) fn edit_note_at_path(
+        &self,
+        document_path: &std::path::Path,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let preferences = self.settings.read(cx).preferences();
-        if let Err(error) = locus_ui::platform::open_in_editor(&document_path, preferences.editor) {
+        if let Err(error) = locus_ui::platform::open_in_editor(document_path, preferences.editor) {
             eprintln!("{error}");
             self.show_file_action_error("workspace.note.edit_error", window, cx);
         }
@@ -459,7 +476,16 @@ impl Locus {
         let Some(directory) = self.current_note_node().map(|node| node.directory.clone()) else {
             return;
         };
-        if let Err(error) = locus_ui::platform::open_directory(&directory) {
+        self.open_note_directory_at_path(&directory, window, cx);
+    }
+
+    pub(super) fn open_note_directory_at_path(
+        &self,
+        directory: &std::path::Path,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Err(error) = locus_ui::platform::open_directory(directory) {
             eprintln!("{error}");
             self.show_file_action_error("workspace.note.open_directory_error", window, cx);
         }

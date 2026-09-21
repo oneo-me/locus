@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use locus_library::{ContentTarget, LibraryAccess};
 use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
 use rmcp::model::{
-    CallToolResult, ContentBlock, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
+    CallToolResult, ContentBlock, Implementation, ProtocolVersion, ServerCapabilities, ServerConfig,
 };
 use rmcp::{ServerHandler, tool, tool_handler, tool_router};
 use schemars::JsonSchema;
@@ -25,7 +25,7 @@ pub(super) struct FullMcp {
     tool_router: ToolRouter<Self>,
 }
 
-const INSTRUCTIONS: &str = "Use this endpoint for all library operations. Never request server file paths or ask the client to edit server files. Use locus:// logical note addresses; locus:// alone is the library root for listing/export. list_entries includes archived notes and organizational directories. resolve_entry lists note metadata and its note/canvas/icon/attachment resources. read_text returns raw UTF-8 (including YAML frontmatter) and a SHA-256 version. write_text replaces content; patch_text replaces one exact match, including metadata. Always pass the read version to writes/deletes, or 'missing' for creation. Resource targets are {uri, resource:{kind:'note'|'canvas'|'canvas_file'|'icon'|'attachment', name?:string}}. Attachments live in assets/; icon targets assets/icon.png. Canvas targets canvas/index.html; canvas_file with a relative name targets any other file under canvas/, including nested files. assets and canvas cannot be note names. create_note creates a note in an existing parent, preserving existing organizational children. Use set_archived for archive/restore, begin_upload/upload_chunk/finish_upload for any binary content, stat_content/download_chunk for byte-exact downloads. Upload chunks are base64 and at most 256 KiB decoded; complete size and optional SHA-256 are checked before commit. Icons are converted using the application's icon rules. Canvas content is the HTML fragment owned by a note, not a full HTML page; scripts/resources follow the application's canvas policy. HTML canvases require canvas/main.js exporting async main(data). Template callers instead use canvas_file name index.json with exactly template (a locus:// note address) and data; index.html and index.json are mutually exclusive. The template's main owns input validation and processing, and relative resources belong to the template. export_manifest plus download_chunk exports a subtree; import by creating directories/notes parent-first and uploading each resource. Canvas and icon are distinct resources, not attachments. plan_move returns a version and Markdown link impact before move_entry renames/moves a complete tree. Dynamic canvas/script/custom-metadata references require explicit review and patch_text. move_attachment updates recognized Markdown links; review canvas/script references explicitly. inspect_tree returns the version needed for delete_entry; recursive=true explicitly deletes the entire subtree. Delete operations are permanent. Only this library is accessible; excluded paths and symlinks are rejected. Switching library or stopping the service invalidates sessions and transfers.";
+const INSTRUCTIONS: &str = "Use this endpoint for all library operations. Never request server file paths or ask the client to edit server files. Use locus:// logical note addresses; locus:// alone is the library root for listing/export. list_entries includes archived notes and organizational directories. resolve_entry lists note metadata and its note/canvas/icon/attachment resources. read_text returns raw UTF-8 (including YAML frontmatter) and a SHA-256 version. write_text replaces content; patch_text replaces one exact match, including metadata. Always pass the read version to writes/deletes, or 'missing' for creation. Resource targets are {uri, resource:{kind:'note'|'canvas'|'canvas_file'|'icon'|'attachment', name?:string}}. Attachments live in assets/; icon targets assets/icon.png. Canvas targets canvas/index.html; canvas_file with a relative name targets any other file under canvas/, including nested files. assets and canvas cannot be note names. create_note creates a note in an existing parent, preserving existing organizational children. Use set_archived for archive/restore, begin_upload/upload_chunk/finish_upload for any binary content, stat_content/download_chunk for byte-exact downloads. Upload chunks are base64 and at most 256 KiB decoded; complete size and optional SHA-256 are checked before commit. Icons are converted using the application's icon rules. Canvas content is the HTML fragment owned by a note, not a full HTML page; scripts/resources follow the application's canvas policy. HTML canvases require canvas/main.js exporting async main(data). Template callers instead use canvas_file name index.json with exactly template (a locus:// note address) and data; index.html and index.json are mutually exclusive. The template's main owns input validation and processing, and relative resources belong to the template. export_manifest plus download_chunk exports a subtree; import by creating directories/notes parent-first and uploading each resource. Canvas and icon are distinct resources, not attachments. plan_move returns a version and Markdown link impact before move_entry renames/moves a complete tree. Dynamic canvas/script/custom-metadata references require explicit review and patch_text. move_attachment updates recognized Markdown links; review canvas/script references explicitly. inspect_tree returns the version needed for delete_entry; recursive=true explicitly deletes the entire subtree. Delete operations are permanent. Shortcuts are optional YAML shortcuts: {website, github, directory}. The nearest note defining shortcuts supplies the entire group to descendants; no field merging. shortcuts: null blocks inheritance. resolvedShortcuts returns values, source (locus://), inherited, disabled, and errors; null means no group. Raw shortcuts remain local metadata (top-level shortcuts in discovery, metadata.shortcuts in full MCP); never write inherited values into children unless overriding. directory stays as authored; relative paths are based on the source note and ~/ means the app host home. Directory shortcuts are desktop actions, not MCP filesystem access permissions. Only this library is accessible; excluded paths and symlinks are rejected. Switching library or stopping the service invalidates sessions and transfers.";
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -196,7 +196,7 @@ impl FullMcp {
 #[tool_router(router = tool_router)]
 impl FullMcp {
     #[tool(
-        description = "Lists direct child notes and directories, including archived content. Root is locus://.",
+        description = "Lists direct child notes and directories, including archived content. Root is locus://. Includes local metadata.shortcuts and resolvedShortcuts with inheritance source.",
         annotations(
             read_only_hint = true,
             destructive_hint = false,
@@ -215,7 +215,7 @@ impl FullMcp {
     }
 
     #[tool(
-        description = "Searches logical addresses, metadata, attachment names and note text including archives, with pagination.",
+        description = "Searches logical addresses, metadata, attachment names and note text including archives, with pagination. Includes local metadata.shortcuts and resolvedShortcuts with inheritance source.",
         annotations(
             read_only_hint = true,
             destructive_hint = false,
@@ -234,7 +234,7 @@ impl FullMcp {
     }
 
     #[tool(
-        description = "Reads note or directory metadata and lists all owned resources without server paths.",
+        description = "Reads note or directory metadata and lists all owned resources without server paths. Includes local metadata.shortcuts and resolvedShortcuts with inheritance source.",
         annotations(
             read_only_hint = true,
             destructive_hint = false,
@@ -571,8 +571,8 @@ impl ServerHandler for FullMcp {
         crate::docs::read(&request.uri)
     }
 
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(
             ServerCapabilities::builder()
                 .enable_tools()
                 .enable_resources()

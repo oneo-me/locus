@@ -127,9 +127,10 @@ mod tests {
     }
 
     impl Render for ContentHarness {
-        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-            self.locus
-                .update(cx, |locus, cx| locus.render_content(124.0, 800.0, cx))
+        fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            self.locus.update(cx, |locus, cx| {
+                locus.render_content(124.0, 800.0, window, cx)
+            })
         }
     }
 

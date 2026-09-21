@@ -6,7 +6,6 @@ use std::time::{Duration, Instant};
 use base64::Engine;
 use locus_library::{ContentTarget, LibraryAccess};
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 
 const MAX_UPLOAD_BYTES: u64 = 1024 * 1024 * 1024;
 const MAX_CHUNK_BYTES: usize = 256 * 1024;
@@ -132,9 +131,8 @@ impl Transfers {
             .file
             .seek(SeekFrom::Start(0))
             .map_err(transfer_error)?;
-        let mut hash = Sha256::new();
-        std::io::copy(&mut upload.file, &mut hash).map_err(transfer_error)?;
-        let checksum = format!("{:x}", hash.finalize());
+        let (_, checksum) =
+            locus_library::content_version_from_reader(&mut upload.file).map_err(transfer_error)?;
         if upload
             .sha256
             .as_ref()

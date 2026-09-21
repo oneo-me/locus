@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use gpui_kit::{AssetSource, Result, SharedString};
 
-gpui_kit::assets::icon_assets!(ExtraIcons, [Download]);
+gpui_kit::assets::icon_assets!(ExtraIcons, [Download, FolderPen]);
 
 pub struct Assets;
 
@@ -30,9 +30,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn application_assets_include_download_and_component_icons() {
+    fn application_assets_include_toolbar_and_component_icons() {
         let mut paths = gpui_kit::assets::Assets.list("icons/").unwrap();
-        paths.push(IconName::Download.path());
+        paths.extend([IconName::Download.path(), IconName::FolderPen.path()]);
         let listed = Assets.list("icons/").unwrap();
         for path in paths {
             assert!(listed.contains(&path), "missing asset listing: {path}");

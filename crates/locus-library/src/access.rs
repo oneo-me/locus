@@ -343,6 +343,35 @@ impl LibraryAccess {
         result
     }
 
+    fn resolved_shortcuts(&self, uri: &str) -> Result<Option<crate::ResolvedShortcuts>, String> {
+        let mut segments = uri_segments(uri)?;
+        while !segments.is_empty() {
+            let directory = self.directory(&canonical_uri(&segments))?;
+            let document = directory.join("index.md");
+            if optional_version(&document)?.is_some() {
+                let metadata =
+                    crate::scanner::read_document_metadata(&document).map_err(io_error)?;
+                if let Some((_, raw)) = metadata
+                    .additional
+                    .iter()
+                    .find(|(key, _)| key == "shortcuts")
+                {
+                    return Ok(Some(crate::ResolvedShortcuts::new(
+                        &segments.join("/"),
+                        metadata
+                            .title
+                            .as_deref()
+                            .unwrap_or_else(|| segments.last().unwrap()),
+                        &directory,
+                        raw,
+                    )));
+                }
+            }
+            segments.pop();
+        }
+        Ok(None)
+    }
+
     pub fn describe(&self, uri: &str) -> Result<Value, String> {
         let directory = self.directory(uri)?;
         let mut metadata = json!({});
@@ -396,9 +425,12 @@ impl LibraryAccess {
                 }
             }
         }
+        let resolved_shortcuts = self.resolved_shortcuts(uri)?.map(|shortcuts| {
+            shortcuts.mcp_value(&uri_segments(uri).expect("validated URI").join("/"))
+        });
         files.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
         Ok(
-            json!({"uri": canonical_uri(&uri_segments(uri)?), "kind": if note.is_some() {"note"} else {"directory"}, "metadata": metadata, "version": note, "files": files, "childCount": children}),
+            json!({"uri": canonical_uri(&uri_segments(uri)?), "kind": if note.is_some() {"note"} else {"directory"}, "metadata": metadata, "resolvedShortcuts": resolved_shortcuts, "version": note, "files": files, "childCount": children}),
         )
     }
 
@@ -492,15 +524,42 @@ impl LibraryAccess {
 }
 
 pub fn content_version(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    hash_hex(&Sha256::digest(bytes))
+}
+
+/// Hash a byte stream without loading the complete content into memory.
+/// Returns the byte count and the same lowercase SHA-256 used for content versions.
+pub fn content_version_from_reader(source: &mut impl Read) -> std::io::Result<(u64, String)> {
+    let mut digest = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    let mut size = 0;
+    loop {
+        let count = match source.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(count) => count,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
+        };
+        digest.update(&buffer[..count]);
+        size += count as u64;
+    }
+    Ok((size, hash_hex(&digest.finalize())))
+}
+
+fn hash_hex(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+    bytes
+        .iter()
+        .fold(String::with_capacity(bytes.len() * 2), |mut hex, byte| {
+            write!(hex, "{byte:02x}").expect("writing to a String cannot fail");
+            hex
+        })
 }
 
 fn file_version(path: &Path) -> Result<(u64, String), String> {
     require_file(path)?;
     let mut file = File::open(path).map_err(io_error)?;
-    let mut digest = Sha256::new();
-    let size = std::io::copy(&mut file, &mut digest).map_err(io_error)?;
-    Ok((size, format!("{:x}", digest.finalize())))
+    content_version_from_reader(&mut file).map_err(io_error)
 }
 
 fn optional_version(path: &Path) -> Result<Option<String>, String> {
@@ -576,7 +635,7 @@ fn uri_segments(uri: &str) -> Result<Vec<String>, String> {
         .collect()
 }
 
-fn canonical_uri(segments: &[String]) -> String {
+pub(crate) fn canonical_uri(segments: &[String]) -> String {
     const ESCAPE: &percent_encoding::AsciiSet = &percent_encoding::CONTROLS
         .add(b' ')
         .add(b'%')

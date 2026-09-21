@@ -655,3 +655,31 @@ fn react_sources_stay_untouched_and_dependencies_are_not_note_resources() {
         );
     }
 }
+
+#[test]
+fn content_versions_keep_sha256_encoding_across_streamed_and_in_memory_data() {
+    for (bytes, expected) in [
+        (
+            &b""[..],
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        ),
+        (
+            &b"abc"[..],
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        ),
+    ] {
+        assert_eq!(content_version(bytes), expected);
+        let mut source = bytes;
+        assert_eq!(
+            content_version_from_reader(&mut source).unwrap(),
+            (bytes.len() as u64, expected.into())
+        );
+    }
+    let data = vec![0x9b; 150_000];
+    let file = tempfile::NamedTempFile::new().unwrap();
+    fs::write(file.path(), &data).unwrap();
+    assert_eq!(
+        file_version(file.path()).unwrap(),
+        (data.len() as u64, content_version(&data))
+    );
+}

@@ -9,9 +9,12 @@ mod mutations;
 mod reference;
 mod repository;
 mod scanner;
+mod shortcuts;
 mod watcher;
 
-pub use access::{ContentTarget, LibraryAccess, Resource, content_version};
+pub use access::{
+    ContentTarget, LibraryAccess, Resource, content_version, content_version_from_reader,
+};
 pub use canvas::{
     ASSETS_DIRECTORY, CANVAS_CONFIG_FILE, CANVAS_DIRECTORY, CANVAS_FILE, CANVAS_MAIN_FILE,
     CanvasSource, is_reserved_directory, load_canvas, load_canvas_resource, load_library_resource,
@@ -20,6 +23,7 @@ pub use canvas::{
 pub use mutations::{archive_note, restore_archived_note, update_note_icon};
 pub use reference::{LIBRARY_REFERENCE_SCHEME, library_reference_path};
 pub use scanner::load_note;
+pub use shortcuts::{ResolvedShortcuts, ShortcutKind};
 pub use watcher::{LibraryWatchEvent, LibraryWatcher};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

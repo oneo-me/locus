@@ -6,6 +6,8 @@ publish = false
 
 [dependencies]
 async-channel.workspace = true
+dirs.workspace = true
+url.workspace = true
 image.workspace = true
 libc.workspace = true
 notify.workspace = true

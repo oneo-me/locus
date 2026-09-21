@@ -1,6 +1,7 @@
 use super::note_atmosphere::{
     AtmosphereBackdrop, AtmosphereShape, NoteAtmosphere, Pattern, derive_note_atmosphere,
 };
+use super::note_metadata::note_metadata;
 use super::{Locus, SelectedNote};
 use gpui_kit::component::Theme;
 use gpui_kit::component::scroll::Scrollbar;
@@ -26,6 +27,7 @@ impl Locus {
         selected_note: Option<&SelectedNote>,
         left_control_clearance: f32,
         content_width: f32,
+        window: &mut Window,
         cx: &mut gpui_kit::Context<Self>,
     ) -> Div {
         let theme = Theme::global(cx).clone();
@@ -44,7 +46,14 @@ impl Locus {
                 .as_ref()
                 .filter(|canvas| canvas.path == node.path)
                 .map(|canvas| canvas.view.clone().into_any_element());
-            let metadata = note_metadata(node, theme.background, &theme).map(|metadata| {
+            let metadata = note_metadata(
+                node,
+                theme.background,
+                &theme,
+                &markdown_text_font_family,
+                window,
+            )
+            .map(|metadata| {
                 div()
                     .w_full()
                     .min_w_0()
@@ -68,12 +77,18 @@ impl Locus {
             .min_w_0()
             .max_w(px(NOTE_MAX_WIDTH))
             .px(px(16.0))
-            .pt(px(72.0))
+            .pt(gpui_kit::rems(3.5))
             .pb(px(56.0))
             .flex()
             .flex_col()
             .gap(px(22.0));
-        if let Some(metadata) = note_metadata(node, atmosphere.panel, &theme) {
+        if let Some(metadata) = note_metadata(
+            node,
+            atmosphere.panel,
+            &theme,
+            &markdown_text_font_family,
+            window,
+        ) {
             article = article.child(metadata);
         }
         if selected_note
@@ -254,25 +269,11 @@ impl Locus {
         .on_click(|_, window, cx| {
             window.dispatch_action(Box::new(crate::CopyCurrentNoteReference), cx)
         });
-        let edit_button = toolbar_icon_button(
-            "edit-note",
-            t!("workspace.note.edit", locale = language.locale()).into_owned(),
-            Icon::File,
-            theme,
-        )
-        .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::EditCurrentNote), cx));
-        let open_directory_button = toolbar_icon_button(
-            "open-note-directory",
-            t!("workspace.note.open_directory", locale = language.locale()).into_owned(),
-            Icon::FolderOpen,
-            theme,
-        )
-        .on_click(|_, window, cx| {
-            window.dispatch_action(Box::new(crate::OpenCurrentNoteDirectory), cx)
-        });
         let note_menu =
             self.render_note_menu(node, format!("note-menu-page-{}", node.path), theme, cx);
 
+        let (shortcut_buttons, project_directory_button) =
+            self.render_note_shortcuts(node, theme, cx);
         let titlebar = oneo_gpui::titlebar_drag_region("note-titlebar-region")
             .relative()
             .w_full()
@@ -338,8 +339,8 @@ impl Locus {
                         )
                     })
                     .child(copy_button)
-                    .child(edit_button)
-                    .child(open_directory_button)
+                    .children(shortcut_buttons)
+                    .children(project_directory_button)
                     .child(note_menu),
             );
         div()
@@ -367,91 +368,6 @@ fn note_titlebar_padding(
     let centered_gutter = ((content_width - NOTE_MAX_WIDTH) / 2.0).max(0.0);
     let left = (left_control_clearance - left_sidebar_width - centered_gutter).max(16.0);
     (left, 16.0)
-}
-
-fn note_metadata(node: &LibraryNode, panel_color: gpui_kit::Hsla, theme: &Theme) -> Option<Div> {
-    let summary = node
-        .summary
-        .as_ref()
-        .filter(|summary| !summary.trim().is_empty());
-    if summary.is_none() && node.additional_metadata.is_empty() {
-        return None;
-    }
-
-    let mut panel = div()
-        .w_full()
-        .rounded(px(8.0))
-        .overflow_hidden()
-        .bg(panel_color)
-        .flex()
-        .flex_col();
-    if let Some(summary) = summary {
-        panel = panel.child(
-            div()
-                .px(px(14.0))
-                .py(px(8.0))
-                .when(node.canvas_path.is_some(), |summary| summary.px_4().py_1())
-                .text_sm()
-                .line_height(px(21.0))
-                .child(summary.clone()),
-        );
-    }
-    if !node.additional_metadata.is_empty() {
-        let mut fields = div()
-            .py(px(4.0))
-            .when(node.canvas_path.is_some(), |fields| fields.py_0())
-            .flex()
-            .flex_col();
-        for (key, value) in &node.additional_metadata {
-            fields = fields.child(
-                div()
-                    .w_full()
-                    .min_w_0()
-                    .flex()
-                    .items_start()
-                    .text_xs()
-                    .line_height(px(18.0))
-                    .child(
-                        div()
-                            .w(px(112.0))
-                            .min_w_0()
-                            .flex_none()
-                            .px(px(14.0))
-                            .py(px(6.0))
-                            .when(node.canvas_path.is_some(), |field| field.px_4().py_1())
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(theme.muted_foreground)
-                            .whitespace_normal()
-                            .child(key.clone()),
-                    )
-                    .child(
-                        div()
-                            .min_w_0()
-                            .flex_1()
-                            .px(px(14.0))
-                            .py(px(6.0))
-                            .when(node.canvas_path.is_some(), |field| field.px_4().py_1())
-                            .text_color(theme.foreground)
-                            .whitespace_normal()
-                            .child(format_yaml_metadata_value(value)),
-                    ),
-            );
-        }
-        panel = panel.child(fields);
-    }
-    Some(panel)
-}
-
-fn format_yaml_metadata_value(value: &serde_json::Value) -> String {
-    match value {
-        serde_json::Value::String(value) => value.clone(),
-        serde_json::Value::Null => "null".to_owned(),
-        serde_json::Value::Bool(value) => value.to_string(),
-        serde_json::Value::Number(value) => value.to_string(),
-        serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
-            serde_json::to_string_pretty(value).expect("JSON values are serializable")
-        }
-    }
 }
 
 fn note_titlebar_background(
@@ -891,18 +807,5 @@ mod tests {
     fn narrow_note_titlebar_only_avoids_controls_that_overlap_content() {
         assert_eq!(note_titlebar_padding(700.0, 0.0, 120.0), (120.0, 16.0));
         assert_eq!(note_titlebar_padding(700.0, 250.0, 120.0), (16.0, 16.0));
-    }
-
-    #[test]
-    fn formats_yaml_metadata_like_the_previous_reader() {
-        assert_eq!(
-            format_yaml_metadata_value(&serde_json::Value::String("active".to_owned())),
-            "active"
-        );
-        assert_eq!(format_yaml_metadata_value(&serde_json::Value::Null), "null");
-        assert_eq!(
-            format_yaml_metadata_value(&serde_json::json!({ "name": "Oneo" })),
-            "{\n  \"name\": \"Oneo\"\n}"
-        );
     }
 }

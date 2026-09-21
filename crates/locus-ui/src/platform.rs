@@ -53,8 +53,8 @@ pub fn open_path(path: &Path) -> Result<(), String> {
 }
 
 pub fn open_in_editor(path: &Path, editor: EditorPreference) -> Result<(), String> {
-    if !path.is_file() {
-        return Err("文件不存在或无法访问。".to_owned());
+    if !path.is_file() && !path.is_dir() {
+        return Err("文件或目录不存在或无法访问。".to_owned());
     }
 
     let status = match editor {

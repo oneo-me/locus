@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
 use rmcp::model::{
-    CallToolResult, ContentBlock, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
+    CallToolResult, ContentBlock, Implementation, ProtocolVersion, ServerCapabilities, ServerConfig,
 };
 use rmcp::{ServerHandler, tool, tool_handler, tool_router};
 use schemars::JsonSchema;
@@ -14,7 +14,7 @@ use locus_library::{
     LIBRARY_REFERENCE_SCHEME, LibraryNode, LibraryTree, library_reference_path, load_note,
 };
 
-const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path or locus:// address, call resolve_article directly with the path parameter (not uri); do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; assets/ holds attachments and the reserved assets/icon.png icon; assets and canvas are reserved directories, never notes. canvas/index.html and canvas/main.js define an HTML canvas with an exported async main(data); mutually exclusive canvas/index.json invokes a template with template and data fields; read the built-in locus-docs://canvas MCP resource for authoring. Do not recreate CRUD or attachment tools through MCP.";
+const MCP_INSTRUCTIONS: &str = "Locus exposes list_articles, search_articles, and resolve_article for discovering a local Markdown library. If the user provides a library-relative article path or locus:// address, call resolve_article directly with the path parameter (not uri); do not list or search first. Use search_articles for titles or keywords; use list_articles to browse children. Each result includes an article path for hierarchy navigation plus absolute file and directory paths. Edit content with the client file tools: each article is a directory containing index.md; YAML frontmatter holds title, icon, summary, and archived state; assets/ holds attachments and the reserved assets/icon.png icon; assets and canvas are reserved directories, never notes. canvas/index.html and canvas/main.js define an HTML canvas with an exported async main(data); mutually exclusive canvas/index.json invokes a template with template and data fields; read the built-in locus-docs://canvas MCP resource for authoring. Shortcuts are optional YAML shortcuts: {website, github, directory}. The nearest note defining shortcuts supplies the entire group to descendants; no field merging. shortcuts: null blocks inheritance. resolvedShortcuts returns values, source (locus://), inherited, disabled, and errors; null means no group. Raw shortcuts remain local metadata (top-level shortcuts in discovery, metadata.shortcuts in full MCP); never write inherited values into children unless overriding. directory stays as authored; relative paths are based on the source note and ~/ means the app host home. Directory shortcuts are desktop actions, not MCP filesystem access permissions. Do not recreate CRUD or attachment tools through MCP.";
 
 #[derive(Clone)]
 pub(super) struct LocusMcp {
@@ -57,7 +57,7 @@ impl LocusMcp {
 
     #[tool(
         name = "list_articles",
-        description = "Lists direct child articles for a library-relative parent path or locus:// address with cursor pagination. Empty parent or locus:// lists the library root. Each result includes article metadata, Markdown body lineCount, attachmentCount, childCount, and absolute local file and directory paths for native editing.",
+        description = "Lists direct child articles for a library-relative parent path or locus:// address with cursor pagination. Empty parent or locus:// lists the library root. Each result includes article metadata, Markdown body lineCount, attachmentCount, childCount, and absolute local file and directory paths for native editing, plus local shortcuts and resolvedShortcuts with inheritance source.",
         annotations(
             title = "List child articles",
             read_only_hint = true,
@@ -75,7 +75,7 @@ impl LocusMcp {
 
     #[tool(
         name = "search_articles",
-        description = "Searches Markdown article titles, public metadata, and body content. Each result includes attachmentCount plus absolute file and directory paths for native editing.",
+        description = "Searches Markdown article titles, public metadata, and body content. Each result includes attachmentCount plus absolute file and directory paths for native editing, local shortcuts, and resolvedShortcuts with inheritance source.",
         annotations(
             title = "Search articles",
             read_only_hint = true,
@@ -93,7 +93,7 @@ impl LocusMcp {
 
     #[tool(
         name = "resolve_article",
-        description = "Resolves a known library-relative article path or locus:// address supplied in the path parameter to public metadata, attachmentCount, and absolute local file and directory paths. Accepts an optional trailing /index.md. Use this instead of search when the path is already known.",
+        description = "Resolves a known library-relative article path or locus:// address supplied in the path parameter to public metadata, attachmentCount, and absolute local file and directory paths. Includes local shortcuts and resolvedShortcuts with inheritance source. Accepts an optional trailing /index.md. Use this instead of search when the path is already known.",
         annotations(
             title = "Resolve an article path",
             read_only_hint = true,
@@ -141,7 +141,7 @@ impl LocusMcp {
             .collect::<Vec<_>>();
         let articles = page
             .into_iter()
-            .map(|node| article_value(root, node, Some(child_count(&documents, &node.path))))
+            .map(|node| article_value(root, &tree, node, Some(child_count(&documents, &node.path))))
             .collect::<Result<Vec<_>, _>>()?;
         let next_cursor =
             (cursor + articles.len() < children.len()).then_some(cursor + articles.len());
@@ -191,7 +191,7 @@ impl LocusMcp {
             }
             total += 1;
             if results.len() < limit {
-                let mut article = article_value(root, node, None)?;
+                let mut article = article_value(root, &tree, node, None)?;
                 article["excerpt"] = Value::String(create_excerpt(&body, query));
                 results.push(article);
             }
@@ -214,7 +214,7 @@ impl LocusMcp {
             .ok_or_else(|| format!("文章不存在：{path}"))?;
         let mut documents = Vec::new();
         collect_documents(&tree.nodes, &mut documents);
-        article_value(root, node, Some(child_count(&documents, &path)))
+        article_value(root, &tree, node, Some(child_count(&documents, &path)))
     }
 
     fn root(&self) -> Result<&Path, String> {
@@ -242,8 +242,8 @@ impl ServerHandler for LocusMcp {
         crate::docs::read(&request.uri)
     }
 
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(
             ServerCapabilities::builder()
                 .enable_tools()
                 .enable_resources()
@@ -286,6 +286,7 @@ fn collect_documents<'a>(nodes: &'a [LibraryNode], documents: &mut Vec<&'a Libra
 
 fn article_value(
     root: &Path,
+    tree: &LibraryTree,
     node: &LibraryNode,
     child_count: Option<usize>,
 ) -> Result<Value, String> {
@@ -298,6 +299,7 @@ fn article_value(
         node.icon.as_deref()
     };
     let mut value = json!({
+        "resolvedShortcuts": tree.resolved_shortcuts(&node.path).map(|shortcuts| shortcuts.mcp_value(&node.path)),
         "archived": false,
         "path": node.path,
         "title": node.title,
@@ -308,6 +310,13 @@ fn article_value(
         "file": document_path.to_string_lossy(),
         "directory": root.join(&node.path).to_string_lossy(),
     });
+    if let Some((_, raw)) = node
+        .additional_metadata
+        .iter()
+        .find(|(key, _)| key == "shortcuts")
+    {
+        value["shortcuts"] = raw.clone();
+    }
     if let Some(child_count) = child_count {
         value["childCount"] = json!(child_count);
     }
@@ -405,6 +414,75 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn discovery_reports_local_and_inherited_shortcuts_separately() {
+        let root = tempfile::tempdir().unwrap();
+        write_fixture(root.path().join("project/index.md"), "---\ntitle: Project\nshortcuts:\n  website: https://example.com\n  directory: ./source\n---\n").unwrap();
+        write_fixture(
+            root.path().join("project/child/index.md"),
+            "---\ntitle: Child\n---\n",
+        )
+        .unwrap();
+        let service = LocusMcp::new(Some(root.path().to_owned()));
+        let own = service
+            .resolve_article_value(ResolveArticleRequest {
+                path: "project".into(),
+            })
+            .unwrap();
+        assert_eq!(own["shortcuts"]["website"], "https://example.com");
+        assert_eq!(own["resolvedShortcuts"]["inherited"], false);
+        let child = service
+            .resolve_article_value(ResolveArticleRequest {
+                path: "project/child".into(),
+            })
+            .unwrap();
+        assert!(child.get("shortcuts").is_none());
+        assert_eq!(child["resolvedShortcuts"]["source"], "locus://project");
+        assert_eq!(child["resolvedShortcuts"]["inherited"], true);
+        assert_eq!(
+            child["resolvedShortcuts"]["values"]["directory"],
+            "./source"
+        );
+        let listed = service
+            .list_articles_value(ListArticlesRequest {
+                parent: "project".into(),
+                cursor: None,
+                limit: None,
+            })
+            .unwrap();
+        assert_eq!(
+            listed["articles"][0]["resolvedShortcuts"],
+            child["resolvedShortcuts"]
+        );
+        let searched = service
+            .search_articles_value(SearchArticlesRequest {
+                query: "Child".into(),
+                limit: None,
+            })
+            .unwrap();
+        assert_eq!(
+            searched["results"][0]["resolvedShortcuts"],
+            child["resolvedShortcuts"]
+        );
+        write_fixture(
+            root.path().join("project/child/index.md"),
+            "---\nshortcuts: null\n---\n",
+        )
+        .unwrap();
+        let blocked = service
+            .resolve_article_value(ResolveArticleRequest {
+                path: "project/child".into(),
+            })
+            .unwrap();
+        assert!(blocked.get("shortcuts").unwrap().is_null());
+        assert_eq!(blocked["resolvedShortcuts"]["disabled"], true);
+        assert_eq!(
+            blocked["resolvedShortcuts"]["source"],
+            "locus://project/child"
+        );
+        assert_eq!(blocked["resolvedShortcuts"]["values"], json!({}));
+    }
 
     #[test]
     fn canvas_is_excluded_from_discovery_attachment_counts() {

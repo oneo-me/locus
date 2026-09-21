@@ -52,7 +52,11 @@ impl Locus {
             .document_path
             .clone()
             .expect("note menus require a document");
+        let directory = node.directory.clone();
         let language = self.language(cx);
+        let edit_label = t!("workspace.note.edit", locale = language.locale()).into_owned();
+        let directory_label =
+            t!("workspace.note.open_directory", locale = language.locale()).into_owned();
         let upload_label = t!(
             "workspace.note_menu.upload_icon",
             locale = language.locale()
@@ -67,7 +71,30 @@ impl Locus {
             let choose_path = document_path.clone();
             let archive_locus = locus.clone();
             let archive_path = document_path.clone();
+            let edit_locus = locus.clone();
+            let edit_path = document_path.clone();
+            let directory_locus = locus.clone();
+            let directory_path = directory.clone();
             menu.item(
+                PopupMenuItem::new(edit_label.clone())
+                    .icon(gpui_kit::component::Icon::new(Icon::File))
+                    .on_click(move |_, window, cx| {
+                        let _ = edit_locus.update(cx, |this, cx| {
+                            this.edit_note_at_path(&edit_path, window, cx);
+                        });
+                    }),
+            )
+            .item(
+                PopupMenuItem::new(directory_label.clone())
+                    .icon(gpui_kit::component::Icon::new(Icon::FolderOpen))
+                    .on_click(move |_, window, cx| {
+                        let _ = directory_locus.update(cx, |this, cx| {
+                            this.open_note_directory_at_path(&directory_path, window, cx);
+                        });
+                    }),
+            )
+            .separator()
+            .item(
                 PopupMenuItem::new(upload_label.clone())
                     .icon(gpui_kit::component::Icon::new(Icon::ArrowUp))
                     .disabled(disabled)

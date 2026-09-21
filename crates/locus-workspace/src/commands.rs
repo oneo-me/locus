@@ -33,6 +33,9 @@ actions!(
         NewTerminal,
         OpenCommandPalette,
         OpenCurrentNoteDirectory,
+        OpenNoteWebsite,
+        OpenNoteGithub,
+        OpenNoteProjectDirectory,
         ReloadCurrentNote
     ]
 );

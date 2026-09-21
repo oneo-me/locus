@@ -9,7 +9,9 @@ mod navigation;
 mod note;
 mod note_atmosphere;
 mod note_menu;
+mod note_metadata;
 mod pane;
+mod shortcuts;
 mod sidebar;
 mod terminal;
 mod window_chrome;
@@ -818,6 +820,7 @@ impl Locus {
         &self,
         left_control_clearance: f32,
         content_width: f32,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Div {
         let theme = Theme::global(cx).clone();
@@ -833,6 +836,7 @@ impl Locus {
                 self.selected_note.as_ref(),
                 left_control_clearance,
                 content_width,
+                window,
                 cx,
             );
             oneo_gpui::WorkspacePanel::new(note)
@@ -864,7 +868,7 @@ impl Locus {
         let left_control_clearance = left_titlebar_control_clearance(window.is_fullscreen());
         let content_width =
             f32::from(window.viewport_size().width) - self.app_shell.workspace().rendered_width();
-        self.render_content(left_control_clearance, content_width, cx)
+        self.render_content(left_control_clearance, content_width, window, cx)
             .into_any_element()
     }
 
@@ -951,6 +955,17 @@ impl Render for Locus {
             .on_action(cx.listener(Self::open_note_action))
             .on_action(cx.listener(Self::open_settings_action))
             .on_action(cx.listener(Self::copy_current_note_reference_action))
+            .on_action(cx.listener(|this, _: &crate::OpenNoteWebsite, window, cx| {
+                this.open_note_shortcut(locus_library::ShortcutKind::Website, window, cx)
+            }))
+            .on_action(cx.listener(|this, _: &crate::OpenNoteGithub, window, cx| {
+                this.open_note_shortcut(locus_library::ShortcutKind::Github, window, cx)
+            }))
+            .on_action(
+                cx.listener(|this, _: &crate::OpenNoteProjectDirectory, window, cx| {
+                    this.open_note_shortcut(locus_library::ShortcutKind::Directory, window, cx)
+                }),
+            )
             .on_action(cx.listener(Self::edit_current_note_action))
             .on_action(cx.listener(Self::open_current_note_directory_action))
             .on_action(cx.listener(Self::choose_current_note_icon_action))

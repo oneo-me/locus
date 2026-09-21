@@ -11,6 +11,34 @@ The service is disabled by default. Local-network mode exposes both endpoints wi
 
 The full endpoint never asks the client to edit server files. A client still needs to supply upload bytes and save download bytes. Original note text and user metadata are returned faithfully, including any paths already written by the author.
 
+## Shortcut metadata
+
+Notes may define YAML `shortcuts` with `website`, `github`, and `directory` strings. The nearest note defining the group supplies it to descendants; groups replace each other entirely, without field merging. `shortcuts: null` blocks inheritance and `{}` supplies an empty group. Missing or null fields produce no action. Other metadata does not inherit. See the [application usage guide](../../README.md) for examples and desktop behavior.
+
+All discovery results distinguish the local configuration from its effective projection:
+
+- Standard tools include `shortcuts` only when authored on that note, preserving explicit null.
+- Full tools preserve local configuration in `metadata.shortcuts`.
+- Both include `resolvedShortcuts`, or null if no group was found. A resolved group reports `source` (the defining note's encoded `locus://` address), `inherited`, `disabled` (an explicit null boundary), `values` (valid entries only), and `errors` (configuration diagnostics).
+
+For example, a child without its own configuration can return:
+
+```json
+{
+  "resolvedShortcuts": {
+    "source": "locus://projects/example",
+    "inherited": true,
+    "disabled": false,
+    "values": {"website": "https://example.com", "directory": "./source"},
+    "errors": []
+  }
+}
+```
+
+Do not copy inherited values into children unless deliberately overriding the whole group. To change shared entries, edit the source note; to stop inheriting, set the current note's `shortcuts` to null. Invalid groups still establish a boundary and never fall back to ancestors. Moving a note can change both inheritance and relative-directory meaning; metadata is not rewritten automatically.
+
+Directory strings remain as authored (with surrounding whitespace trimmed in effective values). Relative paths are based on the source note; `~/` means the home directory of the application host. Full MCP does not expand these into server paths or grant access outside the library. Directory opening is a native desktop action, not an MCP operation.
+
 ## Built-in software documentation
 
 Both endpoints expose read-only English Markdown through MCP `resources/list` and `resources/read`:
