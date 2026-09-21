@@ -12,6 +12,8 @@ A canvas replaces the Markdown reading area. Keep only YAML frontmatter in `inde
 
 Write an HTML fragment, not a complete page: omit `<!doctype html>`, `<html>`, `<head>`, and `<body>`. The host supplies the note title, theme and Tailwind. Keep markup in `index.html`, initialization and interaction in `main.js`, and substantial styles in a CSS file. Small styles and non-executable JSON/text data blocks can remain in the fragment. Local third-party scripts may use ordinary `<script src>` tags.
 
+Integrate styles within the host page rather than copying a standalone web project's complete stylesheet, component system and Tailwind mappings. Scope styles and selectors to the canvas's own container; do not override global `:root`, `body`, or other host-page elements. Declare canvas theme variables on that container, with dark values on the same container under a `.dark` ancestor.
+
 `canvas/index.html`:
 
 ```html
@@ -46,7 +48,9 @@ Saving a file does not reload an open canvas. With canvas focus, press Cmd/Ctrl+
 
 Combine multiple views in one canvas using tabs, sections, or disclosure panels. Preserve other sections' state during internal navigation. Use unique DOM IDs, scoped selectors, and separate script scopes.
 
-The canvas uses the available content width. Use `dark:` classes or `.dark` selectors to follow the application theme; theme changes do not reload the page.
+The canvas uses the available content width. Reflow with the container width and avoid horizontal overflow of the whole page; do not lock the page to a preview width. Use `dark:` classes or `.dark` selectors to follow the application theme; theme changes do not reload the page.
+
+The first visible canvas content must be ready to use, including when initialization requires asynchronous data. Prepare the initial content in `main(data)` and render it when ready; do not present a loading screen, progress bar, skeleton, or placeholder message while waiting. On failure, show a concise, recoverable error with instructions to refresh and retry. This is an authoring requirement, not an automatic host guarantee that arbitrary DOM changes remain hidden until main resolves.
 
 For a page that scrolls, use `min-h-full` (`min-height:100%`) on the root so the background continues below the first viewport. The host fixes the heights of `html` and `body`; `h-full` locks the root to one viewport. Use `h-full` only for a fixed frame with independently scrolling inner regions. Avoid a fixed pixel height for the whole page.
 
@@ -71,16 +75,17 @@ Any note with `canvas/index.html` and `canvas/main.js` can serve as a template. 
 
 The two fields are required, and extra fields are rejected. `template` identifies an existing note in the current library, without a resource suffix. It must resolve directly to an HTML canvas, not another JSON invocation; chained or cyclic template configurations are rejected. HTML and JSON entries are mutually exclusive. `data` can be any JSON value; the template's main defines, validates and handles its input schema. The host does not merge inputs or infer defaults.
 
+A canvas intended as a reusable template must display a representative example using sample data when opened directly. Bundle valid sample data and render it through the same validation and rendering path as caller data; do not show an empty canvas or only instructions to invoke the template. Since direct opening passes `null`, reserve `null` for this sample preview in the template's input contract; a caller explicitly passing `null` gets the same preview. Other invalid inputs must still report errors rather than silently falling back to sample data.
+
 For this example, the template's HTML contains `<p class="result"></p>`, and its main module contains:
 
 ```js
 export async function main(data) {
-  if (data === null) {
-    document.querySelector('.result').textContent = 'Call this template with message data.';
-    return;
+  const input = data === null ? { message: 'Example message' } : data;
+  if (typeof input !== 'object' || Array.isArray(input) || typeof input.message !== 'string') {
+    throw new TypeError('message must be a string');
   }
-  if (typeof data.message !== 'string') throw new TypeError('message must be a string');
-  document.querySelector('.result').textContent = data.message;
+  document.querySelector('.result').textContent = input.message;
 }
 ```
 
