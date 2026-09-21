@@ -4,7 +4,7 @@ default-members = ["crates/locus"]
 resolver = "3"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2026.1"
 edition = "2024"
 
 [workspace.dependencies]
