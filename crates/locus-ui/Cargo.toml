@@ -13,11 +13,12 @@ image.workspace = true
 locus-library.workspace = true
 locus-preferences.workspace = true
 oneo-gpui.workspace = true
-oneo-gpui-markdown.workspace = true
+markdown.workspace = true
 percent-encoding.workspace = true
 regex.workspace = true
 reqwest_client.workspace = true
 
 [dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
 serde_json.workspace = true
 serde-saphyr.workspace = true

@@ -33,12 +33,13 @@ use crate::state::{
 };
 use crate::{NewTerminal, OpenSettings, ReloadCurrentNote, ToggleLeftPanel};
 use gpui_kit::component::Theme;
+use gpui_kit::component::text::TextViewState;
 use locus_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
 use locus_mcp::{McpConfiguration, McpServerController};
 use locus_preferences::Preferences;
 use locus_preferences::config::DEFAULT_LEFT_SIDEBAR_WIDTH;
 use locus_settings::{Settings, SettingsEvent, SettingsInit};
-use locus_ui::{Icon, MarkdownCodeBlocks, MarkdownDocument, MarkdownSelection};
+use locus_ui::Icon;
 use oneo_gpui::Language;
 use oneo_gpui::{
     AppShellState, CloseWindow, PanelSize, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
@@ -73,7 +74,7 @@ const WINDOW_BOUNDS_SAVE_DEBOUNCE: Duration = Duration::from_millis(100);
 
 struct SelectedNote {
     path: String,
-    document: Option<MarkdownDocument>,
+    document: Option<Entity<TextViewState>>,
     error: Option<String>,
 }
 
@@ -103,9 +104,6 @@ pub struct Locus {
     note_load_task: Option<Task<()>>,
     library_tree_state: Entity<gpui_kit::base::TreeState>,
     scroll_to_selected_library_node: bool,
-    note_text_focus: FocusHandle,
-    note_text_selection: MarkdownSelection,
-    note_code_blocks: MarkdownCodeBlocks,
     command_palette: Entity<gpui_kit::component::command::CommandState>,
     command_palette_overlay_focus: FocusHandle,
     command_palette_state: command_palette::CommandPaletteState,
@@ -136,6 +134,7 @@ impl Locus {
             cx.new(|cx| gpui_kit::component::command::CommandState::new(window, cx));
         window.focus(&root_focus, cx);
         preferences.appearance.apply(window, cx);
+        sync_markdown_font(&preferences, cx);
         let library_path = preferences.library_path.clone();
         let (library_watcher, library_watch_task, library_watcher_error) =
             Self::start_library_watcher(library_path.as_deref(), cx);
@@ -237,6 +236,8 @@ impl Locus {
                     this.restart_mcp_server(cx);
                 }
                 SettingsEvent::UiFontChanged | SettingsEvent::CodeFontChanged => {
+                    let preferences = this.settings.read(cx).preferences().clone();
+                    sync_markdown_font(&preferences, cx);
                     cx.notify();
                 }
                 SettingsEvent::McpConfigurationChanged => {
@@ -308,9 +309,6 @@ impl Locus {
             note_load_task,
             library_tree_state,
             scroll_to_selected_library_node,
-            note_text_focus: cx.focus_handle(),
-            note_text_selection: MarkdownSelection::default(),
-            note_code_blocks: MarkdownCodeBlocks::default(),
             command_palette,
             command_palette_overlay_focus: cx.focus_handle(),
             command_palette_state: command_palette::CommandPaletteState::Hidden,
@@ -416,14 +414,7 @@ impl Locus {
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_spawn(async move {
-                    load_note(&document_path)
-                        .map(|content| {
-                            MarkdownDocument::parse_with_hidden_code_blocks(
-                                &content,
-                                &["gallery", "attachments"],
-                            )
-                        })
-                        .map_err(|error| error.to_string())
+                    load_note(&document_path).map_err(|error| error.to_string())
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
@@ -441,12 +432,13 @@ impl Locus {
                 }
                 match result {
                     Ok(document) => {
-                        document.synchronize_interaction_state(
-                            &this.note_text_selection,
-                            &this.note_code_blocks,
-                        );
                         let note = this.selected_note.as_mut().expect("selected note checked");
-                        note.document = Some(document);
+                        if let Some(state) = &note.document {
+                            state.update(cx, |state, cx| state.set_text(&document, cx));
+                        } else {
+                            note.document =
+                                Some(cx.new(|cx| TextViewState::markdown(&document, cx)));
+                        }
                         note.error = None;
                     }
                     Err(error) => {
@@ -581,8 +573,6 @@ impl Locus {
         self.schedule_note_canvas_selection(cx);
         self.copied_library_node = None;
         self.note_copy_generation = self.note_copy_generation.wrapping_add(1);
-        self.note_text_selection.reset();
-        self.note_code_blocks.reset();
         self.note_scroll_handle
             .set_offset(gpui_kit::point(px(0.0), px(0.0)));
     }
@@ -1091,6 +1081,13 @@ fn workspace_drag_events(
     .absolute()
 }
 
+fn sync_markdown_font(preferences: &Preferences, cx: &mut gpui_kit::App) {
+    let theme = gpui_kit::component::Theme::global_mut(cx);
+    theme.mono_font_family = preferences.resolved_code_font_family().to_owned().into();
+    theme.mono_font_size = px(preferences.code_font_size);
+    gpui_kit::component::Theme::sync_base(cx);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1178,6 +1175,30 @@ mod tests {
             initial + 50.
         );
         assert!(!view.read_with(cx, |v, _| v.shell.resize_active()));
+    }
+
+    #[gpui_kit::test]
+    fn markdown_code_font_projects_to_text_view_and_survives_theme_changes(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        cx.update(gpui_kit::init);
+        cx.update(|cx| {
+            let preferences = Preferences {
+                code_font_family: "Custom Code Font".into(),
+                code_font_size: 18.0,
+                ..Default::default()
+            };
+            sync_markdown_font(&preferences, cx);
+            for mode in [
+                gpui_kit::component::ThemeMode::Dark,
+                gpui_kit::component::ThemeMode::Light,
+            ] {
+                Theme::change(mode, None, cx);
+                let tokens = &gpui_kit::base::Theme::global(cx).tokens.typography;
+                assert_eq!(tokens.mono.as_ref(), "Custom Code Font");
+                assert_eq!(tokens.mono_md.size, px(18.0));
+            }
+        });
     }
 
     #[test]

@@ -4649,8 +4649,8 @@ dependencies = [
  "image",
  "locus-library",
  "locus-preferences",
+ "markdown",
  "oneo-gpui",
- "oneo-gpui-markdown",
  "percent-encoding",
  "regex",
  "rust-i18n",
@@ -5835,15 +5835,6 @@ name = "oneo-gpui-graph"
 version = "0.1.0"
 dependencies = [
  "gpui-kit",
-]
-
-[[package]]
-name = "oneo-gpui-markdown"
-version = "0.1.0"
-dependencies = [
- "gpui-kit",
- "pulldown-cmark",
- "regex",
 ]
 
 [[package]]

@@ -8,12 +8,8 @@ mod markdown_extensions;
 
 pub use gpui_kit::component::IconName as Icon;
 pub use local_image::document_icon_image;
-pub use markdown_extensions::LocusMarkdownExtensions;
+pub use markdown_extensions::{markdown_link_icon, note_markdown_extensions};
 pub use oneo_gpui::toolbar_icon_button;
-pub use oneo_gpui_markdown::{
-    Markdown, MarkdownCodeBlocks, MarkdownDocument, MarkdownLabels, MarkdownPresentation,
-    MarkdownSelection, MarkdownTypography, SelectableCodeStyle, selectable_code_text,
-};
 
 pub fn icon(icon: Icon, size: f32, color: gpui_kit::Hsla) -> gpui_kit::component::Icon {
     use gpui_kit::prelude::*;

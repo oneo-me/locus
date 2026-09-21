@@ -3,8 +3,11 @@ use super::note_atmosphere::{
 };
 use super::note_metadata::note_metadata;
 use super::{Locus, SelectedNote};
-use gpui_kit::component::Theme;
 use gpui_kit::component::scroll::Scrollbar;
+use gpui_kit::component::{
+    Theme,
+    text::{SelectionFormat, TextView, TextViewStyle},
+};
 use gpui_kit::{
     AnyElement, BorderStyle, Bounds, Div, Edges, FontWeight, ObjectFit, PathBuilder, Pixels,
     ScrollHandle, Window, canvas, div, linear_color_stop, linear_gradient, point, prelude::*, px,
@@ -12,8 +15,7 @@ use gpui_kit::{
 };
 use locus_library::{LIBRARY_REFERENCE_SCHEME, LibraryNode, library_reference_path};
 use locus_ui::{
-    Icon, LocusMarkdownExtensions, Markdown, MarkdownLabels, MarkdownPresentation,
-    MarkdownTypography, document_icon_image, toolbar_icon_button,
+    Icon, document_icon_image, markdown_link_icon, note_markdown_extensions, toolbar_icon_button,
 };
 use rust_i18n::t;
 const NOTE_MAX_WIDTH: f32 = 832.0;
@@ -109,57 +111,65 @@ impl Locus {
                     ),
             );
         }
-        if let Some(document) = selected_note
-            .and_then(|note| note.document.as_ref())
-            .filter(|document| !document.is_empty())
-        {
-            let extensions =
-                LocusMarkdownExtensions::new(&node.attachments, &self.library_tree, language);
-            let labels = MarkdownLabels {
-                copy_code: t!("workspace.note.copy_code", locale = language.locale())
-                    .into_owned()
-                    .into(),
-                collapse_code: t!("workspace.note.collapse_code", locale = language.locale())
-                    .into_owned()
-                    .into(),
-                expand_code: t!("workspace.note.expand_code", locale = language.locale())
-                    .into_owned()
-                    .into(),
-            };
+        if let Some(document) = selected_note.and_then(|note| note.document.as_ref()) {
+            let navigation = locus.clone();
+            let icons = locus.clone();
+            let extensions = note_markdown_extensions(
+                &node.directory,
+                &node.attachments,
+                language,
+                move |url, _, cx| {
+                    if url.starts_with(LIBRARY_REFERENCE_SCHEME) {
+                        if let Some(path) = library_reference_path(url) {
+                            let _ = navigation
+                                .update(cx, |this, cx| this.open_library_reference(&path, cx));
+                        }
+                    } else {
+                        cx.open_url(url);
+                    }
+                },
+                move |url, cx| {
+                    icons
+                        .upgrade()
+                        .map(|locus| {
+                            markdown_link_icon(url, &locus.read(cx).library_tree, Theme::global(cx))
+                        })
+                        .unwrap_or_else(|| div().into_any_element())
+                },
+            );
+            let code_style = div()
+                .font_family(markdown_code_font_family)
+                .text_size(px(markdown_code_text_size))
+                .style()
+                .clone();
+            let style = TextViewStyle {
+                heading_base_font_size: px(markdown_text_size),
+                ..Default::default()
+            }
+            .code_block(code_style);
             article = article.child(
-                Markdown::new(
-                    document,
-                    &node.directory,
-                    MarkdownPresentation {
-                        theme,
-                        typography: MarkdownTypography {
-                            text_font_family: &markdown_text_font_family,
-                            text_size: markdown_text_size,
-                            code_font_family: &markdown_code_font_family,
-                            code_text_size: markdown_code_text_size,
-                        },
-                        labels,
-                    },
-                    self.note_text_selection.clone(),
-                    self.note_text_focus.clone(),
-                    self.content_pane.entity_id(),
-                )
-                .with_extensions(&extensions)
-                .with_code_blocks(self.note_code_blocks.clone())
-                .with_link_handler(move |url, _, cx| {
-                    if !url.starts_with(LIBRARY_REFERENCE_SCHEME) {
-                        return false;
-                    }
-                    if let Some(path) = library_reference_path(url) {
-                        let _ = locus.update(cx, |this, cx| this.open_library_reference(&path, cx));
-                    }
-                    true
-                })
-                .render(),
+                TextView::new(document)
+                    .selectable(true)
+                    .selection_format(SelectionFormat::Plain)
+                    .scrollable(false)
+                    .style(style)
+                    .font_family(markdown_text_font_family)
+                    .text_size(px(markdown_text_size))
+                    .markdown_extensions(extensions)
+                    .on_link_click(move |url, _, _, cx| {
+                        if url.starts_with(LIBRARY_REFERENCE_SCHEME) {
+                            if let Some(path) = library_reference_path(url) {
+                                let _ = locus
+                                    .update(cx, |this, cx| this.open_library_reference(&path, cx));
+                            }
+                        } else {
+                            cx.open_url(url);
+                        }
+                    }),
             );
         }
 
-        let selection_for_scroll = self.note_text_selection.clone();
+        let selection_for_scroll = selected_note.and_then(|note| note.document.clone());
         let scroll_handle = self.note_scroll_handle.clone();
         let scroll = div()
             .id("note-scroll")
@@ -168,8 +178,11 @@ impl Locus {
             .min_h_0()
             .overflow_y_scroll()
             .track_scroll(&self.note_scroll_handle)
-            .on_mouse_move(move |event, window, _| {
-                if !selection_for_scroll.is_selecting() {
+            .on_mouse_move(move |event, window, cx| {
+                if !selection_for_scroll
+                    .as_ref()
+                    .is_some_and(|state| state.read(cx).is_selecting())
+                {
                     return;
                 }
                 let bounds = scroll_handle.bounds();

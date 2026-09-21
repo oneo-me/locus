@@ -2,8 +2,8 @@ use rust_i18n::t;
 use std::path::{Component, Path};
 
 use locus_library::Attachment;
+use markdown::{ParseOptions, mdast::Node};
 use oneo_gpui::Language;
-use oneo_gpui_markdown::{Block, InlineRun, parse_blocks};
 
 #[derive(Clone)]
 pub(super) struct GalleryItem {
@@ -15,25 +15,33 @@ pub(super) fn gallery_items(
     attachments: &[Attachment],
     language: Language,
 ) -> Result<Vec<GalleryItem>, String> {
-    let blocks = parse_blocks(source);
+    let invalid = || {
+        t!(
+            "markdown.gallery.local_images_only",
+            locale = language.locale()
+        )
+        .into_owned()
+    };
+    let nodes = paragraph_items(source).ok_or_else(invalid)?;
     let mut items = Vec::new();
-    for block in blocks {
-        if let Block::Paragraph { runs } = &block
-            && runs.iter().all(|run| run.text.trim().is_empty())
+    for node in nodes {
+        if matches!(&node, Node::Text(text) if text.value.trim().is_empty())
+            || matches!(&node, Node::Break(_))
         {
             continue;
         }
-        let Block::Image { url, alt, .. } = block else {
-            return Err(t!(
-                "markdown.gallery.local_images_only",
-                locale = language.locale()
-            )
-            .into_owned());
+        let (url, alt) = match node {
+            Node::Image(image) => (image.url, image.alt),
+            Node::ImageReference(image) => (
+                reference_url(source, &image.identifier).ok_or_else(invalid)?,
+                image.alt,
+            ),
+            _ => return Err(invalid()),
         };
         let Some(attachment) = find_image_attachment(attachments, &url) else {
             return Err(t!(
                 "markdown.gallery.image_unavailable",
-                url = url.to_string(),
+                url = url,
                 locale = language.locale()
             )
             .into_owned());
@@ -65,17 +73,52 @@ pub(super) fn attachment_items(
     attachments: &[Attachment],
     language: Language,
 ) -> Result<Vec<Attachment>, String> {
-    let blocks = parse_blocks(source);
+    let invalid = || {
+        t!(
+            "markdown.attachments.local_links_only",
+            locale = language.locale()
+        )
+        .into_owned()
+    };
+    let nodes = paragraph_items(source).ok_or_else(invalid)?;
     let mut items = Vec::new();
-    for block in blocks {
-        let Block::Paragraph { runs } = block else {
+    for node in nodes {
+        if matches!(&node, Node::Text(text) if text.value.trim().is_empty())
+            || matches!(&node, Node::Break(_))
+        {
+            continue;
+        }
+        let (target, label) = match node {
+            Node::Link(link) => (link.url, plain_text(&link.children)),
+            Node::LinkReference(link) => (
+                reference_url(source, &link.identifier).ok_or_else(invalid)?,
+                plain_text(&link.children),
+            ),
+            _ => {
+                return Err(t!(
+                    "markdown.attachments.links_only",
+                    locale = language.locale()
+                )
+                .into_owned());
+            }
+        };
+        let Some(attachment) = local_attachment(attachments, &target) else {
             return Err(t!(
-                "markdown.attachments.local_links_only",
+                "markdown.attachments.missing",
+                target = target,
                 locale = language.locale()
             )
             .into_owned());
         };
-        collect_attachment_links(&runs, attachments, language, &mut items)?;
+        if label.trim() != attachment.name {
+            return Err(t!(
+                "markdown.attachments.label_mismatch",
+                name = attachment.name.to_string(),
+                locale = language.locale()
+            )
+            .into_owned());
+        }
+        items.push(attachment.clone());
     }
     if items.is_empty() {
         return Err(t!(
@@ -95,50 +138,53 @@ pub(super) fn find_image_attachment<'a>(
     attachment.image_size.map(|_| attachment)
 }
 
-fn collect_attachment_links(
-    runs: &[InlineRun],
-    attachments: &[Attachment],
-    language: Language,
-    items: &mut Vec<Attachment>,
-) -> Result<(), String> {
-    let mut index = 0;
-    while index < runs.len() {
-        let run = &runs[index];
-        let Some(target) = run.style.link.as_deref() else {
-            if run.text.trim().is_empty() {
-                index += 1;
-                continue;
-            }
-            return Err(t!(
-                "markdown.attachments.links_only",
-                locale = language.locale()
-            )
-            .into_owned());
-        };
-        let mut label = String::new();
-        while index < runs.len() && runs[index].style.link.as_deref() == Some(target) {
-            label.push_str(&runs[index].text);
-            index += 1;
+fn paragraph_items(source: &str) -> Option<Vec<Node>> {
+    let Node::Root(root) = markdown::to_mdast(source, &ParseOptions::gfm()).ok()? else {
+        return None;
+    };
+    let mut items = Vec::new();
+    for node in root.children {
+        match node {
+            Node::Paragraph(paragraph) => items.extend(paragraph.children),
+            Node::Definition(_) => {}
+            _ => return None,
         }
-        let Some(attachment) = local_attachment(attachments, target) else {
-            return Err(t!(
-                "markdown.attachments.missing",
-                target = target.to_string(),
-                locale = language.locale()
-            )
-            .into_owned());
-        };
-        if label.trim() != attachment.name {
-            return Err(t!(
-                "markdown.attachments.label_mismatch",
-                name = attachment.name.to_string(),
-                locale = language.locale()
-            )
-            .into_owned());
-        }
-        items.push(attachment.clone());
     }
-    Ok(())
+    Some(items)
+}
+
+pub(super) fn plain_text(nodes: &[Node]) -> String {
+    nodes
+        .iter()
+        .map(|node| match node {
+            Node::Text(text) => text.value.clone(),
+            Node::InlineCode(code) => code.value.clone(),
+            Node::Image(image) => image.alt.clone(),
+            Node::ImageReference(image) => image.alt.clone(),
+            Node::Break(_) => "\n".to_owned(),
+            _ => node
+                .children()
+                .map(|children| plain_text(children))
+                .unwrap_or_default(),
+        })
+        .collect()
+}
+
+pub(super) fn reference_url(source: &str, identifier: &str) -> Option<String> {
+    fn find(node: &Node, identifier: &str) -> Option<String> {
+        if let Node::Definition(definition) = node
+            && definition.identifier.eq_ignore_ascii_case(identifier)
+        {
+            return Some(definition.url.clone());
+        }
+        node.children()?
+            .iter()
+            .find_map(|child| find(child, identifier))
+    }
+    find(
+        &markdown::to_mdast(source, &ParseOptions::gfm()).ok()?,
+        identifier,
+    )
 }
 
 fn local_attachment<'a>(attachments: &'a [Attachment], source: &str) -> Option<&'a Attachment> {
@@ -193,6 +239,62 @@ mod tests {
         assert_eq!(items.len(), 2);
         assert!(gallery_items("![](assets/sea.jpg)", &attachments, Language::Chinese).is_err());
         assert!(gallery_items("![Sea](../sea.jpg)", &attachments, Language::Chinese).is_err());
+    }
+
+    #[test]
+    fn extensions_preserve_reference_links_and_reject_unsafe_or_non_attachment_content() {
+        let attachments = [
+            attachment("海 边.jpg", true),
+            attachment("report.pdf", false),
+        ];
+        assert_eq!(
+            gallery_items(
+                "![海边][photo]\n\n[photo]: assets/海%20边.jpg",
+                &attachments,
+                Language::Chinese
+            )
+            .unwrap()
+            .len(),
+            1
+        );
+        assert_eq!(
+            attachment_items(
+                "[**report.pdf**][doc]\n\n[doc]: assets/report.pdf",
+                &attachments,
+                Language::Chinese
+            )
+            .unwrap()
+            .len(),
+            1
+        );
+        for source in [
+            "![图](https://example.com/a.png)",
+            "![图](assets/../海%20边.jpg)",
+            "![图](assets/%2E%2E/海%20边.jpg)",
+            "文字 ![图](assets/海%20边.jpg)",
+            "- ![图](assets/海%20边.jpg)",
+        ] {
+            assert!(
+                gallery_items(source, &attachments, Language::Chinese).is_err(),
+                "{source}"
+            );
+        }
+        assert!(
+            attachment_items(
+                "[report.pdf](assets/report.pdf) 多余文字",
+                &attachments,
+                Language::Chinese
+            )
+            .is_err()
+        );
+        assert!(
+            attachment_items(
+                "[report.pdf](assets/%2E%2E/report.pdf)",
+                &attachments,
+                Language::Chinese
+            )
+            .is_err()
+        );
     }
 
     #[test]

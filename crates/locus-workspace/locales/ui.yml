@@ -140,12 +140,6 @@ workspace.library.no_selection:
 workspace.library.watching_unavailable:
   en: File watching is unavailable. External changes may not appear automatically.
   zh-CN: 文件观察不可用，外部修改可能不会自动显示。
-workspace.note.collapse_code:
-  en: Collapse code
-  zh-CN: 折叠代码
-workspace.note.copy_code:
-  en: Copy code
-  zh-CN: 复制代码
 workspace.note.copy_reference:
   en: Copy note reference
   zh-CN: 复制笔记引用
@@ -155,9 +149,6 @@ workspace.note.edit:
 workspace.note.edit_error:
   en: Could not edit note
   zh-CN: 无法编辑笔记
-workspace.note.expand_code:
-  en: Expand code
-  zh-CN: 展开代码
 workspace.note.open_directory:
   en: Open directory
   zh-CN: 打开目录
