@@ -189,4 +189,114 @@ mod tests {
             PathBuf::from("/custom target/app")
         );
     }
+
+    #[test]
+    fn builds_with_cargo_resolved_target_directories() {
+        for source in ["global", "project", "environment"] {
+            let directory = tempfile::Builder::new()
+                .prefix("packer shared target ")
+                .tempdir()
+                .unwrap();
+            let root = directory.path().join("project");
+            let cargo_home = directory.path().join(".cargo");
+            std::fs::create_dir_all(&root).unwrap();
+            std::fs::create_dir_all(&cargo_home).unwrap();
+            let root = dunce::canonicalize(root).unwrap();
+            std::fs::write(
+                root.join("Cargo.toml"),
+                "[package]\nname='app'\nversion='0.1.0'\nedition='2024'\n[workspace]\n[[bin]]\nname='app'\npath='main.rs'\n",
+            )
+            .unwrap();
+            std::fs::write(root.join("main.rs"), "fn main() {}\n").unwrap();
+            let target_directory = match source {
+                "global" => {
+                    std::fs::write(
+                        cargo_home.join("config.toml"),
+                        "[build]\ntarget-dir='.cargo/shared target'\n",
+                    )
+                    .unwrap();
+                    cargo_home.join("shared target")
+                }
+                "project" => {
+                    std::fs::create_dir(root.join(".cargo")).unwrap();
+                    std::fs::write(
+                        root.join(".cargo/config.toml"),
+                        "[build]\ntarget-dir='../shared target'\n",
+                    )
+                    .unwrap();
+                    directory.path().join("shared target")
+                }
+                _ => directory.path().join("environment target"),
+            };
+            let configure = |command: &mut Command| {
+                command
+                    .env("CARGO_HOME", &cargo_home)
+                    .env_remove("CARGO_TARGET_DIR")
+                    .env_remove("CARGO_BUILD_TARGET_DIR");
+                if source == "environment" {
+                    command.env("CARGO_TARGET_DIR", &target_directory);
+                }
+            };
+            let mut metadata_command = Command::new("cargo");
+            metadata_command.current_dir(&root).args([
+                "metadata",
+                "--offline",
+                "--no-deps",
+                "--format-version",
+                "1",
+            ]);
+            configure(&mut metadata_command);
+            let metadata: Metadata =
+                serde_json::from_slice(&crate::captured(&mut metadata_command).unwrap()).unwrap();
+            let mut project = project();
+            project.root = root.clone();
+            project.package_id = metadata.packages[0].id.clone();
+            let mut lock = Command::new("cargo");
+            lock.current_dir(&root)
+                .args(["generate-lockfile", "--offline"]);
+            configure(&mut lock);
+            crate::captured(&mut lock).unwrap();
+            let target = Target::resolve(None, &host(&root).unwrap()).unwrap();
+            let mut command = build_command(&project, &target, None);
+            // This test exercises Cargo's path resolution without platform SDKs.
+            // Platform link flags are covered by the command tests above.
+            if target.os == "windows" {
+                command = Command::new("cargo");
+                command.current_dir(&root).args([
+                    "rustc",
+                    "--locked",
+                    "--release",
+                    "--message-format=json-render-diagnostics",
+                    "--target",
+                    &target.triple,
+                ]);
+            }
+            command.env("CARGO_NET_OFFLINE", "true");
+            configure(&mut command);
+            let executable = build(command, &project).unwrap();
+            let expected = target_directory.join(&target.triple).join("release").join(
+                if target.os == "windows" {
+                    "app.exe"
+                } else {
+                    "app"
+                },
+            );
+            assert_eq!(
+                dunce::canonicalize(&executable).unwrap(),
+                dunce::canonicalize(&expected).unwrap(),
+                "{source} target-dir"
+            );
+            assert!(!root.join("target").exists(), "{source} target-dir");
+            assert_eq!(
+                crate::bundle::output_path(&project, &target),
+                root.join(".build")
+                    .join(&target.triple)
+                    .join(if target.os == "macos" {
+                        "App.app"
+                    } else {
+                        "App"
+                    })
+            );
+        }
+    }
 }

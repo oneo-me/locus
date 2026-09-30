@@ -74,4 +74,6 @@ oneo-tool-packer
 
 构建配置位于 [packer.toml](packer.toml)。默认构建当前平台的 Release 版本，产物保存到 `.build/<target>/`：macOS 为 `.app`，Windows 为包含可执行文件与运行依赖的目录。
 
+编译目录遵循 Cargo 的全局或项目 `build.target-dir` 配置及 `CARGO_TARGET_DIR` 环境变量。打包工具自动从 Cargo 构建消息读取实际可执行文件路径，支持多个项目共用编译目录，无须在 `packer.toml` 中配置路径；最终应用包仍保存到项目 `.build/<target>/`。配置解析与优先级遵循 [Cargo 配置规则](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir)。
+
 macOS 默认使用 ad-hoc 签名。构建 Windows 版本需要在 Windows 环境中运行。
