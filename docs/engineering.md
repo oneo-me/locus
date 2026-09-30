@@ -224,22 +224,20 @@ Windows 交叉编译验证受限：通过 Rustup 的 Windows GNU 标准库与明
 
 `source/packer.toml` 将源码目录内的 `resources/docs` 映射到打包资源目录的 `docs`：macOS 为 `Contents/Resources/docs`，Windows 便携目录为 `resources/docs`。正文由同一源文件同时提供编译期内容与可读取的打包文件。MCP 地址与用户读取契约见[Agent 接入](topics/agent-access.md)。
 
-验证（已验证）：在 macOS 对采用 `source/resources/docs/` 布局的工作区执行 `cargo test --manifest-path source/Cargo.toml -p locus-mcp -p oneo-tool-packer --locked --offline -- --test-threads=1`，16 项 MCP 测试、19 项打包单元测试与 4 项 CLI 测试通过。并行执行曾在服务停止后重新绑定临时端口时出现 `AddrInUse`，串行执行通过；该项存在端口复用的测试隔离风险。两个 MCP 入口在未选择文档库时均能读取完整协议；打包测试使用项目实际 `packer.toml` 和资源复制实现，核对 macOS 与 Windows 资源目录中的两份文件与源内容逐字节相同。该结果覆盖文档路径、编译嵌入与资源复制，不代表完整应用打包、启动或 Windows 实机验收。基础 Markdown 与相对链接检查、40 项需求正文及实现状态的迁移一致性检查、Cargo 格式检查及差异检查通过。
+验证（已验证）：在 macOS 对采用 `source/resources/docs/` 布局的工作区执行 `cargo test --manifest-path source/Cargo.toml -p locus-mcp -p oneo-tool-packer --locked --offline -- --test-threads=1`，16 项 MCP 测试、19 项打包单元测试与 4 项 CLI 测试通过。并行执行曾在服务停止后重新绑定临时端口时出现 `AddrInUse`，串行执行通过；该项存在端口复用的测试隔离风险。两个 MCP 入口在未选择文档库时均能读取完整协议；打包测试使用项目实际 `packer.toml` 和资源复制实现，核对 macOS 与 Windows 资源目录中的两份文件与源内容逐字节相同。该结果覆盖文档路径、编译嵌入与资源复制，不代表完整应用打包、启动或 Windows 实机验收。基础 Markdown 与相对链接检查、需求正文及实现状态的一致性检查、Cargo 格式检查及差异检查通过。
 
 新笔记结构的工程验证：受影响五包的 `cargo clippy --all-targets --all-features --locked --offline -- -D warnings`、`cargo fmt --all --check` 和应用 `cargo build -p locus --locked --offline` 通过。MCP HTTP 回归需要本机临时端口，在允许本机监听的环境执行通过；没有改变服务部署或用户配置。能力覆盖和迁移后的库校验见文档库专题；当前主机为 macOS，Windows 运行体验待验证。
 
-## 快捷入口实现与验证
-
-`locus-library/src/shortcuts.rs` 定义整组快捷入口的校验、来源、生效值及目录解析；导航树与完整 MCP 各自按当前层级查找最近定义，并复用同一解析模型。标准 MCP 保留本地字段，两个 MCP 入口另返回带来源的 `resolvedShortcuts`；服务端目录展开不进入完整 MCP 返回。工作区标题栏与命令面板共享快捷入口 Action，目录启动在后台复用 `locus-ui::platform::open_in_editor`，该入口同时接受文件和目录。外部 URL 由平台浏览器入口处理。
-
-验证（部分验证）：受影响四包测试共 117 项通过；四包全目标、全功能严格 Clippy，`cargo fmt --all --check`、`git diff --check` 与 `cargo build -p locus --locked --offline` 通过。HTTP 测试需要本机临时端口监听；Clippy 的原生编译需要写入既有 Clang 模块缓存，在对应权限下执行通过。未修改全局工具链配置。当前主机为 macOS，构建仍提示既有传递依赖 block 0.1.6 的未来 Rust 兼容警告；Windows 未验证。实际浏览器、VS Code、系统目录打开与工具栏视觉体验待用户验证，继承行为覆盖见文档库专题。
-
 ## 多层元数据与依赖基线
 
-头部元数据由 `locus-workspace/src/workspace/note_metadata.rs` 组合 GPUI Kit DescriptionList。组件负责属性布局，应用按 YAML 解析后的对象与数组递归生成嵌套行；每层根据实际显示的界面字体、字重和窗口 rem 测量 key，列宽向上取整并保持 key 单行，不设比例上限；属性单元格上下留白为 0.125 rem，沿用无边框、无标签背景的样式。打开项目图标使用完整资源目录中的 FolderPen，应用通过 `icon_assets!` 显式打包，命令面板与标题栏共用该图标。
+自定义 YAML 只作为当前笔记的数据保留，不解析父级继承或网站、GitHub、项目目录动作。标准 MCP 发现返回固定公开字段，完整接口按原文返回自定义元数据，不生成派生快捷入口。
+
+验证（部分验证）：在 macOS 工作区执行 `cargo test --manifest-path source/Cargo.toml -p locus-library -p locus-mcp -p locus-workspace --locked --offline -- --test-threads=1`，44 项文档库、16 项 MCP 与 41 项工作区测试通过。回归覆盖自定义元数据原文保留、标准发现结果不提升旧字段、完整接口不生成继承结果，以及已有导航、菜单和 YAML 呈现行为。应用的 `assets::tests::application_assets_include_toolbar_and_component_icons` 通过，确认剩余下载与通用组件图标可读取。四包全目标、全功能严格 Clippy、格式与差异检查通过；实际标题栏与命令面板体验待用户验证。
+
+头部元数据由 `locus-workspace/src/workspace/note_metadata.rs` 组合 GPUI Kit DescriptionList。组件负责属性布局，应用按 YAML 解析后的对象与数组递归生成嵌套行；每层根据实际显示的界面字体、字重和窗口 rem 测量 key，列宽向上取整并保持 key 单行，不设比例上限；属性单元格上下留白为 0.125 rem，沿用无边框、无标签背景的样式。
 
 直接依赖基线为 GPUI Kit 0.6.6、GPUI HTTP 与 reqwest 客户端 0.3.6、base64 0.23 和 sha2 0.11；其他直接与传递依赖的具体版本以 `source/Cargo.lock` 为准。GPUI Base、Component、Assets 均解析为 0.6.6，GPUI Pre 为 0.3.6，rmcp 为 3.4.0，serde-saphyr 为 1.3.0。Windows API 绑定保留既有 0.58 约束。
 
 sha2 0.11 不再提供旧的 std::io::Write 和摘要 LowerHex 接口。内容校验通过 `locus-library::content_version_from_reader` 分块读取并更新摘要，统一返回字节数与小写十六进制 SHA-256；文件版本与 MCP 上传复用该入口。MCP 包不再直接依赖 sha2。固定空内容、abc 哈希及跨缓冲区文件回归用于核对格式与流式一致性，不改变已有内容版本契约。
 
-依赖升级验证（部分验证）：全工作区全功能测试 261 项通过；针对当前 ServerConfig API 与哈希测试，文档库 46 项与 MCP 16 项测试通过。全工作区全目标全功能严格 Clippy、格式和差异检查，以及 `cargo build -p locus --locked --offline` 通过。固定哈希向量与流式文件结果一致，MCP HTTP 内容传输通过，应用资源测试确认 FolderPen 已打包，工作区覆盖嵌套 YAML 和混合数组。该记录不包含真实界面或 Windows 专属分支验证；长属性层级、图标、编辑器打开及视觉效果待用户验证。构建仍提示既有 block 0.1.6 的未来 Rust 兼容警告。
+依赖升级验证（部分验证）：全工作区全功能测试 261 项通过；针对当前 ServerConfig API 与哈希测试，文档库 46 项与 MCP 16 项测试通过。全工作区全目标全功能严格 Clippy、格式和差异检查，以及 `cargo build -p locus --locked --offline` 通过。固定哈希向量与流式文件结果一致，MCP HTTP 内容传输通过，工作区覆盖嵌套 YAML 和混合数组。该记录不包含真实界面或 Windows 专属分支验证；长属性层级、图标、编辑器打开及视觉效果待用户验证。构建仍提示既有 block 0.1.6 的未来 Rust 兼容警告。

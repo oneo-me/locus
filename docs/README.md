@@ -90,7 +90,7 @@ Locus 的体验声音是克制、清晰、可信。界面清透、安静，以�
 - [工程](engineering.md)：技术栈、责任边界、数据流、持久化、开发与验证。
 - [专题](topics/README.md)：文档库、桌面工作区、终端与 Agent 接入的详细定义。
 - [调研](research/README.md)：技术选择的依据、比较与未决问题。
-- [使用说明](usage/README.md)：桌面操作与快捷入口。
+- [使用说明](usage/README.md)：桌面操作与外部 Agent。
 - [运行与构建](usage/build.md)：开发环境与应用交付。
 - [MCP 使用说明](usage/mcp.md)：客户端接入。
 - [附件协议](../source/resources/docs/attachments.md)与[画布协议](../source/resources/docs/canvas.md)：随应用发布的英文规范。

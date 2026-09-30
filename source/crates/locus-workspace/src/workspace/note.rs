@@ -285,8 +285,6 @@ impl Locus {
         let note_menu =
             self.render_note_menu(node, format!("note-menu-page-{}", node.path), theme, cx);
 
-        let (shortcut_buttons, project_directory_button) =
-            self.render_note_shortcuts(node, theme, cx);
         let titlebar = oneo_gpui::titlebar_drag_region("note-titlebar-region")
             .relative()
             .w_full()
@@ -352,8 +350,6 @@ impl Locus {
                         )
                     })
                     .child(copy_button)
-                    .children(shortcut_buttons)
-                    .children(project_directory_button)
                     .child(note_menu),
             );
         div()

@@ -343,35 +343,6 @@ impl LibraryAccess {
         result
     }
 
-    fn resolved_shortcuts(&self, uri: &str) -> Result<Option<crate::ResolvedShortcuts>, String> {
-        let mut segments = uri_segments(uri)?;
-        while !segments.is_empty() {
-            let directory = self.directory(&canonical_uri(&segments))?;
-            let document = directory.join("index.md");
-            if optional_version(&document)?.is_some() {
-                let metadata =
-                    crate::scanner::read_document_metadata(&document).map_err(io_error)?;
-                if let Some((_, raw)) = metadata
-                    .additional
-                    .iter()
-                    .find(|(key, _)| key == "shortcuts")
-                {
-                    return Ok(Some(crate::ResolvedShortcuts::new(
-                        &segments.join("/"),
-                        metadata
-                            .title
-                            .as_deref()
-                            .unwrap_or_else(|| segments.last().unwrap()),
-                        &directory,
-                        raw,
-                    )));
-                }
-            }
-            segments.pop();
-        }
-        Ok(None)
-    }
-
     pub fn describe(&self, uri: &str) -> Result<Value, String> {
         let directory = self.directory(uri)?;
         let mut metadata = json!({});
@@ -425,12 +396,9 @@ impl LibraryAccess {
                 }
             }
         }
-        let resolved_shortcuts = self.resolved_shortcuts(uri)?.map(|shortcuts| {
-            shortcuts.mcp_value(&uri_segments(uri).expect("validated URI").join("/"))
-        });
         files.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
         Ok(
-            json!({"uri": canonical_uri(&uri_segments(uri)?), "kind": if note.is_some() {"note"} else {"directory"}, "metadata": metadata, "resolvedShortcuts": resolved_shortcuts, "version": note, "files": files, "childCount": children}),
+            json!({"uri": canonical_uri(&uri_segments(uri)?), "kind": if note.is_some() {"note"} else {"directory"}, "metadata": metadata, "version": note, "files": files, "childCount": children}),
         )
     }
 

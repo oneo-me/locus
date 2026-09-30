@@ -20,7 +20,7 @@ cargo run
 ## 文档
 
 - [项目文档](docs/README.md)：产品定义、视觉规范与完整导航。
-- [使用说明](docs/usage/README.md)：笔记、画布、快捷入口与外部 Agent。
+- [使用说明](docs/usage/README.md)：笔记、画布与外部 Agent。
 - [MCP 使用说明](docs/usage/mcp.md)：客户端连接与工具契约。
 - [需求](docs/requirements.md)：需求标识与实现状态。
 - [工程](docs/engineering.md)：目录结构、模块边界与验证。

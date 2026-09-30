@@ -166,13 +166,13 @@ mod tests {
 
     #[test]
     fn nested_yaml_values_expand_without_serializing_containers() {
-        let yaml = "shortcuts:\n  github: https://github.com/example/project\n  directory: ~/Projects/example\ntargets:\n  - name: macOS\n    enabled: true\n  - null\n  - [one, 2]\n";
+        let yaml = "contacts:\n  website: https://example.com/project\n  directory: ~/Projects/example\ntargets:\n  - name: macOS\n    enabled: true\n  - null\n  - [one, 2]\n";
         let value: Value = serde_saphyr::from_str(yaml).unwrap();
         let root = metadata_children(&value).unwrap();
-        let shortcuts =
-            metadata_children(root.iter().find(|(key, _)| key == "shortcuts").unwrap().1).unwrap();
-        assert!(shortcuts.iter().any(|(key, value)| key == "github"
-            && metadata_scalar(value) == "https://github.com/example/project"));
+        let contacts =
+            metadata_children(root.iter().find(|(key, _)| key == "contacts").unwrap().1).unwrap();
+        assert!(contacts.iter().any(|(key, value)| key == "website"
+            && metadata_scalar(value) == "https://example.com/project"));
         let targets =
             metadata_children(root.iter().find(|(key, _)| key == "targets").unwrap().1).unwrap();
         assert_eq!(

@@ -9,7 +9,6 @@ mod mutations;
 mod reference;
 mod repository;
 mod scanner;
-mod shortcuts;
 mod watcher;
 
 pub use access::{
@@ -23,7 +22,6 @@ pub use canvas::{
 pub use mutations::{archive_note, restore_archived_note, update_note_icon};
 pub use reference::{LIBRARY_REFERENCE_SCHEME, library_reference_path};
 pub use scanner::load_note;
-pub use shortcuts::{ResolvedShortcuts, ShortcutKind};
 pub use watcher::{LibraryWatchEvent, LibraryWatcher};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

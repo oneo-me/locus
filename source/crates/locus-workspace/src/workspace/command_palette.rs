@@ -128,7 +128,7 @@ impl Locus {
 
         let mut command = Command::new(palette).group(application);
         if self.current_note_node().is_some() {
-            let mut current_note = CommandGroup::new()
+            let current_note = CommandGroup::new()
                 .label(
                     t!(
                         "workspace.command_palette.current_note",
@@ -198,14 +198,6 @@ impl Locus {
                         .action(Box::new(ArchiveCurrentNote))
                         .disabled(self.pending_note_action.is_some()),
                 );
-            for shortcut in self.note_shortcut_commands(cx) {
-                current_note = current_note.item(
-                    CommandItem::new()
-                        .label(shortcut.label.clone())
-                        .icon(shortcut.icon())
-                        .action(shortcut.action()),
-                );
-            }
             command = command.separator().group(current_note);
         }
 

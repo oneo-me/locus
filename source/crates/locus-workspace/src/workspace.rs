@@ -11,7 +11,6 @@ mod note_atmosphere;
 mod note_menu;
 mod note_metadata;
 mod pane;
-mod shortcuts;
 mod sidebar;
 mod terminal;
 mod window_chrome;
@@ -945,17 +944,6 @@ impl Render for Locus {
             .on_action(cx.listener(Self::open_note_action))
             .on_action(cx.listener(Self::open_settings_action))
             .on_action(cx.listener(Self::copy_current_note_reference_action))
-            .on_action(cx.listener(|this, _: &crate::OpenNoteWebsite, window, cx| {
-                this.open_note_shortcut(locus_library::ShortcutKind::Website, window, cx)
-            }))
-            .on_action(cx.listener(|this, _: &crate::OpenNoteGithub, window, cx| {
-                this.open_note_shortcut(locus_library::ShortcutKind::Github, window, cx)
-            }))
-            .on_action(
-                cx.listener(|this, _: &crate::OpenNoteProjectDirectory, window, cx| {
-                    this.open_note_shortcut(locus_library::ShortcutKind::Directory, window, cx)
-                }),
-            )
             .on_action(cx.listener(Self::edit_current_note_action))
             .on_action(cx.listener(Self::open_current_note_directory_action))
             .on_action(cx.listener(Self::choose_current_note_icon_action))

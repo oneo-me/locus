@@ -8,22 +8,6 @@ Markdown 正文由 GPUI Kit TextView 原生渲染，支持文本选择、全选�
 
 普通笔记页面在正文头部展示概要和自定义 YAML 数据。YAML 字段使用无边框、无背景的 DescriptionList，标签列按实际显示字体自动计算宽度并对齐，key 保持单行，属性行采用紧凑间距，保留原有容器与文字样式；对象逐层展开为子属性，数组按原顺序逐项展示（序号从 1 开始），空对象、空数组和 null 分别保留为 `{}`、`[]`、`null`，不把嵌套内容转成 JSON 文本。画布笔记使用同样的字段展示。
 
-在笔记 frontmatter 中配置 `shortcuts`，标题栏右侧和命令面板会提供对应的快捷入口：
-
-```yaml
-title: 示例项目
-shortcuts:
-  website: https://example.com
-  github: https://github.com/example/project
-  directory: ~/Projects/example
-```
-
-网站和 GitHub 使用默认浏览器打开，只接受 HTTP(S) 地址。目录复用设置中的笔记编辑器：选择 VS Code 时在 VS Code 中打开，选择系统默认时由系统打开目录。支持绝对路径、`~/` 和相对路径；相对路径始终基于定义该配置的笔记目录，`~/` 指运行应用的本机用户目录。目录无需位于笔记库内，但必须是存在且可访问的目录；配置不是 Shell 命令。
-
-子笔记未定义 `shortcuts` 时，沿目录层级使用最近一个定义了它的祖先笔记，跳过没有 `index.md` 的组织目录。当前笔记一旦定义 `shortcuts`，就整组替换祖先配置，不逐字段合并；`shortcuts: null` 阻断当前笔记与未自行配置的后代继承，`shortcuts: {}` 定义空组。组内字段省略或设为 `null` 时不显示对应入口。其他 YAML 属性不继承。
-
-继承入口的提示会显示来源笔记；继承值不会写入子笔记。父笔记保存后，文件观察刷新会更新后代入口。无效配置保持当前继承边界，不回退到祖先；有效字段仍可用，标题栏显示配置错误提示。移动笔记后，继承来源和相对路径按新位置重新计算，移动前应检查这些变化。
-
 笔记存在 `canvas/index.html` 或 `canvas/index.json` 时，标题栏和头部元数据以下显示画布。Locus 内置 Tailwind，通过原生 WebView 直接运行 HTML 和 JavaScript，无须 Node.js、npm 或开发服务器。保存后在画布内按 Command/Ctrl+R 或 F5 刷新，离开笔记会释放网页及临时状态。画布笔记的 `index.md` 只保留 frontmatter；没有画布时显示正文。文件格式与资源边界见[画布编写规范](../../source/resources/docs/canvas.md)。程序不自动转换或删除原有组件包。
 
 画布标题栏提供“下载画布”按钮，在“设置 → 通用 → 导出目录”选择保存位置，默认使用系统下载目录。导出没有外部文件时生成单个 HTML；需要本地资源时生成包含 `canvas.html` 与引用资源的文件夹。同名自动编号，不覆盖已有导出。导出读取已保存内容，动态资源需先触发加载；在线数据仍需联网，本地模块或 Worker 可能需要本地 HTTP 服务。

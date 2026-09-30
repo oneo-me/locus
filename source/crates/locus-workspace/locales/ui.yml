@@ -176,24 +176,3 @@ workspace.canvas.download_error:
 workspace.canvas.directory_required:
   en: Choose an export directory in Settings first.
   zh-CN: 请先在设置中选择导出目录。
-workspace.shortcuts.website:
-  en: Open website
-  zh-CN: 打开网站
-workspace.shortcuts.github:
-  en: Open GitHub
-  zh-CN: 打开 GitHub
-workspace.shortcuts.directory_system:
-  en: Open project directory
-  zh-CN: 打开项目目录
-workspace.shortcuts.directory_editor:
-  en: Open project in VS Code
-  zh-CN: 在 VS Code 中打开项目
-workspace.shortcuts.inherited:
-  en: 'From “%{title}”'
-  zh-CN: 来自《%{title}》
-workspace.shortcuts.invalid:
-  en: 'Invalid shortcuts in “%{title}”'
-  zh-CN: 《%{title}》的快捷入口配置无效
-workspace.shortcuts.open_error:
-  en: Could not open project directory
-  zh-CN: 无法打开项目目录
