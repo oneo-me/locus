@@ -4,14 +4,17 @@
     {
       "label": "dev",
       "type": "cargo",
-      "command": "run"
+      "command": "run",
+      "options": {
+        "cwd": "${workspaceFolder}/source"
+      }
     },
     {
       "label": "build",
       "type": "shell",
-      "command": "oneo-tool-packer",
+      "command": "cargo run --locked -p oneo-tool-packer --",
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}/source"
       }
     }
   ]

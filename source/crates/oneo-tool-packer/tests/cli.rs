@@ -106,7 +106,7 @@ fn script(path: &Path, source: &str) {
 }
 
 #[test]
-fn windows_cli_builds_portable_directory_under_project_build_directory() {
+fn windows_cli_builds_portable_directory_under_dist() {
     let fixture = Fixture::new();
     let result = fixture.run(&[]);
     assert!(
@@ -114,10 +114,7 @@ fn windows_cli_builds_portable_directory_under_project_build_directory() {
         "{}",
         String::from_utf8_lossy(&result.stderr)
     );
-    let output = fixture
-        .root
-        .path()
-        .join(".build/x86_64-pc-windows-msvc/Test App");
+    let output = fixture.root.path().join("dist/Test App");
     assert!(output.join("app.exe").is_file());
     assert!(output.join("helper.dll").is_file());
     assert!(!output.join("KERNEL32.dll").exists());
@@ -157,7 +154,7 @@ fn missing_runtime_keeps_previous_output_and_returns_failure() {
         fixture
             .root
             .path()
-            .join(".build/x86_64-pc-windows-msvc/Test App/helper.dll")
+            .join("dist/Test App/helper.dll")
             .is_file()
     );
 }

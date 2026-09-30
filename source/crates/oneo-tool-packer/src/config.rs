@@ -12,12 +12,18 @@ pub struct Config {
     pub bin: String,
     pub name: String,
     pub identifier: String,
+    #[serde(default = "default_output_directory")]
+    pub output_directory: PathBuf,
     #[serde(default)]
     pub resources: Vec<Resource>,
     #[serde(default)]
     pub windows: Windows,
     #[serde(default)]
     pub macos: Macos,
+}
+
+fn default_output_directory() -> PathBuf {
+    PathBuf::from("dist")
 }
 
 #[derive(Debug, Default, Deserialize)]

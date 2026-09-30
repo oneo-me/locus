@@ -16,8 +16,7 @@ pub fn output_path(project: &Project, target: &Target) -> PathBuf {
     let name = project.config.name.clone();
     project
         .root
-        .join(".build")
-        .join(&target.triple)
+        .join(&project.config.output_directory)
         .join(if target.os == "macos" {
             format!("{name}.app")
         } else {
@@ -292,6 +291,36 @@ fn copy_tree(source: &Path, destination: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn output_directory_is_relative_to_source_and_shared_by_architectures() {
+        let project = Project {
+            root: PathBuf::from("project/source"),
+            config: toml::from_str(
+                "package='app'\nbin='app'\nname='App'\nidentifier='me.app'\noutput-directory='../dist'",
+            )
+            .unwrap(),
+            version: "1.0.0".into(),
+            package_id: "app".into(),
+        };
+        for triple in [
+            "aarch64-apple-darwin",
+            "x86_64-apple-darwin",
+            "aarch64-pc-windows-msvc",
+            "x86_64-pc-windows-msvc",
+        ] {
+            let target = Target::resolve(Some(triple), triple).unwrap();
+            let name = if target.os == "macos" {
+                "App.app"
+            } else {
+                "App"
+            };
+            assert_eq!(
+                output_path(&project, &target),
+                project.root.join("../dist").join(name)
+            );
+        }
+    }
+
     #[test]
     fn generates_release_macos_metadata_from_project() {
         let project = Project {

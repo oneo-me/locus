@@ -289,13 +289,11 @@ mod tests {
             assert!(!root.join("target").exists(), "{source} target-dir");
             assert_eq!(
                 crate::bundle::output_path(&project, &target),
-                root.join(".build")
-                    .join(&target.triple)
-                    .join(if target.os == "macos" {
-                        "App.app"
-                    } else {
-                        "App"
-                    })
+                root.join("dist").join(if target.os == "macos" {
+                    "App.app"
+                } else {
+                    "App"
+                })
             );
         }
     }

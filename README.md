@@ -30,7 +30,7 @@ shortcuts:
 
 继承入口的提示会显示来源笔记；继承值不会写入子笔记。父笔记保存后，文件观察刷新会更新后代入口。无效配置保持当前继承边界，不回退到祖先；有效字段仍可用，标题栏显示配置错误提示。移动笔记后，继承来源和相对路径按新位置重新计算，移动前应检查这些变化。
 
-笔记存在 `canvas/index.html` 或 `canvas/index.json` 时，标题栏和头部元数据以下显示画布。Locus 内置 Tailwind，通过原生 WebView 直接运行 HTML 和 JavaScript，无须 Node.js、npm 或开发服务器。保存后在画布内按 Command/Ctrl+R 或 F5 刷新，离开笔记会释放网页及临时状态。画布笔记的 `index.md` 只保留 frontmatter；没有画布时显示正文。文件格式与资源边界见[画布编写规范](resources/docs/canvas.md)。程序不自动转换或删除原有组件包。
+笔记存在 `canvas/index.html` 或 `canvas/index.json` 时，标题栏和头部元数据以下显示画布。Locus 内置 Tailwind，通过原生 WebView 直接运行 HTML 和 JavaScript，无须 Node.js、npm 或开发服务器。保存后在画布内按 Command/Ctrl+R 或 F5 刷新，离开笔记会释放网页及临时状态。画布笔记的 `index.md` 只保留 frontmatter；没有画布时显示正文。文件格式与资源边界见[画布编写规范](source/resources/docs/canvas.md)。程序不自动转换或删除原有组件包。
 
 画布标题栏提供“下载画布”按钮，在“设置 → 通用 → 导出目录”选择保存位置，默认使用系统下载目录。导出没有外部文件时生成单个 HTML；需要本地资源时生成包含 `canvas.html` 与引用资源的文件夹。同名自动编号，不覆盖已有导出。导出读取已保存内容，动态资源需先触发加载；在线数据仍需联网，本地模块或 Worker 可能需要本地 HTTP 服务。
 
@@ -46,7 +46,7 @@ macOS 系统终端使用 Terminal，Ghostty 使用其 [AppleScript 接口](https
 | 刷新当前笔记或获得焦点的画布 | Command+R 或 F5 |
 | 关闭窗口 | Command+W |
 
-设置中可启停 MCP、配置局域网访问和端口，并查看运行状态；侧边栏左下角也保留只读状态。应用不提供连接引导、地址展示或复制功能。标准接口 `/mcp` 与完整接口 `/mcp/full` 同时提供，共用服务、端口与局域网设置；服务默认关闭，默认端口为 `2301`，客户端连接方式见下方使用说明。标准接口保留三个发现工具及原始文件路径；完整接口通过逻辑地址读取、编辑、上传、下载、移动和删除笔记、附件、图标及画布，不返回服务器文件路径。局域网模式没有身份验证，网络客户端可以读写和永久删除库内内容。工具、传输和冲突规则见 [MCP 使用说明](crates/locus-mcp/README.md)。
+设置中可启停 MCP、配置局域网访问和端口，并查看运行状态；侧边栏左下角也保留只读状态。应用不提供连接引导、地址展示或复制功能。标准接口 `/mcp` 与完整接口 `/mcp/full` 同时提供，共用服务、端口与局域网设置；服务默认关闭，默认端口为 `2301`，客户端连接方式见下方使用说明。标准接口保留三个发现工具及原始文件路径；完整接口通过逻辑地址读取、编辑、上传、下载、移动和删除笔记、附件、图标及画布，不返回服务器文件路径。局域网模式没有身份验证，网络客户端可以读写和永久删除库内内容。工具、传输和冲突规则见 [MCP 使用说明](source/crates/locus-mcp/README.md)。
 
 ## 从源码运行
 
@@ -55,25 +55,29 @@ macOS 系统终端使用 Terminal，Ghostty 使用其 [AppleScript 接口](https
 - macOS：Xcode 与 Command Line Tools，最低系统版本为 macOS 13。
 - Windows：Visual Studio C++ 工具链与 Windows SDK。
 
-在项目目录运行：
+代码、Cargo 工作区、资源、图标和打包配置统一位于 `source/`；最终应用产物统一位于根目录 `dist/`，由 Git 忽略，不按平台或架构划分子目录。根目录保留 `.vscode/`、`dist/`、`source/`、`.gitignore`、`AGENTS.md` 与 `README.md`（Git 自身的 `.git/` 除外）。
+
+进入源码目录运行：
 
 ```sh
+cd source
 cargo run
 ```
 
 ## 构建应用
 
-应用版本采用 `0.<年份>.<当年发布序号>`，序号从 1 开始，同年递增，跨年重置。版本值统一维护在根目录 `Cargo.toml` 的 `workspace.package.version`，打包产物读取该版本；修改时同步 `Cargo.lock` 中继承该版本的工作区包。
+应用版本采用 `0.<年份>.<当年发布序号>`，序号从 1 开始，同年递增，跨年重置。版本值统一维护在 `source/Cargo.toml` 的 `workspace.package.version`，打包产物读取该版本；修改时同步 `source/Cargo.lock` 中继承该版本的工作区包。
 
-安装构建工具后，在项目目录执行：
+在项目根目录执行：
 
 ```sh
-cargo install --path crates/oneo-tool-packer --locked
-oneo-tool-packer
+cargo run --manifest-path source/Cargo.toml --locked -p oneo-tool-packer -- --project source
 ```
 
-构建配置位于 [packer.toml](packer.toml)。默认构建当前平台的 Release 版本，产物保存到 `.build/<target>/`：macOS 为 `.app`，Windows 为包含可执行文件与运行依赖的目录。
+构建配置位于 [source/packer.toml](source/packer.toml)。默认构建当前平台的 Release 版本，产物保存到 `dist/`：macOS 为 `dist/Locus.app`，Windows 为包含可执行文件与运行依赖的 `dist/Locus/`。`output-directory = "../dist"` 相对于打包配置所在的源码目录解析；相同名称的产物由后续成功打包替换。
 
-编译目录遵循 Cargo 的全局或项目 `build.target-dir` 配置及 `CARGO_TARGET_DIR` 环境变量。打包工具自动从 Cargo 构建消息读取实际可执行文件路径，支持多个项目共用编译目录，无须在 `packer.toml` 中配置路径；最终应用包仍保存到项目 `.build/<target>/`。配置解析与优先级遵循 [Cargo 配置规则](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir)。
+VS Code 的 `dev` 和 `build` 任务均在 `source/` 执行；`build` 通过 Cargo 运行仓库内的打包工具。需要单独安装工具时，执行 `cargo install --path source/crates/oneo-tool-packer --locked`，随后在根目录运行 `oneo-tool-packer --project source`。
+
+编译目录遵循 Cargo 的全局或项目 `build.target-dir` 配置及 `CARGO_TARGET_DIR` 环境变量。打包工具自动从 Cargo 构建消息读取实际可执行文件路径，支持多个项目共用编译目录，无须在 `packer.toml` 中配置路径；最终应用包仍保存到项目 `dist/`。配置解析与优先级遵循 [Cargo 配置规则](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir)。
 
 macOS 默认使用 ad-hoc 签名。构建 Windows 版本需要在 Windows 环境中运行。
