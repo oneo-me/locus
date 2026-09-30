@@ -2,10 +2,8 @@
 
 Locus runs two Streamable HTTP endpoints on one listener. Both use the configured library, port, service switch and local-network setting.
 
-| Endpoint | Default local URL | Contract |
-| --- | --- | --- |
-| Standard | `http://127.0.0.1:2301/mcp` | `list_articles`, `search_articles`, `resolve_article`; metadata and absolute local paths for clients with filesystem access. |
-| Full access | `http://127.0.0.1:2301/mcp/full` | Library operations and content transfer using logical addresses; no server filesystem paths in generated responses or errors. |
+- Standard: Default local URL: `http://127.0.0.1:2301/mcp`; Contract: `list_articles`, `search_articles`, `resolve_article`; metadata and absolute local paths for clients with filesystem access.
+- Full access: Default local URL: `http://127.0.0.1:2301/mcp/full`; Contract: Library operations and content transfer using logical addresses; no server filesystem paths in generated responses or errors.
 
 The service is disabled by default. Local-network mode exposes both endpoints without authentication. Connected network clients can read, upload, modify and permanently delete library content; the standard endpoint also returns local paths. Both endpoints use the same Host restrictions. Changing the library or stopping/restarting the service invalidates existing sessions and pending uploads. Settings provides the service switch, local-network switch, port and runtime status. The sidebar also shows status. Connection guides, URL display and copying are not provided in the application. Configure clients with the URLs above, replacing the port when changed and the host with this computer’s IP for network access. Host validation accepts localhost, loopback addresses and the local IP receiving each connection; arbitrary hostnames are rejected.
 
@@ -13,7 +11,7 @@ The full endpoint never asks the client to edit server files. A client still nee
 
 ## Shortcut metadata
 
-Notes may define YAML `shortcuts` with `website`, `github`, and `directory` strings. The nearest note defining the group supplies it to descendants; groups replace each other entirely, without field merging. `shortcuts: null` blocks inheritance and `{}` supplies an empty group. Missing or null fields produce no action. Other metadata does not inherit. See the [application usage guide](../../README.md) for examples and desktop behavior.
+Notes may define YAML `shortcuts` with `website`, `github`, and `directory` strings. The nearest note defining the group supplies it to descendants; groups replace each other entirely, without field merging. `shortcuts: null` blocks inheritance and `{}` supplies an empty group. Missing or null fields produce no action. Other metadata does not inherit. See the [application usage guide](README.md) for examples and desktop behavior.
 
 All discovery results distinguish the local configuration from its effective projection:
 
@@ -43,14 +41,12 @@ Directory strings remain as authored (with surrounding whitespace trimmed in eff
 
 Both endpoints expose read-only English Markdown through MCP `resources/list` and `resources/read`:
 
-| URI | Specification |
-| --- | --- |
-| `locus-docs://attachments` | Attachment ownership, gallery and file-reference syntax. |
-| `locus-docs://canvas` | Canvas authoring, lifecycle, local/network resources and templates. |
+- `locus-docs://attachments`: Attachment ownership, gallery and file-reference syntax.
+- `locus-docs://canvas`: Canvas authoring, lifecycle, local/network resources and templates.
 
 Read the relevant resource before authoring note attachments or canvases. These addresses identify software documentation, not library notes; do not pass them to article or content tools. Resources remain available when no library is selected and cannot be overridden by library content. Unknown URIs return a resource-not-found error.
 
-The source files live in [`resources/docs`](../../resources/docs). The same files are embedded at compile time for MCP access and copied by the packer to `Contents/Resources/docs` on macOS or `resources/docs` in the Windows portable directory. Documentation therefore follows the running application version and requires no separate file access by the client.
+The source files live in [`source/resources/docs`](../../source/resources/docs). The same files are embedded at compile time for MCP access and copied by the packer to `Contents/Resources/docs` on macOS or `resources/docs` in the Windows portable directory. Documentation therefore follows the running application version and requires no separate file access by the client.
 
 ## Standard discovery paths
 
@@ -75,19 +71,17 @@ Hidden and excluded directories, symlinked entries, traversal and nonportable na
 
 ## Tools
 
-| Tools | Purpose |
-| --- | --- |
-| `list_entries`, `search_notes`, `resolve_entry` | Discover notes, organizational directories, archives, metadata and resources. Listing and search support cursor pagination. |
-| `create_directory`, `create_note` | Create in an existing parent. A note can be added to an organizational directory without replacing its children. |
-| `read_text`, `write_text`, `patch_text` | Read and edit UTF-8 text, including full YAML frontmatter and custom metadata. Patching requires one exact match. |
-| `stat_content`, `download_chunk` | Obtain size/version and download byte-exact content. |
-| `begin_upload`, `upload_chunk`, `finish_upload`, `cancel_upload` | Stage, validate, commit or discard binary/text uploads. |
-| `set_archived` | Archive or restore a note without rewriting unrelated metadata or body. |
-| `delete_content` | Permanently remove one resource. Deleting only the note body preserves its directory and other files; recreate the note body to access its owned resources again. |
-| `plan_move`, `move_entry` | Preview then move/rename a note or organizational subtree, updating resolvable Markdown links. |
-| `move_attachment` | Rename or move an attachment to another note without overwriting, updating recognized Markdown links and returning affected notes. Review canvas/script references with `patch_text`. |
-| `inspect_tree`, `delete_entry` | Inspect scope and revision, then remove an empty directory or explicitly delete the entire subtree. |
-| `export_manifest` | Enumerate directories and versioned resources for subtree export and reconstruction. |
+- `list_entries`, `search_notes`, `resolve_entry`: Discover notes, organizational directories, archives, metadata and resources. Listing and search support cursor pagination.
+- `create_directory`, `create_note`: Create in an existing parent. A note can be added to an organizational directory without replacing its children.
+- `read_text`, `write_text`, `patch_text`: Read and edit UTF-8 text, including full YAML frontmatter and custom metadata. Patching requires one exact match.
+- `stat_content`, `download_chunk`: Obtain size/version and download byte-exact content.
+- `begin_upload`, `upload_chunk`, `finish_upload`, `cancel_upload`: Stage, validate, commit or discard binary/text uploads.
+- `set_archived`: Archive or restore a note without rewriting unrelated metadata or body.
+- `delete_content`: Permanently remove one resource. Deleting only the note body preserves its directory and other files; recreate the note body to access its owned resources again.
+- `plan_move`, `move_entry`: Preview then move/rename a note or organizational subtree, updating resolvable Markdown links.
+- `move_attachment`: Rename or move an attachment to another note without overwriting, updating recognized Markdown links and returning affected notes. Review canvas/script references with `patch_text`.
+- `inspect_tree`, `delete_entry`: Inspect scope and revision, then remove an empty directory or explicitly delete the entire subtree.
+- `export_manifest`: Enumerate directories and versioned resources for subtree export and reconstruction.
 
 Tool schemas and initialization instructions describe required parameters. Tool errors use `isError`, with readable codes such as `conflict`, `invalid_uri`, `unsafe_target`, `incomplete_upload` and `checksum_mismatch`.
 

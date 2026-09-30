@@ -29,10 +29,10 @@ This is native layer composition, not an API for obtaining WebView pixels or a t
 
 ## Example
 
-Run the composition example:
+Run the composition example from the repository root:
 
 ```sh
-cargo run -p oneo-gpui-webview --example composition
+cargo run --manifest-path source/Cargo.toml -p oneo-gpui-webview --example composition
 ```
 
 It demonstrates a webpage beneath GPUI overlays.
