@@ -1,53 +1,57 @@
-# 画布
+# Canvas
 
-## 目标与运行边界
+## Purpose and runtime boundaries
 
-画布由用户与 Agent 维护，为复杂交互页面和设计预览提供本地网页内容。每篇笔记拥有一个画布，原生工作区提供标题、元数据、导航和命令，网页独占其下方区域。Locus 直接通过 WebView 自定义协议读取文件，内置 Tailwind，不启动 Vite 服务、不安装 npm 依赖、不要求系统 Node.js。原生画布支持 macOS。
+Users and Agents maintain canvases as local web content for complex interactive pages and design previews. Each note owns one canvas. The native workspace supplies title, metadata, navigation, and commands; the page occupies the area below them. Locus reads files directly through a WebView custom protocol, includes Tailwind, and does not start Vite, install npm dependencies, or require system Node.js. Native canvases support macOS.
 
-扫描只把 `canvas/index.html` 或 `canvas/index.json` 识别为画布入口，其他文件本身不会启用画布。普通画布使用 `canvas/index.html` HTML 片段与必需的 `canvas/main.js`；入口模块导出 `async function main(data)`。宿主等待页面资源后导入一次模块并等待初始化完成。直接打开传入 null，初始化错误显示可恢复提示；后续事件及异步任务由画布自行处理错误。脚本使用浏览器原生 JavaScript 与 ES module，TSX、npm 包名、React 宿主及源码转换不属于运行协议。
+Scanning recognizes only `canvas/index.html` or `canvas/index.json` as entry points. Other files alone do not enable canvases. Ordinary canvases use an HTML fragment in `canvas/index.html` and a required `canvas/main.js`, whose entry module exports `async function main(data)`. The host waits for page resources, imports the module once, and waits for initialization. Direct opening passes null. Initialization errors produce recoverable guidance; canvases handle errors in later events and asynchronous tasks themselves. Scripts use native browser JavaScript and ES modules. TSX, npm package specifiers, React hosts, and source transformation are outside the runtime protocol.
 
-## 模版与资源归属
+## Templates and resource ownership
 
-调用方只写互斥的 `canvas/index.json`，且必须仅包含 template 与 data。template 是当前库内明确的 `locus://` 笔记地址，必须直接指向具有 HTML/main.js 的模版，不允许模版链；data 是原样传入的任意 JSON 值，模版定义并验证其输入。宿主不合并默认值，不通过 JSON 传递回调、children 或 Context。
+Callers write only the mutually exclusive `canvas/index.json`, containing exactly template and data. template is an explicit `locus://` note address in the current library and must directly identify an HTML/main.js template; template chains are forbidden. data is any JSON value passed unchanged, with its input defined and validated by the template. The host does not merge defaults or transmit callbacks, children, or Context through JSON.
 
-HTML 与 fetch 的相对地址属于实际渲染的画布，模版相对资源属于模版；模块导入相对于导入模块，CSS URL 相对于样式文件。调用方资源通过数据传入明确的库内地址。`locus.resourceUrl` 映射地址，fetch 可以直接读取库内 canvas 文件、附件、完整笔记、原始 YAML 和正文。资源按请求读取、不缓存，拒绝越界、符号链接、node_modules 与任意本机文件访问。资源与模版的详细格式、运行及安全契约由随应用发布的 [skill 画布参考](../../source/resources/skills/locus/references/canvas.md) 提供。
+Relative HTML and fetch URLs belong to the rendered canvas; template-relative resources belong to the template. Module imports resolve relative to the importing module, and CSS URLs relative to the stylesheet. Callers pass resources through data using explicit library addresses. `locus.resourceUrl` maps addresses. fetch can read canvas files, attachments, complete notes, raw YAML, and bodies within the library. Resources are read per request without caching. Reads reject boundary traversal, symlinks, node_modules, and arbitrary local files. The bundled [skill canvas reference](../../source/resources/skills/locus/references/canvas.md) owns detailed format, runtime, and safety contracts.
 
-## 生命周期与主题
+## Lifecycle and themes
 
-保存文件不自动更新已打开的网页；画布焦点下 Command/Ctrl+R 或 F5 刷新所属笔记并重新执行入口，离开再进入也重新创建网页。切换笔记或库释放旧网页与临时交互状态。主题变化同步根元素 dark/light 与 color-scheme，不重载页面。内部多视图切换应保留其他分区状态。
+Saving files does not automatically update open pages. With canvas focus, Command/Ctrl+R or F5 refreshes the owning note and reruns its entry point. Leaving and reentering also recreates the page. Switching notes or libraries releases old pages and transient interaction state. Theme changes synchronize root dark/light and color-scheme without reloading. Internal view changes should retain state in other sections.
 
-基本页面与本地资源离线可用。允许 HTTPS 图片与数据请求、画布本地及 blob Worker；网络请求仍需要服务端允许跨域。禁止远程脚本、样式、字体、iframe、表单提交及任意本机文件或 Shell 接口。HTTP/HTTPS 外链交给系统浏览器。画布中的静态或动态链接（包括整张卡片）可使用当前库内的 `locus://` 笔记目录地址，在当前工作区打开笔记，复用侧栏选择与前进后退历史；新窗口链接也在当前工作区打开。地址不附加 `/index.md`、查询或片段；资源文件地址仍用于读取。无效、缺失、归档或非笔记目标保持当前选择，不交给系统浏览器。
+Basic pages and local resources work offline. HTTPS images and data requests, canvas-local Workers, and blob Workers are allowed. Network requests still require server CORS support. Remote scripts, styles, fonts, iframes, form submissions, arbitrary local files, and shell interfaces are forbidden. HTTP/HTTPS links open in the system browser. Static or dynamic canvas links, including whole cards, may use `locus://` note-directory addresses in the current library to open notes in the current workspace, reusing sidebar selection and back/forward history. New-window links also open in the current workspace. Addresses do not append `/index.md`, queries, or fragments; resource file addresses remain for reading. Invalid, missing, archived, or non-note targets leave selection unchanged and are not sent to the system browser.
 
-## 画布导出
+## Canvas export
 
-画布标题栏在复制操作前提供独立“下载画布”按钮；后台准备文件期间呈现忙碌与禁用状态，完成提示保存位置，失败显示原因。操作绑定点击时的笔记、标题和导出目录。设置 → 通用 → 导出目录选择位置，默认系统下载目录，偏好保存在 TOML。
+Canvas titlebars provide a separate Download canvas button before copy. Background preparation displays busy and disabled states; completion reports the saved location, and failures report reasons. Operations bind the note, title, and export directory captured at click time. Settings → General → Export directory selects the destination, defaulting to system Downloads and persisting in TOML.
 
-导出读取已保存内容，包含模版及调用数据、Tailwind、引用的本地资源与已加载的动态资源；不保存网页临时状态，不复制无关附件。笔记导航链接保留原地址，不打包其目标笔记；导出网页不提供应用内笔记导航。引用的笔记 YAML/正文作为独立资源快照，资源归属与在线读取一致。单文件结果保存为“笔记标题.html”，多文件结果为同名目录内的 canvas.html 与资源，同名自动编号且不覆盖。失败不留下半成品。纯入口模块可嵌入，有导入或 import.meta 的模块保留文件；模块与 Worker 在 file 来源受限时需用本地 HTTP 服务访问。在线数据仍需网络。
+Exports read saved content, including templates and caller data, Tailwind, referenced local resources, and loaded dynamic resources. They exclude transient page state and unrelated attachments. Note navigation links retain their original addresses without bundling target notes; exported pages do not provide in-app note navigation. Referenced note YAML and bodies become separate resource snapshots, with the same ownership as live reads. Single-file results save as `<note title>.html`; multifile results save `canvas.html` and resources in a same-named directory. Duplicate names receive automatic numbering without overwriting. Failures leave no partial output. Pure entry modules may be embedded; modules with imports or import.meta remain files. Module and Worker restrictions under file origins may require a local HTTP server. Online data still requires a network.
 
-## 原生 WebView 合成
+## Native WebView composition
 
-当前原生画布只支持 macOS，使用独立 `oneo-gpui-webview` 包。要求网页保持高性能运行，GPUI 组件、菜单、命令面板、dialog 和 sheet 可以显示在网页上方并接收输入；不修改 GPUI 依赖，不通过逐帧截图或 CPU 像素回读实现显示。实现采用系统 WebKit 层与透明 GPUI 层的原生合成，不对调用方暴露网页 texture 句柄，不捆绑 Chromium。实际帧率取决于页面、系统与设备，未指定统一数值承诺。
+Native canvases currently support only macOS and use the independent `oneo-gpui-webview` package. Pages must remain performant while GPUI components, menus, command palettes, dialogs, and sheets appear above them and receive input. The implementation does not modify GPUI dependencies or display pages through per-frame screenshots or CPU pixel readback. It composes system WebKit and transparent GPUI layers natively, without exposing web texture handles or bundling Chromium. Frame rates depend on page, system, and device; there is no uniform numeric guarantee.
 
-WebView 实体拥有原生宿主、网页、焦点句柄与订阅；lb-wry 负责 WebKit 配置、导航、IPC 与脚本。AppKit 裁剪容器放在 GPUI 原生视图下方，透明输入路由视图放在上方；路由按当前帧 GPUI hitbox、实际指针位置、可见性和 pointer capture 决定目标，原始事件交给 WebKit，保留原生滚动、选择、编辑和输入法。GPUI 浮层使用标准 occlude 语义阻止网页接收该区域输入；焦点订阅在网页和 GPUI 控件之间同步 first responder。窗口级本地事件监视器在其他原生响应者持有焦点时补发 GPUI 鼠标移动，保留原始事件供 AppKit/WebKit 跟踪区域处理，不因 hover 转移键盘焦点。仅在激活窗口内取得光标管理权；进入网页时先在窗口光标管理仍启用的状态下调用 `invalidateCursorRectsForView:` 通知 GPUI 视图矩形失效，与 GPUI 改变光标的原生路径一致，再暂停窗口自动光标矩形管理并对 GPUI 原生视图调用 `discardCursorRects`；即使激活后 GPUI 始终保持默认箭头，也执行同一交接，每次进入网页时将 GPUI 残留光标重置为箭头一次，后续链接、文本等光标由 WebKit 更新，避免持续覆盖 WebKit 光标；离开、隐藏或释放网页以及窗口失去激活时恢复，仅恢复本宿主取得的管理权。起始于网页区域的鼠标按下同时分发给 GPUI，使菜单等浮层的外部点击监听正常关闭；对应拖动和释放同步完成，即使指针移出或网页隐藏也不遗留按下状态。原始事件继续交给 WebKit，网页点击保持可用；起始于 GPUI 的点击沿用 AppKit 分发，避免重复；原生桥接记录按键归属，直到释放前禁止网页命中和光标接管，侧栏拖拽即使未启用 GPUI pointer capture、指针跨入网页也不改变归属。窗口失去激活或收到无按键移动时清理中断的 GPUI 按下状态。
+The WebView entity owns the native host, page, focus handle, and subscriptions. lb-wry manages WebKit configuration, navigation, IPC, and scripts. An AppKit clipping container sits below the GPUI native view, with a transparent input-routing view above it. Routing chooses targets from current-frame GPUI hitboxes, actual pointer position, visibility, and pointer capture. Original events pass to WebKit, preserving native scrolling, selection, editing, and IME. Standard GPUI occlusion prevents the page from receiving input in overlay regions. Focus subscriptions synchronize the first responder between page and GPUI controls.
 
-窗口使用透明或模糊背景，覆盖网页区域的 GPUI 祖先不绘制背景；标题栏、元数据、侧栏、加载与错误区域各自绘制语义背景。支持矩形布局与裁剪、不重叠的 WebView；GPUI 的 opacity、旋转及圆角 mask 不自动作用于下方原生页面。自定义 GPUI 浮层须在交互表面设置 occlude。网页使用不透明背景，不把这种合成等同于任意 GPUI 纹理绘制。
+A window-local event monitor supplies GPUI mouse movement when other native responders own focus, retaining original events for AppKit/WebKit tracking without moving keyboard focus on hover. Cursor management is acquired only in active windows. On entry to the page, the host first calls `invalidateCursorRectsForView:` for the GPUI view while window cursor management is enabled, matching GPUI's native cursor-change path. It then pauses automatic window cursor-rectangle management and calls `discardCursorRects` on the GPUI view. This handoff also occurs when GPUI has kept the default arrow since activation. Each page entry resets a residual GPUI cursor to the arrow once; WebKit then manages link and text cursors without continuous overrides. Leaving, hiding, or releasing the page, or window deactivation, restores only management acquired by this host.
 
-浮层出现时网页保持显示和运行；设置替换工作区时隐藏并保留网页。页面隐藏、释放或被裁剪为空时不接收输入，隐藏且拥有原生焦点时归还 GPUI；切换笔记释放旧网页，宿主移除原生视图并清理输入回调。独立包不提供 Shell 或本机文件能力，Locus 链接、下载、IPC 和快捷键策略由画布包提供。
+Mouse presses originating in the page also dispatch to GPUI so overlay outside-click listeners dismiss menus. Matching drags and releases complete even when the pointer leaves or the page hides, avoiding stuck press state. Original events still reach WebKit, preserving page clicks. Presses starting in GPUI follow AppKit dispatch without duplication. The native bridge tracks press ownership until release, preventing page hit testing and cursor takeover. Sidebar drags retain ownership even without GPUI pointer capture when crossing into the page. Window deactivation or movement with no pressed buttons clears interrupted GPUI press state.
 
-## 实现边界
+Windows use transparent or blurred backgrounds, and GPUI ancestors covering the page do not paint backgrounds. Titlebars, metadata, sidebars, loading, and error regions paint their own semantic surfaces. Composition supports rectangular layout and clipping with non-overlapping WebViews. GPUI opacity, rotation, and rounded masks do not automatically affect underlying native pages. Custom interactive GPUI overlays must occlude. Pages use opaque backgrounds; this composition is not arbitrary GPUI texture rendering.
 
-`locus-canvas::CanvasView` 拥有 WebView、主题、焦点、刷新和网页生命周期，通过 `CanvasEvent` 发出笔记导航、应用命令、窗口关闭及外部链接意图。工作区拥有当前笔记身份、创建释放与布局；设置实体拥有导出目录。Markdown 渲染不参与画布加载。
+Pages remain visible and running under overlays. Settings hides and retains them when replacing the workspace. Hidden, released, or fully clipped pages do not receive input; hiding a page holding native focus returns focus to GPUI. Note switches release old pages, and the host removes native views and input callbacks. The independent package provides no shell or local-file capabilities. The canvas package owns Locus links, downloads, IPC, and shortcut policy.
 
-`view` 管理网页生命周期，`resources` 管理安全资源映射与 MIME，`export` 收集依赖、制作快照和不覆盖保存。自定义协议在后台按请求读取文件，Tailwind 浏览器脚本嵌入应用，入口按页面加载生命周期执行一次。导出时工作区捕获笔记与目录，在后台准备并保存。
+## Implementation boundaries
 
-宿主快捷键脚本以闭包保存私有消息标识，只允许浏览器真实且非重复的按键发送启动意图；Rust IPC 检查每个 WebView 的标识。标识使用 UUID v4。
+`locus-canvas::CanvasView` owns WebView, theme, focus, refresh, and page lifecycle. `CanvasEvent` emits note navigation, app command, window close, and external-link intents. The workspace owns current-note identity, creation, release, and layout. The settings entity owns the export directory. Markdown rendering does not participate in canvas loading.
 
-通用原生组件的构造、可见性和合成边界见[WebView 接入](webview.md)。GPUI 使用已发布版本的公开接口；Objective-C 桥接由 cc 编译，默认 macOS 部署目标为 13.0，可由 MACOSX_DEPLOYMENT_TARGET 覆盖。
+`view` manages page lifecycle, `resources` owns safe resource mapping and MIME, and `export` collects dependencies, creates snapshots, and saves without overwriting. The custom protocol reads files in the background per request. The Tailwind browser script is embedded in the app, and entry points execute once per page-load lifecycle. During export, the workspace captures the note and directory, then prepares and saves in the background.
 
-## 验证边界
+The host shortcut script retains a private message identifier in a closure and allows only trusted, non-repeated browser key events to send launch intents. Rust IPC validates a per-WebView identifier, generated with UUID v4.
 
-Rust 回归覆盖 HTML/JSON 入口互斥、main 数据、模版链拒绝、资源归属、安全路径、刷新、导出引用与模块身份、快照、同名避让和失败清理。运行文档库、画布、工作区、设置、偏好与 MCP 的相关包测试。
+See [WebView integration](webview.md) for generic construction, visibility, and composition boundaries. GPUI uses public APIs from the published version. cc compiles the Objective-C bridge, with macOS deployment target 13.0 by default, overridable through MACOSX_DEPLOYMENT_TARGET.
 
-在仓库根运行 `node --experimental-vm-modules --test source/crates/locus-canvas/tests/*.cjs` 检查入口生命周期、初始化错误、资源映射、离线导出 fetch 和原生编辑快捷键桥接。开发环境需可解析 jsdom；Node 与 jsdom 仅用于测试。
+## Verification boundaries
 
-原生桥接回归覆盖输入归属、浮层排除、焦点、隐藏、裁剪、释放与光标交接，但不实例化完整 AppKit/WebKit 窗口。实际验收需要检查浮层覆盖和点击不穿透、菜单关闭后网页点击、GPUI 与网页光标交接、中文输入法、选择与编辑、主题、设置往返、调整窗口与换屏、VoiceOver，以及动态与静止页面的 CPU/GPU 占用。无界面测试不代表原生显示与性能验收。
+Rust regressions cover mutually exclusive HTML/JSON entry points, main data, template-chain rejection, resource ownership, safe paths, refresh, export references and module identity, snapshots, collision avoidance, and failure cleanup. Run relevant library, canvas, workspace, settings, preferences, and MCP package tests.
+
+From the repository root, run `node --experimental-vm-modules --test source/crates/locus-canvas/tests/*.cjs` for entry lifecycle, initialization errors, resource mapping, offline export fetch, and native editing-shortcut bridges. The development environment must resolve jsdom. Node and jsdom are test-only dependencies.
+
+Native bridge regressions cover input ownership, overlay exclusion, focus, hiding, clipping, release, and cursor handoff without constructing a full AppKit/WebKit window. Acceptance requires overlay coverage without click-through, page clicks after menu dismissal, GPUI/WebKit cursor handoff, Chinese IME, selection and editing, themes, settings transitions, window resizing and display changes, VoiceOver, and CPU/GPU usage for dynamic and static pages. Headless tests do not establish native display or performance acceptance.

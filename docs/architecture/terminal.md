@@ -1,34 +1,34 @@
-# 文档库终端
+# Library terminal
 
-本篇维护当前行为、实现边界与验收要求。需求编号见[需求索引](../requirements.md)。
+This document owns current behavior, implementation boundaries, and acceptance requirements.
 
-## 目标
+## Purpose
 
-用户从当前知识工作台快捷启动已安装的 Agent，在同一笔记库根目录工作。Locus 只选择终端、Agent 与启动目录；终端外观、会话、认证、模型、权限和进程生命周期归外部软件管理。
+Users launch installed Agents from the current knowledge workspace to work at the same library root. Locus selects only the terminal, Agent, and launch directory. External software owns terminal appearance, sessions, authentication, models, permissions, and process lifecycle.
 
-## 产品行为
+## Product behavior
 
-- 设置中的终端选择提供系统终端和 Ghostty；Windows 只提供系统终端。默认使用系统终端。
-- Agent 选择提供 Codex、pi、OpenCode、Claude Code，默认 Codex；启动命令分别为 `codex`、`pi`、`opencode`、`claude`，不添加未指定的初始化命令、参数或提示词。
-- 沿用 Command 与反引号组合键；在其他平台使用对应 Control 组合键。命令面板提供同一“打开 Agent…”操作。每次按键触发一次，长按不重复创建窗口，启动交接期间拒绝重复提交；画布焦点下也可触发。
-- 启动目录始终是触发时当前笔记库根目录，不是当前笔记目录。未选择笔记库时禁用命令；目录失效时报告错误。打开外部终端不切换 Locus 页面或展开任何侧栏。
-- macOS 系统终端使用 Terminal；Ghostty 使用 1.3.0 或以上版本的 AppleScript 接口。每次操作只请求一个 Agent 会话，复用已运行的应用；Terminal 创建新窗口，Ghostty 优先在最近使用的已有窗口中新建标签页，没有窗口时才创建新窗口。不向已有会话输入命令；zsh 登录与交互配置用于解析已安装的 Agent。Agent 退出或找不到命令时保留 Shell，便于查看错误。
-- 用户先安装终端和 Agent。终端启动失败通过应用通知显示；Agent 命令、认证及运行错误由外部终端呈现，Locus 不将已交给终端的请求表述为 Agent 已运行成功。
-- 已打开的外部会话不由 Locus 保存、关闭或重启。切换笔记库、修改选择、退出 Locus 均不影响已存在的外部会话；后续启动使用新选择。
-- 偏好只保存外部终端与 Agent 选择；旧内嵌终端字段不参与当前配置。读取旧 TOML 时保留其他有效偏好，正常保存时移除类型未包含的字段。
+- Terminal settings offers the system terminal and Ghostty; Windows offers only the system terminal. The system terminal is the default.
+- Agent choices are Codex, pi, OpenCode, and Claude Code, with Codex as the default. Commands are `codex`, `pi`, `opencode`, and `claude`, without unspecified initialization commands, arguments, or prompts.
+- The shortcut remains Command+backtick, or the corresponding Control combination on other platforms. The command palette offers the same Open Agent… action. Each press triggers once; holding the key does not repeatedly create windows. Duplicate submissions are rejected during launch handoff. The shortcut also works with canvas focus.
+- The launch directory is always the current library root captured at activation, not the current note directory. The command is disabled without a library; an invalid directory produces an error. Opening a terminal does not switch the Locus page or expand a sidebar.
+- On macOS, the system terminal is Terminal. Ghostty uses the AppleScript interface in version 1.3.0 or later. Each operation requests one Agent session and reuses a running app. Terminal creates a new window; Ghostty creates a tab in the most recently used existing window or creates a window if none exists. It does not type commands into existing sessions. zsh login and interactive configuration resolves installed Agents. The shell remains available if an Agent exits or its command cannot be found.
+- Users install the terminal and Agent first. Terminal launch failures appear in app notifications. Agent command, authentication, and runtime errors appear in the external terminal. Locus does not describe a terminal handoff as successful Agent execution.
+- Locus does not save, close, or restart opened external sessions. Library switches, selection changes, and quitting do not affect them. Subsequent launches use the new selection.
+- Preferences store only external terminal and Agent selections. Old embedded-terminal fields do not participate in current configuration. Reading old TOML preserves other valid preferences; normal saves remove fields outside the type.
 
-## 实现边界与验收
+## Implementation boundaries and acceptance
 
-`locus-preferences` 定义终端和 Agent 选项，设置实体拥有唯一运行时选择。`locus-workspace/src/workspace/terminal.rs` 负责动作、后台启动交接、重复提交保护和失败通知；`locus-ui/src/platform/terminal.rs` 负责平台命令及路径转义。Locus 使用外部终端；`oneo-gpui-terminal` 作为通用组件独立保留。
+`locus-preferences` defines terminal and Agent choices; the settings entity owns the sole runtime selection. `locus-workspace/src/workspace/terminal.rs` owns actions, background handoff, duplicate-submit protection, and failure notifications. `locus-ui/src/platform/terminal.rs` owns platform commands and path quoting. Locus uses external terminals; `oneo-gpui-terminal` remains an independent generic component.
 
-macOS 两种终端先发送 AppleScript `launch`，再创建会话，最后 `activate`，避免常规启动先打开默认窗口。Terminal 使用 `do script`；Ghostty 使用 `new surface configuration` 设置 `initial working directory` 和 `command`，有窗口时调用 `new tab in front window with configuration`，无窗口时调用 `new window with configuration`。目录与命令经独立参数传递和 Shell 引号保护。依据 [Apple launch 定义](https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptLangGuide/reference/ASLR_cmds.html)和 [Ghostty AppleScript 文档](https://ghostty.org/docs/features/applescript)。Ghostty 的正常会话恢复仍由用户自己的配置控制；Locus 不修改终端配置或关闭已有窗口。Windows 使用新系统控制台运行 Agent。实际目标平台启动、系统授权、Shell 配置和 Agent 安装情况由用户验证，不自动打开终端或 Agent 进行验收。
+Both macOS terminals first receive AppleScript `launch`, then create a session, then `activate`, avoiding a default window from normal startup. Terminal uses `do script`. Ghostty uses `new surface configuration` with `initial working directory` and `command`, then `new tab in front window with configuration` when a window exists or `new window with configuration` otherwise. Directories and commands pass through separate arguments and shell quoting. See [Apple's launch definition](https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptLangGuide/reference/ASLR_cmds.html) and [Ghostty AppleScript documentation](https://ghostty.org/docs/features/applescript). Ghostty's normal session restoration follows user configuration; Locus does not modify terminal settings or close existing windows. Windows runs Agents in new system consoles. Users verify target-platform launching, system authorization, shell configuration, and Agent installation. Do not automatically launch terminals or Agents for acceptance testing.
 
-验收覆盖：终端与 Agent 选择持久化；旧设置清理且其他偏好保留；无库与失效库；中文、空格、引号、换行与 Shell 特殊字符路径；实际启动目录和命令；终端未运行、已运行及已运行但没有窗口时均只新增一个 Agent 会话；Ghostty 已有窗口时新增标签页且窗口数量不增加，多个窗口时使用最近使用的窗口，无窗口时只新建一个 Agent 窗口，原有会话不受影响；长按只触发一次；画布焦点快捷键；终端缺失、Agent 缺失和退出；设置及笔记库切换只影响后续会话。
+Acceptance covers terminal and Agent preference persistence; removal of old fields while retaining valid preferences; missing or invalid libraries; paths containing Chinese, spaces, quotes, newlines, and shell special characters; actual launch directories and commands; exactly one new Agent session when terminals are stopped, running, or running without windows; Ghostty tabs without additional windows, use of the most recently used window among several, and exactly one new window when none exists; preservation of existing sessions; one activation per held key; canvas-focused shortcuts; missing terminals, missing Agents, and exit behavior; and settings or library switches affecting only subsequent sessions.
 
-自动化入口为 `cargo test -p locus-ui --locked platform::terminal::tests`，覆盖目录有效性、命令参数及路径转义。AppleScript 编译检查不执行终端，也不能证明会话复用、系统授权或 Agent 启动成功。
+Run `cargo test -p locus-ui --locked platform::terminal::tests` for directory validity, command arguments, and path quoting. AppleScript compilation does not execute terminals or prove session reuse, authorization, or successful Agent startup.
 
-## 独立终端组件
+## Independent terminal component
 
-`oneo-gpui-terminal` 是独立 GPUI 通用组件，当前 Locus 产品使用上文的外部启动流程。它复用 `alacritty_terminal` 0.26 的 PTY 与 VT 状态机，关闭默认 features，由 GPUI 视图映射网格、输入、选择、焦点和刷新；输入接受中性配置，不读取 Locus 偏好或知识内容。
+`oneo-gpui-terminal` is an independent generic GPUI component. Locus uses the external-launch workflow above. The component reuses `alacritty_terminal` 0.26's PTY and VT state machine with default features disabled. Its GPUI view maps the grid, input, selection, focus, and refresh. It accepts neutral configuration without reading Locus preferences or knowledge content.
 
-宽字符占据两个单元格，后继 `WIDE_CHAR_SPACER` 不生成额外文本。输入法通过 GPUI 原生接口处理，组合态只显示在光标处，提交态才写入 PTY，控制组合键按终端协议编码。相关组件改动独立运行该包测试，不能用外部 Agent 启动检查代替。
+Wide characters occupy two cells; the following `WIDE_CHAR_SPACER` generates no extra text. GPUI native interfaces handle IME. Composition appears only at the cursor, committed text enters the PTY, and control combinations follow terminal encoding. Changes to this component require its own package tests; external Agent-launch checks are not a substitute.

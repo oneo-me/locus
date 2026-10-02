@@ -1,50 +1,50 @@
-# 设置与持久化
+# Settings and persistence
 
-`locus-settings` 拥有运行时偏好实体、设置页面、归档恢复和设置事件；`locus-preferences` 定义字段、默认值、校验及产品选项标签。工作区消费设置事件，不保存另一份长期偏好。共享外观控件持有输入状态，产品实体持有配置与保存结果。
+`locus-settings` owns the runtime preferences entity, settings pages, archive restoration, and settings events. `locus-preferences` defines fields, defaults, validation, and product option labels. The workspace consumes settings events without retaining another long-lived preference copy. Shared appearance controls own input state; product entities own configuration and save results.
 
-## 设置页面
+## Settings pages
 
-设置在主窗口内替换工作区，返回恢复原状态和焦点。共享 Shell 提供外观设置及分类导航，Locus 追加文档库、编辑器、导出目录、归档恢复、字体、终端、Agent 和 MCP 设置。MCP 页面提供 skills 安装位置与按钮，以及服务开关、监听范围、端口、真实状态与错误，skills 文件与后台安装机制见[Agent 接入](mcp.md#skills-发布与安装)，客户端连接说明见[MCP 使用说明](../mcp.md)。
+Settings replaces the workspace inside the main window. Returning restores its state and focus. The shared shell provides appearance settings and category navigation; Locus adds library, editor, export directory, archive restoration, fonts, terminal, Agent, and MCP settings. The MCP page provides skill location and installation controls as well as service enablement, listening scope, port, real status, and errors. See [Agent integration](mcp.md#skill-distribution-and-installation) for skill files and background installation and [MCP access](../mcp.md) for client connections.
 
-导出目录未配置时使用系统下载目录。选择变化只影响后续导出或外部终端启动，已打开的网页与外部会话有各自生命周期。保存失败应暴露原因；具体选项更新的回滚以对应设置方法为准，不能把仅在内存中生效的值表述为已保存。
+An unconfigured export directory uses the system Downloads directory. Selection changes affect only subsequent exports or terminal launches; open pages and external sessions retain their own lifecycles. Save failures expose their reasons. Rollback for individual options follows their settings methods; values effective only in memory must not be described as saved.
 
-## 配置服务
+## Configuration service
 
-`SettingsStore::for_project(name)` 使用 `~/.oneo/<name>/settings.toml`，名称必须是单个非空目录名，不允许绝对路径、`.`、`..` 或路径分隔符。`SettingsStore::at_path(path)` 直接替换完整文件路径，要求绝对文件路径，不解释 `~` 等 shell 语法。两者是明确的可选构造方式；Locus 使用标准项目名称 `locus`。
+`SettingsStore::for_project(name)` uses `~/.oneo/<name>/settings.toml`. Names must be single non-empty directory names, excluding absolute paths, `.`, `..`, and separators. `SettingsStore::at_path(path)` replaces the complete file path, requires an absolute file path, and does not interpret shell syntax such as `~`. These are explicit alternative constructors. Locus uses the standard project name `locus`.
 
-配置文件不存在时返回应用类型的默认值且不自动创建文件；字段缺省规则由应用的 Serde 类型定义。读取或 TOML 格式错误返回带路径的错误，不自动覆盖文件。Locus 在加载失败时使用默认偏好并向既有设置错误界面传递原因。保存会先序列化，再建立父目录、写入同目录临时文件并同步，然后替换目标；失败不截断已有文件。服务保存完整文档，不保留注释和类型未包含的字段，不提供合并、监听或迁移。调用方负责串行化配置变更；多个写入方同时保存时最后一次替换生效。运行时偏好继续由设置实体单独持有。
+Missing configuration files return application defaults without creating a file. Application Serde types define missing-field behavior. Read and TOML format failures return errors with paths and do not overwrite files. On load failure, Locus uses default preferences and passes the reason to the existing settings error interface. Saving serializes first, creates parent directories, writes and synchronizes a temporary file in the same directory, then replaces the target. Failures do not truncate existing files. The service saves complete documents without preserving comments or fields outside the type; it provides no merging, watching, or migration. Callers serialize configuration changes. With concurrent writers, the last replacement wins. The settings entity remains the sole owner of runtime preferences.
 
-`oneo-gpui` 默认启用 `shell` feature，包含应用、窗口和界面组件。配置服务不依赖 GPUI；纯领域与偏好包可以使用 `default-features = false`，只编译配置服务、外观数据类型及文件读写依赖。`read` 用 `Option` 区分文件不存在，`load` 在缺失时返回默认值，`create` 原子创建且拒绝覆盖已有文件；`save` 原子替换已有文件。Theme Smith 的目录元数据使用 `create`，避免并发创建时覆盖其他写入方。
+`oneo-gpui` enables the `shell` feature by default, including app, window, and interface components. The configuration service does not depend on GPUI. Domain and preferences packages can use `default-features = false` to compile only configuration, appearance data types, and file I/O dependencies. `read` distinguishes missing files with `Option`; `load` returns defaults when missing; `create` creates atomically and refuses to overwrite; `save` replaces atomically. Theme Smith uses `create` for directory metadata to avoid overwriting other writers during concurrent creation.
 
-## 外观配置
+## Appearance configuration
 
-`AppearancePreferences` 统一定义主题、语言与界面字号，应用的偏好类型使用 `#[serde(flatten)]` 组合，TOML 中使用顶层 `theme`、`language`、`ui_font_size` 字段。主题默认 `system`，可选 `light`、`dark`；语言默认 `system`，可选 `chinese`、`english`；界面字号默认 16，可选 12、14、15、16、17、18、20，不支持的字号读取后归一为默认值。已有显式语言选择不改写为系统偏好。
+`AppearancePreferences` defines theme, language, and interface font size. Application preference types compose it with `#[serde(flatten)]`, producing top-level TOML fields `theme`, `language`, and `ui_font_size`. Theme defaults to `system`, with `light` and `dark` alternatives. Language defaults to `system`, with `chinese` and `english` alternatives. Interface font size defaults to 16 and supports 12, 14, 15, 16, 17, 18, and 20. Unsupported sizes normalize to the default after reading. Existing explicit language choices are not rewritten to system preference.
 
-系统语言通过 `sys-locale` 在进程首次解析时读取：中文语言标识使用简体中文目录，其他语言或读取不到时使用英文目录；更改操作系统语言后重启应用生效。选择明确语言或重新选择跟随系统时立即刷新当前界面与组件 locale，产品方通过变更事件更新自己的菜单及业务文案。系统明暗变化在跟随系统主题时即时应用；主题切换同步原生窗口、GPUI Theme 与 Base projection，并保留用户字号。
+`sys-locale` reads system language at the process's first resolution. Chinese language identifiers use the Simplified Chinese catalog; other languages or lookup failure use English. Restart after changing the OS language. Explicit language choices or reselecting the system option immediately refresh the current interface and component locale. Product change events update menus and business text. System appearance changes apply immediately when following the system theme. Theme changes synchronize the native window, GPUI Theme, and Base projection while preserving user font size.
 
-`AppearanceControls` 只拥有选择器状态及订阅，外观配置与保存错误继续由应用的设置实体单独持有；父级处理 `AppearanceChange`、应用配置、同步选择器并保存完整产品偏好。共享层不创建第二份产品偏好、不写入固定产品路径。Locus 的外观页组合这三个共享控件及自身界面字体、代码字体与代码字号；终端、文档库和 MCP 设置仍属于产品层。
+`AppearanceControls` owns selector state and subscriptions only. Application settings entities remain the sole owners of appearance configuration and save errors. Parents handle `AppearanceChange`, apply configuration, synchronize selectors, and save complete product preferences. The shared layer does not create another product preference copy or write to a fixed product path. Locus composes the three shared controls with its interface font, code font, and code size. Terminal, library, and MCP settings remain product responsibilities.
 
-## 存储与写入调度
+## Storage and write scheduling
 
-- `~/.oneo/locus/settings.toml`：文档库、编辑器、导出目录、外观、语言、字体、终端和 MCP 用户偏好。
-- `~/.oneo/locus/state.toml`：侧栏状态、当前选择与普通窗口恢复边界。
-- `~/.oneo/locus/sidebar-order.toml`：按文档库和父路径保存的侧边栏同级顺序，不修改文档库内容。
-- `~/.oneo/locus/thumbnails/` 与 `link-icons/`：可从来源重建的本地缓存。
+- `~/.oneo/locus/settings.toml`: library, editor, export directory, appearance, language, fonts, terminal, and MCP preferences.
+- `~/.oneo/locus/state.toml`: sidebar state, current selection, and normal-window restoration bounds.
+- `~/.oneo/locus/sidebar-order.toml`: sidebar sibling order by library and parent path, without modifying library content.
+- `~/.oneo/locus/thumbnails/` and `link-icons/`: local caches rebuildable from their sources.
 
-Rust 项目的自有配置统一使用 TOML，不引入 JSON 配置。设置、界面状态与侧栏顺序均使用 TOML，并统一通过共享配置服务读写。旧终端字段及 `auto_open_canvas` 不再读取为有效偏好，正常保存时由完整序列化移除，其他有效偏好保留；不主动覆盖既有用户配置。设置、界面状态和缓存不能成为笔记内容、层级或关系的权威来源。
+Project-owned Rust configuration uses TOML, not JSON. Settings, interface state, and sidebar order all use the shared configuration service. Old terminal fields and `auto_open_canvas` are no longer valid preferences. Normal complete serialization removes them while retaining other valid preferences; existing user configuration is not proactively overwritten. Settings, interface state, and caches cannot become authorities for note content, hierarchy, or relationships.
 
-窗口移动或缩放只更新工作区内存中的边界；每次事件重置 100 毫秒延迟，停歇后才提交最新界面状态。`InterfaceStateWriter` 将窗口边界、左栏状态和当前选择的完整快照统一交给 GPUI 后台执行器，按提交顺序完成 TOML 序列化、原子写入和磁盘同步，避免 UI 线程写盘及旧快照覆盖新状态。退出时取消待触发的延迟，提交最新快照并等待写入队列；等待受 GPUI 的 200 毫秒退出上限约束，异常缓慢的磁盘仍可能来不及完成最终保存。保存失败继续通过现有标准错误报告。
+Window moves and resizes update only in-memory workspace bounds. Each event resets a 100 ms delay, which submits the latest interface state after activity stops. `InterfaceStateWriter` passes complete snapshots of window bounds, sidebar state, and selection to GPUI's background executor. It serializes TOML, writes atomically, and synchronizes disk in submission order, avoiding UI-thread disk writes and old snapshots overwriting new state. Shutdown cancels a pending delay, submits the latest snapshot, and waits for the queue. GPUI's 200 ms shutdown limit bounds that wait; unusually slow disks may prevent the final save from finishing. Save failures use existing standard-error reporting.
 
-## 语言资源
+## Language resources
 
-持有界面文案的包各自维护 `locales/ui.yml`，在自己的 crate root 调用 `rust_i18n::i18n!("locales", fallback = "en")`，并从本包使用 `t!` 读取：`locus-workspace` 持有工作区、菜单和外部终端启动的产品文案，`locus-settings` 持有产品设置页面文案，`oneo-gpui` 持有共享设置与外观控件文案，`locus-ui` 持有笔记扩展文案，`locus-canvas` 持有画布加载与错误文案，`locus-preferences` 持有偏好选项标签。各包只保留自己使用的资源，提供英文和简体中文，不通过偏好包代查其他包的 key，也不依赖跨包资源合并。没有自有文案、只消费调用方标签的共享组件不建立空语言包。
+Packages owning interface copy maintain their own `locales/ui.yml`, invoke `rust_i18n::i18n!("locales", fallback = "en")` at their crate roots, and resolve strings locally through `t!`. `locus-workspace` owns workspace, menu, and terminal-launch product copy; `locus-settings` owns product settings copy; `oneo-gpui` owns shared settings and appearance controls; `locus-ui` owns note extension copy; `locus-canvas` owns canvas loading and error copy; `locus-preferences` owns preference option labels. Each package keeps only its own resources in English and Simplified Chinese. Packages do not proxy other packages' keys through preferences or rely on cross-package catalog merging. Shared components consuming caller labels without their own copy do not create empty language packages.
 
-`oneo_gpui::Language` 提供语言偏好、locale 解析、选项名称和统一语言切换；调用方通过 `t!(..., locale = language.locale())` 显式选择语言并使用宏的命名参数替换。切换语言同步组件全局 locale、已渲染 view 与原生菜单；全局 locale 本身不触发 GPUI 重绘。`extend!` 仅在确需覆盖组件文案时按组件命名空间注册一次，当前不注册空扩展。用法遵循[GPUI Kit 国际化规范](https://gpui-kit.com/zh-CN/docs/i18n/)。
+`oneo_gpui::Language` provides language preferences, locale resolution, option names, and unified switching. Callers explicitly select language with `t!(..., locale = language.locale())` and use named macro arguments for substitutions. Switching synchronizes component global locale, rendered views, and native menus; global locale changes alone do not trigger GPUI redraws. `extend!` registers once under component namespaces only when overriding component copy is necessary; no empty extensions are currently registered. Usage follows the [GPUI Kit internationalization guidelines](https://gpui-kit.com/zh-CN/docs/i18n/).
 
-每个语言资源包通过自身 `build.rs` 声明 `cargo:rerun-if-changed=locales`，保证只增删改 YAML 资源也会重新生成编译期翻译表。各包测试核对两种语言的每条资源实际解析值，笔记 UI 覆盖文件名中的字面占位符。
+Each resource package declares `cargo:rerun-if-changed=locales` in its `build.rs`, ensuring YAML-only additions, edits, and removals regenerate compile-time translations. Package tests verify resolved values for every resource in both languages. Note UI tests cover literal placeholders within filenames.
 
-## 验证边界
+## Verification boundaries
 
-检查字段默认值、TOML 往返、无效字号归一化、缺失与损坏文件、原子创建与替换、写入顺序及失败反馈。工作区测试应验证阻塞旧写入后仍按顺序保存最新界面快照。
+Check field defaults, TOML round trips, invalid-size normalization, missing and damaged files, atomic creation and replacement, write ordering, and failure feedback. Workspace tests must verify that blocking an old write still preserves ordered saves of the latest snapshot.
 
-实际窗口拖动流畅度、退出后的恢复、系统外观切换、中英文菜单和设置往返焦点需要在目标平台运行确认。异常缓慢磁盘下的退出保存受上文时限约束。
+Actual window-drag responsiveness, restoration after quitting, system appearance changes, bilingual menus, and focus across settings require target-platform confirmation. Shutdown saving on unusually slow disks remains subject to the limit above.

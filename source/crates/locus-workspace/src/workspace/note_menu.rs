@@ -30,7 +30,7 @@ impl Locus {
         } else {
             t!("workspace.note_menu.title", locale = language.locale()).into_owned()
         };
-        let menu = self.note_popup_menu(node, cx);
+        let menu = self.note_popup_menu(node, false, cx);
         oneo_gpui::toolbar_dropdown_menu(
             id,
             trigger_label.clone(),
@@ -46,6 +46,7 @@ impl Locus {
     pub(super) fn note_popup_menu(
         &self,
         node: &LibraryNode,
+        include_file_actions: bool,
         cx: &mut Context<Self>,
     ) -> impl Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + use<> {
         let document_path = node
@@ -75,25 +76,27 @@ impl Locus {
             let edit_path = document_path.clone();
             let directory_locus = locus.clone();
             let directory_path = directory.clone();
-            menu.item(
-                PopupMenuItem::new(edit_label.clone())
-                    .icon(gpui_kit::component::Icon::new(Icon::File))
-                    .on_click(move |_, window, cx| {
-                        let _ = edit_locus.update(cx, |this, cx| {
-                            this.edit_note_at_path(&edit_path, window, cx);
-                        });
-                    }),
-            )
-            .item(
-                PopupMenuItem::new(directory_label.clone())
-                    .icon(gpui_kit::component::Icon::new(Icon::FolderOpen))
-                    .on_click(move |_, window, cx| {
-                        let _ = directory_locus.update(cx, |this, cx| {
-                            this.open_note_directory_at_path(&directory_path, window, cx);
-                        });
-                    }),
-            )
-            .separator()
+            menu.when(include_file_actions, |menu| {
+                menu.item(
+                    PopupMenuItem::new(edit_label.clone())
+                        .icon(gpui_kit::component::Icon::new(Icon::File))
+                        .on_click(move |_, window, cx| {
+                            let _ = edit_locus.update(cx, |this, cx| {
+                                this.edit_note_at_path(&edit_path, window, cx);
+                            });
+                        }),
+                )
+                .item(
+                    PopupMenuItem::new(directory_label.clone())
+                        .icon(gpui_kit::component::Icon::new(Icon::FolderOpen))
+                        .on_click(move |_, window, cx| {
+                            let _ = directory_locus.update(cx, |this, cx| {
+                                this.open_note_directory_at_path(&directory_path, window, cx);
+                            });
+                        }),
+                )
+                .separator()
+            })
             .item(
                 PopupMenuItem::new(upload_label.clone())
                     .icon(gpui_kit::component::Icon::new(Icon::ArrowUp))

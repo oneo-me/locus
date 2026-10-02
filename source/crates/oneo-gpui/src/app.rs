@@ -102,6 +102,46 @@ mod tests {
     }
 
     #[gpui_kit::test]
+    fn kit_window_hosts_interactive_dialogs_without_manual_layers(cx: &mut TestAppContext) {
+        use gpui_kit::component::WindowExt as _;
+        use gpui_kit::test::{TestSupportExt as _, TestWindowExt as _};
+        use gpui_kit::{
+            AppContext as _, InteractiveElement as _, ParentElement as _,
+            StatefulInteractiveElement as _, WindowOptions,
+        };
+
+        cx.update(gpui_kit::init);
+        let (handle, content) = cx.update(|cx| {
+            gpui_kit::open_window(WindowOptions::default(), cx, |_, cx| cx.new(|_| Content))
+                .unwrap()
+        });
+        let clicks = Rc::new(Cell::new(0));
+        let observed = clicks.clone();
+        handle
+            .update(cx, |root, window, cx| {
+                assert_eq!(
+                    root.downcast::<Root>().unwrap().read(cx).view().entity_id(),
+                    content.entity_id(),
+                );
+                window.open_dialog(cx, move |dialog, _, _| {
+                    let clicks = observed.clone();
+                    dialog.child(
+                        div()
+                            .id("dialog-action")
+                            .child("Confirm")
+                            .on_click(move |_, _, _| clicks.set(clicks.get() + 1))
+                            .test_support(),
+                    )
+                });
+                window.render_frame(cx);
+                assert!(window.try_find("dialog-action").is_some());
+                window.click("dialog-action", cx);
+            })
+            .unwrap();
+        assert_eq!(clicks.get(), 1);
+    }
+
+    #[gpui_kit::test]
     fn fullscreen_shortcut_works_without_product_action_handlers(cx: &mut TestAppContext) {
         cx.update(|cx| {
             bind_app_shell_keys(cx);

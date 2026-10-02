@@ -19,15 +19,15 @@ pub(crate) use platform::{
 use anyhow::{Result, anyhow};
 use gpui_kit::component::{Root, Theme};
 use gpui_kit::{
-    App, AppContext, Bounds, Entity, Pixels, Render, SharedString, Size, Styled as _,
-    TitlebarOptions, Window, WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowOptions,
-    point, px, size,
+    App, Bounds, Entity, Pixels, Refineable as _, Render, SharedString, Size, StyleRefinement,
+    Styled as _, TitlebarOptions, Window, WindowBackgroundAppearance, WindowBounds, WindowHandle,
+    WindowOptions, point, px, size,
 };
 
 const MIN_VISIBLE_TITLEBAR_WIDTH: f32 = 120.0;
 const MIN_VISIBLE_TITLEBAR_HEIGHT: f32 = 24.0;
 
-/// Creates a shell window with one component Root and native titlebar/close behavior.
+/// Creates a shell window with one Base Root and native titlebar/close behavior.
 /// Defaults to 980 × 820 logical pixels, with a 640 × 480 minimum.
 pub struct ShellWindow {
     title: SharedString,
@@ -80,7 +80,7 @@ impl ShellWindow {
             })
             .unwrap_or_else(|| Bounds::centered(None, self.size, cx));
         let mut material_error = None;
-        let handle = cx.open_window(
+        let (handle, _) = gpui_kit::open_window(
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 window_min_size: Some(self.min_size),
@@ -99,19 +99,23 @@ impl ShellWindow {
                 },
                 ..Default::default()
             },
+            cx,
             |window, cx| {
                 configure_main_window_close_behavior(window, cx);
                 material_error = configure_sidebar_material(window).err();
                 #[cfg(target_os = "windows")]
                 window.set_background_appearance(WindowBackgroundAppearance::MicaBackdrop);
-                let view = build(window, cx);
-                cx.new(|cx| {
-                    Root::new(view, window, cx)
-                        .bordered(false)
-                        .bg(Theme::global(cx).transparent)
-                })
+                build(window, cx)
             },
         )?;
+        let handle = handle
+            .downcast::<Root>()
+            .expect("GPUI Kit windows have a Base Root");
+        handle.update(cx, |root, _, cx| {
+            root.style()
+                .refine(&StyleRefinement::default().bg(Theme::global(cx).transparent));
+            cx.notify();
+        })?;
         if let Some(error) = material_error {
             handle.update(cx, |_, window, _| window.remove_window())?;
             return Err(anyhow!(error));

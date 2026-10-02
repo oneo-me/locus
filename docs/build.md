@@ -1,49 +1,48 @@
-# 运行与构建
+# Running and building
 
-需要 Rust 工具链及对应平台的构建环境：
+Install Rust and the appropriate platform build environment:
 
-- macOS：Xcode 与 Command Line Tools，最低系统版本为 macOS 13。
-- Windows：Visual Studio C++ 工具链与 Windows SDK。
+- macOS: Xcode and Command Line Tools; macOS 13 or later.
+- Windows: Visual Studio C++ tools and the Windows SDK.
 
-代码、Cargo 工作区、资源、图标和打包配置统一位于 `source/`；最终应用产物统一位于根目录 `dist/`，由 Git 忽略，不按平台或架构划分子目录。开发约定见[AGENTS.md](../AGENTS.md)，模块与目录职责见[架构总览](../ARCHITECTURE.md)。
+Code, the Cargo workspace, resources, icons, and packaging configuration live in `source/`. Final app outputs live in the root `dist/` directory, which Git ignores. Outputs are not split into platform or architecture subdirectories. See [AGENTS.md](../AGENTS.md) for development rules and the [Architecture overview](../ARCHITECTURE.md) for module and directory responsibilities.
 
-进入源码目录运行：
+Run from the source directory:
 
 ```sh
 cd source
 cargo run
 ```
 
-## 构建应用
+## Building the app
 
-应用版本采用 `0.<年份>.<当年发布序号>`，序号从 1 开始，同年递增，跨年重置。版本值统一维护在 `source/Cargo.toml` 的 `workspace.package.version`，打包产物读取该版本；修改时同步 `source/Cargo.lock` 中继承该版本的工作区包。
+App versions follow `0.<year>.<release number within the year>`. Release numbers start at 1, increase within a year, and reset in a new year. The version is maintained in `workspace.package.version` in `source/Cargo.toml` and read by the packager. When changing it, synchronize workspace packages inheriting that version in `source/Cargo.lock`.
 
-在项目根目录执行：
+From the repository root:
 
 ```sh
 cargo run --manifest-path source/Cargo.toml --locked -p oneo-tool-packer -- --project source
 ```
 
-构建配置位于 [source/packer.toml](../source/packer.toml)。默认构建当前平台的 Release 版本，产物保存到 `dist/`：macOS 为 `dist/Locus.app`，Windows 为包含可执行文件与运行依赖的 `dist/Locus/`。`output-directory = "../dist"` 相对于打包配置所在的源码目录解析；相同名称的产物由后续成功打包替换。
+Build configuration lives in [source/packer.toml](../source/packer.toml). The default builds Release for the current platform and saves to `dist/`: `dist/Locus.app` on macOS, or `dist/Locus/` containing the executable and runtime dependencies on Windows. `output-directory = "../dist"` resolves relative to the source directory containing the packaging configuration. A later successful packaging run replaces an output with the same name.
 
-VS Code 的 `dev` 和 `build` 任务均在 `source/` 执行；`build` 通过 Cargo 运行仓库内的打包工具。需要单独安装工具时，执行 `cargo install --path source/crates/oneo-tool-packer --locked`，随后在根目录运行 `oneo-tool-packer --project source`。
+VS Code's `dev` and `build` tasks run in `source/`. The build task invokes the repository's packager through Cargo. To install the tool separately, run `cargo install --path source/crates/oneo-tool-packer --locked`, then `oneo-tool-packer --project source` from the root.
 
-编译目录遵循 Cargo 的全局或项目 `build.target-dir` 配置及 `CARGO_TARGET_DIR` 环境变量。打包工具自动从 Cargo 构建消息读取实际可执行文件路径，支持多个项目共用编译目录，无须在 `packer.toml` 中配置路径；最终应用包仍保存到项目 `dist/`。配置解析与优先级遵循 [Cargo 配置规则](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir)。
+The build directory follows Cargo's global or project `build.target-dir` configuration and the `CARGO_TARGET_DIR` environment variable. The packager reads the actual executable path from Cargo build messages and supports shared build directories without a path setting in `packer.toml`. Final bundles still go to the project's `dist/`. Resolution and precedence follow [Cargo configuration rules](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir).
 
-macOS 默认使用 ad-hoc 签名。构建 Windows 版本需要在 Windows 环境中运行。
+macOS uses ad-hoc signing by default. Windows builds must run in a Windows environment.
 
-## 发布记录
+## Release notes
 
-根目录 [CHANGELOG.md](../CHANGELOG.md) 面向 Locus 桌面用户，记录已完成但尚未发布的变化及已确认发布的版本。当前打包工具从 Cargo 元数据读取版本并组装应用，不读取 Changelog，也不自动生成发布说明；发布记录由维护者同步整理。
+The root [CHANGELOG.md](../CHANGELOG.md) records completed pending changes and confirmed releases for Locus desktop users. The packager reads versions from Cargo metadata and assembles the app; it does not read the changelog or generate release notes. Maintainers update release notes alongside changes.
 
-日常用户可见变更直接更新 `Unreleased`，不把计划或未完成能力写成发布承诺。发布前核对实际分支及各平台产物，将本次交付的条目移入确认的版本章节，保留顶部 `Unreleased` 和未交付条目。已有发布版本不从当前 Cargo 版本或提交历史推测补写。
+Record routine user-visible changes under `Unreleased`. Do not promise planned or unfinished capabilities. Before release, check the actual branch and platform outputs, move shipping entries into the confirmed version section, and retain the top `Unreleased` heading and any deferred entries. Do not infer historical releases from the current Cargo version or commit history.
 
-确认版本后，按上文规则同步 `source/Cargo.toml` 与 `source/Cargo.lock`，构建并完成目标平台检查。纯文档维护不触发版本递增、打标签或发布。
+After confirming a version, synchronize `source/Cargo.toml` and `source/Cargo.lock` as above, build, and complete target-platform checks. Routine documentation maintenance does not trigger version bumps, tags, or publishing.
 
+## Development checks
 
-## 开发检查
-
-Cargo 命令在 `source/` 执行，按改动影响运行格式、相关包测试与 Clippy：
+Run Cargo commands in `source/`, selecting formatting, package tests, and Clippy according to the change's impact:
 
 ```sh
 cargo fmt --all --check
@@ -51,10 +50,10 @@ cargo test -p <package> --locked
 cargo clippy -p <package> --all-targets --all-features --locked -- -D warnings
 ```
 
-跨包变更扩大到受影响包，全局依赖或共享接口变更按需运行 workspace 检查。默认 `cargo test` 只选择默认应用包，不能代表能力包已测试。MCP HTTP 回归需要本机临时端口，运行要求见 [Agent 接入](architecture/mcp.md#验证方法)。Node 画布测试也从仓库根运行，命令见[画布](architecture/canvas.md#验证边界)。报告实际检查、覆盖平台与未验证事项；编译和无界面测试不能代替窗口、阅读、终端、设置、系统授权及原生交互的实机验收。
+For changes spanning packages, check all affected packages. Global dependencies or shared interfaces may require workspace checks. Default `cargo test` selects only the default app package and does not establish that feature packages were tested. MCP HTTP regressions require local temporary ports; see [Agent integration](architecture/mcp.md#verification-methods). Run Node canvas tests from the repository root as described in [Canvas](architecture/canvas.md#verification-boundaries). Report actual checks, platforms covered, and unverified items. Compilation and headless tests do not replace acceptance testing of windows, reading, terminals, settings, system authorization, or native interaction.
 
-工程使用锁定版本的 GPUI Kit 公开 API，先核对真实签名再实现。模块按能力组织，通过公开事件、方法与数据类型协作；功能包不访问兄弟包内部实现，`oneo-gpui*` 保持产品中立。运行时配置与语言资源归属见[设置与持久化](architecture/settings.md)，界面约定见[桌面工作区](architecture/workspace.md#界面与状态约定)。
+Use the locked GPUI Kit version's public APIs and verify real signatures before implementation. Organize modules by capability and coordinate through public events, methods, and data types. Feature packages must not access sibling package internals, and `oneo-gpui*` remains product-neutral. See [Settings and persistence](architecture/settings.md) for runtime configuration and localization ownership and [Desktop workspace](architecture/workspace.md#interface-and-state-conventions) for interface conventions.
 
-新增开发脚本使用 Bun 与 TypeScript，放在根目录 `scripts/`，命令由 `package.json` 提供；新增 JavaScript/TypeScript 子包时登记实际 `workspaces` 路径。文档检查使用已安装的 project-docs 技能脚本，命令见 [AGENTS.md](../AGENTS.md#验证)，项目不维护检查器副本。
+Write project documentation and code comments in English, except for explicitly maintained translations such as `README.zh-CN.md`. Localized interface strings and multilingual test fixtures retain their intended languages.
 
-检查器自动扫描根目录与 `docs/` 下的 Markdown，检查预算、Subjects、相对链接、标题锚点和 Unreleased 结构。项目文档指向源码或随应用发布的 skill 原文时，检查其目标文件和锚点，但不递归扫描这些资源目录。机制覆盖、文档与实现一致性及发布条目准确性由维护者核对。运行检查前需安装 Bun 与 project-docs 技能。
+New development scripts use Bun and TypeScript and live in the root `scripts/` directory. If introducing a `package.json` manifest, expose script commands there and register actual `workspaces` paths for any JavaScript/TypeScript subpackages. See [AGENTS.md](../AGENTS.md#verification) for documentation verification requirements. Check Markdown in the repository root and under `docs/` for size budgets, Subjects coverage, relative links, heading anchors, and Unreleased structure. Also verify targets and anchors when linking to source or bundled Locus skills. Review mechanism coverage, agreement between documentation and implementation, and release-note accuracy.

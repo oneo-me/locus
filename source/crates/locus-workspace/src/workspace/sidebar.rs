@@ -257,7 +257,7 @@ impl Locus {
             .on_drag(drag, |_, _, _, cx| cx.new(|_| gpui_kit::Empty));
         let content = if node.document_path.is_some() {
             content
-                .context_menu(self.note_popup_menu(node, cx))
+                .context_menu(self.note_popup_menu(node, true, cx))
                 .into_any_element()
         } else {
             content.into_any_element()

@@ -1,5 +1,5 @@
 rust_i18n::i18n!("examples/locales", fallback = "en");
-use gpui_kit::component::{ActiveTheme, Root, Theme};
+use gpui_kit::component::{ActiveTheme, Theme};
 use gpui_kit::{
     AppContext, Context, Div, FocusHandle, MouseButton, MouseDownEvent, MouseMoveEvent, Render,
     Window, div, prelude::*, px,
@@ -256,9 +256,6 @@ impl Render for Welcome {
                 }),
             )
             .child(content)
-            .children(Root::render_sheet_layer(window, cx))
-            .children(Root::render_dialog_layer(window, cx))
-            .children(Root::render_notification_layer(window, cx))
     }
 }
 
@@ -276,6 +273,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gpui_kit::component::Root;
     use gpui_kit::{KeyBinding, TestAppContext};
     use oneo_gpui::TITLEBAR_HEIGHT;
 

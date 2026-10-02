@@ -1,112 +1,112 @@
-# Locus 架构
+# Locus architecture
 
-本篇是当前系统的总览。修改代码前完整阅读，再按[专题](#subjects)选择与任务相关的详细说明。产品介绍与运行方式见 [README.md](README.md)，可见界面的约定由桌面工作区专题维护。
+This document is the overview of the current system. Read it in full before changing code, then select the relevant details from [Subjects](#subjects). See [README.md](README.md) for the product introduction and usage. The desktop workspace subject owns visible interface conventions.
 
-Locus 是本地优先的 Markdown 知识工作台，使用 Rust 与 GPUI Kit 构建原生桌面界面。用户阅读、组织和审阅本地笔记，外部编辑器与 Agent 操作同一套文件。应用提供只读 MCP 文件发现入口，使用方法由随软件发布并通过设置安装的 skills 提供。
+Locus is a local-first Markdown knowledge workspace with a native desktop interface built with Rust and GPUI Kit. Users read, organize, and review local notes while external editors and Agents operate on the same files. The app provides read-only MCP file discovery; bundled skills, installed through Settings, define its usage.
 
-## 核心约束
+## Core constraints
 
-1. **文档树拥有内容事实。** 每篇笔记由目录中的 `index.md` 表达，拥有 `assets/`、`canvas/` 和子笔记；无正文目录可以组织后代。
-2. **派生状态可重建。** 导航、搜索、关系、Git 状态和图像缓存来自真实文件，配置和缓存不能成为内容权威。
-3. **所有权明确。** 工作区编排选择与呈现，设置实体拥有运行时偏好，共享壳拥有窗口和通用布局，文档库负责文件模型与安全边界，MCP 控制器负责服务生命周期。
-4. **MCP 发现真实文件。** `/mcp` 只读返回原始路径，外部客户端拥有文件操作、模型调用、执行权限及会话；使用规则由 Locus skill 提供。
-5. **画布由当前笔记拥有。** HTML/JavaScript 或 JSON 模版调用在 macOS 系统 WebView 内运行，工作区管理创建释放，画布包管理网页、资源与导出。
-6. **通用能力保持产品中立。** `oneo-gpui*` 接受中性配置、标签、数据和事件；Locus 产品模型、偏好与本地化留在产品包。
+1. **The document tree owns content facts.** Each note is represented by `index.md` in its directory and owns `assets/`, `canvas/`, and child notes. Directories without a body can organize descendants.
+2. **Derived state is rebuildable.** Navigation, search, relationships, Git status, and image caches derive from real files. Configuration and caches cannot become content authorities.
+3. **Ownership is explicit.** The workspace orchestrates selection and presentation, the settings entity owns runtime preferences, the shared shell owns windows and generic layout, the library owns the file model and safety boundaries, and the MCP controller owns service lifecycle.
+4. **MCP discovers real files.** `/mcp` returns original paths through read-only tools. External clients own file operations, model calls, execution permissions, and sessions. The Locus skill defines usage rules.
+5. **The current note owns its canvas.** HTML/JavaScript or JSON template calls run in the macOS system WebView. The workspace manages creation and release; the canvas package manages pages, resources, and export.
+6. **Generic capabilities remain product-neutral.** `oneo-gpui*` accepts neutral configuration, labels, data, and events. Locus product models, preferences, and localization stay in product packages.
 
-## 进程与数据流
+## Processes and data flow
 
 ```text
-Locus 原生桌面进程
+Locus native desktop process
 ├─ GPUI / OS event loop
-│  └─ 主窗口：文档导航 + 当前笔记 / 内嵌设置
-│     └─ macOS WebKit：当前笔记画布
-└─ 可选 MCP 线程：Tokio + Axum + rmcp
-   └─ /mcp：只读文件发现
+│  └─ Main window: document navigation + current note / inline settings
+│     └─ macOS WebKit: current note canvas
+└─ Optional MCP thread: Tokio + Axum + rmcp
+   └─ /mcp: read-only file discovery
 
-本地文档树 ← 桌面应用 / MCP / 外部编辑器与 Agent
-外部终端 ← 工作区按需启动所选 Agent
+Local document tree ← desktop app / MCP / external editors and Agents
+External terminal ← workspace launches the selected Agent on demand
 ```
 
-启动加载偏好与界面状态、解析外观与语言，再创建工作区。文档库扫描生成导航与 Git 投影，递归观察文件；选择笔记后读取完整正文。当前笔记有画布时，头部以下呈现画布，否则呈现 Markdown。
+Startup loads preferences and interface state, resolves appearance and language, and creates the workspace. Library scanning builds navigation and Git projections and watches files recursively. Selecting a note reads its complete body. Notes with a canvas display it below the header; other notes display Markdown.
 
-文件事件合并后在后台重建投影，当前笔记相关变化重新读取正文。读取结果按库路径与代次隔离，迟到任务不能覆盖新选择。画布入口新增或删除更新页面模式，已经加载的网页通过手动刷新或重新打开读取新源码。
+File events are coalesced before rebuilding projections in the background. Changes relevant to the current note reload its body. Read results are isolated by library path and generation so late tasks cannot overwrite a newer selection. Adding or removing a canvas entry point updates page mode; already loaded pages read new source after manual refresh or reopening.
 
-MCP 按调用发现同一文档库，客户端使用自身文件工具维护内容。工作区将设置映射为显式服务配置，变化时先停后启。Agent 在触发时的文档库根目录启动。工作区只捕获终端、Agent 与目录并在后台交接启动，外部终端拥有会话、标签、PTY 与进程生命周期；具体启动方式与失败边界见[文档库终端](docs/architecture/terminal.md)。
+MCP discovers the same library on each call. Clients maintain content with their own filesystem tools. The workspace maps settings to explicit service configuration and stops the old service before starting a replacement. Agents launch at the library root captured when triggered. The workspace captures only the terminal, Agent, and directory and hands off launching in the background. External terminals own sessions, tabs, PTYs, and process lifecycle. See [Library terminal](docs/architecture/terminal.md) for launch behavior and failure boundaries.
 
-## 模块边界
+## Module boundaries
 
-源码是 Rust 2024 Cargo workspace，默认运行包为 `locus`。GPUI Kit 直接依赖基线来自 `source/Cargo.toml`，解析版本由 `source/Cargo.lock` 固定；同一进程中的应用与共享组件使用同一个 GPUI 类型实例。
+Source is a Rust 2024 Cargo workspace with `locus` as its default package. The direct GPUI Kit dependency baseline comes from `source/Cargo.toml`; resolved versions are fixed by `source/Cargo.lock`. Applications and shared components in one process use the same GPUI type instance.
 
-| 包 | 责任 |
+| Package | Responsibility |
 | --- | --- |
-| `locus` | 产品初始化、应用启动、菜单及工作区组装 |
-| `locus-workspace` | 导航、阅读、画布编排、终端交接、界面状态与产品动作 |
-| `locus-settings` | 偏好实体、设置页面、归档恢复与设置事件 |
-| `locus-preferences` | 产品字段、默认值、校验、存储名称与选项标签 |
-| `locus-library` | 文件模型、扫描、读写、观察、版本、链接与 Git 投影 |
-| `locus-mcp` | 只读发现工具、传输会话、监听和停止控制 |
-| `locus-canvas` | WebView 宿主、资源协议、网页生命周期、主题与导出 |
-| `locus-ui` | Markdown 扩展、图标与图像缓存、平台文件和终端打开 |
-| `oneo-gpui` | 应用壳、窗口、布局、外观控件和 TOML 配置服务 |
-| `oneo-gpui-webview` | macOS 原生网页合成、裁剪、可见性、输入与焦点 |
-| `oneo-gpui-graph` / `oneo-gpui-terminal` | 独立通用组件与示例，当前 Locus 产品未接入 |
-| `oneo-tool-packer` | 独立构建与应用组装 CLI |
+| `locus` | Product initialization, app startup, menus, and workspace assembly |
+| `locus-workspace` | Navigation, reading, canvas orchestration, terminal handoff, interface state, and product actions |
+| `locus-settings` | Preferences entity, settings pages, archive restoration, and settings events |
+| `locus-preferences` | Product fields, defaults, validation, storage names, and option labels |
+| `locus-library` | File model, scanning, reading and writing, watching, versions, links, and Git projections |
+| `locus-mcp` | Read-only discovery tools, transport sessions, listening, and shutdown control |
+| `locus-canvas` | WebView host, resource protocol, page lifecycle, themes, and export |
+| `locus-ui` | Markdown extensions, icons and image caches, and platform file and terminal launching |
+| `oneo-gpui` | App shell, windows, layout, appearance controls, and TOML configuration service |
+| `oneo-gpui-webview` | Native macOS page composition, clipping, visibility, input, and focus |
+| `oneo-gpui-graph` / `oneo-gpui-terminal` | Independent generic components and examples, currently unused by Locus |
+| `oneo-tool-packer` | Independent build and app assembly CLI |
 
-产品依赖主线为 `locus → locus-workspace → locus-settings`。工作区还消费画布、UI、偏好、文档库和 MCP 的公开接口；设置消费 UI、偏好、文档库及 MCP。画布消费文档库、共享语言与 macOS WebView；UI 消费文档库和偏好。MCP 的产品领域依赖只有文档库；文档库不依赖 GUI。功能包不反向依赖应用二进制。
+The main product dependency chain is `locus → locus-workspace → locus-settings`. The workspace also consumes public interfaces from canvas, UI, preferences, library, and MCP. Settings consumes UI, preferences, library, and MCP. Canvas consumes the library, shared language, and macOS WebView. UI consumes the library and preferences. The library is MCP's only product-domain dependency and does not depend on GUI code. Feature packages do not depend back on the app binary.
 
-## 存储
+## Storage
 
-| 位置 | 所有者与内容 |
+| Location | Owner and contents |
 | --- | --- |
-| 用户选择的文档库 | Markdown、frontmatter、附件、画布与目录层级 |
-| `~/.oneo/locus/settings.toml` | 用户偏好，包括文档库、编辑器、导出目录、外观、终端与 MCP |
-| `~/.oneo/locus/state.toml` | 窗口恢复、当前选择与侧栏状态 |
-| `~/.oneo/locus/sidebar-order.toml` | 按文档库及父路径保存的同级顺序 |
-| `~/.oneo/locus/thumbnails/`、`link-icons/` | 可重建图像缓存 |
+| User-selected library | Markdown, frontmatter, attachments, canvases, and directory hierarchy |
+| `~/.oneo/locus/settings.toml` | User preferences, including library, editor, export directory, appearance, terminal, and MCP |
+| `~/.oneo/locus/state.toml` | Window restoration, current selection, and sidebar state |
+| `~/.oneo/locus/sidebar-order.toml` | Sibling order by library and parent path |
+| `~/.oneo/locus/thumbnails/`, `link-icons/` | Rebuildable image caches |
 
-配置服务执行 TOML 读取与原子保存，运行时实体拥有配置变更。笔记操作使用安全路径与内容版本检查；外部编辑器参与乐观冲突检查，多个文件的操作不承诺崩溃后的事务回滚。
+The configuration service reads TOML and saves atomically; runtime entities own configuration changes. Note operations use safe paths and content-version checks. External editors participate in optimistic conflict checking. Operations spanning multiple files do not promise transactional rollback after a crash.
 
 ## Subjects
 
-每个主题维护当前机制、边界与验证方法。总览上限为 16 KiB，每篇架构专题上限为 24 KiB；文档检查使用 project-docs 技能自带脚本，命令与覆盖范围见 [AGENTS.md](AGENTS.md#验证)。
+Each subject owns current mechanisms, boundaries, and verification methods. The overview is limited to 16 KiB and each architecture subject to 24 KiB. See [AGENTS.md](AGENTS.md#verification) for documentation verification requirements.
 
-| 文档 | 修改这些内容前阅读 |
+| Document | Read before changing |
 | --- | --- |
-| [文档库](docs/architecture/library.md) | 文件结构、地址、扫描、观察、Git、内容操作与安全边界 |
-| [桌面工作区](docs/architecture/workspace.md) | Tree 导航、阅读与 YAML、历史、菜单、命令与焦点 |
-| [画布](docs/architecture/canvas.md) | HTML/JSON、模版、资源、网页生命周期、合成与导出 |
-| [Agent 接入](docs/architecture/mcp.md) | MCP 发现、skills 安装、Host 与服务生命周期 |
-| [设置与持久化](docs/architecture/settings.md) | 偏好所有权、配置 IO、外观、语言与保存调度 |
-| [共享应用壳](docs/architecture/shell.md) | 初始化、窗口、布局、Debug FPS 与平台行为 |
-| [文档库终端](docs/architecture/terminal.md) | 终端选择、命令、路径转义、交接与失败处理 |
-| [WebView 接入](docs/architecture/webview.md) | 通用原生组件的构造、可见性、输入与合成限制 |
-| [应用打包](docs/architecture/packaging.md) | CLI、目标、图标、资源、签名、运行库与产物替换 |
+| [Library](docs/architecture/library.md) | File structure, addresses, scanning, watching, Git, content operations, and safety boundaries |
+| [Desktop workspace](docs/architecture/workspace.md) | Tree navigation, reading and YAML, history, menus, commands, and focus |
+| [Canvas](docs/architecture/canvas.md) | HTML/JSON, templates, resources, page lifecycle, composition, and export |
+| [Agent integration](docs/architecture/mcp.md) | MCP discovery, skill installation, Host validation, and service lifecycle |
+| [Settings and persistence](docs/architecture/settings.md) | Preference ownership, configuration I/O, appearance, language, and save scheduling |
+| [Shared app shell](docs/architecture/shell.md) | Initialization, windows, layout, debug FPS, and platform behavior |
+| [Library terminal](docs/architecture/terminal.md) | Terminal selection, commands, path quoting, handoff, and failure handling |
+| [WebView integration](docs/architecture/webview.md) | Generic native component construction, visibility, input, and composition limits |
+| [App packaging](docs/architecture/packaging.md) | CLI, targets, icons, resources, signing, runtime libraries, and output replacement |
 
-## 仓库布局
+## Repository layout
 
 ```text
-AGENTS.md               开发与文档维护约定
-ARCHITECTURE.md         系统总览与专题索引
-README.md               产品介绍与快速开始
-CHANGELOG.md            用户可见的待发布变更与已确认发布记录
-docs/architecture/      每个主题一份当前系统说明
-docs/build.md           运行、构建与应用交付
-docs/mcp.md             客户端连接与 MCP 使用
-docs/requirements.md    LOC 需求编号与既有状态
-package.json            Bun 工作区清单
-source/Cargo.toml       工作区及直接依赖基线
-source/Cargo.lock       解析后的版本
-source/crates/          产品与通用 Rust 包
-source/resources/skills/ 随应用打包并按需软链接安装的 skills
-source/packer.toml      应用身份与打包资源
-.vscode/                开发与构建任务
-dist/                   应用产物，Git 忽略
+AGENTS.md               Development and documentation maintenance rules
+ARCHITECTURE.md         System overview and subject index
+README.md               Default English product introduction and quick start
+README.zh-CN.md         Simplified Chinese translation with language switching
+CHANGELOG.md            Pending user-visible changes and confirmed releases
+LICENSE                 MIT license
+docs/architecture/      Current system description, one document per subject
+docs/build.md           Running, building, and app delivery
+docs/mcp.md             Client connections and MCP usage
+source/Cargo.toml       Workspace and direct dependency baseline
+source/Cargo.lock       Resolved versions
+source/crates/          Product and generic Rust packages
+source/resources/skills/ Bundled skills installed through symlinks on demand
+source/packer.toml      App identity and packaging resources
+.vscode/                Development and build tasks
+dist/                   App outputs, ignored by Git
 ```
 
-根目录 Bun 工作区管理 JavaScript/TypeScript 子包，Cargo 工作区管理 `source/crates/`。文档检查实现归已安装的 project-docs 技能所有，自动检查根目录与 `docs/` 下的 Markdown。当前没有 JavaScript/TypeScript 子包，`package.json` 的 `workspaces` 为空；新增时登记实际包路径。应用版本继续由 `source/Cargo.toml` 维护。
+The Cargo workspace manages `source/crates/`. There are currently no JavaScript/TypeScript subpackages or root Bun workspace manifest. When introducing subpackages, register their actual paths in the new workspace manifest. The app version remains in `source/Cargo.toml`.
 
-## 验证与已知限制
+## Verification and known limitations
 
-日常检查规则见 [AGENTS.md](AGENTS.md)，运行与平台构建环境见[构建说明](docs/build.md)。需求编号及既有状态见[需求索引](docs/requirements.md)。历史检查记录不代表当前提交已重新验证。
+See [AGENTS.md](AGENTS.md) for routine checks and [Running and building](docs/build.md) for platform build environments. Historical check records do not establish that the current commit has been revalidated.
 
-原生画布当前支持 macOS。Windows 构建与原生行为需要 Windows 工具链和实机验证，macOS 编译不能代替。中文混排和表格文字裁切的已知问题见工作区专题。退出保存受 GPUI 等待时限约束，具体边界见设置专题。
+Native canvases currently support macOS. Windows builds and native behavior require Windows tooling and hardware verification; macOS compilation is not a substitute. The workspace subject records known clipping issues with mixed Chinese text and table text. Shutdown saving is constrained by GPUI's wait limit; see the settings subject for details.

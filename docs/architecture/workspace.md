@@ -1,72 +1,72 @@
-# 桌面工作区
+# Desktop workspace
 
-`locus-workspace` 编排窗口内的导航、当前笔记、焦点、历史、画布与产品动作。文件内容由[文档库](library.md)拥有，运行时偏好由[设置实体](settings.md)拥有，窗口和面板通用行为由[共享壳](shell.md)提供。
+`locus-workspace` orchestrates navigation, current notes, focus, history, canvases, and product actions within a window. The [Library](library.md) owns file content, the [Settings entity](settings.md) owns runtime preferences, and the [Shared shell](shell.md) provides generic window and panel behavior.
 
-## 布局与页面
+## Layout and pages
 
-主窗口由左侧文档导航和当前笔记页面组成。Locus 初始及最小窗口尺寸为 980 × 820 个逻辑像素，左栏默认及最小宽度为 252；尺寸来自 `locus-preferences::config`。共享壳协调折叠、调宽和分隔线复位，折叠不改变原生窗口宽度。拖拽使用窗口级捕获监听，跨入画布或遮挡区域仍持续调整，释放后停止并保存宽度。
+The main window contains document navigation on the left and the current note page. Locus's initial and minimum window size is 980 × 820 logical pixels. The sidebar's default and minimum width is 252; sizes come from `locus-preferences::config`. The shared shell coordinates collapse, resizing, and divider reset without changing native window width when collapsing. Window-level capture listeners keep resizing across canvas or occluded regions. Releasing stops the drag and saves the width.
 
-普通笔记呈现 Markdown。存在画布入口时，标题栏及头部元数据以下呈现该笔记唯一画布。头部按内容确定高度，过长时独立滚动，画布占据剩余空间；画布页面使用全部可用宽度，保留左右内边距及窗口按钮空间。标题栏固定使用语义背景与底部分隔线，概要和 YAML 区域复用普通笔记内容。画布左侧固定预留 1px，不随界面字号放大。
+Ordinary notes display Markdown. Notes with a canvas entry point display their single canvas below the titlebar and header metadata. Header height follows content; long headers scroll independently while the canvas fills the remaining space. Canvas pages use all available width with side padding and clearance for window buttons. Their titlebars use semantic backgrounds and bottom separators; summaries and YAML reuse ordinary note content. A fixed 1 px inset on the canvas's left does not scale with interface font size.
 
-进入有画布的笔记自动创建网页，保留原阅读焦点；离开笔记、清空选择或切换文档库时释放。设置在当前窗口内替换工作区，隐藏并保留网页，返回恢复工作区与焦点。文件观察发现画布新增或删除时更新页面模式，已有源码保存后通过手动刷新或重新进入生效。画布加载、主题、资源、导出与失败处理由[画布专题](canvas.md)维护。
+Entering a canvas note creates a page automatically and preserves reading focus. Leaving, clearing selection, or switching libraries releases it. Settings replaces the workspace in the same window, hiding and retaining the page. Returning restores workspace and focus. Watching canvas addition or removal updates page mode. Saved changes to existing source load on manual refresh or reopening. See [Canvas](canvas.md) for loading, themes, resources, export, and failures.
 
-## 文档导航
+## Document navigation
 
-`workspace/sidebar.rs` 使用 GPUI Kit 的 `base::Tree` 与长期持有的 `TreeState`，提供虚拟列表、键盘导航及树形可访问语义。应用提供行呈现、笔记图标、附件数量、Git 提示、右键菜单与同级排序。节点身份来自文档路径，同名节点不能共享身份。
+`workspace/sidebar.rs` uses GPUI Kit's `base::Tree` and a retained `TreeState` for virtual lists, keyboard navigation, and tree accessibility semantics. The app provides row presentation, note icons, attachment counts, Git hints, context menus, and sibling ordering. Node identities derive from document paths; same-named nodes cannot share identity.
 
-启动、选择、排序、库切换和扫描更新同步 Tree 投影，保留仍有效的展开状态。展开事件回传工作区；Tree 发起的选择携带实际展开状态，不能因节点有子项而重新展开。上下键移动选择，左右键和 Enter 展开或收起分支。
+Startup, selection, reordering, library switches, and scan updates synchronize the Tree projection while preserving valid expansion state. Expansion events return to the workspace. Tree selections carry the actual expansion state and must not re-expand a node merely because it has children. Up/down changes selection; left/right and Enter expand or collapse branches.
 
-列表使用 0.5 rem 横向内边距，滚动条贴齐滚动区域右边缘。同级排序动画由工作区持有统一起始时间，持续 150 毫秒；条目重建只采样已有进度，结束后清理，库切换或投影替换取消动画，减少动态效果时直接呈现最终位置。顺序独立保存在 `sidebar-order.toml`，不改写文档目录。
+Lists use 0.5 rem horizontal padding, with scrollbars aligned to the scroll region's right edge. The workspace owns a common start time for sibling-order animations, lasting 150 ms. Rebuilt rows sample existing progress; completion clears it. Library switches or projection replacements cancel animation, and reduced-motion mode presents final positions directly. Order persists separately in `sidebar-order.toml`, without rewriting document directories.
 
-文档与设置导航的选中、悬停背景使用 5% 透明度的主题前景色，选中文字与图标使用完整前景色。底部显示只读 MCP 状态，通用设置按钮由壳层提供；Debug 帧率控件的统计与生命周期见共享壳。
+Document and settings navigation use selection and hover fills at 5% opacity of theme foreground, with full foreground for selected text and icons. The bottom displays read-only MCP status; the shell supplies the generic settings button. See the shared shell for debug FPS statistics and lifecycle.
 
-## 选择与历史
+## Selection and history
 
-- 选择笔记更新祖先展开链、滚动位置和窗口内前进后退历史，再后台读取正文。
-- 普通选择清空前进分支；前进、后退及鼠标侧键使用同一转换。切换文档库清空历史，失效路径从历史中移除。
-- 启动只恢复当前投影中有效的选择；当前笔记删除或归档后清除页面。
-- 刷新保留已有内容与阅读位置；正文实际变化或切换笔记时清理失效的选择和临时交互状态。读取任务按库路径与读取代次隔离，迟到结果不能覆盖新选择。
+- Selecting a note updates ancestor expansion, scrolling, and window-local back/forward history, then reads the body in the background.
+- Ordinary selection clears forward history. Back, forward, and mouse side buttons use the same transition. Library switches clear history, and invalid paths are removed.
+- Startup restores only selections valid in the current projection. Deleting or archiving the current note clears its page.
+- Refresh retains content and reading position. Actual body changes or note switches clear invalid selections and transient interaction state. Reads are isolated by library path and generation; late results cannot overwrite new selections.
 
-## 阅读与元数据
+## Reading and metadata
 
-普通笔记的标题与图标位于标题栏，概要、描述、自定义 YAML 与正文位于阅读区域。内容顶部留白为 3.5 rem。自定义属性只呈现当前笔记值，保留对象、数组、空集合、null 和多行字符串。
+Ordinary note titles and icons appear in the titlebar. Summaries, descriptions, custom YAML, and body appear in the reading area, with 3.5 rem top spacing. Custom properties present current-note values, retaining objects, arrays, empty collections, null, and multiline strings.
 
-`workspace/note_metadata.rs` 递归组合 GPUI Kit DescriptionList。每层按实际界面字体、字重及窗口 rem 测量最长 key，列宽向上取整并保持 key 单行，不设比例上限；值允许换行。数组按原顺序从 1 编号，嵌套对象与数组逐层呈现。属性单元格上下留白为 0.125 rem，关闭组件边框、分隔线和标签背景。
+`workspace/note_metadata.rs` recursively composes GPUI Kit DescriptionList. Each level measures the longest key with the actual interface font, weight, and window rem, rounds column width upward, and keeps keys on one line without a proportional cap. Values wrap. Arrays retain order and are numbered from 1; nested objects and arrays expand recursively. Cells use 0.125 rem vertical spacing, with component borders, separators, and label backgrounds disabled.
 
-Markdown 使用 `gpui_kit::component::text::TextView`。当前笔记持有 `Entity<TextViewState>`，同一笔记重载更新正文，切换笔记释放旧状态。框架拥有通用解析、排版、连续选择、全选和复制。代码块完整呈现，使用代码字体与主题前景色，参与整篇选择和复制；不启用语法高亮，不提供独立复制或展开收起按钮。
+Markdown uses `gpui_kit::component::text::TextView`. The current note retains an `Entity<TextViewState>`. Reloading the same note updates its body; switching releases old state. The framework owns generic parsing, layout, continuous selection, select all, and copy. Code blocks display fully, use the code font and theme foreground, and participate in whole-document selection and copy. They have no syntax highlighting or separate copy and expand/collapse buttons.
 
-`locus-ui/src/markdown_extensions/` 通过块与行内插件接入图库、附件、图片、链接图标及导航回调。解析器产生数据，渲染读取当前附件、语言与图标投影；扩展声明不进入纯文本复制结果。扩展使用 TextView 已依赖的 `markdown` 解析库，文件边界见文档库。
+`locus-ui/src/markdown_extensions/` adds galleries, attachments, images, link icons, and navigation callbacks through block and inline plugins. Parsing produces data; rendering reads current attachments, language, and icon projections. Extension declarations are excluded from plain-text copy output. Extensions reuse the `markdown` parser already used by TextView. See the library subject for file boundaries.
 
-## 动作与焦点
+## Actions and focus
 
-笔记标题栏菜单与侧栏右键菜单直接绑定目标笔记，提供编辑、打开所在目录、图标上传和归档。两处菜单不能依赖另一篇当前选择。标题栏还提供复制引用；有画布时提供下载按钮，准备期间忙碌并禁用，行为见画布专题。
+The note titlebar toolbar provides copy reference, edit note, open directory, and a more menu in that order. The more menu offers icon upload and archiving. Sidebar context menus retain edit, open directory, icon upload, and archiving, binding directly to their target notes rather than another current selection. Canvas notes also have a download button before copy, busy and disabled during preparation; see the canvas subject.
 
-命令面板通过 macOS“显示”菜单或 Command/Ctrl+E 打开，同一快捷键再次关闭。列表统一提供应用命令、当前笔记命令和当前投影中的可见笔记；搜索不预读全部正文。菜单、按钮、面板和快捷键复用同一 Action 与启用条件。确认后关闭，Escape 取消并恢复焦点，面板与遮罩同步过渡。
+Open the command palette from the macOS View menu or Command/Ctrl+E; the same shortcut closes it. It includes app commands, current-note commands, and visible notes from the current projection. Search does not preload all bodies. Menus, buttons, palette, and shortcuts reuse the same Actions and enablement conditions. Confirmation closes it; Escape cancels and restores focus. The palette and backdrop transition together.
 
-Command/Ctrl+R 和 F5 刷新获得焦点的画布，否则重新读取当前笔记正文。Command/Ctrl+W 关闭窗口，Command/Ctrl+, 打开设置，Command/Ctrl 与反引号启动外部 Agent。画布焦点下同样有效；终端交接与重复提交保护见[文档库终端](terminal.md)。
+Command/Ctrl+R and F5 refresh the focused canvas or otherwise reload the current body. Command/Ctrl+W closes the window, Command/Ctrl+, opens settings, and Command/Ctrl+backtick launches an external Agent. They also work under canvas focus. See [Library terminal](terminal.md) for handoff and duplicate-submit protection.
 
-全选、复制、剪切和粘贴使用 GPUI Kit 编辑动作与标准快捷键。`commands.rs` 通过 `MenuItem::os_action` 关联原生编辑命令；macOS 交给当前原生响应者，WKWebView 处理页面选区及编辑目标，GPUI 输入继续使用组件行为。普通页面文字保持只读，剪切与粘贴只作用于可编辑目标。
+Select all, copy, cut, and paste use GPUI Kit editing Actions and standard shortcuts. `commands.rs` associates native editing commands through `MenuItem::os_action`. On macOS, the current native responder handles them: WKWebView handles page selections and editing targets, while GPUI inputs retain component behavior. Ordinary page text is read-only; cut and paste affect only editable targets.
 
-未选择笔记或选中无正文目录时，主内容标题栏文字与空白区域可拖动窗口。工具按钮的点击、拖拽、双击与禁用命中均隔离窗口拖动。平台窗口按钮、材质和关闭语义见共享壳；设置布局与状态保存见设置专题。
+Without a selected note or when selecting a directory without a body, main-content titlebar text and empty space drag the window. Tool buttons isolate clicks, drags, double-clicks, and disabled hit areas from window dragging. See the shell subject for platform window controls, materials, and closing, and settings for layout and state saving.
 
-## 界面与状态约定
+## Interface and state conventions
 
-工作台以当前内容和精确操作为中心，用留白、对齐、文字权重与克制边界建立层级。导航和状态退居辅助位置，强调色用于主要操作、选中、焦点或明确的语义状态；卡片用于独立对象或确需抬升的层级。
+The workspace centers current content and precise operations. Spacing, alignment, text weight, and restrained boundaries establish hierarchy. Navigation and status remain supporting elements. Accent color marks primary actions, selection, focus, or explicit semantic states. Cards serve independent objects or layers that need elevation.
 
-主题、色彩、字体、圆角、阴影和状态使用 GPUI Kit Theme 的语义 token，通用组件、图标、滚动条与窗口根复用框架。图标使用统一图标族与尺寸；内容呈现不添加装饰性 Emoji、霓虹、渐变文字或无信息作用的动效。框架无法表达稳定行为时建立小型组合组件，保留原生控件和桌面交互语义。原生材质与不透明内容表面的边界见共享壳。
+Themes, colors, fonts, radii, shadows, and states use GPUI Kit Theme semantic tokens. Generic components, icons, scrollbars, and window roots reuse the framework. Icons share a family and size. Content presentation avoids decorative emoji, neon, gradient text, and motion without information. Small compositions address behavior the framework cannot express reliably while preserving native controls and desktop interaction semantics. See the shell for native materials and opaque content surfaces.
 
-中英文保持相同信息层级与控件结构，语言切换同步业务文案、组件 locale 和原生菜单。路径、长标题、代码、表格与本地化文本安全换行或截断；窗口缩放和浮层边界不能造成页面级横向溢出。
+English and Chinese share information hierarchy and control structure. Language changes synchronize business copy, component locale, and native menus. Paths, long titles, code, tables, and localized text wrap or truncate safely. Window resizing and overlays must not cause page-level horizontal overflow.
 
-加载、空白、错误、断连、禁用、选中、冲突和完成来自真实状态，说明影响与可用动作。用户应能判断当前文档库、笔记、操作对象及持久化结果。空状态指向下一步，错误提供恢复动作，文件与派生视图不一致时暴露冲突。删除、覆盖、回退、外部权限和可能向远程服务发送内容的操作在执行前说明对象、范围与影响。
+Loading, empty, error, disconnected, disabled, selected, conflict, and completed states reflect reality, explain impact, and expose available actions. Users can identify the current library, note, target, and persistence outcome. Empty states suggest a next step, errors offer recovery, and disagreement between files and derived views exposes conflicts. Deletion, overwrite, rollback, external permissions, and operations that may send content to remote services explain their object, scope, and impact before execution.
 
-可访问性以 WCAG AA 为底线，提供完整键盘路径、可见焦点、逻辑 Tab 顺序、足够对比度和屏幕阅读器可理解的名称与状态。状态色配合文字、图标或可访问名称；关键操作不只依赖 hover、颜色或动画。动效只表达反馈或空间变化，保留阅读位置，并尊重系统减少动态效果。当前窗口使用桌面结构，窗口尺寸、长短内容、溢出和浮层均需按这一结构验证。
+Accessibility uses WCAG AA as its baseline, including complete keyboard paths, visible focus, logical Tab order, sufficient contrast, and screen-reader names and states. State colors pair with text, icons, or accessible names. Essential actions do not depend solely on hover, color, or animation. Motion conveys feedback or spatial change, preserves reading position, and respects reduced-motion settings. Validate desktop structure across window sizes, content lengths, overflow, and overlays.
 
-## 已知问题
+## Known issues
 
-现有实机记录报告：含行内代码的中文正文及含链接按钮的表格单元格可能右侧裁切，尚无修复记录。移除 Locus 插件和自定义字体后，原生行内代码仍可触发越界。GPUI Base 0.6.6 的 `text/inline_flow.rs` 逐字符估算换行宽度，最终按整段字形绘制，中文混排可能低估宽度。既有 18px 系统字体对照中，`中文，中文` 的估算为 80.46px、实际为 89.46px；300px 换行对照估算 294.57px、实际 303.57px。链接按钮的测量与绘制尚未独立核实。这是既有问题依据，本次文档整理未重新测量。
+Existing hardware reports describe right-side clipping in Chinese body text containing inline code and in table cells containing link buttons, with no recorded fix. Native inline code still overflows after removing Locus plugins and custom fonts. GPUI Base 0.6.6's `text/inline_flow.rs` estimates wrapping character by character but paints complete shaped spans, potentially underestimating mixed Chinese text width. In an existing 18 px system-font comparison, the sample `\u4E2D\u6587\uFF0C\u4E2D\u6587` (Unicode escapes) was estimated at 80.46 px but measured at 89.46 px. A 300 px wrapping comparison estimated 294.57 px but measured 303.57 px. Link-button measurement and painting have not been independently verified. These are existing issue records, not new measurements from documentation maintenance.
 
-## 验证边界
+## Verification boundaries
 
-工作区测试覆盖 Tree 投影和稳定身份、排序后的选择、展开收起、统一动画截止时间、导航历史、迟到任务、窗口级拖动、菜单对象绑定、元数据投影和界面保存顺序。TextView 与扩展回归由 `locus-ui` 测试覆盖。
+Workspace tests cover Tree projections and stable identity, selection after ordering, expansion/collapse, shared animation deadlines, navigation history, late tasks, window-level dragging, target binding for menus, metadata projections, and interface-save order. `locus-ui` tests cover TextView and extensions.
 
-实际验收需检查长列表滚动、拖拽、普通/画布笔记、窄窗口混排和表格、跨段落选择、设置往返与焦点、菜单及键盘动作、明暗主题、中英文、全屏与最大化。无界面回归和编译检查不能代替原生窗口交互、文字排版与可访问性验收。
+Acceptance requires checking long-list scrolling, dragging, ordinary and canvas notes, mixed text and tables in narrow windows, cross-paragraph selection, settings transitions and focus, menus and keyboard actions, both themes and languages, fullscreen, and maximization. Headless regressions and compilation do not replace native-window interaction, text-layout, or accessibility acceptance.

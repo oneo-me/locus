@@ -2,8 +2,8 @@
 mod example {
     use gpui_kit::component::{Root, Theme, button::Button};
     use gpui_kit::{
-        AppContext, Context, Entity, Render, Window, WindowBackgroundAppearance, WindowOptions,
-        div, prelude::*,
+        AppContext, Context, Entity, Refineable as _, Render, StyleRefinement, Window,
+        WindowBackgroundAppearance, WindowOptions, div, prelude::*,
     };
     use oneo_gpui_webview::{WebView, WebViewBuilder};
 
@@ -73,11 +73,12 @@ mod example {
             .with_assets(gpui_kit::assets::Assets)
             .run(|cx| {
                 gpui_kit::init(cx);
-                cx.open_window(
+                let (handle, _) = gpui_kit::open_window(
                     WindowOptions {
                         window_background: WindowBackgroundAppearance::Transparent,
                         ..Default::default()
                     },
+                    cx,
                     |window, cx| {
                         let mut webview = WebView::new(
                             WebViewBuilder::new().with_html(include_str!("composition.html")),
@@ -87,15 +88,23 @@ mod example {
                         .unwrap();
                         webview.set_visible(true);
                         let webview = cx.new(|_| webview);
-                        let view = cx.new(|_| Composition {
+                        cx.new(|_| Composition {
                             webview,
                             overlay: true,
                             clicks: 0,
-                        });
-                        cx.new(|cx| Root::new(view, window, cx).bg(Theme::global(cx).transparent))
+                        })
                     },
                 )
                 .unwrap();
+                handle
+                    .downcast::<Root>()
+                    .unwrap()
+                    .update(cx, |root, _, cx| {
+                        root.style()
+                            .refine(&StyleRefinement::default().bg(Theme::global(cx).transparent));
+                        cx.notify();
+                    })
+                    .unwrap();
                 cx.activate(true);
             });
     }

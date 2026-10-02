@@ -1,55 +1,55 @@
-# Agent 接入
+# Agent integration
 
-本篇维护当前行为、实现边界与验收要求。需求编号见[需求索引](../requirements.md)。
+This document owns current behavior, implementation boundaries, and acceptance requirements.
 
-## 目标与入口
+## Purpose and entry point
 
-Locus 通过一个 Streamable HTTP `/mcp` 入口发现当前本地文档库的笔记，返回元数据与真实文件路径。外部客户端拥有文件读写、Agent loop、模型调用、执行权限与会话；Locus 不提供完整操作接口、内容传输工具或软件文档资源查询。客户端需要访问同一文件系统，远程 MCP 连接本身不授予文件编辑能力。
+Locus discovers notes in the current local library through a single Streamable HTTP `/mcp` endpoint, returning metadata and real file paths. External clients own file reads and writes, the Agent loop, model calls, execution permissions, and sessions. Locus does not provide a complete operation interface, content-transfer tools, or software-documentation resource queries. Clients need access to the same filesystem; a remote MCP connection alone does not grant file-editing access.
 
-使用方法由随应用发布的 [Locus skill](../../source/resources/skills/locus/SKILL.md) 维护。初始化指令只说明只读发现能力并指向已安装的 skill，三个工具说明保留最小能力描述，参数 schema 说明接受的路径形式。没有内置特殊文档查询地址，也不声明 MCP Resources 能力。
+The bundled [Locus skill](../../source/resources/skills/locus/SKILL.md) defines usage. Initialization instructions state only read-only discovery capabilities and point to the installed skill. The three tool descriptions retain minimal capability descriptions, and parameter schemas explain accepted path forms. There is no special built-in documentation query address or declared MCP Resources capability.
 
-## 发现工具
+## Discovery tools
 
-`/mcp` 暴露三个只读工具：
+`/mcp` exposes three read-only tools:
 
-- `list_articles`：`parent` 接受父级库内相对路径或 `locus://` 地址，分页列出直接子笔记；空值或 `locus://` 浏览库根。默认 50 条，最多 200 条，以 `nextCursor` 继续分页。
-- `search_articles`：在库内路径、标题、概要、附件名和正文中执行不区分大小写的包含检索，返回有限正文摘要。默认 20 条，最多 100 条。
-- `resolve_article`：`path` 接受已知库内相对路径或 `locus://` 地址，两种形式均接受末尾 `/index.md`；库根不可解析为笔记。拒绝空段、`.`、`..` 和越界路径。
+- `list_articles`: `parent` accepts a library-relative parent path or `locus://` address and lists direct child notes with pagination. An empty value or `locus://` browses the library root. The default limit is 50 and the maximum is 200; continue with `nextCursor`.
+- `search_articles`: performs case-insensitive substring searches across library paths, titles, summaries, attachment names, and bodies, returning bounded body excerpts. The default limit is 20 and the maximum is 100.
+- `resolve_article`: `path` accepts a known library-relative path or `locus://` address; both forms accept a trailing `/index.md`. The library root cannot resolve to a note. Empty segments, `.`, `..`, and out-of-bounds paths are rejected.
 
-结果包含元数据、用于层级导航的 `path`、绝对文件路径 `file` 与目录路径 `directory`。正文及附件由客户端自身文件工具维护。普通导航排除归档笔记及后代，发现工具复用这一投影；没有选择文档库时调用返回真实错误。
+Results include metadata, hierarchy navigation `path`, absolute file path `file`, and directory path `directory`. Clients maintain bodies and attachments with their own filesystem tools. Discovery reuses the ordinary navigation projection, excluding archived notes and descendants. Calls without a selected library return a real error.
 
-`locus://` 地址复用文档库共享解析器，百分号编码仅解码一次，拒绝编码后的越界片段、分隔符、空字节和无效 UTF-8；查询与片段不作为地址接受，名称中的井号须编码。普通相对路径保持字面值，不进行百分号解码。工具维持 `path` 与 `parent` 参数名，不使用 `uri` 参数。
+`locus://` addresses reuse the shared library parser. Percent encoding is decoded once, rejecting encoded out-of-bounds segments, separators, null bytes, and invalid UTF-8. Queries and fragments are not accepted; hashes within names must be encoded. Plain relative paths remain literal and are not percent-decoded. Tools retain the parameter names `path` and `parent`, not `uri`.
 
-## Skills 发布与安装
+## Skill distribution and installation
 
-`source/resources/skills/locus/` 持有 `SKILL.md` 与 `references/attachments.md`、`references/canvas.md`。入口定义文件发现、笔记模型与文件操作方法，按任务读取附件或画布参考规范；规范不复制到其他入口。共享画布模版由各文档库自行组织，软件不预设模版目录或清单。
+`source/resources/skills/locus/` contains `SKILL.md`, `references/attachments.md`, and `references/canvas.md`. The entry point defines file discovery, the note model, and filesystem workflows. Read attachment or canvas references as needed; their rules are not duplicated at other entry points. Each library organizes shared canvas templates itself; the app does not prescribe a template directory or manifest.
 
-`source/packer.toml` 把 `resources/skills` 复制到 macOS 的 `Contents/Resources/skills` 和 Windows 便携目录的 `resources/skills`。设置安装器从运行中可执行文件的位置解析应用资源目录，开发模式在应用包外运行时使用源码资源目录。安装是目录软链接，不编译嵌入或复制第二份内容。MCP 不加载或分发 skill 正文。
+`source/packer.toml` copies `resources/skills` to `Contents/Resources/skills` on macOS and `resources/skills` in the Windows portable directory. The settings installer resolves app resources relative to the running executable. Development runs outside a bundle use source resources. Installation creates a directory symlink rather than embedding or copying a second version. MCP neither loads nor distributes skill bodies.
 
-设置 → MCP 提供 Skills 安装位置和显式安装按钮，默认选择笔记库。两种目标分别是 `<文档库>/.agents/skills/locus` 与 `~/.agents/skills/locus`；位置偏好持久化到 `skills_location`，选择位置不自动安装、迁移或删除旧位置。未选择笔记库时对应安装按钮禁用并提示先选择。
+Settings → MCP provides a Skills location selector and explicit install button, defaulting to Library. Destinations are `<library>/.agents/skills/locus` and `~/.agents/skills/locus`. The preference persists as `skills_location`; changing it does not install, migrate, or remove the previous location. Without a library, its install button is disabled with guidance to select one.
 
-设置实体捕获点击时的位置，在后台创建指向资源目录的绝对目录软链接，防止重复提交，完成后显示实际安装路径或错误。已有软链接在暂存新链接后替换，失败尝试恢复原链接；恢复失败保留备份并报告其路径。已有实体目录或文件不覆盖，提示移走后重试。其他 skills 保留，安装父目录拒绝符号链接及非普通类型。资源目录必须包含 `SKILL.md`，缺失时不修改现有链接。悬空旧链接可以重新安装修复。
+The settings entity captures the location at click time and creates an absolute directory symlink to resources in the background. It prevents duplicate submissions and reports the actual destination or error. Existing symlinks are replaced after staging a new link; failure attempts to restore the old link. If restoration fails, the backup is retained and its path reported. Real directories and files are preserved, with guidance to move them before retrying. Other skills are retained, and installation parent directories reject symlinks and non-regular types. The resource directory must contain `SKILL.md`; if absent, existing links remain untouched. Reinstallation can repair dangling links.
 
-应用资源就地更新后链接读取新版；移动或删除应用包会使旧链接失效，需要从新位置重新安装。macOS 使用 Unix 软链接，Windows 使用目录符号链接；系统不允许创建链接时显示真实错误，需要在系统中启用相应权限后重试，不回退为复制。切换安装位置不删除旧链接，安装不会自动启动终端或 Agent。
+Updating app resources in place makes links read the new version. Moving or deleting the app bundle invalidates old links and requires reinstallation from the new location. macOS uses Unix symlinks; Windows uses directory symlinks. If the system forbids link creation, report the real error and require the corresponding system permission before retrying, without falling back to copying. Changing destinations does not delete old links. Installation does not launch a terminal or Agent automatically.
 
-## 监听与生命周期
+## Listening and lifecycle
 
-- 服务默认关闭，默认端口 `2301`；本机模式绑定 `127.0.0.1`，局域网模式绑定 `0.0.0.0`。
-- 局域网模式无身份验证，设置说明网络客户端可以搜索笔记内容并获取本机路径；MCP 工具本身不写入或删除内容。
-- 每条连接限制 Host：允许 localhost、回环地址及接收该请求的本机 IP，拒绝其他主机名和无关 IP。不枚举网卡，不选择或展示局域网地址。
-- 未配置库、无效地址、越界、缺失笔记与读取失败返回真实错误，不能返回虚构空结果。
-- 配置变化先停止旧服务，再按新配置启动；退出释放服务，旧会话不能跨服务重启或文档库切换复用。
-- 设置提供服务开关、局域网开关、端口、真实运行状态与启动错误。客户端按端口和既定路径自行配置，连接说明见[MCP 使用说明](../mcp.md)。
-- 侧栏左下角只显示不可点击的 MCP 图标：运行时绿色 success、失败时红色 danger、停止时灰色 muted_foreground。悬停提示和无障碍名称表达具体状态，不占用键盘操作焦点。
+- The service is disabled by default and uses port `2301`. Local mode binds `127.0.0.1`; local-network mode binds `0.0.0.0`.
+- Local-network mode has no authentication. Settings explains that network clients can search note content and obtain local paths. MCP tools themselves do not write or delete content.
+- Each connection restricts Host: localhost, loopback addresses, and the local IP receiving the request are allowed; other hostnames and unrelated IPs are rejected. The app does not enumerate interfaces or select or display a LAN address.
+- Missing libraries, invalid addresses, boundary violations, missing notes, and read failures return real errors instead of fabricated empty results.
+- Configuration changes stop the old service before starting a replacement. Quitting releases the service. Old sessions cannot survive service restarts or library switches.
+- Settings exposes service enablement, local-network mode, port, real runtime status, and startup errors. Clients configure their own port and fixed path; see [MCP access](../mcp.md).
+- The sidebar's bottom-left area displays a non-interactive MCP icon: success green when running, danger red on failure, and muted_foreground gray when stopped. Tooltips and accessible names identify the actual state without taking keyboard focus.
 
-## 服务实现
+## Service implementation
 
-`locus-mcp/src/lib.rs` 在每条连接的 Axum Router 中挂载一个发现服务。服务克隆共享会话管理器，通过 TCP 连接的 `local_addr` 取得接收请求的本机 IP，交给 rmcp 进行 Host 校验。MCP 包禁止 `unsafe`，不直接依赖 `libc`，用 `tower::service_fn` 组装连接服务，不自行实现 Host 解析或校验。`service.rs` 拥有三工具契约，直接消费文档库扫描、读取与地址解析接口，不依赖工作区选中项。
+`locus-mcp/src/lib.rs` mounts a discovery service in each connection's Axum Router. Service clones share a session manager. TCP `local_addr` supplies the IP receiving the request for rmcp Host validation. The MCP package forbids `unsafe`, does not directly depend on `libc`, and composes connection services with `tower::service_fn` rather than implementing Host parsing or validation itself. `service.rs` owns the three-tool contract and directly consumes library scanning, reading, and address parsing, independently of workspace selection.
 
-工作区将设置显式映射为 `McpConfiguration`，只传入文档库路径、启用状态、监听范围和端口。控制器不读取偏好存储，设置通过 `SettingsEvent` 通知工作区。Skill 安装属于设置能力，不改变服务配置或生命周期。
+The workspace maps settings explicitly to `McpConfiguration`, passing only the library path, enablement, listening scope, and port. The controller does not read preference storage; settings notifies the workspace through `SettingsEvent`. Skill installation belongs to settings and does not change service configuration or lifecycle.
 
-## 验证方法
+## Verification methods
 
-在 `source/` 运行 `cargo test -p locus-mcp -p locus-settings -p locus-preferences -p oneo-tool-packer --locked -- --test-threads=1`，检查三工具与返回结构、无 Resources 能力、移除的完整入口、软链接安装更新、实体目录保留与路径拒绝、位置偏好往返和两平台资源复制。HTTP 测试需允许本机临时端口监听；串行运行减少服务停止后端口重绑干扰。
+Run `cargo test -p locus-mcp -p locus-settings -p locus-preferences -p oneo-tool-packer --locked -- --test-threads=1` in `source/`. Check the three tools and response structures, absence of Resources capability and the removed full endpoint, symlink installation and updates, preservation of real directories and path rejection, location preference round trips, and resource copying on both platforms. HTTP tests require permission to listen on temporary local ports. Serial execution reduces port-rebinding interference after shutdown.
 
-设置安装的实际键盘操作、中英文、全局与笔记库授权和失败恢复需要目标平台实机确认。协议测试和资源复制测试不能替代原生设置或最终应用包验收。
+Keyboard operation of settings installation, both languages, global and library permissions, and failure recovery require target-platform confirmation. Protocol and resource-copy tests do not replace native settings or final app-bundle acceptance testing.

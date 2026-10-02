@@ -1,58 +1,58 @@
-# 文档库
+# Library
 
-本篇维护当前行为、实现边界与验收要求。需求编号见[需求索引](../requirements.md)。
+This document owns current behavior, implementation boundaries, and acceptance requirements.
 
-## 目标
+## Purpose
 
-文档库让用户和 Agent 围绕同一套本地 Markdown 文件工作。它拥有内容模型、文件边界和可重建投影，不拥有窗口布局、用户偏好、Agent runtime 或终端进程。
+The library lets users and Agents work on the same local Markdown files. It owns the content model, file boundaries, and rebuildable projections, not window layout, user preferences, Agent runtimes, or terminal processes.
 
-## 对象与规则
+## Objects and rules
 
-- 文档库是用户选择的本地根目录。
-- 非隐藏目录中的 `index.md` 定义一篇笔记；目录层级定义笔记层级，缺少 `index.md` 的目录可以只组织后代。
-- 笔记标题、图标、概要和归档状态来自 YAML frontmatter；标题缺失时可以回退到目录名。其他 frontmatter 字段作为自定义元数据保留和呈现。
-- `assets/` 存放笔记附件；`assets/icon.png` 是专用图标，不计为附件。`canvas/` 存放画布入口及资源。`assets`、`canvas` 是保留目录名，不允许作为笔记或组织目录；扫描不把它们的内容识别为子笔记。笔记路径排除符号链接、隐藏目录和 `node_modules`。
-- `locus://<库内路径>` 是正式库内地址；空格、百分号与井号可编码，导航、MCP 和画布组件统一解码一次并拒绝编码的分隔符和父目录。标准 Markdown 链接用于正文引用，目标解析不得越过文档库边界。
-- 显式归档笔记及其后代不进入普通导航；设置中仍可发现显式归档项并逐项恢复。
+- A library is a local root directory selected by the user.
+- `index.md` in a non-hidden directory defines a note. Directory nesting defines note hierarchy; directories without `index.md` may only organize descendants.
+- Titles, icons, summaries, and archive state come from YAML frontmatter. Missing titles may fall back to directory names. Other frontmatter fields are preserved and presented as custom metadata.
+- `assets/` holds attachments; the dedicated icon `assets/icon.png` does not count as an attachment. `canvas/` holds the canvas entry point and resources. The reserved directory names `assets` and `canvas` cannot be notes or organizing directories, and scanning does not identify their contents as child notes. Note paths exclude symlinks, hidden directories, and `node_modules`.
+- `locus://<library-relative path>` is the canonical library address. Spaces, percent signs, and hashes may be encoded. Navigation, MCP, and canvas components decode once and reject encoded separators and parent segments. Standard Markdown links reference body content; target resolution must stay within library boundaries.
+- Explicitly archived notes and their descendants are excluded from ordinary navigation. Settings can still discover explicitly archived entries and restore them individually.
 
-Markdown、画布与附件文件是内容事实。标题、导航、搜索、关系、附件数量、Git 状态和缩略图都是从文件派生的视图，不得反向成为权威数据。
+Markdown, canvas, and attachment files are content facts. Titles, navigation, search, relationships, attachment counts, Git status, and thumbnails derive from files and must not become authoritative data.
 
-自定义 YAML 属性按当前笔记的原始值展示，不继承父笔记属性，也不将自定义字段转换为网站或项目目录操作。
+Custom YAML properties display the current note's original values. They do not inherit parent properties or turn custom fields into website or project-directory operations.
 
-## 导航与阅读
+## Navigation and reading
 
-扫描建立导航和元数据投影，选择笔记后才读取完整正文。同级顺序由工作区独立持久化，不修改内容目录。阅读与元数据呈现见[桌面工作区](workspace.md#阅读与元数据)。
+Scanning builds navigation and metadata projections. Complete bodies are read only after selection. The workspace persists sibling order separately without changing content directories. See [Desktop workspace](workspace.md#reading-and-metadata) for reading and metadata presentation.
 
-## 画布
+## Canvases
 
-笔记以 canvas/index.html 或互斥的 canvas/index.json 标识唯一所属画布，扫描检查入口存在性，不执行源码。canvas 与 assets 为保留目录，画布文件不计入附件；安装的 node_modules 不作为笔记资源或库变化通知。画布存在时替换标题与元数据以下的阅读区域，无画布时显示正文。完整运行、复用与资源契约见[画布](canvas.md)，原生布局与命令见[桌面工作区](workspace.md)。
+A note identifies its single owned canvas with `canvas/index.html` or the mutually exclusive `canvas/index.json`. Scanning checks entry-point existence without executing source. `canvas` and `assets` are reserved directories. Canvas files do not count as attachments, and installed `node_modules` are excluded from note resources and library change notifications. A canvas replaces the reading area below the title and metadata; otherwise the body is displayed. See [Canvas](canvas.md) for runtime, reuse, and resource contracts and [Desktop workspace](workspace.md) for native layout and commands.
 
-## 文件变化与冲突
+## File changes and conflicts
 
-应用启动或切换文档库时建立不长期保存全部正文的内存投影，并以相同边界递归观察文件。相关事件短暂合并后在后台完整重建导航树，不直接按单条事件修改派生状态；无法可靠定位路径时执行全量核对。笔记或附件创建、删除和归档通过同一批次刷新投影。
+Startup and library switches build an in-memory projection without retaining every complete body. Recursive watching uses the same boundaries. Relevant events are briefly coalesced before a full background navigation-tree rebuild; individual events do not directly mutate derived state. If paths cannot be reliably identified, perform a full reconciliation. Note and attachment creation, deletion, and archiving refresh projections through the same batch.
 
-当前笔记相关文件变化时后台重新读取正文，期间保留已有内容和阅读位置；笔记删除、归档或不再有效时清除选择与正文。旧文档库或旧选择的迟到任务不得覆盖当前状态。观察失败时保留最后一次成功投影并暴露错误，不用轮询伪装为最新状态。
+Changes relevant to the current note reload its body in the background while retaining existing content and reading position. Deletion, archiving, or invalidation clears selection and body. Late tasks from old libraries or selections must not overwrite current state. Watch failures preserve the last successful projection and expose an error instead of using polling to imply freshness.
 
-文件内容与缓存、外部写入或用户操作冲突时优先暴露真实状态，不静默覆盖较新的文件。归档、恢复和图标更新必须原子维护真实文件，保留无关 frontmatter、正文、BOM 与换行风格；无法安全修改时拒绝写入。
+When files conflict with caches, external writes, or user operations, expose the real state and do not silently overwrite newer files. Archiving, restoration, and icon updates must maintain real files atomically, preserving unrelated frontmatter, body, BOM, and newline style. Reject writes that cannot be made safely.
 
-## Git 与附件
+## Git and attachments
 
-Git 状态以文档库根目录为仓库边界，把 `index.md`、`canvas/` 和 `assets/` 下任意层级文件的变化归并到所属笔记，并向祖先汇总后代变化。文档库不是 Git 根仓库或 Git 不可用时，只影响变化提示，不阻断阅读。
+Git status uses the library root as the repository boundary. Changes to `index.md` and files at any depth under `canvas/` and `assets/` are attributed to their owning notes and aggregated through ancestors. If the library is not a Git repository root or Git is unavailable, change indicators degrade without blocking reading.
 
-本地位图可以生成等比缩略图和笔记图标。缩略图与远端链接图标属于可重建缓存，不写入文档库；上传笔记图标时写入当前笔记的 `assets/icon.png` 并同步 frontmatter，不能覆盖符号链接或非普通文件。
+Local raster images can produce aspect-preserving thumbnails and note icons. Thumbnails and remote link icons are rebuildable caches outside the library. Uploading a note icon writes `assets/icon.png` in the current note and synchronizes frontmatter, without overwriting symlinks or non-regular files.
 
-## 接口与依赖
+## Interfaces and dependencies
 
-- [桌面工作区](workspace.md)消费导航、当前正文和明确的归档、恢复、图标更新操作。
-- [Agent 接入](mcp.md)复用同一内容模型；只读入口发现文件，客户端使用自身文件工具读写真实内容，操作方法由 skill 提供。
-- [文档库终端](terminal.md)只取得当前文档库根目录，不读取或修改领域状态。
-- `source/crates/locus-library/src/`负责扫描、读取、修改、Git 投影与文件观察，并保持对 GPUI 的独立。
-- GPUI Kit TextView 负责通用 Markdown 解析、排版与选择；`source/crates/locus-ui/src/markdown_extensions/` 通过扩展接口接入图库、附件、图片、链接图标和平台行为。
+- [Desktop workspace](workspace.md) consumes navigation, current bodies, and explicit archive, restore, and icon-update operations.
+- [Agent integration](mcp.md) reuses the content model. Read-only discovery locates files, clients read and write real content with their own filesystem tools, and skills define workflows.
+- [Library terminal](terminal.md) receives only the current library root and does not read or modify domain state.
+- `source/crates/locus-library/src/` owns scanning, reading, mutations, Git projections, and watching, independently of GPUI.
+- GPUI Kit TextView owns generic Markdown parsing, layout, and selection. `source/crates/locus-ui/src/markdown_extensions/` adds galleries, attachments, images, link icons, and platform behavior through extension interfaces.
 
-领域变更至少验证路径规范化、边界穿越、frontmatter 保真、归档、图标写入、创建删除刷新、Git 归并、文件事件批次、当前正文刷新和迟到任务隔离。
+Domain changes must at least verify path normalization, boundary traversal, frontmatter fidelity, archiving, icon writes, create/delete refreshes, Git aggregation, event batches, current-body reloads, and late-task isolation.
 
-## 内容操作实现
+## Content operation implementation
 
-`locus-library/src/access.rs` 定义逻辑地址与内容目标、文件读写、SHA-256 版本及安全边界；`access/organize.rs` 处理子树清单、移动删除和 Markdown 链接。复用扫描器元数据解释及现有图标、frontmatter 修改能力，保持与界面和画布消费者一致。`reference.rs` 统一将逻辑地址解码一次，导航、链接图标、MCP 与画布组件共同消费，避免编码地址在不同入口指向不同对象。笔记内容结构为 `index.md`、`assets/`、`canvas/` 和子笔记目录；内容接口按这一结构识别文件，用户配置继续使用 TOML。
+`locus-library/src/access.rs` defines logical addresses and content targets, file reads and writes, SHA-256 versions, and safety boundaries. `access/organize.rs` handles subtree manifests, moves, deletion, and Markdown links. It reuses scanner metadata interpretation and existing icon/frontmatter mutation capabilities for consistency with interface and canvas consumers. `reference.rs` decodes logical addresses once for navigation, link icons, MCP, and canvas components so encoded addresses identify the same object through every entry point. Content interfaces recognize the note structure of `index.md`, `assets/`, `canvas/`, and child-note directories; user configuration remains TOML.
 
-内容版本由 `content_version_from_reader` 分块计算 SHA-256，返回字节数与小写十六进制摘要。这些领域接口供直接消费文档库的代码使用；MCP 只暴露发现工具，外部客户端自行维护文件与处理编辑冲突。
+`content_version_from_reader` computes SHA-256 in chunks and returns the byte count and lowercase hexadecimal digest. These domain interfaces serve code consuming the library directly. MCP exposes only discovery tools; external clients maintain files and handle edit conflicts themselves.

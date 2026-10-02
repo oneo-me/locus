@@ -1,4 +1,5 @@
 [package]
+license.workspace = true
 name = "locus-canvas"
 version.workspace = true
 edition.workspace = true

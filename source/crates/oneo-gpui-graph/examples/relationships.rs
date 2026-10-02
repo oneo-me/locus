@@ -1,4 +1,4 @@
-use gpui_kit::component::{Root, Theme};
+use gpui_kit::component::Theme;
 use gpui_kit::{
     AppContext, Context, Entity, Render, SharedString, Subscription, Window, WindowOptions, div,
     prelude::*,
@@ -60,9 +60,8 @@ impl Render for Relationships {
 fn main() {
     gpui_kit::application().run(|cx| {
         gpui_kit::init(cx);
-        cx.open_window(WindowOptions::default(), |window, cx| {
-            let view = cx.new(Relationships::new);
-            cx.new(|cx| Root::new(view, window, cx))
+        gpui_kit::open_window(WindowOptions::default(), cx, |_, cx| {
+            cx.new(Relationships::new)
         })
         .unwrap();
         cx.activate(true);

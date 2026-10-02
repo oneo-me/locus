@@ -1,63 +1,52 @@
 # Locus
 
-Locus 是本地优先的 Markdown 知识工作台，使用 Rust 和 GPUI 构建原生桌面界面，服务于长期维护个人知识的开发者、创作者和一人团队。用户可以阅读与组织笔记、查看文件变化、打开笔记画布和外部终端，并通过 MCP 让 Agent 发现和维护同一套本地文件。
+**English** | [简体中文](README.zh-CN.md)
 
-Markdown 文档树始终是知识内容的唯一事实来源，用户可以直接访问、编辑和版本管理。外部 Agent 通过 MCP 接口定位文件，按 Locus skill 使用自身文件工具编辑；模型调用、账户、权限、远程数据策略与计费由对应客户端负责。
+Locus is a local-first Markdown knowledge workspace with a native desktop interface built with Rust and GPUI. It serves developers, creators, and one-person teams maintaining personal knowledge over time. Users can read and organize notes, inspect file changes, open note canvases and external terminals, and use MCP to let Agents discover and maintain the same local files.
 
-## 快速开始
+The Markdown document tree is the sole source of truth for knowledge content. Users can access, edit, and version the files directly. External Agents locate files through MCP and edit them with their own filesystem tools following the Locus skill. Their clients own model calls, accounts, permissions, remote-data policies, and billing.
 
-启动应用后，在设置中选择本地 Markdown 文档库。每篇笔记由目录中的 `index.md` 表达；应用会读取外部编辑器与 Agent 对真实文件的修改。
+## Quick start
 
-从源码运行需要 Rust 和平台构建工具，在项目根目录执行：
+After launching the app, select a local Markdown library in Settings. Each note is represented by `index.md` in its directory. The app reads changes made to those files by external editors and Agents.
+
+Running from source requires Rust and the platform's build tools. From the repository root:
 
 ```sh
 cd source
 cargo run
 ```
 
-平台要求、构建命令与产物说明见[运行与构建](docs/build.md)。
+On macOS, install Xcode and Command Line Tools and use macOS 13 or later. On Windows, install Visual Studio C++ tools and the Windows SDK.
 
-## 笔记与画布
+## Notes and canvases
 
-文档库是用户选择的本地根目录。目录层级组织笔记，每篇笔记的标题、图标、概要和归档状态来自 `index.md` 的 YAML frontmatter。`assets/` 存放附件，`assets/icon.png` 为笔记图标；`assets` 和 `canvas` 是保留目录，不作为子笔记。
+A library is a local root directory selected by the user. Directory nesting organizes notes. Each note's title, icon, summary, and archive state come from the YAML frontmatter in `index.md`. Attachments live in `assets/`, and `assets/icon.png` is the note icon. The reserved directories `assets` and `canvas` are not child notes.
 
-通过侧栏或命令面板选择笔记，标题栏可以复制引用，笔记菜单提供编辑、打开所在目录、图标上传和归档；侧栏右键菜单也绑定对应笔记。归档项在设置中恢复。外部文件变更会更新应用的派生视图，Git 状态提示正文、画布和附件的变化。
+Select notes through the sidebar or command palette. The titlebar toolbar provides, in order, copy reference, edit note, open directory, and a more menu. The more menu offers icon upload and archiving. The sidebar context menu retains all four operations and binds them to the corresponding note. Restore archived notes in Settings. External file changes update the app's derived views, and Git indicators reflect changes to the body, canvas, and attachments.
 
-Markdown 支持连续文本选择、全选和复制。概要和自定义 YAML 在正文头部展示，对象与数组递归展开并保留顺序、空集合与 null。实现和已知排版问题见[桌面工作区](docs/architecture/workspace.md)。
+Markdown supports continuous text selection, select all, and copy. Summaries and custom YAML properties appear above the body. Objects and arrays expand recursively, preserving order, empty collections, and null.
 
-有 `canvas/index.html` 与 `canvas/main.js` 的笔记运行 HTML/JavaScript 画布，模版调用方使用互斥的 `canvas/index.json`。原生画布当前支持 macOS，标题栏和头部以下显示网页，内置 Tailwind，通过系统 WebView 读取文件。画布笔记的 `index.md` 只保留 frontmatter；普通笔记显示 Markdown 正文。
+Notes with `canvas/index.html` and `canvas/main.js` run an HTML/JavaScript canvas. Template callers instead use the mutually exclusive `canvas/index.json`. Native canvases currently support macOS. Web content appears below the titlebar and metadata, includes bundled Tailwind, and reads files through the system WebView. A canvas note's `index.md` contains only frontmatter; ordinary notes display the Markdown body.
 
-保存画布后手动刷新或重新进入笔记生效，离开时释放网页临时状态。“下载画布”导出已保存的入口、数据和引用资源；默认保存到系统下载目录，可在通用设置中修改。结果为单个 HTML 或带 `canvas.html` 和资源的目录，同名自动编号；动态资源需先加载，在线数据仍需网络，模块或 Worker 可能需要本地 HTTP 服务。编写规则见随软件发布的 skill [画布参考](source/resources/skills/locus/references/canvas.md)与[附件参考](source/resources/skills/locus/references/attachments.md)。
+After saving a canvas, refresh it manually or reopen the note to load the changes. Leaving the note releases transient page state. Download canvas exports the saved entry point, data, and referenced resources. It saves to the system Downloads directory by default; change this in General settings. The result is a single HTML file or a directory containing `canvas.html` and resources, with automatic numbering for duplicate names. Dynamic resources must be loaded first, online data still requires a network, and modules or Workers may require a local HTTP server. Authoring rules are in the bundled skill's [canvas reference](source/resources/skills/locus/references/canvas.md) and [attachment reference](source/resources/skills/locus/references/attachments.md).
 
-## 外部 Agent
+## External Agents
 
-在终端设置中选择系统终端或 Ghostty，并选择 Codex、pi、OpenCode 或 Claude Code，默认系统终端与 Codex。需要先安装所选软件。Locus 在当前文档库根目录运行 `codex`、`pi`、`opencode` 或 `claude`；切换文档库、修改设置或退出 Locus 不结束已有外部会话。
+In Terminal settings, select the system terminal or Ghostty and choose Codex, pi, OpenCode, or Claude Code. The defaults are the system terminal and Codex. Install the selected software first. Locus runs `codex`, `pi`, `opencode`, or `claude` at the current library root. Switching libraries, changing settings, or quitting Locus does not terminate existing external sessions.
 
-macOS 系统终端使用 Terminal，每次创建新窗口；Ghostty 需要 1.3.0 或以上，优先在最近使用的窗口中新建标签页，没有窗口时创建窗口。启动加载 zsh 登录与交互配置，Agent 退出或找不到命令时保留 Shell。Windows 使用系统控制台。平台启动与错误处理见[文档库终端](docs/architecture/terminal.md)。
+On macOS, the system terminal is Terminal, which opens a new window for each launch. Ghostty requires version 1.3.0 or later and creates a new tab in the most recently used window, or a window when none exists. Launching loads zsh login and interactive configuration and keeps a shell open if the Agent exits or its command cannot be found. Windows uses the system console.
 
-| 操作 | macOS 快捷键 |
+| Action | macOS shortcut |
 | --- | --- |
-| 命令面板 | Command+E |
-| 设置 | Command+, |
-| 打开 Agent | Command 与反引号 |
-| 刷新当前笔记或聚焦的画布 | Command+R 或 F5 |
-| 关闭窗口 | Command+W |
+| Command palette | Command+E |
+| Settings | Command+, |
+| Open Agent | Command+backtick |
+| Refresh the current note or focused canvas | Command+R or F5 |
+| Close window | Command+W |
 
-其他平台使用对应的 Control 组合键。MCP 在设置中启用，默认关闭、端口为 `2301`；只提供 `/mcp` 只读发现。使用方法放在随应用发布的 skills 中，可在 MCP 设置中安装到笔记库或全局 `.agents/skills`。局域网模式没有身份验证，客户端可以搜索笔记内容并获取本机路径。连接与调用方式见[MCP 使用说明](docs/mcp.md)。
+Other platforms use the corresponding Control combinations. Enable MCP in Settings. It is disabled by default and uses port `2301`, exposing only read-only discovery at `/mcp`. Usage instructions live in the bundled skills, which MCP settings can install into the library or global `.agents/skills` directory. Local-network mode has no authentication; clients can search note content and obtain local paths.
 
-## 文档
+Source lives in `source/`; final app outputs live in `dist/`.
 
-- [架构](ARCHITECTURE.md)：模块边界、数据流、存储与专题索引。
-- [开发约定](AGENTS.md)：阅读顺序、工程规则与检查命令。
-- [发布记录](CHANGELOG.md)：用户可见的待发布变化与已确认发布记录。
-- [运行与构建](docs/build.md)：平台环境、版本与打包。
-- [MCP 使用说明](docs/mcp.md)：客户端连接与工具契约。
-- [需求索引](docs/requirements.md)：需求编号与既有实现状态。
-
-源码位于 `source/`，最终应用产物位于 `dist/`。项目文档使用已安装的 project-docs 技能检查器，在仓库根执行：
-
-```sh
-bun run "$HOME/.agents/skills/project-docs/scripts/check-docs.ts" --root .
-```
-
-需要 Bun 和已安装的 `project-docs` 技能。检查器自动扫描根目录与 `docs/` 下的 Markdown；检查预算、Subjects 索引、相对链接、标题锚点与 Unreleased 结构。
+Licensed under the [MIT License](LICENSE).

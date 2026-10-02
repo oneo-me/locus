@@ -282,6 +282,22 @@ impl Locus {
         .on_click(|_, window, cx| {
             window.dispatch_action(Box::new(crate::CopyCurrentNoteReference), cx)
         });
+        let edit_button = toolbar_icon_button(
+            "edit-note",
+            t!("workspace.note.edit", locale = language.locale()).into_owned(),
+            Icon::File,
+            theme,
+        )
+        .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::EditCurrentNote), cx));
+        let directory_button = toolbar_icon_button(
+            "open-note-directory",
+            t!("workspace.note.open_directory", locale = language.locale()).into_owned(),
+            Icon::FolderOpen,
+            theme,
+        )
+        .on_click(|_, window, cx| {
+            window.dispatch_action(Box::new(crate::OpenCurrentNoteDirectory), cx)
+        });
         let note_menu =
             self.render_note_menu(node, format!("note-menu-page-{}", node.path), theme, cx);
 
@@ -350,6 +366,8 @@ impl Locus {
                         )
                     })
                     .child(copy_button)
+                    .child(edit_button)
+                    .child(directory_button)
                     .child(note_menu),
             );
         div()

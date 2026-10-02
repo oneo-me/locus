@@ -15,7 +15,7 @@ mod sidebar;
 mod terminal;
 mod window_chrome;
 
-use gpui_kit::component::{ElementExt as _, Root};
+use gpui_kit::component::ElementExt as _;
 use gpui_kit::{
     AnyElement, App, Bounds, Context, Div, Entity, FocusHandle, FontWeight, MouseButton,
     MouseDownEvent, MouseMoveEvent, MouseUpEvent, NavigationDirection, Pixels, Render,
@@ -890,9 +890,6 @@ impl Locus {
 
 impl Render for Locus {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let sheet_layer = Root::render_sheet_layer(window, cx);
-        let dialog_layer = Root::render_dialog_layer(window, cx);
-        let notification_layer = Root::render_notification_layer(window, cx);
         let command_palette_overlay = self.render_command_palette_overlay(window, cx);
         let theme = Theme::global(cx).clone();
         let ui_font_family = self
@@ -979,10 +976,7 @@ impl Render for Locus {
             .when(!self.app_shell.is_settings_open(), |root| {
                 root.child(workspace)
             })
-            .children(sheet_layer)
             .children(command_palette_overlay)
-            .children(dialog_layer)
-            .children(notification_layer)
     }
 }
 

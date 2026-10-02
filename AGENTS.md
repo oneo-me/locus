@@ -1,18 +1,19 @@
 # Locus
 
-修改前完整阅读 [ARCHITECTURE.md](ARCHITECTURE.md)，再读 Subjects 中相关专题。Locus 是 Rust 与 GPUI Kit 构建的本地 Markdown 工作台；文档树拥有内容事实，工作区负责呈现与编排，外部终端拥有 Agent 会话。
+Read [ARCHITECTURE.md](ARCHITECTURE.md) in full before making changes, then read the relevant subjects listed in Subjects. Locus is a local Markdown workspace built with Rust and GPUI Kit. The document tree owns content facts, the workspace owns presentation and orchestration, and external terminals own Agent sessions.
 
-## 文档维护
+## Documentation maintenance
 
-描述当前机制，每个主题一份权威说明。机制变更同步更新所属专题及受影响的总览、索引和使用说明；用户可见变更同步维护 [CHANGELOG.md](CHANGELOG.md) 的 Unreleased，纯重构、测试和常规文档调整无需发布条目。
+Write project documentation and code comments in English, except for explicitly maintained translations such as `README.zh-CN.md`. Keep localized interface strings and multilingual test fixtures in their intended languages. Keep external development skills and private tooling paths out of project documentation; bundled Locus skills are product documentation. Maintain matching content in `README.md` and `README.zh-CN.md`, with reciprocal language links.
 
-文档与代码保持同一分支，合并时协调当前定义与验证依据。总览上限 16 KiB，专题上限 24 KiB；超出时按主题拆分，保留事实并更新 Subjects。
+Describe current mechanisms, with one authoritative document per subject. Update the owning subject and any affected overview, indexes, and usage instructions alongside mechanism changes. Record user-visible changes under Unreleased in [CHANGELOG.md](CHANGELOG.md); pure refactors, tests, and routine documentation edits do not need release notes.
 
-## 验证
+Keep documentation and code on the same branch. Reconcile current definitions and verification evidence during merges. The overview is limited to 16 KiB and each subject to 24 KiB. Split oversized documents by subject, preserve the facts, and update Subjects.
 
-完成前按[开发检查](docs/build.md#开发检查)验证受影响的包；界面变化需目标平台实机确认，不自动启动外部终端或 Agent 代替验收。文档变更在仓库根运行技能自带检查器和 `git diff --check`：
+## Verification
+
+Before finishing, validate affected packages according to [Development checks](docs/build.md#development-checks). Interface changes require confirmation on the target platform. Do not automatically launch external terminals or Agents as a substitute for acceptance testing. For documentation changes, verify size budgets, Subjects coverage, relative links, heading anchors, and changelog structure, then run `git diff --check` from the repository root:
 
 ```sh
-bun run "$HOME/.agents/skills/project-docs/scripts/check-docs.ts" --root .
 git diff --check
 ```
