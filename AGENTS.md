@@ -35,4 +35,4 @@ cargo clippy -p <package> --all-targets --all-features --locked -- -D warnings
 
 总览每次完整阅读，目标上限为 16 KiB；架构专题每篇上限为 24 KiB。超出时按主题拆分并更新总览索引，保留事实。检查器还校验相对链接与标题锚点，以及专题表和实际文档的一致性。
 
-`source/resources/docs/` 是随软件发布、由 MCP 编译嵌入的英文协议原文。项目文档链接同一源文件，避免复制出第二份协议。
+`source/resources/skills/` 是随软件发布、由设置安装器软链接安装的 skills 原文。项目文档链接同一源文件，避免复制出第二份协议。

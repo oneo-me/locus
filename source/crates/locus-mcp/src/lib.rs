@@ -4,8 +4,6 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::path::PathBuf;
 use std::thread::{self, JoinHandle};
 
-mod docs;
-mod full;
 mod service;
 
 use axum::Router;
@@ -14,11 +12,9 @@ use rmcp::transport::streamable_http_server::{
 };
 use tokio_util::sync::CancellationToken;
 
-use full::FullMcp;
 use service::LocusMcp;
 
 const MCP_PATH: &str = "/mcp";
-const FULL_MCP_PATH: &str = "/mcp/full";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum McpServerState {
@@ -103,16 +99,6 @@ impl McpServerController {
                         }
                     };
                     let service_root = root.clone();
-                    let library = std::sync::Arc::new(std::sync::Mutex::new(
-                        locus_library::LibraryAccess::new(root),
-                    ));
-                    let full_cancellation = server_cancellation.child_token();
-                    let full_service = StreamableHttpService::new(
-                        move || Ok(FullMcp::new(library.clone(), full_cancellation.clone())),
-                        LocalSessionManager::default().into(),
-                        StreamableHttpServerConfig::default()
-                            .with_cancellation_token(server_cancellation.child_token()),
-                    );
                     let service = StreamableHttpService::new(
                         move || Ok(LocusMcp::new(service_root.clone())),
                         LocalSessionManager::default().into(),
@@ -123,12 +109,8 @@ impl McpServerController {
                         move |stream: axum::serve::IncomingStream<'_, tokio::net::TcpListener>| {
                             let hosts = allowed_hosts(stream.io().local_addr().ok());
                             let mut service = service.clone();
-                            let mut full_service = full_service.clone();
-                            service.config.allowed_hosts = hosts.clone();
-                            full_service.config.allowed_hosts = hosts;
-                            let router = Router::new()
-                                .nest_service(FULL_MCP_PATH, full_service)
-                                .nest_service(MCP_PATH, service);
+                            service.config.allowed_hosts = hosts;
+                            let router = Router::new().route_service(MCP_PATH, service);
                             std::future::ready(Ok::<_, std::convert::Infallible>(router))
                         },
                     );
@@ -282,75 +264,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn both_endpoints_expose_builtin_docs_without_a_library() {
-        use rmcp::model::{ReadResourceRequestParams, ResourceContents};
-
-        let reserved = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
-        let port = reserved.local_addr().unwrap().port();
-        drop(reserved);
-        let configuration = McpConfiguration {
-            library_path: None,
-            enabled: true,
-            port,
-            local_network: false,
-        };
-        let controller = McpServerController::new(&configuration);
-        assert!(matches!(controller.state(), McpServerState::Running));
-        for endpoint in ["mcp", "mcp/full"] {
-            let transport = StreamableHttpClientTransport::from_uri(format!(
-                "http://127.0.0.1:{port}/{endpoint}"
-            ));
-            let client = ().serve(transport).await.unwrap();
-            let info = client.peer_info().unwrap();
-            assert!(info.capabilities.resources.is_some());
-            assert!(
-                info.instructions
-                    .as_ref()
-                    .unwrap()
-                    .contains("locus-docs://attachments")
-            );
-            let listed = client.list_resources(None).await.unwrap();
-            assert!(listed.next_cursor.is_none());
-            assert_eq!(listed.resources.len(), 2);
-            for (resource, expected) in listed.resources.iter().zip([
-                include_str!("../../../resources/docs/attachments.md"),
-                include_str!("../../../resources/docs/canvas.md"),
-            ]) {
-                assert_eq!(resource.mime_type.as_deref(), Some("text/markdown"));
-                assert_eq!(resource.size, Some(expected.len() as u64));
-                let result = client
-                    .read_resource(ReadResourceRequestParams::new(&resource.uri))
-                    .await
-                    .unwrap();
-                let value = serde_json::to_value(result).unwrap();
-                let contents: Vec<ResourceContents> =
-                    serde_json::from_value(value["contents"].clone()).unwrap();
-                assert_eq!(
-                    contents,
-                    vec![
-                        ResourceContents::text(expected, &resource.uri)
-                            .with_mime_type("text/markdown")
-                    ]
-                );
-            }
-            for uri in [
-                "locus-docs://missing",
-                "locus-docs://canvas/../attachments",
-                "locus://standard/canvas",
-                "file:///etc/passwd",
-            ] {
-                assert!(
-                    client
-                        .read_resource(ReadResourceRequestParams::new(uri))
-                        .await
-                        .is_err()
-                );
-            }
-            client.cancel().await.unwrap();
-        }
-    }
-
-    #[tokio::test]
     async fn streamable_http_exposes_the_three_read_only_tools() {
         let library = TestLibrary::new();
         let article = library.0.join("notes");
@@ -380,6 +293,7 @@ mod tests {
             client.peer_info().unwrap().protocol_version,
             rmcp::model::ProtocolVersion::V_2025_11_25
         );
+        assert!(client.peer_info().unwrap().capabilities.resources.is_none());
         let tools = client.list_all_tools().await.unwrap();
         let names = tools
             .iter()
@@ -438,6 +352,9 @@ mod tests {
         }
 
         client.cancel().await.unwrap();
+        let removed =
+            StreamableHttpClientTransport::from_uri(format!("http://127.0.0.1:{port}/mcp/full"));
+        assert!(().serve(removed).await.is_err());
         drop(controller);
     }
 }

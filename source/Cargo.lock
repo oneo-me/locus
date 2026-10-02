@@ -4597,7 +4597,6 @@ name = "locus-mcp"
 version = "0.2026.1"
 dependencies = [
  "axum",
- "base64 0.23.1",
  "locus-library",
  "rmcp",
  "schemars",
@@ -4627,6 +4626,7 @@ dependencies = [
 name = "locus-settings"
 version = "0.2026.1"
 dependencies = [
+ "dirs 6.0.0",
  "gpui-kit",
  "locus-library",
  "locus-mcp",
@@ -4636,6 +4636,7 @@ dependencies = [
  "rust-i18n",
  "serde-saphyr",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

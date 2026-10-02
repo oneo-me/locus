@@ -31,6 +31,6 @@ Keep headings, counts, captions, and explanations outside these blocks, in the s
 
 ## Agent access
 
-On the standard MCP endpoint, resolve the note and use the client's filesystem tools to maintain its files. On the full MCP endpoint, use the note's `attachment` content target with the exact filename and the text or upload tools. Use the separate `icon` and `canvas` resource kinds for those reserved resources. Respect versions when modifying content through the full endpoint.
+Resolve the note with MCP and use the client's filesystem tools to maintain its files. Keep the reserved icon separate from ordinary attachments.
 
-Canvas resource references use HTML and browser URL encoding; read the built-in `locus-docs://canvas` MCP resource for that contract.
+For canvas references, read [canvas.md](canvas.md).

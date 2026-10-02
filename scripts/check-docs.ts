@@ -86,7 +86,7 @@ export function checkDocs(directory = ROOT) {
     return texts.get(path)!;
   };
   const scan = (pattern: string) => [...new Bun.Glob(pattern).scanSync({ cwd: root, onlyFiles: true })];
-  const docs = new Set([...REQUIRED, ...scan("docs/**/*.md"), ...scan("source/resources/docs/**/*.md")]);
+  const docs = new Set([...REQUIRED, ...scan("docs/**/*.md"), ...scan("source/resources/skills/**/*.md")]);
 
   for (const doc of [...docs].sort()) {
     const source = join(root, doc);

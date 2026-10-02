@@ -5,3 +5,10 @@ settings.editor.system_default:
 settings.terminal.system:
   en: System terminal
   zh-CN: 系统终端
+
+settings.skills.library:
+  en: Library
+  zh-CN: 笔记库
+settings.skills.global:
+  en: Global
+  zh-CN: 全局

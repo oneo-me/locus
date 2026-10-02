@@ -2,7 +2,7 @@
 
 Locus 是本地优先的 Markdown 知识工作台，使用 Rust 和 GPUI 构建原生桌面界面，服务于长期维护个人知识的开发者、创作者和一人团队。用户可以阅读与组织笔记、查看文件变化、打开笔记画布和外部终端，并通过 MCP 让 Agent 发现和维护同一套本地文件。
 
-Markdown 文档树始终是知识内容的唯一事实来源，用户可以直接访问、编辑和版本管理。外部 Agent 可通过标准 MCP 接口定位文件后自行编辑，也可通过完整 MCP 接口直接操作笔记库；模型调用、账户、权限、远程数据策略与计费由对应客户端负责。
+Markdown 文档树始终是知识内容的唯一事实来源，用户可以直接访问、编辑和版本管理。外部 Agent 通过 MCP 接口定位文件，按 Locus skill 使用自身文件工具编辑；模型调用、账户、权限、远程数据策略与计费由对应客户端负责。
 
 ## 快速开始
 
@@ -27,7 +27,7 @@ Markdown 支持连续文本选择、全选和复制。概要和自定义 YAML �
 
 有 `canvas/index.html` 与 `canvas/main.js` 的笔记运行 HTML/JavaScript 画布，模版调用方使用互斥的 `canvas/index.json`。原生画布当前支持 macOS，标题栏和头部以下显示网页，内置 Tailwind，通过系统 WebView 读取文件。画布笔记的 `index.md` 只保留 frontmatter；普通笔记显示 Markdown 正文。
 
-保存画布后手动刷新或重新进入笔记生效，离开时释放网页临时状态。“下载画布”导出已保存的入口、数据和引用资源；默认保存到系统下载目录，可在通用设置中修改。结果为单个 HTML 或带 `canvas.html` 和资源的目录，同名自动编号；动态资源需先加载，在线数据仍需网络，模块或 Worker 可能需要本地 HTTP 服务。编写规则见随软件发布的[画布协议](source/resources/docs/canvas.md)与[附件协议](source/resources/docs/attachments.md)。
+保存画布后手动刷新或重新进入笔记生效，离开时释放网页临时状态。“下载画布”导出已保存的入口、数据和引用资源；默认保存到系统下载目录，可在通用设置中修改。结果为单个 HTML 或带 `canvas.html` 和资源的目录，同名自动编号；动态资源需先加载，在线数据仍需网络，模块或 Worker 可能需要本地 HTTP 服务。编写规则见随软件发布的 skill [画布参考](source/resources/skills/locus/references/canvas.md)与[附件参考](source/resources/skills/locus/references/attachments.md)。
 
 ## 外部 Agent
 
@@ -43,7 +43,7 @@ macOS 系统终端使用 Terminal，每次创建新窗口；Ghostty 需要 1.3.0
 | 刷新当前笔记或聚焦的画布 | Command+R 或 F5 |
 | 关闭窗口 | Command+W |
 
-其他平台使用对应的 Control 组合键。MCP 在设置中启用，默认关闭、端口为 `2301`；标准 `/mcp` 与完整 `/mcp/full` 共用服务。局域网模式没有身份验证，客户端可以读写和永久删除库内内容。连接与调用方式见[MCP 使用说明](docs/mcp.md)。
+其他平台使用对应的 Control 组合键。MCP 在设置中启用，默认关闭、端口为 `2301`；只提供 `/mcp` 只读发现。使用方法放在随应用发布的 skills 中，可在 MCP 设置中安装到笔记库或全局 `.agents/skills`。局域网模式没有身份验证，客户端可以搜索笔记内容并获取本机路径。连接与调用方式见[MCP 使用说明](docs/mcp.md)。
 
 ## 文档
 

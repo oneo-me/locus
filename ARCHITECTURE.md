@@ -2,14 +2,14 @@
 
 本篇是当前系统的总览。修改代码前完整阅读，再按[专题](#专题)选择与任务相关的详细说明。产品介绍与运行方式见 [README.md](README.md)，可见界面的约定由桌面工作区专题维护。
 
-Locus 是本地优先的 Markdown 知识工作台，使用 Rust 与 GPUI Kit 构建原生桌面界面。用户阅读、组织和审阅本地笔记，外部编辑器与 Agent 操作同一套文件。应用提供标准 MCP 文件发现与完整 MCP 笔记库操作两个入口。
+Locus 是本地优先的 Markdown 知识工作台，使用 Rust 与 GPUI Kit 构建原生桌面界面。用户阅读、组织和审阅本地笔记，外部编辑器与 Agent 操作同一套文件。应用提供只读 MCP 文件发现入口，使用方法由随软件发布并通过设置安装的 skills 提供。
 
 ## 核心约束
 
 1. **文档树拥有内容事实。** 每篇笔记由目录中的 `index.md` 表达，拥有 `assets/`、`canvas/` 和子笔记；无正文目录可以组织后代。
 2. **派生状态可重建。** 导航、搜索、关系、Git 状态和图像缓存来自真实文件，配置和缓存不能成为内容权威。
 3. **所有权明确。** 工作区编排选择与呈现，设置实体拥有运行时偏好，共享壳拥有窗口和通用布局，文档库负责文件模型与安全边界，MCP 控制器负责服务生命周期。
-4. **两个 MCP 入口共享文件与服务。** `/mcp` 返回原始路径供客户端文件工具协作；`/mcp/full` 通过逻辑地址直接维护文档库。外部客户端拥有模型调用、执行权限及会话。
+4. **MCP 发现真实文件。** `/mcp` 只读返回原始路径，外部客户端拥有文件操作、模型调用、执行权限及会话；使用规则由 Locus skill 提供。
 5. **画布由当前笔记拥有。** HTML/JavaScript 或 JSON 模版调用在 macOS 系统 WebView 内运行，工作区管理创建释放，画布包管理网页、资源与导出。
 6. **通用能力保持产品中立。** `oneo-gpui*` 接受中性配置、标签、数据和事件；Locus 产品模型、偏好与本地化留在产品包。
 
@@ -21,8 +21,7 @@ Locus 原生桌面进程
 │  └─ 主窗口：文档导航 + 当前笔记 / 内嵌设置
 │     └─ macOS WebKit：当前笔记画布
 └─ 可选 MCP 线程：Tokio + Axum + rmcp
-   ├─ /mcp：文件发现
-   └─ /mcp/full：逻辑对象与内容操作
+   └─ /mcp：只读文件发现
 
 本地文档树 ← 桌面应用 / MCP / 外部编辑器与 Agent
 外部终端 ← 工作区按需启动所选 Agent
@@ -32,7 +31,7 @@ Locus 原生桌面进程
 
 文件事件合并后在后台重建投影，当前笔记相关变化重新读取正文。读取结果按库路径与代次隔离，迟到任务不能覆盖新选择。画布入口新增或删除更新页面模式，已经加载的网页通过手动刷新或重新打开读取新源码。
 
-MCP 按调用访问同一文档库，完整操作串行执行并进行版本检查。工作区将设置映射为显式服务配置，变化时先停后启。外部 Agent 在触发时的文档库根目录启动，终端软件管理其认证、命令执行与后续会话。
+MCP 按调用发现同一文档库，客户端使用自身文件工具维护内容。工作区将设置映射为显式服务配置，变化时先停后启。Agent 在触发时的文档库根目录启动，工作区拥有终端标签，通用终端组件管理 PTY 与进程生命周期。
 
 ## 模块边界
 
@@ -45,7 +44,7 @@ MCP 按调用访问同一文档库，完整操作串行执行并进行版本检�
 | `locus-settings` | 偏好实体、设置页面、归档恢复与设置事件 |
 | `locus-preferences` | 产品字段、默认值、校验、存储名称与选项标签 |
 | `locus-library` | 文件模型、扫描、读写、观察、版本、链接与 Git 投影 |
-| `locus-mcp` | 工具与资源契约、传输会话、监听和停止控制 |
+| `locus-mcp` | 只读发现工具、传输会话、监听和停止控制 |
 | `locus-canvas` | WebView 宿主、资源协议、网页生命周期、主题与导出 |
 | `locus-ui` | Markdown 扩展、图标与图像缓存、平台文件和终端打开 |
 | `oneo-gpui` | 应用壳、窗口、布局、外观控件和 TOML 配置服务 |
@@ -76,7 +75,7 @@ MCP 按调用访问同一文档库，完整操作串行执行并进行版本检�
 | [文档库](docs/architecture/library.md) | 文件结构、地址、扫描、观察、Git、内容操作与安全边界 |
 | [桌面工作区](docs/architecture/workspace.md) | Tree 导航、阅读与 YAML、历史、菜单、命令与焦点 |
 | [画布](docs/architecture/canvas.md) | HTML/JSON、模版、资源、网页生命周期、合成与导出 |
-| [Agent 接入](docs/architecture/mcp.md) | 标准/完整 MCP、传输、冲突、Host、服务与内置协议 |
+| [Agent 接入](docs/architecture/mcp.md) | MCP 发现、skills 安装、Host 与服务生命周期 |
 | [设置与持久化](docs/architecture/settings.md) | 偏好所有权、配置 IO、外观、语言与保存调度 |
 | [共享应用壳](docs/architecture/shell.md) | 初始化、窗口、布局、Debug FPS 与平台行为 |
 | [文档库终端](docs/architecture/terminal.md) | 终端选择、命令、路径转义、交接与失败处理 |
@@ -98,7 +97,7 @@ scripts/                Bun + TypeScript 开发脚本
 source/Cargo.toml       工作区及直接依赖基线
 source/Cargo.lock       解析后的版本
 source/crates/          产品与通用 Rust 包
-source/resources/docs/  编译嵌入并随应用打包的英文协议
+source/resources/skills/ 随应用打包并按需软链接安装的 skills
 source/packer.toml      应用身份与打包资源
 .vscode/                开发与构建任务
 dist/                   应用产物，Git 忽略

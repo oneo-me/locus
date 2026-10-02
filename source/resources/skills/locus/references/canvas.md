@@ -5,7 +5,7 @@ Each note can own one canvas under `canvas/`. Choose exactly one entry:
 - `index.html`: an HTML fragment with a required `main.js` ES module exporting `async function main(data)`.
 - `index.json`: a template invocation containing exactly `template` and `data`. Do not also create `index.html` or a caller bootstrap script.
 
-With the standard MCP endpoint, edit files using local filesystem tools. On the full endpoint, the `canvas` content target addresses `canvas/index.html`; use `canvas_file` with `name: "index.json"`, `name: "main.js"`, or another relative path for the other canvas files. Respect content versions; upload tools accept binary resources.
+Resolve the note with MCP and edit canvas files with the client's filesystem tools.
 A canvas replaces the Markdown reading area. Keep only YAML frontmatter in `index.md` when authoring a canvas note; put independently maintained prose in another note. Do not automatically discard existing Markdown when updating an existing mixed note. Do not use a Markdown `canvas` fence or an attachment reference to display a canvas.
 
 ## HTML format
@@ -58,7 +58,7 @@ For a page that scrolls, use `min-h-full` (`min-height:100%`) on the root so the
 
 Relative HTML resource URLs and fetches resolve from the rendering canvas’s directory; module imports resolve from their importing module, and CSS URLs from their stylesheet. Thus a template’s relative resources belong to the template, not the calling note; nested directories, JavaScript modules, CSS, images, fonts and data files are supported, without an extension allowlist. For example, `<img src="photo.jpg" alt="Photo description">` loads a local image. URL-encode filenames containing spaces or non-ASCII characters. Data and blob images are supported.
 
-Local resources are read on request without caching. Canvas subdirectories and hidden resource files are allowed. Paths must remain in the resource tree; symbolic links, installed `node_modules` and directory browsing are unavailable. Use explicit library addresses to read other note resources. Read `locus-docs://attachments` through MCP for Markdown attachment syntax.
+Local resources are read on request without caching. Canvas subdirectories and hidden resource files are allowed. Paths must remain in the resource tree; symbolic links, installed `node_modules` and directory browsing are unavailable. Use explicit library addresses to read other note resources. Read [attachments.md](attachments.md) for Markdown attachment syntax.
 
 HTTPS images and HTTPS data requests are allowed, including map tiles and map data. Cross-origin requests still require server CORS permission. Canvas-local and blob Web Workers are allowed. Remote scripts, remote CSS and fonts, iframes, form submission, and arbitrary local file access are blocked. Basic canvases and local images work offline. Network features send requests to the corresponding service; handle failures and retries within the page. HTTP/HTTPS links open in the system browser.
 

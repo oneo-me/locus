@@ -3,4 +3,4 @@ bin = "locus"
 name = "Locus"
 identifier = "me.oneo.locus"
 output-directory = "../dist"
-resources = [{ source = "resources/docs", destination = "docs" }]
+resources = [{ source = "resources/skills", destination = "skills" }]

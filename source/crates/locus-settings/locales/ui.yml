@@ -108,8 +108,8 @@ settings.library.path.label:
   en: Library path
   zh-CN: 文档库路径
 settings.mcp.local_network.description:
-  en: No authentication. Network clients can read, upload, modify and permanently delete library content; the standard endpoint also exposes local paths.
-  zh-CN: 无身份验证。局域网客户端可读取、上传、修改和永久删除库内内容；标准接口还会返回本机路径。
+  en: No authentication. Network clients can search note content and see local file paths.
+  zh-CN: 无身份验证。局域网客户端可搜索笔记内容并获取本机文件路径。
 settings.mcp.local_network.label:
   en: Share on local network
   zh-CN: 公开到局域网
@@ -129,8 +129,8 @@ settings.mcp.port.validation_error:
   en: Port must be an integer from 1 to 65535.
   zh-CN: 端口必须是 1 到 65535 之间的整数。
 settings.mcp.service.description:
-  en: Provides standard discovery and full library access over Streamable HTTP
-  zh-CN: 通过 Streamable HTTP 提供标准发现与完整笔记库操作
+  en: Discovers local notes over Streamable HTTP
+  zh-CN: 通过 Streamable HTTP 发现本地笔记
 settings.mcp.service.label:
   en: Start service
   zh-CN: 启动服务
@@ -172,3 +172,22 @@ settings.export.not_selected:
 settings.export.choose_error:
   en: Couldn’t open the directory picker. Try again.
   zh-CN: 无法打开目录选择窗口，请重试。
+
+settings.skills.location:
+  en: Skills location
+  zh-CN: Skills 安装位置
+settings.skills.description:
+  en: Link bundled skills into the library’s .agents/skills or globally into ~/.agents/skills. Updates an existing Locus link; keeps real directories.
+  zh-CN: 将随应用提供的 skills 软链接到笔记库的 .agents/skills 或全局 ~/.agents/skills。更新已有 Locus 链接，保留实体目录。
+settings.skills.install:
+  en: Install skills
+  zh-CN: 安装 skills
+settings.skills.installed:
+  en: "Installed at %{path}"
+  zh-CN: "已安装到 %{path}"
+settings.skills.failed:
+  en: "Couldn’t install skills: %{error}"
+  zh-CN: "无法安装 skills：%{error}"
+settings.skills.library_required:
+  en: Select a library in General settings first.
+  zh-CN: 请先在通用设置中选择笔记库。

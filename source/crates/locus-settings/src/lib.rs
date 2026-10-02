@@ -7,6 +7,7 @@ mod archive;
 mod controls;
 mod mcp;
 mod pages;
+mod skills;
 
 use gpui_kit::component::Theme;
 use gpui_kit::component::{
@@ -21,7 +22,9 @@ use gpui_kit::{
 use locus_library::ArchivedNote;
 use locus_mcp::McpServerState;
 use locus_preferences::config::{DEFAULT_CODE_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY};
-use locus_preferences::{AgentPreference, EditorPreference, Preferences, TerminalPreference};
+use locus_preferences::{
+    AgentPreference, EditorPreference, Preferences, SkillsLocation, TerminalPreference,
+};
 use locus_ui::{Icon, icon};
 use oneo_gpui::Language;
 use oneo_gpui::{AppearanceChange, AppearanceControls, FONT_SIZES};
@@ -67,6 +70,7 @@ enum Choice {
     CodeFontSize(f32),
     Terminal(TerminalPreference),
     Agent(AgentPreference),
+    SkillsLocation(SkillsLocation),
 }
 
 impl Choice {
@@ -77,6 +81,7 @@ impl Choice {
             Self::CodeFontSize(size) => font_size_label(size).to_owned(),
             Self::Terminal(terminal) => terminal.label(language),
             Self::Agent(agent) => agent.label().to_owned(),
+            Self::SkillsLocation(location) => location.label(language),
         }
     }
 }
@@ -94,6 +99,7 @@ fn choice_items(dropdown: Dropdown, language: Language) -> Vec<ChoiceItem> {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum Dropdown {
+    SkillsLocation,
     Editor,
     CodeFontSize,
     Terminal,
@@ -101,7 +107,8 @@ enum Dropdown {
 }
 
 impl Dropdown {
-    const ALL: [Self; 4] = [
+    const ALL: [Self; 5] = [
+        Self::SkillsLocation,
         Self::Editor,
         Self::CodeFontSize,
         Self::Terminal,
@@ -114,12 +121,17 @@ impl Dropdown {
             Self::CodeFontSize => "settings.appearance.code_font_size.label",
             Self::Terminal => "settings.terminal.application.label",
             Self::Agent => "settings.terminal.agent.label",
+            Self::SkillsLocation => "settings.skills.location",
         };
         t!(key, locale = language.locale()).into_owned()
     }
 
     fn choices(self) -> Vec<Choice> {
         match self {
+            Self::SkillsLocation => SkillsLocation::ALL
+                .into_iter()
+                .map(Choice::SkillsLocation)
+                .collect(),
             Self::Editor => EditorPreference::ALL
                 .into_iter()
                 .map(Choice::Editor)
@@ -143,6 +155,7 @@ impl Dropdown {
             Self::CodeFontSize => Choice::CodeFontSize(preferences.code_font_size),
             Self::Terminal => Choice::Terminal(preferences.terminal),
             Self::Agent => Choice::Agent(preferences.agent),
+            Self::SkillsLocation => Choice::SkillsLocation(preferences.skills_location),
         }
     }
 }
@@ -253,6 +266,8 @@ pub struct Settings {
     archive_action_error: Option<String>,
     restoring_archive: Option<std::path::PathBuf>,
     error: Option<String>,
+    skills_installing: bool,
+    skills_result: Option<Result<std::path::PathBuf, String>>,
 }
 
 impl EventEmitter<SettingsEvent> for Settings {}
@@ -391,6 +406,8 @@ impl Settings {
             archive_action_error: None,
             restoring_archive: None,
             error: settings_error,
+            skills_installing: false,
+            skills_result: None,
         }
     }
 
@@ -578,6 +595,18 @@ impl Settings {
             }
             Choice::Terminal(terminal) => self.preferences.terminal = terminal,
             Choice::Agent(agent) => self.preferences.agent = agent,
+            Choice::SkillsLocation(location) => {
+                let previous = self.preferences.skills_location;
+                self.preferences.skills_location = location;
+                self.skills_result = None;
+                self.persist();
+                if self.error.is_some() {
+                    self.preferences.skills_location = previous;
+                    self.sync_choice_selects(_window, cx);
+                }
+                cx.notify();
+                return;
+            }
         }
         self.persist();
         cx.notify();

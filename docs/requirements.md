@@ -62,10 +62,10 @@ LOC-011 与 LOC-023 保留“部分实现”：已有记录未明确剩余范围
 | LOC-033 | 真实文件与外部客户端协作 | 已实现 | [专题](architecture/mcp.md) |
 | LOC-034 | MCP 监听、Host 校验与启用提示 | 已实现 | [专题](architecture/mcp.md) |
 | LOC-035 | 唯一服务生命周期与真实状态 | 已实现 | [专题](architecture/mcp.md) |
-| LOC-037 | 完整 MCP 逻辑对象发现与读写 | 已实现 | [专题](architecture/mcp.md) |
-| LOC-038 | 内容传输与子树导出重建 | 已实现 | [专题](architecture/mcp.md) |
-| LOC-039 | 版本冲突、移动删除与旧会话隔离 | 已实现 | [专题](architecture/mcp.md) |
-| LOC-043 | 随软件发布的附件与画布规范 | 已实现 | [专题](architecture/mcp.md) |
+| LOC-037 | 完整 MCP 逻辑对象发现与读写 | 已移除，改由客户端文件工具与 skills 协作 | [专题](architecture/mcp.md) |
+| LOC-038 | 内容传输与子树导出重建 | MCP 已移除，文件由客户端维护 | [专题](architecture/mcp.md) |
+| LOC-039 | 版本冲突、移动删除与旧会话隔离 | MCP 仅保留会话隔离，内容操作由客户端负责 | [专题](architecture/mcp.md) |
+| LOC-043 | 随软件发布的附件与画布规范 | 已改为可安装的 skills | [专题](architecture/mcp.md) |
 
 ## 构建与交付
 

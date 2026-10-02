@@ -401,7 +401,7 @@ resources = ["templates"]
     }
 
     #[test]
-    fn locus_bundle_contains_the_builtin_documentation() {
+    fn locus_bundle_contains_the_skills() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let config: crate::config::Config =
             toml::from_str(&fs::read_to_string(root.join("packer.toml")).unwrap()).unwrap();
@@ -409,10 +409,14 @@ resources = ["templates"]
         for platform in ["Locus.app/Contents/Resources", "Locus/resources"] {
             let destination = output.path().join(platform);
             copy_resources(&root, &config.resources, &destination).unwrap();
-            for name in ["attachments.md", "canvas.md"] {
+            for name in [
+                "SKILL.md",
+                "references/attachments.md",
+                "references/canvas.md",
+            ] {
                 assert_eq!(
-                    fs::read(destination.join("docs").join(name)).unwrap(),
-                    fs::read(root.join("resources/docs").join(name)).unwrap()
+                    fs::read(destination.join("skills/locus").join(name)).unwrap(),
+                    fs::read(root.join("resources/skills/locus").join(name)).unwrap()
                 );
             }
         }

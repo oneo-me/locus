@@ -94,6 +94,8 @@ impl Settings {
             .flex()
             .flex_col()
             .items_stretch()
+            .child(self.render_skills(cx))
+            .child(div().mx_5().h(px(1.0)).bg(theme.border))
             .child(SettingsItem::new(
                 t!("settings.mcp.service.label", locale = language.locale()).into_owned(),
                 t!(

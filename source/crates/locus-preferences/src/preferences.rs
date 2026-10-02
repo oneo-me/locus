@@ -85,6 +85,26 @@ impl EditorPreference {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SkillsLocation {
+    #[default]
+    Library,
+    Global,
+}
+
+impl SkillsLocation {
+    pub const ALL: [Self; 2] = [Self::Library, Self::Global];
+
+    pub fn label(self, language: Language) -> String {
+        let key = match self {
+            Self::Library => "settings.skills.library",
+            Self::Global => "settings.skills.global",
+        };
+        t!(key, locale = language.locale()).into_owned()
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Preferences {
@@ -98,6 +118,7 @@ pub struct Preferences {
     pub code_font_size: f32,
     pub terminal: TerminalPreference,
     pub agent: AgentPreference,
+    pub skills_location: SkillsLocation,
     pub mcp_enabled: bool,
     pub mcp_local_network: bool,
     pub mcp_port: u16,
@@ -115,6 +136,7 @@ impl Default for Preferences {
             code_font_size: DEFAULT_CODE_FONT_SIZE,
             terminal: TerminalPreference::default(),
             agent: AgentPreference::default(),
+            skills_location: SkillsLocation::default(),
             mcp_enabled: DEFAULT_MCP_ENABLED,
             mcp_local_network: DEFAULT_MCP_LOCAL_NETWORK,
             mcp_port: DEFAULT_MCP_PORT,
@@ -203,6 +225,7 @@ mod tests {
             mcp_enabled: true,
             mcp_local_network: true,
             mcp_port: 43123,
+            skills_location: SkillsLocation::Global,
         };
         let directory = tempfile::tempdir().unwrap();
         let store =
@@ -230,6 +253,7 @@ mod tests {
         assert_eq!(restored.mcp_enabled, preferences.mcp_enabled);
         assert_eq!(restored.mcp_local_network, preferences.mcp_local_network);
         assert_eq!(restored.mcp_port, preferences.mcp_port);
+        assert_eq!(restored.skills_location, preferences.skills_location);
     }
 
     #[test]
@@ -270,6 +294,7 @@ auto_open_canvas = false
     fn export_directory_uses_system_downloads_unless_explicitly_configured() {
         let preferences = Preferences::default();
         assert!(preferences.export_directory.is_none());
+        assert_eq!(preferences.skills_location, SkillsLocation::Library);
         assert_eq!(
             preferences.resolved_export_directory(),
             dirs::download_dir()
@@ -292,6 +317,7 @@ auto_open_canvas = false
         let store = oneo_gpui::SettingsStore::at_path(path).unwrap();
         let preferences: Preferences = store.load().unwrap();
         assert!(preferences.export_directory.is_none());
+        assert_eq!(preferences.skills_location, SkillsLocation::Library);
         assert_eq!(
             preferences.resolved_export_directory(),
             dirs::download_dir()

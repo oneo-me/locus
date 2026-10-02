@@ -10,7 +10,7 @@
 
 调用方只写互斥的 `canvas/index.json`，且必须仅包含 template 与 data。template 是当前库内明确的 `locus://` 笔记地址，必须直接指向具有 HTML/main.js 的模版，不允许模版链；data 是原样传入的任意 JSON 值，模版定义并验证其输入。宿主不合并默认值，不通过 JSON 传递回调、children 或 Context。
 
-HTML 与 fetch 的相对地址属于实际渲染的画布，模版相对资源属于模版；模块导入相对于导入模块，CSS URL 相对于样式文件。调用方资源通过数据传入明确的库内地址。`locus.resourceUrl` 映射地址，fetch 可以直接读取库内 canvas 文件、附件、完整笔记、原始 YAML 和正文。资源按请求读取、不缓存，拒绝越界、符号链接、node_modules 与任意本机文件访问。资源与模版的详细格式、运行及安全契约由软件内置英文规范 `locus-docs://canvas` 提供。
+HTML 与 fetch 的相对地址属于实际渲染的画布，模版相对资源属于模版；模块导入相对于导入模块，CSS URL 相对于样式文件。调用方资源通过数据传入明确的库内地址。`locus.resourceUrl` 映射地址，fetch 可以直接读取库内 canvas 文件、附件、完整笔记、原始 YAML 和正文。资源按请求读取、不缓存，拒绝越界、符号链接、node_modules 与任意本机文件访问。资源与模版的详细格式、运行及安全契约由随应用发布的 [skill 画布参考](../../source/resources/skills/locus/references/canvas.md) 提供。
 
 ## 生命周期与主题
 

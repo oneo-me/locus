@@ -4,7 +4,9 @@ pub mod config;
 mod preferences;
 pub mod storage;
 
-pub use preferences::{AgentPreference, EditorPreference, Preferences, TerminalPreference};
+pub use preferences::{
+    AgentPreference, EditorPreference, Preferences, SkillsLocation, TerminalPreference,
+};
 
 #[cfg(test)]
 mod localization_tests;

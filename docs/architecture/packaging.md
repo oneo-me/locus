@@ -41,3 +41,5 @@ Windows 要求 Windows、Visual Studio C++ 工具链和 Windows SDK，包括 lin
 共享编译目录需核对全局相对路径配置、项目相对路径配置及环境变量三种来源，确认实际可执行文件路径与打包目的地。根目录命令的 `--dry-run` 应读取 `source/packer.toml` 并输出至 `dist/Locus.app`；四种支持目标的输出不包含平台或架构子目录。
 
 真实 macOS 包需检查 plist、导出符号、资源与签名；Windows 原生构建、运行库完整性和启动需在 Windows 环境验证。模拟工具、资源复制和命令预演均不作为目标平台实机验收。
+
+Locus 将 `source/resources/skills` 作为顶层公共资源复制到 macOS 的 `Contents/Resources/skills` 和 Windows 的 `resources/skills`，包含 skill 入口与按任务读取的参考文件。设置安装器以目录软链接指向应用资源，机制见[Agent 接入](mcp.md#skills-发布与安装)。

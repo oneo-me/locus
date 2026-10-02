@@ -41,6 +41,7 @@ impl Settings {
         div().w(gpui_kit::rems(width)).flex_none().child(
             Select::new(&self.choice_selects[&dropdown])
                 .w_full()
+                .disabled(dropdown == Dropdown::SkillsLocation && self.skills_installing)
                 .accessibility_label(dropdown.label(language)),
         )
     }
