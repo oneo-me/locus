@@ -1,0 +1,9 @@
+{
+  "name": "locus",
+  "private": true,
+  "type": "module",
+  "workspaces": [],
+  "scripts": {
+    "check:docs": "bun run scripts/check-docs.ts"
+  }
+}

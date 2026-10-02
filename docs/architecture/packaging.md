@@ -2,8 +2,6 @@
 
 本篇“项目根”指 `packer.toml` 所在的工程目录；Locus 中为 `source/`，仓库根目录通过 `--project source` 指定它。
 
-验证记录只覆盖已注明的测试范围与反馈对象；未注明适用提交的既有记录，其代码版本未知，不代表当前版本重新通过验证。
-
 ## 技术与职责
 
 `oneo-tool-packer` 位于 Locus 的 `source/crates/oneo-tool-packer`，是 Rust 2024 CLI crate，不依赖 GPUI；版本、edition 和依赖继承 workspace，使用 `source/Cargo.lock`。使用 Serde、TOML、JSON 与 plist 处理标准元数据，anyhow 保留错误上下文，tempfile 管理暂存目录。Cargo.lock 固定依赖；不自行实现 TOML、JSON 或 plist 解析器。
@@ -38,8 +36,8 @@ Windows 要求 Windows、Visual Studio C++ 工具链和 Windows SDK，包括 lin
 
 应用在同一输出文件系统的临时目录完整组装、检查和签名。发布目录用文件锁互斥，成功后整体替换；替换失败恢复旧目录，恢复也失败时保留暂存目录并报告恢复位置。构建、签名、资源或 DLL 检查失败不会删除旧产物。
 
-检查使用 `cargo fmt --all --check`、`cargo clippy -p oneo-tool-packer --all-targets --locked -- -D warnings` 和 `cargo test -p oneo-tool-packer --all-targets --locked`。测试覆盖目标解析、专属链接参数、产物选择、DLL 递归与架构、资源碰撞、发布恢复，以及 Unix 上模拟编译工具的 CLI 契约。共享编译目录在 macOS 上通过真实 Cargo Release 构建验证全局相对路径配置、项目相对路径配置及环境变量三种来源，断言实际可执行文件路径、项目内不生成默认 target 目录，且打包目的地仍为项目 `dist/`。既有源码目录布局的验证记录包含 `cargo fmt --all --check`、打包工具严格 Clippy、19 项单元测试与 4 项 CLI 测试，以及 `cargo check --workspace --all-targets --all-features --locked --offline`。根目录构建命令的 `--dry-run` 确认读取 `source/packer.toml` 并输出至 `dist/Locus.app`；输出路径测试覆盖四种支持的目标，不包含平台或架构子目录。此项不替代完整应用打包或 Windows 实机构建验收。真实 macOS 包需检查 plist、导出符号与签名；Windows 原生构建、运行库完整性和启动需在 Windows 环境验证，模拟测试不作为 Windows 实机验收。
+检查使用 `cargo fmt --all --check`、`cargo clippy -p oneo-tool-packer --all-targets --locked -- -D warnings` 和 `cargo test -p oneo-tool-packer --all-targets --locked`。测试覆盖目标解析、专属链接参数、产物选择、DLL 递归与架构、资源碰撞、发布恢复，以及 Unix 上模拟编译工具的 CLI 契约。
 
-Windows 实机验证（用户确认）：提交 `c93c3ba` 的 Windows 版本验证通过，覆盖对应打包与启动修复。该反馈不替代不同架构、缺失工具链或显式 rustflags 覆盖场景的专项测试。
+共享编译目录需核对全局相对路径配置、项目相对路径配置及环境变量三种来源，确认实际可执行文件路径与打包目的地。根目录命令的 `--dry-run` 应读取 `source/packer.toml` 并输出至 `dist/Locus.app`；四种支持目标的输出不包含平台或架构子目录。
 
-平台资源自动化验证（覆盖当时的平台资源实现）：打包工具 15 项单元测试与 4 项 CLI 测试通过；测试验证共用模板存在，macOS 与 Windows 工具统一映射到 tools 且互不混入，目的名称拒绝越界和碰撞。Clippy 检查通过。
+真实 macOS 包需检查 plist、导出符号、资源与签名；Windows 原生构建、运行库完整性和启动需在 Windows 环境验证。模拟工具、资源复制和命令预演均不作为目标平台实机验收。
