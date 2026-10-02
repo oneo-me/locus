@@ -1,6 +1,6 @@
 # Locus 架构
 
-本篇是当前系统的总览。修改代码前完整阅读，再按[专题](#专题)选择与任务相关的详细说明。产品介绍与运行方式见 [README.md](README.md)，可见界面的约定由桌面工作区专题维护。
+本篇是当前系统的总览。修改代码前完整阅读，再按[专题](#subjects)选择与任务相关的详细说明。产品介绍与运行方式见 [README.md](README.md)，可见界面的约定由桌面工作区专题维护。
 
 Locus 是本地优先的 Markdown 知识工作台，使用 Rust 与 GPUI Kit 构建原生桌面界面。用户阅读、组织和审阅本地笔记，外部编辑器与 Agent 操作同一套文件。应用提供只读 MCP 文件发现入口，使用方法由随软件发布并通过设置安装的 skills 提供。
 
@@ -31,7 +31,7 @@ Locus 原生桌面进程
 
 文件事件合并后在后台重建投影，当前笔记相关变化重新读取正文。读取结果按库路径与代次隔离，迟到任务不能覆盖新选择。画布入口新增或删除更新页面模式，已经加载的网页通过手动刷新或重新打开读取新源码。
 
-MCP 按调用发现同一文档库，客户端使用自身文件工具维护内容。工作区将设置映射为显式服务配置，变化时先停后启。Agent 在触发时的文档库根目录启动，工作区拥有终端标签，通用终端组件管理 PTY 与进程生命周期。
+MCP 按调用发现同一文档库，客户端使用自身文件工具维护内容。工作区将设置映射为显式服务配置，变化时先停后启。Agent 在触发时的文档库根目录启动。工作区只捕获终端、Agent 与目录并在后台交接启动，外部终端拥有会话、标签、PTY 与进程生命周期；具体启动方式与失败边界见[文档库终端](docs/architecture/terminal.md)。
 
 ## 模块边界
 
@@ -66,9 +66,9 @@ MCP 按调用发现同一文档库，客户端使用自身文件工具维护内�
 
 配置服务执行 TOML 读取与原子保存，运行时实体拥有配置变更。笔记操作使用安全路径与内容版本检查；外部编辑器参与乐观冲突检查，多个文件的操作不承诺崩溃后的事务回滚。
 
-## 专题
+## Subjects
 
-每个主题维护当前机制、边界与验证方法。总览上限为 16 KiB，每篇架构专题上限为 24 KiB；在仓库根执行 `bun run check:docs` 检查体积、索引及相对链接与标题锚点。
+每个主题维护当前机制、边界与验证方法。总览上限为 16 KiB，每篇架构专题上限为 24 KiB；文档检查使用 project-docs 技能自带脚本，命令与覆盖范围见 [AGENTS.md](AGENTS.md#验证)。
 
 | 文档 | 修改这些内容前阅读 |
 | --- | --- |
@@ -88,12 +88,12 @@ MCP 按调用发现同一文档库，客户端使用自身文件工具维护内�
 AGENTS.md               开发与文档维护约定
 ARCHITECTURE.md         系统总览与专题索引
 README.md               产品介绍与快速开始
+CHANGELOG.md            用户可见的待发布变更与已确认发布记录
 docs/architecture/      每个主题一份当前系统说明
 docs/build.md           运行、构建与应用交付
 docs/mcp.md             客户端连接与 MCP 使用
 docs/requirements.md    LOC 需求编号与既有状态
-package.json            Bun 工作区与开发命令入口
-scripts/                Bun + TypeScript 开发脚本
+package.json            Bun 工作区清单
 source/Cargo.toml       工作区及直接依赖基线
 source/Cargo.lock       解析后的版本
 source/crates/          产品与通用 Rust 包
@@ -103,10 +103,10 @@ source/packer.toml      应用身份与打包资源
 dist/                   应用产物，Git 忽略
 ```
 
-根目录 Bun 工作区管理开发脚本与 JavaScript/TypeScript 子包，Cargo 工作区管理 `source/crates/`。当前没有 JavaScript/TypeScript 子包，`package.json` 的 `workspaces` 为空；新增时登记实际包路径。应用版本继续由 `source/Cargo.toml` 维护。
+根目录 Bun 工作区管理 JavaScript/TypeScript 子包，Cargo 工作区管理 `source/crates/`。文档检查实现归已安装的 project-docs 技能所有，自动检查根目录与 `docs/` 下的 Markdown。当前没有 JavaScript/TypeScript 子包，`package.json` 的 `workspaces` 为空；新增时登记实际包路径。应用版本继续由 `source/Cargo.toml` 维护。
 
 ## 验证与已知限制
 
 日常检查规则见 [AGENTS.md](AGENTS.md)，运行与平台构建环境见[构建说明](docs/build.md)。需求编号及既有状态见[需求索引](docs/requirements.md)。历史检查记录不代表当前提交已重新验证。
 
-原生画布当前支持 macOS。Windows 构建与原生行为需要 Windows 工具链和实机验证，macOS 编译不能代替；既有记录曾因缺少 `x86_64-w64-mingw32-windres` 而未完成 Windows GNU 交叉检查。中文混排和表格文字裁切的已知问题见工作区专题。退出保存受 GPUI 等待时限约束，具体边界见设置专题。
+原生画布当前支持 macOS。Windows 构建与原生行为需要 Windows 工具链和实机验证，macOS 编译不能代替。中文混排和表格文字裁切的已知问题见工作区专题。退出保存受 GPUI 等待时限约束，具体边界见设置专题。

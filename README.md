@@ -49,8 +49,15 @@ macOS 系统终端使用 Terminal，每次创建新窗口；Ghostty 需要 1.3.0
 
 - [架构](ARCHITECTURE.md)：模块边界、数据流、存储与专题索引。
 - [开发约定](AGENTS.md)：阅读顺序、工程规则与检查命令。
+- [发布记录](CHANGELOG.md)：用户可见的待发布变化与已确认发布记录。
 - [运行与构建](docs/build.md)：平台环境、版本与打包。
 - [MCP 使用说明](docs/mcp.md)：客户端连接与工具契约。
 - [需求索引](docs/requirements.md)：需求编号与既有实现状态。
 
-源码位于 `source/`，Bun 开发脚本位于根目录 `scripts/`，最终应用产物位于 `dist/`。在仓库根执行 `bun run check:docs` 检查文档链接、专题索引与体积预算。
+源码位于 `source/`，最终应用产物位于 `dist/`。项目文档使用已安装的 project-docs 技能检查器，在仓库根执行：
+
+```sh
+bun run "$HOME/.agents/skills/project-docs/scripts/check-docs.ts" --root .
+```
+
+需要 Bun 和已安装的 `project-docs` 技能。检查器自动扫描根目录与 `docs/` 下的 Markdown；检查预算、Subjects 索引、相对链接、标题锚点与 Unreleased 结构。

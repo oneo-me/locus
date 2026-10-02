@@ -55,4 +55,4 @@ Git 状态以文档库根目录为仓库边界，把 `index.md`、`canvas/` 和 
 
 `locus-library/src/access.rs` 定义逻辑地址与内容目标、文件读写、SHA-256 版本及安全边界；`access/organize.rs` 处理子树清单、移动删除和 Markdown 链接。复用扫描器元数据解释及现有图标、frontmatter 修改能力，保持与界面和画布消费者一致。`reference.rs` 统一将逻辑地址解码一次，导航、链接图标、MCP 与画布组件共同消费，避免编码地址在不同入口指向不同对象。笔记内容结构为 `index.md`、`assets/`、`canvas/` 和子笔记目录；内容接口按这一结构识别文件，用户配置继续使用 TOML。
 
-内容版本由 `content_version_from_reader` 分块计算 SHA-256，返回字节数与小写十六进制摘要。这些领域接口不再通过 MCP 暴露；外部客户端自行维护文件与处理编辑冲突。
+内容版本由 `content_version_from_reader` 分块计算 SHA-256，返回字节数与小写十六进制摘要。这些领域接口供直接消费文档库的代码使用；MCP 只暴露发现工具，外部客户端自行维护文件与处理编辑冲突。
