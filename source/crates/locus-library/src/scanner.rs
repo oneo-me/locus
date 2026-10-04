@@ -361,7 +361,7 @@ mod tests {
 
     #[test]
     fn keeps_additional_frontmatter_metadata_in_source_order() {
-        let document = "---\ntitle: Notes\nstatus: active\ntags:\n  - rust\n  - gpui\nowner:\n  name: Oneo\narchived: false\n---\nBody";
+        let document = "---\ntitle: Notes\nstatus: active\ntags:\n  - rust\n  - gpui\nowner:\n  name: ONEO\narchived: false\n---\nBody";
         let metadata = parse_frontmatter_metadata(frontmatter_parts(document).unwrap().0);
 
         assert_eq!(
@@ -372,7 +372,7 @@ mod tests {
                     serde_json::Value::String("active".to_owned())
                 ),
                 ("tags".to_owned(), serde_json::json!(["rust", "gpui"])),
-                ("owner".to_owned(), serde_json::json!({ "name": "Oneo" })),
+                ("owner".to_owned(), serde_json::json!({ "name": "ONEO" })),
             ]
         );
     }

@@ -5,15 +5,9 @@ This file records completed, pending user-visible changes and confirmed release 
 ## [Unreleased]
 
 - Move Download canvas into the note titlebar’s more menu and use a pencil icon for editing notes.
-
 - Manage bundled skills in a separate Skills settings group; selecting a location automatically installs them and removes the old Locus symlink while preserving real directories.
-
 - Choose zsh, bash, or fish in Terminal settings on Unix to run Agents and keep the selected shell open after they exit; the default launch behavior is unchanged.
 - License the project under the MIT License.
-
-## [0.2026.1]
-
-The first Locus release provides a workspace for reading and organizing local Markdown notes and collaborating with external Agents.
 
 - Navigate notes through the document tree and command palette, with back and forward history, sibling ordering, icon upload, archiving, and restoration.
 - Read Markdown bodies, summaries, and custom YAML properties, with continuous text selection, select all, and copy.

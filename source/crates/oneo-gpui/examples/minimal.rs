@@ -264,7 +264,7 @@ fn main() {
         let store = SettingsStore::for_project("oneo-example")?;
         let mut preferences: Preferences = store.load()?;
         preferences.appearance.normalize();
-        ShellWindow::new("Oneo example").open(cx, |window, cx| {
+        ShellWindow::new("ONEO example").open(cx, |window, cx| {
             cx.new(|cx| Welcome::new(preferences, store, window, cx))
         })
     });

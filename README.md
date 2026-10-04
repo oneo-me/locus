@@ -1,3 +1,5 @@
+![Locus icon](icon.png)
+
 # Locus
 
 **English** | [简体中文](README.zh-CN.md)
@@ -5,6 +7,8 @@
 Locus is a local-first Markdown knowledge workspace with a native desktop interface built with Rust and GPUI. It serves developers, creators, and one-person teams maintaining personal knowledge over time. Users can read and organize notes, inspect file changes, open note canvases and external terminals, and use MCP to let Agents discover and maintain the same local files.
 
 The Markdown document tree is the sole source of truth for knowledge content. Users can access, edit, and version the files directly. External Agents locate files through MCP and edit them with their own filesystem tools following the Locus skill. Their clients own model calls, accounts, permissions, remote-data policies, and billing.
+
+![Locus workspace preview](preview.jpeg)
 
 ## Quick start
 
