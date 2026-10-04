@@ -3,8 +3,8 @@
   "tasks": [
     {
       "label": "dev",
-      "type": "cargo",
-      "command": "run",
+      "type": "shell",
+      "command": "cargo run",
       "options": {
         "cwd": "${workspaceFolder}/source"
       }

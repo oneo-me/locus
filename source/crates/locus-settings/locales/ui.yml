@@ -144,6 +144,12 @@ settings.terminal.application.label:
 settings.terminal.application.description:
   en: Open the selected terminal in the library root directory.
   zh-CN: 在笔记库根目录打开所选终端。
+settings.terminal.shell.label:
+  en: Shell
+  zh-CN: Shell
+settings.terminal.shell.description:
+  en: Use this login and interactive shell to run Agents. Install it first; Default keeps the existing platform shell.
+  zh-CN: 使用此登录与交互 Shell 运行 Agent，请先完成安装。“默认”保留原有平台 Shell。
 settings.terminal.agent.label:
   en: Agent
   zh-CN: Agent

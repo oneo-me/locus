@@ -150,6 +150,19 @@ impl Settings {
                 .into_owned(),
                 self.render_dropdown(Dropdown::Terminal, cx),
             ))
+            .when(!cfg!(target_os = "windows"), |this| {
+                this.child(div().mx_5().h(px(1.0)).bg(Theme::global(cx).border))
+                    .child(SettingsItem::new(
+                        t!("settings.terminal.shell.label", locale = language.locale())
+                            .into_owned(),
+                        t!(
+                            "settings.terminal.shell.description",
+                            locale = language.locale()
+                        )
+                        .into_owned(),
+                        self.render_dropdown(Dropdown::Shell, cx),
+                    ))
+            })
             .child(div().mx_5().h(px(1.0)).bg(Theme::global(cx).border))
             .child(SettingsItem::new(
                 t!("settings.terminal.agent.label", locale = language.locale()).into_owned(),

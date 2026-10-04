@@ -35,7 +35,7 @@ impl Settings {
     ) -> impl IntoElement + use<> {
         let language = self.preferences.appearance.language;
         let width = match dropdown {
-            Dropdown::Terminal | Dropdown::Agent => 12.0,
+            Dropdown::Terminal | Dropdown::Agent | Dropdown::Shell => 12.0,
             _ => 7.25,
         };
         div().w(gpui_kit::rems(width)).flex_none().child(

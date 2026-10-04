@@ -23,7 +23,8 @@ use locus_library::ArchivedNote;
 use locus_mcp::McpServerState;
 use locus_preferences::config::{DEFAULT_CODE_FONT_FAMILY, DEFAULT_UI_FONT_FAMILY};
 use locus_preferences::{
-    AgentPreference, EditorPreference, Preferences, SkillsLocation, TerminalPreference,
+    AgentPreference, EditorPreference, Preferences, ShellPreference, SkillsLocation,
+    TerminalPreference,
 };
 use locus_ui::{Icon, icon};
 use oneo_gpui::Language;
@@ -70,6 +71,7 @@ enum Choice {
     CodeFontSize(f32),
     Terminal(TerminalPreference),
     Agent(AgentPreference),
+    Shell(ShellPreference),
     SkillsLocation(SkillsLocation),
 }
 
@@ -81,6 +83,7 @@ impl Choice {
             Self::CodeFontSize(size) => font_size_label(size).to_owned(),
             Self::Terminal(terminal) => terminal.label(language),
             Self::Agent(agent) => agent.label().to_owned(),
+            Self::Shell(shell) => shell.label(language),
             Self::SkillsLocation(location) => location.label(language),
         }
     }
@@ -104,15 +107,17 @@ enum Dropdown {
     CodeFontSize,
     Terminal,
     Agent,
+    Shell,
 }
 
 impl Dropdown {
-    const ALL: [Self; 5] = [
+    const ALL: [Self; 6] = [
         Self::SkillsLocation,
         Self::Editor,
         Self::CodeFontSize,
         Self::Terminal,
         Self::Agent,
+        Self::Shell,
     ];
 
     fn label(self, language: Language) -> String {
@@ -121,6 +126,7 @@ impl Dropdown {
             Self::CodeFontSize => "settings.appearance.code_font_size.label",
             Self::Terminal => "settings.terminal.application.label",
             Self::Agent => "settings.terminal.agent.label",
+            Self::Shell => "settings.terminal.shell.label",
             Self::SkillsLocation => "settings.skills.location",
         };
         t!(key, locale = language.locale()).into_owned()
@@ -142,6 +148,11 @@ impl Dropdown {
                 .copied()
                 .map(Choice::Terminal)
                 .collect(),
+            Self::Shell => ShellPreference::ALL
+                .iter()
+                .copied()
+                .map(Choice::Shell)
+                .collect(),
             Self::Agent => AgentPreference::ALL
                 .into_iter()
                 .map(Choice::Agent)
@@ -155,6 +166,7 @@ impl Dropdown {
             Self::CodeFontSize => Choice::CodeFontSize(preferences.code_font_size),
             Self::Terminal => Choice::Terminal(preferences.terminal),
             Self::Agent => Choice::Agent(preferences.agent),
+            Self::Shell => Choice::Shell(preferences.agent_shell),
             Self::SkillsLocation => Choice::SkillsLocation(preferences.skills_location),
         }
     }
@@ -594,6 +606,7 @@ impl Settings {
                 cx.emit(SettingsEvent::CodeFontChanged);
             }
             Choice::Terminal(terminal) => self.preferences.terminal = terminal,
+            Choice::Shell(shell) => self.preferences.agent_shell = shell,
             Choice::Agent(agent) => self.preferences.agent = agent,
             Choice::SkillsLocation(location) => {
                 let previous = self.preferences.skills_location;
@@ -787,6 +800,26 @@ impl Render for Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shell_choices_reflect_the_runtime_preference() {
+        let preferences = Preferences {
+            agent_shell: ShellPreference::Fish,
+            ..Preferences::default()
+        };
+        assert_eq!(
+            Dropdown::Shell.selected(&preferences),
+            Choice::Shell(ShellPreference::Fish)
+        );
+        for language in [Language::English, Language::Chinese] {
+            let items = choice_items(Dropdown::Shell, language);
+            assert_eq!(items.len(), ShellPreference::ALL.len());
+            for (item, shell) in items.iter().zip(ShellPreference::ALL) {
+                assert_eq!(item.value, Choice::Shell(*shell));
+                assert_eq!(item.label.as_ref(), shell.label(language));
+            }
+        }
+    }
 
     #[test]
     fn every_supported_font_size_has_its_own_label() {

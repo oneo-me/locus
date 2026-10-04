@@ -33,9 +33,9 @@ Markdown 支持连续文本选择、全选和复制。概要和自定义 YAML �
 
 ## 外部 Agent
 
-在终端设置中选择系统终端或 Ghostty，并选择 Codex、pi、OpenCode 或 Claude Code，默认系统终端与 Codex。需要先安装所选软件。Locus 在当前文档库根目录运行 `codex`、`pi`、`opencode` 或 `claude`；切换文档库、修改设置或退出 Locus 不结束已有外部会话。
+在终端设置中选择系统终端或 Ghostty，并选择 Codex、pi、OpenCode 或 Claude Code，Unix 平台还可通过 Shell 选项选择默认、zsh、bash 或 fish（3.0 或以上），需要先安装所选 Shell；默认系统终端、Codex 与原有平台 Shell。需要先安装所选软件。Locus 在当前文档库根目录运行 `codex`、`pi`、`opencode` 或 `claude`；切换文档库、修改设置或退出 Locus 不结束已有外部会话。
 
-macOS 系统终端使用 Terminal，每次创建新窗口；Ghostty 需要 1.3.0 或以上，优先在最近使用的窗口中新建标签页，没有窗口时创建窗口。启动加载 zsh 登录与交互配置，Agent 退出或找不到命令时保留 Shell。Windows 使用系统控制台。
+macOS 系统终端使用 Terminal，每次创建新窗口；Ghostty 需要 1.3.0 或以上，优先在最近使用的窗口中新建标签页，没有窗口时创建窗口。默认使用 zsh；选择 bash 或 fish 后加载对应 Shell 的登录与交互配置，Agent 退出或找不到命令时保留所选 Shell。Windows 使用系统控制台。
 
 | 操作 | macOS 快捷键 |
 | --- | --- |

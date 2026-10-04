@@ -31,7 +31,7 @@ Startup loads preferences and interface state, resolves appearance and language,
 
 File events are coalesced before rebuilding projections in the background. Changes relevant to the current note reload its body. Read results are isolated by library path and generation so late tasks cannot overwrite a newer selection. Adding or removing a canvas entry point updates page mode; already loaded pages read new source after manual refresh or reopening.
 
-MCP discovers the same library on each call. Clients maintain content with their own filesystem tools. The workspace maps settings to explicit service configuration and stops the old service before starting a replacement. Agents launch at the library root captured when triggered. The workspace captures only the terminal, Agent, and directory and hands off launching in the background. External terminals own sessions, tabs, PTYs, and process lifecycle. See [Library terminal](docs/architecture/terminal.md) for launch behavior and failure boundaries.
+MCP discovers the same library on each call. Clients maintain content with their own filesystem tools. The workspace maps settings to explicit service configuration and stops the old service before starting a replacement. Agents launch at the library root captured when triggered. The workspace captures only the terminal, Agent, shell, and directory and hands off launching in the background. External terminals own sessions, tabs, PTYs, and process lifecycle. See [Library terminal](docs/architecture/terminal.md) for launch behavior and failure boundaries.
 
 ## Module boundaries
 
@@ -59,7 +59,7 @@ The main product dependency chain is `locus → locus-workspace → locus-settin
 | Location | Owner and contents |
 | --- | --- |
 | User-selected library | Markdown, frontmatter, attachments, canvases, and directory hierarchy |
-| `~/.oneo/locus/settings.toml` | User preferences, including library, editor, export directory, appearance, terminal, and MCP |
+| `~/.oneo/locus/settings.toml` | User preferences, including library, editor, export directory, appearance, terminal, Agent shell, and MCP |
 | `~/.oneo/locus/state.toml` | Window restoration, current selection, and sidebar state |
 | `~/.oneo/locus/sidebar-order.toml` | Sibling order by library and parent path |
 | `~/.oneo/locus/thumbnails/`, `link-icons/` | Rebuildable image caches |

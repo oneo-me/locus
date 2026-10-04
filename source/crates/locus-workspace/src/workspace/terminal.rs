@@ -17,13 +17,14 @@ impl Locus {
         };
         let terminal = preferences.terminal;
         let agent = preferences.agent;
+        let shell = preferences.agent_shell;
         self.terminal_launch_pending = true;
         cx.notify();
         cx.spawn_in(window, async move |this, cx| {
             let result = cx
-                .background_spawn(
-                    async move { locus_ui::platform::open_agent(&root, terminal, agent) },
-                )
+                .background_spawn(async move {
+                    locus_ui::platform::open_agent(&root, terminal, agent, shell)
+                })
                 .await;
             let _ = this.update_in(cx, |this, window, cx| {
                 this.terminal_launch_pending = false;

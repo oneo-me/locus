@@ -4,7 +4,7 @@
 
 ## Settings pages
 
-Settings replaces the workspace inside the main window. Returning restores its state and focus. The shared shell provides appearance settings and category navigation; Locus adds library, editor, export directory, archive restoration, fonts, terminal, Agent, and MCP settings. The MCP page provides skill location and installation controls as well as service enablement, listening scope, port, real status, and errors. See [Agent integration](mcp.md#skill-distribution-and-installation) for skill files and background installation and [MCP access](../mcp.md) for client connections.
+Settings replaces the workspace inside the main window. Returning restores its state and focus. The shared shell provides appearance settings and category navigation; Locus adds library, editor, export directory, archive restoration, fonts, terminal, Agent, Unix Shell, and MCP settings. The MCP page provides skill location and installation controls as well as service enablement, listening scope, port, real status, and errors. See [Agent integration](mcp.md#skill-distribution-and-installation) for skill files and background installation and [MCP access](../mcp.md) for client connections.
 
 An unconfigured export directory uses the system Downloads directory. Selection changes affect only subsequent exports or terminal launches; open pages and external sessions retain their own lifecycles. Save failures expose their reasons. Rollback for individual options follows their settings methods; values effective only in memory must not be described as saved.
 
@@ -26,7 +26,7 @@ Missing configuration files return application defaults without creating a file.
 
 ## Storage and write scheduling
 
-- `~/.oneo/locus/settings.toml`: library, editor, export directory, appearance, language, fonts, terminal, and MCP preferences.
+- `~/.oneo/locus/settings.toml`: library, editor, export directory, appearance, language, fonts, terminal, Agent shell, and MCP preferences.
 - `~/.oneo/locus/state.toml`: sidebar state, current selection, and normal-window restoration bounds.
 - `~/.oneo/locus/sidebar-order.toml`: sidebar sibling order by library and parent path, without modifying library content.
 - `~/.oneo/locus/thumbnails/` and `link-icons/`: local caches rebuildable from their sources.

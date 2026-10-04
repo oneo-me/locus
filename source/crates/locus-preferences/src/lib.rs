@@ -5,7 +5,8 @@ mod preferences;
 pub mod storage;
 
 pub use preferences::{
-    AgentPreference, EditorPreference, Preferences, SkillsLocation, TerminalPreference,
+    AgentPreference, EditorPreference, Preferences, ShellPreference, SkillsLocation,
+    TerminalPreference,
 };
 
 #[cfg(test)]

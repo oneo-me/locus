@@ -33,9 +33,9 @@ After saving a canvas, refresh it manually or reopen the note to load the change
 
 ## External Agents
 
-In Terminal settings, select the system terminal or Ghostty and choose Codex, pi, OpenCode, or Claude Code. The defaults are the system terminal and Codex. Install the selected software first. Locus runs `codex`, `pi`, `opencode`, or `claude` at the current library root. Switching libraries, changing settings, or quitting Locus does not terminate existing external sessions.
+In Terminal settings, select the system terminal or Ghostty and choose Codex, pi, OpenCode, or Claude Code. On Unix, the Shell selector offers Default, zsh, bash, and fish (3.0 or later). Install the selected shell first. The defaults are the system terminal, Codex, and the existing platform shell. Install the selected software first. Locus runs `codex`, `pi`, `opencode`, or `claude` at the current library root. Switching libraries, changing settings, or quitting Locus does not terminate existing external sessions.
 
-On macOS, the system terminal is Terminal, which opens a new window for each launch. Ghostty requires version 1.3.0 or later and creates a new tab in the most recently used window, or a window when none exists. Launching loads zsh login and interactive configuration and keeps a shell open if the Agent exits or its command cannot be found. Windows uses the system console.
+On macOS, the system terminal is Terminal, which opens a new window for each launch. Ghostty requires version 1.3.0 or later and creates a new tab in the most recently used window, or a window when none exists. Default uses zsh; selecting bash or fish loads that shell's login and interactive configuration instead. Launching keeps the selected shell open if the Agent exits or its command cannot be found. Windows uses the system console.
 
 | Action | macOS shortcut |
 | --- | --- |

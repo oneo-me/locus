@@ -35,6 +35,33 @@ impl TerminalPreference {
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub enum ShellPreference {
+    #[default]
+    Default,
+    Zsh,
+    Bash,
+    Fish,
+}
+
+impl ShellPreference {
+    pub const ALL: &'static [Self] = if cfg!(target_os = "windows") {
+        &[Self::Default]
+    } else {
+        &[Self::Default, Self::Zsh, Self::Bash, Self::Fish]
+    };
+
+    pub fn label(self, language: Language) -> String {
+        match self {
+            Self::Default => t!("settings.shell.default", locale = language.locale()).into_owned(),
+            Self::Zsh => "zsh".to_owned(),
+            Self::Bash => "bash".to_owned(),
+            Self::Fish => "fish".to_owned(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum AgentPreference {
     #[default]
     Codex,
@@ -118,6 +145,7 @@ pub struct Preferences {
     pub code_font_size: f32,
     pub terminal: TerminalPreference,
     pub agent: AgentPreference,
+    pub agent_shell: ShellPreference,
     pub skills_location: SkillsLocation,
     pub mcp_enabled: bool,
     pub mcp_local_network: bool,
@@ -136,6 +164,7 @@ impl Default for Preferences {
             code_font_size: DEFAULT_CODE_FONT_SIZE,
             terminal: TerminalPreference::default(),
             agent: AgentPreference::default(),
+            agent_shell: ShellPreference::default(),
             skills_location: SkillsLocation::default(),
             mcp_enabled: DEFAULT_MCP_ENABLED,
             mcp_local_network: DEFAULT_MCP_LOCAL_NETWORK,
@@ -222,6 +251,7 @@ mod tests {
             code_font_size: 15.0,
             terminal: TerminalPreference::Ghostty,
             agent: AgentPreference::ClaudeCode,
+            agent_shell: ShellPreference::Fish,
             mcp_enabled: true,
             mcp_local_network: true,
             mcp_port: 43123,
@@ -250,6 +280,7 @@ mod tests {
         assert_eq!(restored.code_font_size, preferences.code_font_size);
         assert_eq!(restored.terminal, preferences.terminal);
         assert_eq!(restored.agent, preferences.agent);
+        assert_eq!(restored.agent_shell, preferences.agent_shell);
         assert_eq!(restored.mcp_enabled, preferences.mcp_enabled);
         assert_eq!(restored.mcp_local_network, preferences.mcp_local_network);
         assert_eq!(restored.mcp_port, preferences.mcp_port);
@@ -283,6 +314,7 @@ auto_open_canvas = false
         assert!(preferences.mcp_enabled);
         assert_eq!(preferences.terminal, TerminalPreference::System);
         assert_eq!(preferences.agent, AgentPreference::Codex);
+        assert_eq!(preferences.agent_shell, ShellPreference::Default);
         store.save(&preferences).unwrap();
         let saved = std::fs::read_to_string(path).unwrap();
         assert!(!saved.contains("terminal_"));

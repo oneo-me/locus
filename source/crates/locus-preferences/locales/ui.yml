@@ -2,6 +2,9 @@ _version: 2
 settings.editor.system_default:
   en: System default
   zh-CN: 系统默认
+settings.shell.default:
+  en: Default
+  zh-CN: 默认
 settings.terminal.system:
   en: System terminal
   zh-CN: 系统终端

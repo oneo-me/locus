@@ -4,6 +4,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+- Choose zsh, bash, or fish in Terminal settings on Unix to run Agents and keep the selected shell open after they exit; the default launch behavior is unchanged.
 - License the project under the MIT License.
 
 ## [0.2026.1]
