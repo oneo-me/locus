@@ -39,7 +39,7 @@ Markdown uses `gpui_kit::component::text::TextView`. The current note retains an
 
 ## Actions and focus
 
-The note titlebar toolbar provides copy reference, edit note, open directory, and a more menu in that order. The more menu offers icon upload and archiving. Sidebar context menus retain edit, open directory, icon upload, and archiving, binding directly to their target notes rather than another current selection. Canvas notes also have a download button before copy, busy and disabled during preparation; see the canvas subject.
+The note titlebar toolbar provides copy reference, edit note, open directory, and a more menu in that order. The more menu offers icon upload and archiving. Sidebar context menus retain edit, open directory, icon upload, and archiving, binding directly to their target notes rather than another current selection. Canvas notes also offer Download canvas in the more menu, disabled during preparation while the menu trigger shows a busy state; see the canvas subject. Editing uses a pencil icon in the toolbar and sidebar context menus.
 
 Open the command palette from the macOS View menu or Command/Ctrl+E; the same shortcut closes it. It includes app commands, current-note commands, and visible notes from the current projection. Search does not preload all bodies. Menus, buttons, palette, and shortcuts reuse the same Actions and enablement conditions. Confirmation closes it; Escape cancels and restores focus. The palette and backdrop transition together.
 

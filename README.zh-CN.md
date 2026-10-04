@@ -29,7 +29,7 @@ Markdown 支持连续文本选择、全选和复制。概要和自定义 YAML �
 
 有 `canvas/index.html` 与 `canvas/main.js` 的笔记运行 HTML/JavaScript 画布，模版调用方使用互斥的 `canvas/index.json`。原生画布当前支持 macOS，标题栏和头部以下显示网页，内置 Tailwind，通过系统 WebView 读取文件。画布笔记的 `index.md` 只保留 frontmatter；普通笔记显示 Markdown 正文。
 
-保存画布后手动刷新或重新进入笔记生效，离开时释放网页临时状态。“下载画布”导出已保存的入口、数据和引用资源；默认保存到系统下载目录，可在通用设置中修改。结果为单个 HTML 或带 `canvas.html` 和资源的目录，同名自动编号；动态资源需先加载，在线数据仍需网络，模块或 Worker 可能需要本地 HTTP 服务。编写规则见随软件发布的 skill [画布参考](source/resources/skills/locus/references/canvas.md)与[附件参考](source/resources/skills/locus/references/attachments.md)。
+保存画布后手动刷新或重新进入笔记生效，离开时释放网页临时状态。标题栏更多菜单中的“下载画布”导出已保存的入口、数据和引用资源；默认保存到系统下载目录，可在通用设置中修改。结果为单个 HTML 或带 `canvas.html` 和资源的目录，同名自动编号；动态资源需先加载，在线数据仍需网络，模块或 Worker 可能需要本地 HTTP 服务。编写规则见随软件发布的 skill [画布参考](source/resources/skills/locus/references/canvas.md)与[附件参考](source/resources/skills/locus/references/attachments.md)。
 
 ## 外部 Agent
 

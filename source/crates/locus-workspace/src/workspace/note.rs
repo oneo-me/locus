@@ -285,7 +285,7 @@ impl Locus {
         let edit_button = toolbar_icon_button(
             "edit-note",
             t!("workspace.note.edit", locale = language.locale()).into_owned(),
-            Icon::File,
+            gpui_kit::assets::IconName::Pencil,
             theme,
         )
         .on_click(|_, window, cx| window.dispatch_action(Box::new(crate::EditCurrentNote), cx));
@@ -339,32 +339,6 @@ impl Locus {
                                     .child(node.title.clone()),
                             ),
                     )
-                    .when(node.canvas_path.is_some(), |bar| {
-                        use gpui_kit::component::Disableable as _;
-                        let path = node.path.clone();
-                        bar.child(
-                            toolbar_icon_button(
-                                "download-note-canvas",
-                                t!("workspace.canvas.download", locale = language.locale())
-                                    .into_owned(),
-                                gpui_kit::assets::IconName::Download,
-                                theme,
-                            )
-                            .loading(self.canvas_download_pending)
-                            .disabled(
-                                self.canvas_download_pending
-                                    || !self
-                                        .note_canvas
-                                        .as_ref()
-                                        .is_some_and(|canvas| canvas.path == node.path),
-                            )
-                            .on_click(cx.listener(
-                                move |this, _, window, cx| {
-                                    this.download_note_canvas(&path, window, cx)
-                                },
-                            )),
-                        )
-                    })
                     .child(copy_button)
                     .child(edit_button)
                     .child(directory_button)

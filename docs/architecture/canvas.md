@@ -20,7 +20,7 @@ Basic pages and local resources work offline. HTTPS images and data requests, ca
 
 ## Canvas export
 
-Canvas titlebars provide a separate Download canvas button before copy. Background preparation displays busy and disabled states; completion reports the saved location, and failures report reasons. Operations bind the note, title, and export directory captured at click time. Settings → General → Export directory selects the destination, defaulting to system Downloads and persisting in TOML.
+Canvas titlebars provide Download canvas in the more menu. Background preparation shows a busy menu trigger and disables the download item; completion reports the saved location, and failures report reasons. Operations bind the note, title, and export directory captured at click time. Settings → General → Export directory selects the destination, defaulting to system Downloads and persisting in TOML.
 
 Exports read saved content, including templates and caller data, Tailwind, referenced local resources, and loaded dynamic resources. They exclude transient page state and unrelated attachments. Note navigation links retain their original addresses without bundling target notes; exported pages do not provide in-app note navigation. Referenced note YAML and bodies become separate resource snapshots, with the same ownership as live reads. Single-file results save as `<note title>.html`; multifile results save `canvas.html` and resources in a same-named directory. Duplicate names receive automatic numbering without overwriting. Failures leave no partial output. Pure entry modules may be embedded; modules with imports or import.meta remain files. Module and Worker restrictions under file origins may require a local HTTP server. Online data still requires a network.
 

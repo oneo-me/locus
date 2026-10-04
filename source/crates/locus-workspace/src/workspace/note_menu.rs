@@ -36,7 +36,13 @@ impl Locus {
             trigger_label.clone(),
             Icon::Ellipsis,
             theme,
-            |button| button.loading(pending).disabled(disabled),
+            |button| {
+                button
+                    .loading(
+                        pending || (node.canvas_path.is_some() && self.canvas_download_pending),
+                    )
+                    .disabled(disabled)
+            },
             Anchor::TopRight,
             menu,
         )
@@ -66,8 +72,19 @@ impl Locus {
         let archive_label =
             t!("workspace.note_menu.archive", locale = language.locale()).into_owned();
         let disabled = self.pending_note_action.is_some();
+        let download_path = node.path.clone();
+        let show_download = !include_file_actions && node.canvas_path.is_some();
+        let download_disabled = self.canvas_download_pending
+            || !self
+                .note_canvas
+                .as_ref()
+                .is_some_and(|canvas| canvas.path == node.path);
+        let download_label =
+            t!("workspace.canvas.download", locale = language.locale()).into_owned();
         let locus = cx.weak_entity();
         move |menu, _, _| {
+            let download_locus = locus.clone();
+            let download_path = download_path.clone();
             let choose_locus = locus.clone();
             let choose_path = document_path.clone();
             let archive_locus = locus.clone();
@@ -79,7 +96,9 @@ impl Locus {
             menu.when(include_file_actions, |menu| {
                 menu.item(
                     PopupMenuItem::new(edit_label.clone())
-                        .icon(gpui_kit::component::Icon::new(Icon::File))
+                        .icon(gpui_kit::component::Icon::new(
+                            gpui_kit::assets::IconName::Pencil,
+                        ))
                         .on_click(move |_, window, cx| {
                             let _ = edit_locus.update(cx, |this, cx| {
                                 this.edit_note_at_path(&edit_path, window, cx);
@@ -92,6 +111,21 @@ impl Locus {
                         .on_click(move |_, window, cx| {
                             let _ = directory_locus.update(cx, |this, cx| {
                                 this.open_note_directory_at_path(&directory_path, window, cx);
+                            });
+                        }),
+                )
+                .separator()
+            })
+            .when(show_download, |menu| {
+                menu.item(
+                    PopupMenuItem::new(download_label.clone())
+                        .icon(gpui_kit::component::Icon::new(
+                            gpui_kit::assets::IconName::Download,
+                        ))
+                        .disabled(download_disabled)
+                        .on_click(move |_, window, cx| {
+                            let _ = download_locus.update(cx, |this, cx| {
+                                this.download_note_canvas(&download_path, window, cx);
                             });
                         }),
                 )
