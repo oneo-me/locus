@@ -12,6 +12,10 @@ The Markdown document tree is the sole source of truth for knowledge content. Us
 
 ## Quick start
 
+For macOS, download the universal Apple Silicon / Intel ZIP from [GitHub Releases](https://github.com/oneo-me/locus/releases/latest), extract it, and move `Locus.app` into Applications. Release builds check and download updates automatically through Sparkle, which handles installation and restart. Users of older builds without an updater must install the first updater-enabled release manually once. Source builds do not include automatic updating. Default release builds are ad-hoc signed, not Apple-notarized; on first installation, macOS may block opening the app. Only if you trust the release, allow it in System Settings → Privacy & Security after attempting to open it. See [release setup](docs/build.md#automated-macos-releases) for maintainer configuration.
+
+Settings → About shows the app version, license and project links, and update status. On macOS, About Locus in the application menu opens this page; Check for Updates opens it and starts a Sparkle check. The page also provides the same check button and a manual download link.
+
 After launching the app, select a local Markdown library in Settings. Each note is represented by `index.md` in its directory. The app reads changes made to those files by external editors and Agents.
 
 Running from source requires Rust and the platform's build tools. From the repository root:

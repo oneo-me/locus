@@ -6,6 +6,14 @@
 
 Settings replaces the workspace inside the main window. Returning restores its state and focus. The shared shell provides appearance settings and category navigation; Locus adds library, editor, export directory, archive restoration, fonts, terminal, Agent, Unix Shell, and MCP settings. Skills has its own navigation group and page with an installation location selector; selecting a location automatically installs the bundled skill and cleans up the old Locus link. The MCP page provides service enablement, listening scope, port, real status, and errors. See [Agent integration](mcp.md#skill-distribution-and-installation) for skill files and background installation and [MCP access](../mcp.md) for client connections.
 
+### About and update checks
+
+About is an Application navigation page, using the existing settings group/item layout. It shows the app name, description, workspace-inherited package version, MIT license link, project link, update status, and GitHub release link. External links use GPUI Base Link with an explicit browser-opening strategy and keyboard focus; the update command uses a standard outlined Button. The settings root supplies a Tab group, and leaving settings restores workspace focus. SettingsItem descriptions explicitly wrap within their text column, even when list ancestors use no-wrap styles, so long native failure messages do not intrude into the control column.
+
+`Settings::show_about` selects the page and can defer a user-initiated check. Both application-menu commands use this entry point: About only navigates, while Check for Updates navigates and starts a check. Settings observes the app-wide `locus-updater::Updater` entity rather than maintaining another updater or result cache. Native callbacks publish new-version, no-update reason, and failure results. A cancelled check does not claim that the app is current. Checks are disabled while one is pending or Sparkle cannot accept a new session. Missing frameworks and unsupported platforms show an explicit unavailable explanation and retain the manual release link.
+
+Sparkle owns its native download/installation UI; About does not implement installation or force restart. Result state survives leaving and reopening settings for the current process, but is not written to Locus preferences. Sparkle owns its own scheduler preferences. See [macOS releases and updates](updates.md#installed-application-behavior) for the backend and delivery boundaries.
+
 An unconfigured export directory uses the system Downloads directory. Selection changes affect only subsequent exports or terminal launches; open pages and external sessions retain their own lifecycles. Save failures expose their reasons. Rollback for individual options follows their settings methods; values effective only in memory must not be described as saved.
 
 ## Configuration service
@@ -47,4 +55,4 @@ Each resource package declares `cargo:rerun-if-changed=locales` in its `build.rs
 
 Check field defaults, TOML round trips, invalid-size normalization, missing and damaged files, atomic creation and replacement, write ordering, and failure feedback. Workspace tests must verify that blocking an old write still preserves ordered saves of the latest snapshot.
 
-Actual window-drag responsiveness, restoration after quitting, system appearance changes, bilingual menus, and focus across settings require target-platform confirmation. Shutdown saving on unusually slow disks remains subject to the limit above.
+About UI integration tests cover navigation, disabled checks without a framework, and pointer/keyboard external links; workspace integration tests cover both actions reaching About from reading or another settings page and restoring focus on return. Actual window-drag responsiveness, restoration after quitting, system appearance changes, bilingual menus, and focus across settings require target-platform confirmation. Shutdown saving on unusually slow disks remains subject to the limit above.

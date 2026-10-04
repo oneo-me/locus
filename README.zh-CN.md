@@ -12,6 +12,10 @@ Markdown 文档树始终是知识内容的唯一事实来源，用户可以直�
 
 ## 快速开始
 
+macOS 用户可从 [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 下载 Apple Silicon / Intel 通用 ZIP，解压后将 `Locus.app` 移入「应用程序」。发布版通过 Sparkle 自动检查与下载更新，并由原生更新流程处理安装和重启。没有内置更新器的旧版用户，需要先手动安装一次首个支持更新的版本；源码构建不包含自动更新。默认发布版使用 ad-hoc 签名，未经 Apple 公证，首次打开可能被 macOS 拦截；确认信任该发布版本后，可在尝试打开应用后前往「系统设置 → 隐私与安全」允许打开。维护者配置见[自动发布说明](docs/build.md#automated-macos-releases)。
+
+「设置 → 关于」显示应用版本、许可证与项目链接，以及更新状态。macOS 应用菜单中的「关于 Locus」打开此页，「检查更新」则打开此页并开始 Sparkle 检查；页面内也提供相同的检查按钮和手动下载链接。
+
 启动应用后，在设置中选择本地 Markdown 文档库。每篇笔记由目录中的 `index.md` 表达；应用会读取外部编辑器与 Agent 对真实文件的修改。
 
 从源码运行需要 Rust 和平台构建工具，在项目根目录执行：

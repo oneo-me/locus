@@ -30,7 +30,7 @@ use crate::sidebar_order::SidebarOrderState;
 use crate::state::{
     InterfaceState, InterfaceStateWriter, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH,
 };
-use crate::{NewTerminal, OpenSettings, ReloadCurrentNote, ToggleLeftPanel};
+use crate::{CheckForUpdates, NewTerminal, OpenSettings, ReloadCurrentNote, ToggleLeftPanel};
 use gpui_kit::component::Theme;
 use gpui_kit::component::text::TextViewState;
 use locus_library::{LibraryTree, LibraryWatchEvent, LibraryWatcher, load_note};
@@ -39,6 +39,7 @@ use locus_preferences::Preferences;
 use locus_preferences::config::DEFAULT_LEFT_SIDEBAR_WIDTH;
 use locus_settings::{Settings, SettingsEvent, SettingsInit};
 use locus_ui::Icon;
+use oneo_gpui::About;
 use oneo_gpui::Language;
 use oneo_gpui::{
     AppShellState, CloseWindow, PanelSize, TITLEBAR_CONTROL_INSET, TITLEBAR_CONTROL_SIZE,
@@ -707,6 +708,27 @@ impl Locus {
         self.open_settings(window, cx);
     }
 
+    fn open_about_action(&mut self, _: &About, window: &mut Window, cx: &mut Context<Self>) {
+        self.show_about(false, window, cx);
+    }
+
+    fn check_for_updates_action(
+        &mut self,
+        _: &CheckForUpdates,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.show_about(true, window, cx);
+    }
+
+    /// Opens the About settings page, optionally starting a user-initiated update check.
+    pub fn show_about(&mut self, check_updates: bool, window: &mut Window, cx: &mut Context<Self>) {
+        self.open_settings(window, cx);
+        self.settings.update(cx, |settings, cx| {
+            settings.show_about(check_updates, window, cx);
+        });
+    }
+
     fn reload_current_note_action(
         &mut self,
         _: &ReloadCurrentNote,
@@ -940,6 +962,8 @@ impl Render for Locus {
             .on_action(cx.listener(Self::open_command_palette_action))
             .on_action(cx.listener(Self::open_note_action))
             .on_action(cx.listener(Self::open_settings_action))
+            .on_action(cx.listener(Self::open_about_action))
+            .on_action(cx.listener(Self::check_for_updates_action))
             .on_action(cx.listener(Self::copy_current_note_reference_action))
             .on_action(cx.listener(Self::edit_current_note_action))
             .on_action(cx.listener(Self::open_current_note_directory_action))
@@ -1073,6 +1097,93 @@ fn sync_markdown_font(preferences: &Preferences, cx: &mut gpui_kit::App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[gpui_kit::test]
+    fn about_and_update_actions_route_to_the_same_settings_page(cx: &mut gpui_kit::TestAppContext) {
+        use gpui_kit::component::Root;
+        use gpui_kit::test::TestWindowExt;
+        cx.update(gpui_kit::init);
+        let mut locus = None;
+        let (_, cx) = cx.add_window_view(|window, cx| {
+            let view = cx.new(|cx| {
+                Locus::new(
+                    window,
+                    Preferences::default(),
+                    None,
+                    InterfaceState::default(),
+                    cx,
+                )
+            });
+            locus = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let locus = locus.unwrap();
+        cx.update(|window, cx| {
+            window.render_frame(cx);
+            assert!(!locus.read(cx).app_shell.is_settings_open());
+            window.dispatch_action(Box::new(About), cx);
+        });
+        cx.run_until_parked();
+        cx.update(|window, cx| {
+            window.render_frame(cx);
+            assert!(locus.read(cx).app_shell.is_settings_open());
+            assert!(window.find("check-for-updates").visible());
+            window.click("settings-general", cx);
+            assert!(window.try_find("check-for-updates").is_none());
+            window.dispatch_action(Box::new(CheckForUpdates), cx);
+        });
+        cx.run_until_parked();
+        cx.update(|window, cx| {
+            window.render_frame(cx);
+            assert!(locus.read(cx).app_shell.is_settings_open());
+            assert!(window.find("check-for-updates").visible());
+            window.dispatch_action(Box::new(oneo_gpui::CloseSettings), cx);
+        });
+        cx.run_until_parked();
+        cx.update(|window, cx| {
+            assert!(!locus.read(cx).app_shell.is_settings_open());
+            assert!(locus.read(cx).root_focus.is_focused(window));
+        });
+    }
+
+    #[gpui_kit::test]
+    fn application_actions_open_about_without_a_focused_handler(cx: &mut gpui_kit::TestAppContext) {
+        use gpui_kit::component::Root;
+        use gpui_kit::test::TestWindowExt;
+        cx.update(gpui_kit::init);
+        let mut locus = None;
+        let handle = cx.add_window(|window, cx| {
+            let view = cx.new(|cx| {
+                Locus::new(
+                    window,
+                    Preferences::default(),
+                    None,
+                    InterfaceState::default(),
+                    cx,
+                )
+            });
+            locus = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let locus = locus.unwrap();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.blur(cx);
+        })
+        .unwrap();
+        cx.update(|cx| {
+            crate::bind_application_actions(locus.clone(), handle, cx);
+            cx.dispatch_action(&About);
+        });
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert!(locus.read(cx).app_shell.is_settings_open());
+            assert!(window.find("check-for-updates").visible());
+            assert!(window.focused(cx).is_some());
+        })
+        .unwrap();
+    }
 
     #[gpui_kit::test]
     fn sidebar_drag_crosses_occluding_content_and_stops_on_release(

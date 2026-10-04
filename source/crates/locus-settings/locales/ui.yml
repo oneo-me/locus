@@ -1,4 +1,52 @@
 _version: 2
+settings.page.about:
+  en: About
+  zh-CN: 关于
+settings.about.description:
+  en: Local-first Markdown workspace
+  zh-CN: 本地优先的 Markdown 知识工作台
+settings.about.version:
+  en: "Version %{version}"
+  zh-CN: "版本 %{version}"
+settings.about.license:
+  en: License
+  zh-CN: 许可证
+settings.about.project:
+  en: Project
+  zh-CN: 项目
+settings.about.updates:
+  en: Updates
+  zh-CN: 更新
+settings.about.check_updates:
+  en: Check for updates…
+  zh-CN: 检查更新…
+settings.about.updates_unavailable:
+  en: This build has no updater. Install a release from GitHub to enable automatic updates.
+  zh-CN: 此构建未包含更新器。请从 GitHub 安装发布版以启用自动更新。
+settings.about.updates_unsupported:
+  en: Automatic updates are currently available only on macOS.
+  zh-CN: 自动更新目前仅支持 macOS。
+settings.about.updates_ready:
+  en: Check for new versions. Sparkle handles downloading, installation, and restart.
+  zh-CN: 检查新版本，由 Sparkle 处理下载、安装与重启。
+settings.about.updates_checking:
+  en: Checking for updates…
+  zh-CN: 正在检查更新…
+settings.about.updates_available:
+  en: "Version %{version} is available."
+  zh-CN: "发现新版本 %{version}。"
+settings.about.updates_failed:
+  en: "Could not check for updates: %{error}"
+  zh-CN: "无法检查更新：%{error}"
+settings.about.releases:
+  en: Releases
+  zh-CN: 发布版本
+settings.about.releases_description:
+  en: Download manually or read release notes on GitHub.
+  zh-CN: 在 GitHub 手动下载或查看更新说明。
+settings.about.view_releases:
+  en: View releases
+  zh-CN: 查看发布版本
 settings.font.search:
   en: Search fonts
   zh-CN: 搜索字体

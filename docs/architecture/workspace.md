@@ -45,6 +45,8 @@ Open the command palette from the macOS View menu or Command/Ctrl+E; the same sh
 
 Command/Ctrl+R and F5 refresh the focused canvas or otherwise reload the current body. Command/Ctrl+W closes the window, Command/Ctrl+, opens settings, and Command/Ctrl+backtick launches an external Agent. They also work under canvas focus. See [Library terminal](terminal.md) for handoff and duplicate-submit protection.
 
+Application-menu About opens Settings → About instead of the native AppKit About panel. Check for Updates opens the same page and defers a Sparkle check. The workspace's action handlers share `show_about`; app-wide fallback handlers activate the retained main window when no focused view can handle the command. The menu remains available for source runs, where About explains that updating is unavailable rather than claiming to be current. See [About and update checks](settings.md#about-and-update-checks).
+
 Select all, copy, cut, and paste use GPUI Kit editing Actions and standard shortcuts. `commands.rs` associates native editing commands through `MenuItem::os_action`. On macOS, the current native responder handles them: WKWebView handles page selections and editing targets, while GPUI inputs retain component behavior. Ordinary page text is read-only; cut and paste affect only editable targets.
 
 Without a selected note or when selecting a directory without a body, main-content titlebar text and empty space drag the window. Tool buttons isolate clicks, drags, double-clicks, and disabled hit areas from window dragging. See the shell subject for platform window controls, materials, and closing, and settings for layout and state saving.

@@ -3,6 +3,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 use rust_i18n::t;
 use std::path::Path;
 
+mod about;
 mod archive;
 mod controls;
 mod mcp;
@@ -49,6 +50,7 @@ enum SettingsPage {
     Terminal,
     Skills,
     Mcp,
+    About,
 }
 
 impl SettingsPage {
@@ -62,6 +64,7 @@ impl SettingsPage {
             Self::Terminal => t!("settings.page.terminal", locale = language.locale()).into_owned(),
             Self::Skills => t!("settings.page.skills", locale = language.locale()).into_owned(),
             Self::Mcp => "MCP".to_owned(),
+            Self::About => t!("settings.page.about", locale = language.locale()).into_owned(),
         }
     }
 }
@@ -267,6 +270,7 @@ pub struct Settings {
     focus: FocusHandle,
     return_focus: FocusHandle,
     page: SettingsPage,
+    updater: Entity<locus_updater::Updater>,
     choice_selects: std::collections::HashMap<Dropdown, Entity<ChoiceSelect>>,
     font_selects: std::collections::HashMap<FontKind, Entity<FontSelect>>,
     preferences: Preferences,
@@ -403,11 +407,14 @@ impl Settings {
         .detach();
         let appearance_controls =
             AppearanceControls::new(preferences.appearance, window, cx, Self::change_appearance);
+        let updater = locus_updater::Updater::shared(cx);
+        cx.observe(&updater, |_, _, cx| cx.notify()).detach();
         Self {
             appearance_controls,
             focus: cx.focus_handle(),
             return_focus,
             page: SettingsPage::General,
+            updater,
             choice_selects,
             font_selects,
             preferences,
@@ -673,6 +680,13 @@ impl Settings {
                         SettingsPage::Terminal,
                         cx,
                     ),
+                    self.render_navigation_row(
+                        "settings-about",
+                        SettingsPage::About.label(language),
+                        Icon::Info,
+                        SettingsPage::About,
+                        cx,
+                    ),
                 ],
                 &theme,
             ))
@@ -740,6 +754,7 @@ impl Settings {
             SettingsPage::Terminal => self.render_terminal(cx),
             SettingsPage::Skills => self.render_skills(cx),
             SettingsPage::Mcp => self.render_mcp(cx),
+            SettingsPage::About => self.render_about(cx),
         };
 
         div()
@@ -795,6 +810,7 @@ impl Render for Settings {
         let theme = Theme::global(cx).clone();
         div()
             .key_context("Settings")
+            .tab_group()
             .track_focus(&self.focus)
             .on_action(
                 cx.listener(|this, _: &oneo_gpui::CloseSettings, window, cx| {
@@ -849,5 +865,7 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+mod about_tests;
 #[cfg(test)]
 mod localization_tests;

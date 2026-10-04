@@ -4,6 +4,10 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+- View application details and update status in Settings → About. On macOS, About Locus opens this page, and the new Check for Updates menu command opens it and starts a Sparkle check; source builds explain when no updater is available.
+
+- Publish universal macOS apps from version tags to GitHub Releases with Sparkle background checking, signed update archives, downloading, and native installation/restart. Apple developer membership is not required: builds use ad-hoc signing by default, with optional Developer ID signing/notarization. First installation may require a Gatekeeper exception; users of builds without an updater must manually install an updater-enabled release once.
+
 - Move Download canvas into the note titlebar’s more menu and use a pencil icon for editing notes.
 - Manage bundled skills in a separate Skills settings group; selecting a location automatically installs them and removes the old Locus symlink while preserving real directories.
 - Choose zsh, bash, or fish in Terminal settings on Unix to run Agents and keep the selected shell open after they exit; the default launch behavior is unchanged.

@@ -4548,9 +4548,8 @@ version = "0.2026.1"
 dependencies = [
  "gpui-kit",
  "locus-preferences",
+ "locus-updater",
  "locus-workspace",
- "objc2 0.6.4",
- "objc2-app-kit 0.3.2",
  "oneo-gpui",
 ]
 
@@ -4637,6 +4636,7 @@ dependencies = [
  "locus-mcp",
  "locus-preferences",
  "locus-ui",
+ "locus-updater",
  "oneo-gpui",
  "rust-i18n",
  "serde-saphyr",
@@ -4662,6 +4662,16 @@ dependencies = [
  "rust-i18n",
  "serde-saphyr",
  "serde_json",
+]
+
+[[package]]
+name = "locus-updater"
+version = "0.2026.1"
+dependencies = [
+ "async-channel",
+ "gpui-kit",
+ "objc2 0.6.4",
+ "objc2-foundation 0.3.2",
 ]
 
 [[package]]

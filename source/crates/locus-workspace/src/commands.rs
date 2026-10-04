@@ -1,7 +1,7 @@
 use gpui_kit::component::input::{Copy, Cut, Paste, SelectAll};
 use gpui_kit::{App, KeyBinding, MenuItem, OsAction, actions};
 use oneo_gpui::Language;
-use oneo_gpui::{AppShellMenuLabels, AppShellMenus, set_app_shell_menus};
+use oneo_gpui::{About, AppShellMenuLabels, AppShellMenus, set_app_shell_menus};
 use rust_i18n::t;
 
 const COMMAND_PALETTE_KEY: &str = "secondary-e";
@@ -28,6 +28,7 @@ actions!(
     [
         ArchiveCurrentNote,
         ChooseCurrentNoteIcon,
+        CheckForUpdates,
         CopyCurrentNoteReference,
         EditCurrentNote,
         NewTerminal,
@@ -43,6 +44,38 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("secondary-r", ReloadCurrentNote, None),
         KeyBinding::new("f5", ReloadCurrentNote, None),
     ]);
+}
+
+/// Keeps app-menu navigation usable when the retained main window is hidden.
+pub fn bind_application_actions(
+    view: gpui_kit::Entity<crate::Locus>,
+    window: gpui_kit::WindowHandle<gpui_kit::component::Root>,
+    cx: &mut App,
+) {
+    let about_view = view.clone();
+    cx.on_action(move |_: &About, cx| {
+        activate_about(&about_view, window, false, cx);
+    });
+    cx.on_action(move |_: &CheckForUpdates, cx| {
+        activate_about(&view, window, true, cx);
+    });
+}
+
+fn activate_about(
+    view: &gpui_kit::Entity<crate::Locus>,
+    handle: gpui_kit::WindowHandle<gpui_kit::component::Root>,
+    check_updates: bool,
+    cx: &mut App,
+) {
+    let view = view.clone();
+    // A global fallback can run during the Root's action dispatch. Re-entering
+    // its window synchronously would borrow the same entity twice.
+    cx.defer(move |cx| {
+        let _ = handle.update(cx, |_, window, cx| {
+            window.activate_window();
+            view.update(cx, |view, cx| view.show_about(check_updates, window, cx));
+        });
+    });
 }
 
 pub fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: bool) {
@@ -83,6 +116,10 @@ pub fn set_app_menus(cx: &mut App, language: Language, can_reload_current_note: 
                     .into(),
             },
         )
+        .application_items([MenuItem::action(
+            t!("menu.application.check_updates", locale = language.locale()).into_owned(),
+            CheckForUpdates,
+        )])
         .edit_items(edit_menu_items(language))
         .view_items_before_panels([
             MenuItem::action(
@@ -177,6 +214,34 @@ mod tests {
                                 == Some(false))
                     );
                 }
+            }
+        });
+    }
+
+    #[gpui_kit::test]
+    fn application_menu_contains_localized_update_navigation(cx: &mut gpui_kit::TestAppContext) {
+        cx.update(|cx| {
+            for (language, label) in [
+                (Language::English, "Check for Updates…"),
+                (Language::Chinese, "检查更新…"),
+            ] {
+                set_app_menus(cx, language, false);
+                let menus = cx.get_menus().unwrap();
+                let action = menus[0]
+                    .items
+                    .iter()
+                    .find_map(|item| match item {
+                        gpui_kit::OwnedMenuItem::Action {
+                            name,
+                            action,
+                            disabled,
+                            ..
+                        } if name == label => Some((action, disabled)),
+                        _ => None,
+                    })
+                    .expect("application menu has update navigation");
+                assert!(action.0.partial_eq(&CheckForUpdates));
+                assert!(!action.1, "navigation stays available even without Sparkle");
             }
         });
     }

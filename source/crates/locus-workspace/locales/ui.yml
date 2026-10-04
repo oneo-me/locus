@@ -1,4 +1,7 @@
 _version: 2
+menu.application.check_updates:
+  en: Check for Updates…
+  zh-CN: 检查更新…
 menu.application.about:
   en: About Locus
   zh-CN: 关于 Locus

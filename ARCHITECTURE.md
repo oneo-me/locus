@@ -41,7 +41,8 @@ Source is a Rust 2024 Cargo workspace with `locus` as its default package. The d
 | --- | --- |
 | `locus` | Product initialization, app startup, menus, and workspace assembly |
 | `locus-workspace` | Navigation, reading, canvas orchestration, terminal handoff, interface state, and product actions |
-| `locus-settings` | Preferences entity, settings pages, archive restoration, and settings events |
+| `locus-settings` | Preferences entity, settings pages including About, archive restoration, and settings events |
+| `locus-updater` | App-wide update status and the macOS Sparkle controller/delegate |
 | `locus-preferences` | Product fields, defaults, validation, storage names, and option labels |
 | `locus-library` | File model, scanning, reading and writing, watching, versions, links, and Git projections |
 | `locus-mcp` | Read-only discovery tools, transport sessions, listening, and shutdown control |
@@ -52,7 +53,7 @@ Source is a Rust 2024 Cargo workspace with `locus` as its default package. The d
 | `oneo-gpui-graph` / `oneo-gpui-terminal` | Independent generic components and examples, currently unused by Locus |
 | `oneo-tool-packer` | Independent build and app assembly CLI |
 
-The main product dependency chain is `locus → locus-workspace → locus-settings`. The workspace also consumes public interfaces from canvas, UI, preferences, library, and MCP. Settings consumes UI, preferences, library, and MCP. Canvas consumes the library, shared language, and macOS WebView. UI consumes the library and preferences. The library is MCP's only product-domain dependency and does not depend on GUI code. Feature packages do not depend back on the app binary.
+The main product dependency chain is `locus → locus-workspace → locus-settings`. The workspace also consumes public interfaces from canvas, UI, preferences, library, and MCP. Settings consumes UI, preferences, library, MCP, and the updater service. The app initializes the updater, which owns its native backend and has no settings or workspace dependency. Canvas consumes the library, shared language, and macOS WebView. UI consumes the library and preferences. The library is MCP's only product-domain dependency and does not depend on GUI code. Feature packages do not depend back on the app binary.
 
 ## Storage
 
@@ -81,6 +82,7 @@ Each subject owns current mechanisms, boundaries, and verification methods. The 
 | [Library terminal](docs/architecture/terminal.md) | Terminal selection, commands, path quoting, handoff, and failure handling |
 | [WebView integration](docs/architecture/webview.md) | Generic native component construction, visibility, input, and composition limits |
 | [App packaging](docs/architecture/packaging.md) | CLI, targets, icons, resources, signing, runtime libraries, and output replacement |
+| [macOS releases and updates](docs/architecture/updates.md) | Version tags, GitHub Release publication, signing, notarization, and Sparkle updates |
 
 ## Repository layout
 
@@ -99,11 +101,13 @@ source/Cargo.lock       Resolved versions
 source/crates/          Product and generic Rust packages
 source/resources/skills/ Bundled skills installed through symlinks on demand
 source/packer.toml      App identity and packaging resources
+.github/workflows/      Tag-triggered macOS release pipeline
+scripts/                Bun development and release scripts
 .vscode/                Development and build tasks
 dist/                   App outputs, ignored by Git
 ```
 
-The Cargo workspace manages `source/crates/`. There are currently no JavaScript/TypeScript subpackages or root Bun workspace manifest. When introducing subpackages, register their actual paths in the new workspace manifest. The app version remains in `source/Cargo.toml`.
+The Cargo workspace manages `source/crates/`. There are currently no JavaScript/TypeScript subpackages or root Bun workspace manifest. When introducing subpackages, register their actual paths in the new workspace manifest. The app version remains in `source/Cargo.toml`. Version tags publish universal macOS bundles to GitHub Releases, using ad-hoc signing by default without an Apple developer account; Developer ID signing and notarization are optional. Distributed builds embed Sparkle for background update checking and downloading; `locus-updater` retains its native controller and publishes status to Settings → About. Application-menu About and Check for Updates commands navigate to that page; Sparkle owns installation and relaunch. Source runs and ordinary local bundles do not contain an updater. See [macOS releases and updates](docs/architecture/updates.md).
 
 ## Verification and known limitations
 
