@@ -4,6 +4,8 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+## [0.2026.1] - 2026-10-04
+
 - View application details and update status in Settings → About. On macOS, About Locus opens this page, and the new Check for Updates menu command opens it and starts a Sparkle check; source builds explain when no updater is available.
 
 - Publish universal macOS apps from version tags to GitHub Releases with Sparkle background checking, signed update archives, downloading, and native installation/restart. Apple developer membership is not required: builds use ad-hoc signing by default, with optional Developer ID signing/notarization. First installation may require a Gatekeeper exception; users of builds without an updater must manually install an updater-enabled release once.
