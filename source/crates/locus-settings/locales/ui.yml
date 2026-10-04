@@ -179,21 +179,24 @@ settings.export.choose_error:
   en: Couldn’t open the directory picker. Try again.
   zh-CN: 无法打开目录选择窗口，请重试。
 
+settings.page.skills:
+  en: Skills
+  zh-CN: 技能
 settings.skills.location:
-  en: Skills location
-  zh-CN: Skills 安装位置
+  en: Installation location
+  zh-CN: 安装位置
 settings.skills.description:
-  en: Link bundled skills into the library’s .agents/skills or globally into ~/.agents/skills. Updates an existing Locus link; keeps real directories.
-  zh-CN: 将随应用提供的 skills 软链接到笔记库的 .agents/skills 或全局 ~/.agents/skills。更新已有 Locus 链接，保留实体目录。
-settings.skills.install:
-  en: Install skills
-  zh-CN: 安装 skills
+  en: Selecting a location automatically installs bundled skills and removes the Locus link from the other location. Real directories are preserved. Select again to retry.
+  zh-CN: 选择位置后自动安装内置技能，并移除另一位置的 Locus 链接，保留实体目录。重新选择可重试。
+settings.skills.installing:
+  en: Installing skills…
+  zh-CN: 正在安装技能…
 settings.skills.installed:
   en: "Installed at %{path}"
   zh-CN: "已安装到 %{path}"
 settings.skills.failed:
   en: "Couldn’t install skills: %{error}"
-  zh-CN: "无法安装 skills：%{error}"
+  zh-CN: "无法安装技能：%{error}"
 settings.skills.library_required:
   en: Select a library in General settings first.
   zh-CN: 请先在通用设置中选择笔记库。

@@ -8,11 +8,11 @@ Local-network mode exposes discovery without authentication: connected clients c
 
 ## Install authoring skills
 
-In Settings → MCP, choose Library or Global under Skills location, then select Install skills:
+In Settings → Skills, select Library or Global under Installation location to install automatically:
 
 - Library installs to `<library>/.agents/skills/locus`; select a library in General first.
 - Global installs to `~/.agents/skills/locus`.
 
-Installation reports the actual destination or a failure. Installation creates a directory symlink to the running application’s bundled `skills/locus` directory. Reinstall to update an existing link. Real directories/files and other skills are preserved; move an existing real installation before retrying. Changing the selection does not install automatically or remove a previous installation. Moving or deleting the application can break the link; reinstall from the new application location. Windows may require Developer Mode or permission to create directory symlinks; failures are reported rather than falling back to copying. Agent discovery/reloading follows the client's own skill support.
+Installation reports the actual destination or a failure. Installation creates a directory symlink to the running application’s bundled `skills/locus` directory. Select the location again to update an existing link or retry. Real directories/files and other skills are preserved; move an existing real installation before retrying. Changing the selection installs the new link first, then removes the Locus symlink from the other location. If installation fails, the old link remains; cleanup errors are reported separately. Real installations at the old location are preserved. Moving or deleting the application can break the link; select the location again from the new application location. Windows may require Developer Mode or permission to create directory symlinks; failures are reported rather than falling back to copying. Agent discovery/reloading follows the client's own skill support.
 
 The [Locus skill](../source/resources/skills/locus/SKILL.md) contains note discovery and authoring workflows, with task-specific [attachment](../source/resources/skills/locus/references/attachments.md) and [canvas](../source/resources/skills/locus/references/canvas.md) references. These files are packaged under `Contents/Resources/skills` on macOS and `resources/skills` in the Windows portable directory; installation links to that resource directory. Debug runs outside an application bundle link to the source resources. MCP descriptions remain minimal.

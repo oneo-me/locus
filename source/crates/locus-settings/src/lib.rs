@@ -47,6 +47,7 @@ enum SettingsPage {
     Archive,
     Appearance,
     Terminal,
+    Skills,
     Mcp,
 }
 
@@ -59,6 +60,7 @@ impl SettingsPage {
                 t!("settings.page.appearance", locale = language.locale()).into_owned()
             }
             Self::Terminal => t!("settings.page.terminal", locale = language.locale()).into_owned(),
+            Self::Skills => t!("settings.page.skills", locale = language.locale()).into_owned(),
             Self::Mcp => "MCP".to_owned(),
         }
     }
@@ -609,6 +611,9 @@ impl Settings {
             Choice::Shell(shell) => self.preferences.agent_shell = shell,
             Choice::Agent(agent) => self.preferences.agent = agent,
             Choice::SkillsLocation(location) => {
+                if self.skills_installing {
+                    return;
+                }
                 let previous = self.preferences.skills_location;
                 self.preferences.skills_location = location;
                 self.skills_result = None;
@@ -616,6 +621,8 @@ impl Settings {
                 if self.error.is_some() {
                     self.preferences.skills_location = previous;
                     self.sync_choice_selects(_window, cx);
+                } else {
+                    self.install_skills(cx);
                 }
                 cx.notify();
                 return;
@@ -695,6 +702,17 @@ impl Settings {
                 )],
                 &theme,
             ))
+            .child(settings_navigation_group(
+                t!("settings.page.skills", locale = language.locale()).into_owned(),
+                vec![self.render_navigation_row(
+                    "settings-skills",
+                    SettingsPage::Skills.label(language),
+                    Icon::Settings,
+                    SettingsPage::Skills,
+                    cx,
+                )],
+                &theme,
+            ))
     }
 
     fn render_navigation_row(
@@ -720,6 +738,7 @@ impl Settings {
             SettingsPage::Archive => self.render_archive(cx),
             SettingsPage::Appearance => self.render_appearance(cx),
             SettingsPage::Terminal => self.render_terminal(cx),
+            SettingsPage::Skills => self.render_skills(cx),
             SettingsPage::Mcp => self.render_mcp(cx),
         };
 

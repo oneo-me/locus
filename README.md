@@ -45,7 +45,7 @@ On macOS, the system terminal is Terminal, which opens a new window for each lau
 | Refresh the current note or focused canvas | Command+R or F5 |
 | Close window | Command+W |
 
-Other platforms use the corresponding Control combinations. Enable MCP in Settings. It is disabled by default and uses port `2301`, exposing only read-only discovery at `/mcp`. Usage instructions live in the bundled skills, which MCP settings can install into the library or global `.agents/skills` directory. Local-network mode has no authentication; clients can search note content and obtain local paths.
+Other platforms use the corresponding Control combinations. Enable MCP in Settings. It is disabled by default and uses port `2301`, exposing only read-only discovery at `/mcp`. Usage instructions live in the bundled skills, which Skills settings automatically installs into the selected library or global `.agents/skills` directory, removing the old Locus link when switching locations. Local-network mode has no authentication; clients can search note content and obtain local paths.
 
 Source lives in `source/`; final app outputs live in `dist/`.
 

@@ -4,7 +4,6 @@ use std::{
 };
 
 use super::*;
-use gpui_kit::component::{Disableable as _, Sizable as _, button::Button};
 
 impl Settings {
     fn skills_base(&self) -> Option<PathBuf> {
@@ -14,12 +13,16 @@ impl Settings {
         }
     }
 
-    fn install_skills(&mut self, cx: &mut Context<Self>) {
+    pub(super) fn install_skills(&mut self, cx: &mut Context<Self>) {
         if self.skills_installing {
             return;
         }
         let Some(base) = self.skills_base() else {
             return;
+        };
+        let previous_base = match self.preferences.skills_location {
+            SkillsLocation::Library => dirs::home_dir(),
+            SkillsLocation::Global => self.preferences.library_path.clone(),
         };
         self.skills_installing = true;
         self.skills_result = None;
@@ -28,7 +31,7 @@ impl Settings {
             let result = cx
                 .background_spawn(async move {
                     bundled_skill_directory()
-                        .and_then(|source| install(&base, &source))
+                        .and_then(|source| relocate(&base, previous_base.as_deref(), &source))
                         .map_err(|error| error.to_string())
                 })
                 .await;
@@ -44,32 +47,35 @@ impl Settings {
     pub(super) fn render_skills(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let language = self.preferences.appearance.language;
         let theme = Theme::global(cx);
-        let message = self
-            .skills_result
-            .as_ref()
-            .map(|result| match result {
-                Ok(path) => t!(
-                    "settings.skills.installed",
-                    locale = language.locale(),
-                    path = path.display().to_string()
-                )
-                .into_owned(),
-                Err(error) => t!(
-                    "settings.skills.failed",
-                    locale = language.locale(),
-                    error = error
-                )
-                .into_owned(),
-            })
-            .or_else(|| {
-                self.skills_base().is_none().then(|| {
-                    t!(
-                        "settings.skills.library_required",
-                        locale = language.locale()
+        let message = if self.skills_installing {
+            Some(t!("settings.skills.installing", locale = language.locale()).into_owned())
+        } else {
+            self.skills_result
+                .as_ref()
+                .map(|result| match result {
+                    Ok(path) => t!(
+                        "settings.skills.installed",
+                        locale = language.locale(),
+                        path = path.display().to_string()
                     )
-                    .into_owned()
+                    .into_owned(),
+                    Err(error) => t!(
+                        "settings.skills.failed",
+                        locale = language.locale(),
+                        error = error
+                    )
+                    .into_owned(),
                 })
-            });
+                .or_else(|| {
+                    self.skills_base().is_none().then(|| {
+                        t!(
+                            "settings.skills.library_required",
+                            locale = language.locale()
+                        )
+                        .into_owned()
+                    })
+                })
+        };
         let message_color = if matches!(self.skills_result, Some(Err(_))) {
             theme.danger
         } else {
@@ -83,22 +89,7 @@ impl Settings {
             .child(SettingsItem::new(
                 t!("settings.skills.location", locale = language.locale()).into_owned(),
                 t!("settings.skills.description", locale = language.locale()).into_owned(),
-                div()
-                    .flex()
-                    .items_center()
-                    .gap_2()
-                    .child(self.render_dropdown(Dropdown::SkillsLocation, cx))
-                    .child(
-                        Button::new("install-skills")
-                            .small()
-                            .label(
-                                t!("settings.skills.install", locale = language.locale())
-                                    .into_owned(),
-                            )
-                            .loading(self.skills_installing)
-                            .disabled(self.skills_installing || self.skills_base().is_none())
-                            .on_click(cx.listener(|this, _, _, cx| this.install_skills(cx))),
-                    ),
+                self.render_dropdown(Dropdown::SkillsLocation, cx),
             ))
             .when_some(message, |view, message| {
                 view.child(
@@ -138,6 +129,61 @@ fn bundled_skill_directory() -> io::Result<PathBuf> {
     {
         source.canonicalize()
     }
+}
+
+// Install first so a destination conflict never removes the working old link.
+fn relocate(base: &Path, previous_base: Option<&Path>, source: &Path) -> io::Result<PathBuf> {
+    let target = install(base, source)?;
+    if let Some(previous_base) = previous_base {
+        uninstall(previous_base, &target).map_err(|error| {
+            io::Error::other(format!(
+                "Installed at {}; could not remove the old link: {error}",
+                target.display()
+            ))
+        })?;
+    }
+    Ok(target)
+}
+
+fn uninstall(base: &Path, installed: &Path) -> io::Result<()> {
+    let base = match base.canonicalize() {
+        Ok(base) => base,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    let target = base.join(".agents/skills/locus");
+    if target == installed {
+        return Ok(());
+    }
+    // Never follow redirected parent directories during cleanup.
+    for relative in [".agents", ".agents/skills"] {
+        match fs::symlink_metadata(base.join(relative)) {
+            Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {}
+            Ok(_) => {
+                return Err(io::Error::other(
+                    "Old skill parent is not a regular directory",
+                ));
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+            Err(error) => return Err(error),
+        }
+    }
+    match fs::symlink_metadata(&target) {
+        Ok(metadata) if metadata.file_type().is_symlink() => remove_directory_symlink(&target),
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(unix)]
+fn remove_directory_symlink(path: &Path) -> io::Result<()> {
+    fs::remove_file(path)
+}
+
+#[cfg(windows)]
+fn remove_directory_symlink(path: &Path) -> io::Result<()> {
+    fs::remove_dir(path)
 }
 
 // Replacing a link never modifies its destination. A real directory is never removed.
@@ -217,6 +263,61 @@ mod tests {
         fs::create_dir(&path).unwrap();
         fs::write(path.join("SKILL.md"), name).unwrap();
         path
+    }
+
+    #[test]
+    fn relocates_in_both_directions_and_preserves_resources_and_neighbors() {
+        let library = tempfile::tempdir().unwrap();
+        let global = tempfile::tempdir().unwrap();
+        let resources = tempfile::tempdir().unwrap();
+        let source = skill(resources.path(), "source");
+        let old = install(library.path(), &source).unwrap();
+        let sibling = skill(old.parent().unwrap(), "other");
+        let new = relocate(global.path(), Some(library.path()), &source).unwrap();
+        assert!(fs::symlink_metadata(&old).is_err());
+        assert!(sibling.join("SKILL.md").is_file());
+        assert!(source.join("SKILL.md").is_file());
+        relocate(library.path(), Some(global.path()), &source).unwrap();
+        assert!(fs::symlink_metadata(new).is_err());
+        assert!(old.join("SKILL.md").is_file());
+        relocate(library.path(), Some(library.path()), &source).unwrap();
+        assert!(old.join("SKILL.md").is_file());
+    }
+
+    #[test]
+    fn relocation_conflicts_keep_old_links_and_cleanup_preserves_real_directories() {
+        let old_base = tempfile::tempdir().unwrap();
+        let new_base = tempfile::tempdir().unwrap();
+        let resources = tempfile::tempdir().unwrap();
+        let source = skill(resources.path(), "source");
+        let old = install(old_base.path(), &source).unwrap();
+        let new = install(new_base.path(), &source).unwrap();
+        fs::remove_file(&new).unwrap();
+        fs::create_dir(&new).unwrap();
+        assert!(relocate(new_base.path(), Some(old_base.path()), &source).is_err());
+        assert!(old.join("SKILL.md").is_file());
+        relocate(old_base.path(), Some(new_base.path()), &source).unwrap();
+        assert!(new.is_dir());
+    }
+
+    #[test]
+    fn cleanup_rejects_redirected_parents_and_removes_dangling_links() {
+        let old_base = tempfile::tempdir().unwrap();
+        let new_base = tempfile::tempdir().unwrap();
+        let resources = tempfile::tempdir().unwrap();
+        let source = skill(resources.path(), "source");
+        let old = install(old_base.path(), &source).unwrap();
+        fs::remove_file(&old).unwrap();
+        directory_symlink(&resources.path().join("missing"), &old).unwrap();
+        let new = relocate(new_base.path(), Some(old_base.path()), &source).unwrap();
+        assert!(fs::symlink_metadata(&old).is_err());
+        let redirected = tempfile::tempdir().unwrap();
+        directory_symlink(
+            &old_base.path().join(".agents"),
+            &redirected.path().join(".agents"),
+        )
+        .unwrap();
+        assert!(uninstall(redirected.path(), &new).is_err());
     }
 
     #[test]
