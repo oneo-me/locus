@@ -7,7 +7,7 @@ description = "Build macOS application bundles and Windows portable directories 
 
 [dependencies]
 anyhow.workspace = true
-dunce = "1"
+dunce.workspace = true
 plist.workspace = true
 serde.workspace = true
 serde_json.workspace = true

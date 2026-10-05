@@ -14,7 +14,7 @@ required-features = ["shell"]
 
 [dependencies]
 rust-i18n = { workspace = true, optional = true }
-sys-locale = { version = "0.3", optional = true }
+sys-locale = { workspace = true, optional = true }
 anyhow.workspace = true
 dirs.workspace = true
 serde.workspace = true
@@ -28,9 +28,9 @@ serde-saphyr.workspace = true
 gpui-kit = { workspace = true, features = ["test-support"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-core-graphics = { version = "0.24", optional = true }
-objc2 = { version = "0.6", optional = true }
-objc2-app-kit = { version = "0.3", optional = true, default-features = false, features = [
+core-graphics = { workspace = true, optional = true }
+objc2 = { workspace = true, optional = true }
+objc2-app-kit = { workspace = true, optional = true, features = [
     "std",
     "NSAccessibility",
     "NSAppearance",
@@ -41,8 +41,8 @@ objc2-app-kit = { version = "0.3", optional = true, default-features = false, fe
     "NSWindow",
     "NSWorkspace",
 ] }
-raw-window-handle = { version = "0.6", optional = true }
+raw-window-handle = { workspace = true, optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = { version = "0.58", optional = true, features = ["Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging"] }
-raw-window-handle = { version = "0.6", optional = true }
+windows = { workspace = true, optional = true, features = ["Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging"] }
+raw-window-handle = { workspace = true, optional = true }

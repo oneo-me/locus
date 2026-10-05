@@ -10,6 +10,19 @@ edition = "2024"
 
 [workspace.dependencies]
 gpui-kit = "0.7.1"
+cc = "1"
+core-graphics = "0.24"
+dunce = "1"
+html5ever = "0.29.1"
+mime_guess = "2"
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false }
+objc2-foundation = { version = "0.3", default-features = false }
+raw-window-handle = "0.6"
+sys-locale = "0.3"
+tower = "0.5"
+windows = "0.58"
+wry = { package = "lb-wry", version = "0.53.3" }
 
 anyhow = "1"
 base64 = "0.23"

@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 axum.workspace = true
-tower = { version = "0.5", features = ["util"] }
+tower = { workspace = true, features = ["util"] }
 locus-library.workspace = true
 rmcp.workspace = true
 schemars.workspace = true

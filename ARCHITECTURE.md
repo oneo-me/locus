@@ -35,7 +35,7 @@ MCP discovers the same library on each call. Clients maintain content with their
 
 ## Module boundaries
 
-Source is a Rust 2024 Cargo workspace with `locus` as its default package. The direct GPUI Kit dependency baseline comes from `source/Cargo.toml`; resolved versions are fixed by `source/Cargo.lock`. Applications and shared components in one process use the same GPUI type instance.
+Source is a Rust 2024 Cargo workspace with `locus` as its default package. All direct dependency versions are declared in `[workspace.dependencies]` in `source/Cargo.toml`; member packages inherit them with `workspace = true` and retain their own feature, optionality, and platform requirements. Resolved versions are fixed by `source/Cargo.lock`. Applications and shared components in one process use the same GPUI type instance.
 
 | Package | Responsibility |
 | --- | --- |

@@ -7,11 +7,11 @@ publish = false
 
 [dependencies]
 base64.workspace = true
-html5ever = "0.29.1"
+html5ever.workspace = true
 tempfile.workspace = true
 regex.workspace = true
 serde_json.workspace = true
-mime_guess = "2"
+mime_guess.workspace = true
 percent-encoding.workspace = true
 async-channel.workspace = true
 gpui-kit.workspace = true
@@ -22,7 +22,7 @@ rust-i18n.workspace = true
 [target.'cfg(target_os = "macos")'.dependencies]
 oneo-gpui-webview.workspace = true
 uuid.workspace = true
-wry = { package = "lb-wry", version = "0.53.3" }
+wry.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
