@@ -2,6 +2,7 @@ mod bundle;
 mod cargo;
 mod cli;
 mod config;
+mod launch;
 mod windows;
 #[cfg(windows)]
 mod windows_env;
@@ -20,11 +21,15 @@ fn run() -> Result<()> {
     let Some(args) = cli::Args::parse(std::env::args_os().skip(1))? else {
         return Ok(());
     };
-    let project = config::Project::load(&args.project)?;
+    let mut project = config::Project::load(&args.project)?;
+    if args.run {
+        project.config.name.push_str(" Dev");
+        project.config.identifier.push_str(".dev");
+    }
     let host = cargo::host(&project.root)?;
     let target = cli::Target::resolve(args.target.as_deref(), &host)?;
     if args.dry_run {
-        let command = cargo::build_command(&project, &target, None);
+        let command = cargo::build_command(&project, &target, None, args.run);
         if target.os == "windows" {
             println!(
                 "Icon: {} -> temporary icon.res (Windows SDK rc)",
@@ -38,6 +43,12 @@ fn run() -> Result<()> {
             "Output: {}",
             bundle::output_path(&project, &target).display()
         );
+        if args.run {
+            println!(
+                "Launch: {:?}",
+                launch::command(&project, &target, &args.app_args)
+            );
+        }
         return Ok(());
     }
     ensure!(
@@ -57,7 +68,7 @@ fn run() -> Result<()> {
     let icon_path = icon_resources
         .as_ref()
         .map(|directory| directory.path().join("icon.res"));
-    let command = cargo::build_command(&project, &target, icon_path.as_deref());
+    let command = cargo::build_command(&project, &target, icon_path.as_deref(), args.run);
     let executable = cargo::build(command, &project)?;
     let output = bundle::create(
         &project,
@@ -66,6 +77,9 @@ fn run() -> Result<()> {
         args.codesign_identity.as_deref(),
     )?;
     println!("{}", output.display());
+    if args.run {
+        launch::run(launch::command(&project, &target, &args.app_args))?;
+    }
     Ok(())
 }
 

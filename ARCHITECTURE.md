@@ -51,7 +51,7 @@ Source is a Rust 2024 Cargo workspace with `locus` as its default package. The d
 | `oneo-gpui` | App shell, windows, layout, appearance controls, and TOML configuration service |
 | `oneo-gpui-webview` | Native macOS page composition, clipping, visibility, input, and focus |
 | `oneo-gpui-graph` / `oneo-gpui-terminal` | Independent generic components and examples, currently unused by Locus |
-| `oneo-tool-packer` | Independent build and app assembly CLI |
+| `oneo-tool-packer` | Independent build, app assembly, and development launch CLI |
 
 The main product dependency chain is `locus → locus-workspace → locus-settings`. The workspace also consumes public interfaces from canvas, UI, preferences, library, and MCP. Settings consumes UI, preferences, library, MCP, and the updater service. The app initializes the updater, which owns its native backend and has no settings or workspace dependency. Canvas consumes the library, shared language, and macOS WebView. UI consumes the library and preferences. The library is MCP's only product-domain dependency and does not depend on GUI code. Feature packages do not depend back on the app binary.
 

@@ -106,6 +106,95 @@ fn script(path: &Path, source: &str) {
 }
 
 #[test]
+fn run_previews_development_bundle_without_building_or_launching() {
+    let fixture = Fixture::new();
+    let result = fixture.run(&[
+        "run",
+        "--target",
+        "macos",
+        "--dry-run",
+        "--",
+        "argument with spaces",
+    ]);
+    assert!(result.status.success());
+    let output = String::from_utf8_lossy(&result.stdout);
+    assert!(output.contains("Test App Dev.app"));
+    assert!(output.contains("Contents/MacOS/Test App Dev"));
+    assert!(output.contains("argument with spaces"));
+    assert!(!output.contains("--release"));
+    assert!(!output.contains("no_exported_symbols"));
+    assert!(!fixture.root.path().join("build-args").exists());
+}
+
+#[test]
+fn run_packages_then_launches_and_preserves_exit_status() {
+    let fixture = Fixture::new();
+    let root = fixture.root.path();
+    fs::write(root.join("host"), "host: aarch64-apple-darwin\n").unwrap();
+    fs::create_dir(root.join("icon.icon")).unwrap();
+    script(
+        &root.join("app.exe"),
+        r#"#!/bin/sh
+printf '%s\n' "$@" > "$PACKER_FIXTURE_ROOT/launched-args"
+pwd > "$PACKER_FIXTURE_ROOT/launched-cwd"
+echo app-output
+exit 23
+"#,
+    );
+    script(
+        &root.join("tools/xcrun"),
+        r#"#!/bin/sh
+test "$1" != --find || exit 0
+while test "$#" -gt 0; do
+ if test "$1" = --output-partial-info-plist; then
+  shift
+  printf '%s' '<?xml version="1.0"?><plist version="1.0"><dict/></plist>' > "$1"
+ fi
+ shift
+done
+"#,
+    );
+    for tool in ["codesign", "xattr"] {
+        script(&root.join("tools").join(tool), "#!/bin/sh\nexit 0\n");
+    }
+    let official = root.join("dist/Test App.app");
+    fs::create_dir_all(&official).unwrap();
+    fs::write(official.join("keep"), "release").unwrap();
+    let result = fixture.run(&["run", "--", "argument with spaces", "--app-flag"]);
+    assert_eq!(
+        result.status.code(),
+        Some(23),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(String::from_utf8_lossy(&result.stdout).contains("app-output"));
+    assert_eq!(
+        fs::read_to_string(root.join("launched-args")).unwrap(),
+        "argument with spaces\n--app-flag\n"
+    );
+    let cwd = fs::read_to_string(root.join("launched-cwd")).unwrap();
+    assert_eq!(
+        fs::canonicalize(cwd.trim()).unwrap(),
+        fs::canonicalize(root).unwrap()
+    );
+    let info =
+        plist::Value::from_file(root.join("dist/Test App Dev.app/Contents/Info.plist")).unwrap();
+    assert_eq!(
+        info.as_dictionary().unwrap()["CFBundleIdentifier"].as_string(),
+        Some("me.test.app.dev")
+    );
+    assert!(
+        root.join("dist/Test App Dev.app/Contents/Resources")
+            .is_dir()
+    );
+    assert!(official.join("keep").exists());
+    fs::remove_file(root.join("launched-args")).unwrap();
+    fs::write(root.join("fail-build"), "").unwrap();
+    assert!(!fixture.run(&["run"]).status.success());
+    assert!(!root.join("launched-args").exists());
+}
+
+#[test]
 fn windows_cli_builds_portable_directory_under_dist() {
     let fixture = Fixture::new();
     let result = fixture.run(&[]);

@@ -11,8 +11,12 @@ Run from the source directory:
 
 ```sh
 cd source
-cargo run
+cargo run --locked -p oneo-tool-packer -- run
 ```
+
+The `run` command builds with Cargo's development profile, assembles `dist/Locus Dev.app` on macOS or `dist/Locus Dev/` on Windows, and launches the bundled executable in the foreground. Logs stay in the terminal; on macOS, Ctrl+C and exit status behave like running the executable directly. Arguments after `--` are forwarded to the app. `run --dry-run` previews the build and launch without executing either. Quit the development app before rebuilding it; the tool does not terminate existing instances.
+
+Development bundles include the usual icons, resources, runtime dependencies, and signing. Their name gains ` Dev` and their Bundle Identifier gains `.dev`, leaving release outputs untouched. This does not isolate product storage: Locus still shares its existing settings, caches, library, and MCP port with the release app. Local development bundles do not include Sparkle.
 
 ## Building the app
 
@@ -26,7 +30,7 @@ cargo run --manifest-path source/Cargo.toml --locked -p oneo-tool-packer -- --pr
 
 Build configuration lives in [source/packer.toml](../source/packer.toml). The default builds Release for the current platform and saves to `dist/`: `dist/Locus.app` on macOS, or `dist/Locus/` containing the executable and runtime dependencies on Windows. `output-directory = "../dist"` resolves relative to the source directory containing the packaging configuration. A later successful packaging run replaces an output with the same name.
 
-VS Code's `dev` and `build` tasks run in `source/`. The build task invokes the repository's packager through Cargo. To install the tool separately, run `cargo install --path source/crates/oneo-tool-packer --locked`, then `oneo-tool-packer --project source` from the root.
+VS Code's `dev` and `build` tasks run in `source/`. Both tasks invoke the repository's packager through Cargo; `dev` adds `run`, while `build` retains release packaging. To install the tool separately, run `cargo install --path source/crates/oneo-tool-packer --locked`, then `oneo-tool-packer run --project source` to develop or `oneo-tool-packer --project source` to package Release from the root.
 
 The build directory follows Cargo's global or project `build.target-dir` configuration and the `CARGO_TARGET_DIR` environment variable. The packager reads the actual executable path from Cargo build messages and supports shared build directories without a path setting in `packer.toml`. Final bundles still go to the project's `dist/`. Resolution and precedence follow [Cargo configuration rules](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir).
 

@@ -1,9 +1,11 @@
 use anyhow::{Result, bail, ensure};
 use std::{ffi::OsString, path::PathBuf};
 
-const HELP: &str = "oneo-tool-packer [--project DIR] [--target TARGET] [--dry-run]
+const HELP: &str = "oneo-tool-packer [run] [--project DIR] [--target TARGET] [--dry-run]
 
 Build the release application configured in packer.toml.
+  run                         Build and launch a development app (name + Dev, ID + .dev)
+                              Pass application arguments after --
   --project DIR               Project directory (default: current directory)
   --target TARGET             macos, windows, or a supported Rust target triple
                               Default: rustc host, not Cargo build.target
@@ -25,6 +27,8 @@ pub struct Args {
     pub target: Option<String>,
     pub codesign_identity: Option<String>,
     pub dry_run: bool,
+    pub run: bool,
+    pub app_args: Vec<OsString>,
 }
 
 impl Args {
@@ -36,6 +40,11 @@ impl Args {
         let mut arguments = arguments.into_iter();
         while let Some(argument) = arguments.next() {
             match argument.to_str() {
+                Some("run") if !args.run => args.run = true,
+                Some("--") if args.run => {
+                    args.app_args.extend(arguments);
+                    break;
+                }
                 Some("--dry-run") => args.dry_run = true,
                 Some("--project") => {
                     args.project = arguments

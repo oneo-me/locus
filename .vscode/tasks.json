@@ -4,7 +4,7 @@
     {
       "label": "dev",
       "type": "shell",
-      "command": "cargo run",
+      "command": "cargo run --locked -p oneo-tool-packer -- run",
       "options": {
         "cwd": "${workspaceFolder}/source"
       }

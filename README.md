@@ -22,8 +22,10 @@ Running from source requires Rust and the platform's build tools. From the repos
 
 ```sh
 cd source
-cargo run
+cargo run --locked -p oneo-tool-packer -- run
 ```
+
+This builds and launches `dist/Locus Dev.app` on macOS (or `dist/Locus Dev/` on Windows), including bundled resources. The development app shares existing Locus settings and data. See [Running and building](docs/build.md) for details.
 
 On macOS, install Xcode and Command Line Tools and use macOS 13 or later. On Windows, install Visual Studio C++ tools and the Windows SDK.
 

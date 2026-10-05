@@ -44,7 +44,12 @@ pub fn host(root: &Path) -> Result<String> {
         .context("rustc did not report its host")
 }
 
-pub fn build_command(project: &Project, target: &Target, icon_resource: Option<&Path>) -> Command {
+pub fn build_command(
+    project: &Project,
+    target: &Target,
+    icon_resource: Option<&Path>,
+    development: bool,
+) -> Command {
     let mut command = Command::new("cargo");
     command
         .current_dir(&project.root)
@@ -63,9 +68,13 @@ pub fn build_command(project: &Project, target: &Target, icon_resource: Option<&
             "--target",
             &target.triple,
         ]);
-    command.arg("--release");
+    if !development {
+        command.arg("--release");
+    }
     if target.os == "macos" {
-        command.args(["--", "-C", "link-arg=-Wl,-no_exported_symbols"]);
+        if !development {
+            command.args(["--", "-C", "link-arg=-Wl,-no_exported_symbols"]);
+        }
     } else {
         // Apply to the full target dependency graph, including native build
         // scripts, rather than only the final binary's rustc arguments.
@@ -136,6 +145,7 @@ mod tests {
                 &project(),
                 &Target::resolve(Some(triple), "").unwrap(),
                 None,
+                false,
             )
             .get_args()
             .map(|a| a.to_string_lossy().into_owned())
@@ -159,6 +169,7 @@ mod tests {
                 &project(),
                 &Target::resolve(Some(triple), "").unwrap(),
                 None,
+                false,
             );
             let args: Vec<_> = command
                 .get_args()
@@ -177,6 +188,29 @@ mod tests {
                 !args[separator..]
                     .iter()
                     .any(|arg| arg.contains("crt-static"))
+            );
+        }
+    }
+
+    #[test]
+    fn development_builds_keep_platform_resources_without_release_policy() {
+        for triple in ["aarch64-apple-darwin", "x86_64-pc-windows-msvc"] {
+            let target = Target::resolve(Some(triple), "").unwrap();
+            let command =
+                build_command(&project(), &target, Some(Path::new("/tmp/icon.res")), true);
+            let args: Vec<_> = command
+                .get_args()
+                .map(|arg| arg.to_string_lossy())
+                .collect();
+            assert!(!args.iter().any(|arg| arg == "--release"));
+            assert!(!args.iter().any(|arg| arg.contains("no_exported_symbols")));
+            assert_eq!(
+                args.iter().any(|arg| arg.contains("icon.res")),
+                target.os == "windows"
+            );
+            assert_eq!(
+                args.iter().any(|arg| arg.contains("crt-static")),
+                target.os == "windows"
             );
         }
     }
@@ -257,7 +291,7 @@ mod tests {
             configure(&mut lock);
             crate::captured(&mut lock).unwrap();
             let target = Target::resolve(None, &host(&root).unwrap()).unwrap();
-            let mut command = build_command(&project, &target, None);
+            let mut command = build_command(&project, &target, None, false);
             // This test exercises Cargo's path resolution without platform SDKs.
             // Platform link flags are covered by the command tests above.
             if target.os == "windows" {

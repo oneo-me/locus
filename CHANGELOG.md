@@ -4,6 +4,8 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+- Run the app through `oneo-tool-packer run` or the VS Code `dev` task to build and launch a resource-complete development bundle (`Locus Dev.app` on macOS) without replacing the release app, while retaining terminal logs.
+
 ## [0.2026.1] - 2026-10-04
 
 - View application details and update status in Settings → About. On macOS, About Locus opens this page, and the new Check for Updates menu command opens it and starts a Sparkle check; source builds explain when no updater is available.

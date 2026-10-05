@@ -22,8 +22,10 @@ macOS 用户可从 [GitHub Releases](https://github.com/oneo-me/locus/releases/l
 
 ```sh
 cd source
-cargo run
+cargo run --locked -p oneo-tool-packer -- run
 ```
+
+该命令构建并启动 macOS 的 `dist/Locus Dev.app`（Windows 为 `dist/Locus Dev/`），包含应用资源。开发版仍共享现有 Locus 设置与数据。详见[运行与构建](docs/build.md)。
 
 macOS 需要 Xcode 与 Command Line Tools，最低系统版本为 macOS 13；Windows 需要 Visual Studio C++ 工具链与 Windows SDK。
 
