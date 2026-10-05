@@ -104,10 +104,12 @@ impl Settings {
     }
 }
 
-// Bundle installs follow the running application's resource location. Debug runs outside
-// a bundle link directly to the source resources, without embedding another copy.
+// Development and release installs both use the running application's resources.
 fn bundled_skill_directory() -> io::Result<PathBuf> {
-    let executable = std::env::current_exe()?;
+    skill_directory_for_executable(&std::env::current_exe()?)
+}
+
+fn skill_directory_for_executable(executable: &Path) -> io::Result<PathBuf> {
     let directory = executable
         .parent()
         .ok_or_else(|| io::Error::other("Missing executable directory"))?;
@@ -115,20 +117,7 @@ fn bundled_skill_directory() -> io::Result<PathBuf> {
     if directory.file_name().is_some_and(|name| name == "MacOS") {
         return directory.join("../Resources/skills/locus").canonicalize();
     }
-    let source = directory.join("resources/skills/locus");
-    if source.exists() {
-        return source.canonicalize();
-    }
-    #[cfg(debug_assertions)]
-    {
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../resources/skills/locus")
-            .canonicalize()
-    }
-    #[cfg(not(debug_assertions))]
-    {
-        source.canonicalize()
-    }
+    directory.join("resources/skills/locus").canonicalize()
 }
 
 // Install first so a destination conflict never removes the working old link.
@@ -263,6 +252,52 @@ mod tests {
         fs::create_dir(&path).unwrap();
         fs::write(path.join("SKILL.md"), name).unwrap();
         path
+    }
+
+    #[test]
+    fn resolves_packaged_skills_without_source_fallback() {
+        let root = tempfile::tempdir().unwrap();
+        for name in ["Locus", "Locus Dev"] {
+            let directory = root.path().join(name);
+            let resources = directory.join("resources/skills/locus");
+            fs::create_dir_all(&resources).unwrap();
+            let executable = directory.join("locus.exe");
+            assert_eq!(
+                skill_directory_for_executable(&executable).unwrap(),
+                resources.canonicalize().unwrap()
+            );
+            fs::remove_dir_all(&resources).unwrap();
+            assert_eq!(
+                skill_directory_for_executable(&executable)
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::NotFound
+            );
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_development_and_release_use_only_bundle_resources() {
+        let root = tempfile::tempdir().unwrap();
+        for name in ["Locus", "Locus Dev"] {
+            let contents = root.path().join(format!("{name}.app/Contents"));
+            let executable = contents.join("MacOS").join(name);
+            fs::create_dir_all(executable.parent().unwrap()).unwrap();
+            let resources = contents.join("Resources/skills/locus");
+            fs::create_dir_all(&resources).unwrap();
+            assert_eq!(
+                skill_directory_for_executable(&executable).unwrap(),
+                resources.canonicalize().unwrap()
+            );
+            fs::remove_dir_all(&resources).unwrap();
+            assert_eq!(
+                skill_directory_for_executable(&executable)
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::NotFound
+            );
+        }
     }
 
     #[test]

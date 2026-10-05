@@ -16,7 +16,7 @@ cargo run --locked -p oneo-tool-packer -- run
 
 The `run` command builds with Cargo's development profile, assembles `dist/Locus Dev.app` on macOS or `dist/Locus Dev/` on Windows, and launches the bundled executable in the foreground. Logs stay in the terminal; on macOS, Ctrl+C and exit status behave like running the executable directly. Arguments after `--` are forwarded to the app. `run --dry-run` previews the build and launch without executing either. Quit the development app before rebuilding it; the tool does not terminate existing instances.
 
-Development bundles include the usual icons, resources, runtime dependencies, and signing. Their name gains ` Dev` and their Bundle Identifier gains `.dev`, leaving release outputs untouched. This does not isolate product storage: Locus still shares its existing settings, caches, library, and MCP port with the release app. Local development bundles do not include Sparkle.
+Development bundles include the usual icons, resources, runtime dependencies, and signing. Resource loading does not fall back to the source tree; after changing bundled skills, rerun the packager to refresh the app resources. Their name gains ` Dev` and their Bundle Identifier gains `.dev`, leaving release outputs untouched. This does not isolate product storage: Locus still shares its existing settings, caches, library, and MCP port with the release app. Local development bundles do not include Sparkle.
 
 ## Building the app
 

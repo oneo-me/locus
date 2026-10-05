@@ -4,7 +4,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
-- Run the app through `oneo-tool-packer run` or the VS Code `dev` task to build and launch a resource-complete development bundle (`Locus Dev.app` on macOS) without replacing the release app, while retaining terminal logs.
+- Run the app through `oneo-tool-packer run` or the VS Code `dev` task to build and launch a resource-complete development bundle (`Locus Dev.app` on macOS) without replacing the release app, while retaining terminal logs. Development skill installation now uses only packaged resources, just like release builds, instead of falling back to the source tree.
 
 ## [0.2026.1] - 2026-10-04
 
