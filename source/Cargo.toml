@@ -23,7 +23,6 @@ url = "2"
 futures = "0.3"
 oneo-gpui = { path = "crates/oneo-gpui" }
 oneo-gpui-webview = { path = "crates/oneo-gpui-webview" }
-oneo-gpui-terminal = { path = "crates/oneo-gpui-terminal" }
 http_client = { package = "gpui-pre-http-client", version = "0.3.8" }
 image = "0.25"
 markdown = "1.0"
