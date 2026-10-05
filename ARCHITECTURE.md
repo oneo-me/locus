@@ -101,13 +101,12 @@ source/Cargo.lock       Resolved versions
 source/crates/          Product and generic Rust packages
 source/resources/skills/ Bundled skills installed through symlinks on demand
 source/packer.toml      App identity and packaging resources
-.github/workflows/      Tag-triggered macOS release pipeline
 scripts/                Bun development and release scripts
 .vscode/                Development and build tasks
 dist/                   App outputs, ignored by Git
 ```
 
-The Cargo workspace manages `source/crates/`. There are currently no JavaScript/TypeScript subpackages or root Bun workspace manifest. When introducing subpackages, register their actual paths in the new workspace manifest. The app version remains in `source/Cargo.toml`. Version tags publish universal macOS bundles to GitHub Releases, using ad-hoc signing by default without an Apple developer account; Developer ID signing and notarization are optional. Distributed builds embed Sparkle for background update checking and downloading; `locus-updater` retains its native controller and publishes status to Settings → About. Application-menu About and Check for Updates commands navigate to that page; Sparkle owns installation and relaunch. Source runs and ordinary local bundles do not contain an updater. See [macOS releases and updates](docs/architecture/updates.md).
+The Cargo workspace manages `source/crates/`. There are currently no JavaScript/TypeScript subpackages or root Bun workspace manifest. When introducing subpackages, register their actual paths in the new workspace manifest. The app version remains in `source/Cargo.toml`. The manually invoked release script publishes universal macOS bundles to GitHub Releases, using ad-hoc signing by default without an Apple developer account; Developer ID signing and notarization are optional. Distributed builds embed Sparkle for background update checking and downloading; `locus-updater` retains its native controller and publishes status to Settings → About. Application-menu About and Check for Updates commands navigate to that page; Sparkle owns installation and relaunch. Source runs and ordinary local bundles do not contain an updater. See [macOS releases and updates](docs/architecture/updates.md).
 
 ## Verification and known limitations
 
