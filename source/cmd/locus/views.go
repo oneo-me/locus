@@ -164,7 +164,9 @@ func (a *application) content(c *ui.Context) {
 	if c.Shortcut(mods, ui.KeyE) {
 		a.commandsOpen = !a.commandsOpen
 	}
-	ui.Column(c).Fill().MinWidth(0).MinHeight(0).Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
+	note := library.Find(a.model.Notes, a.model.Selected)
+	inset := sidebar.HeaderHeight(c)
+	messages := func() {
 		for _, message := range []string{a.storageError, a.feedback, a.mcpError} {
 			if message != "" {
 				components.Text(c, message).Wrap().TextColor(c.Theme().Danger)
@@ -173,7 +175,15 @@ func (a *application) content(c *ui.Context) {
 		if a.model.Error != nil {
 			components.Text(c, a.model.Error.Error()).Wrap().TextColor(c.Theme().Danger)
 		}
-		note := library.Find(a.model.Notes, a.model.Selected)
+	}
+	contentInset := inset
+	if note != nil && note.Canvas == "" {
+		contentInset = 0
+	}
+	ui.Column(c).Fill().MinWidth(0).MinHeight(0).Padding(contentInset, 0, 0, 0).Children(func() {
+		if note == nil || note.Canvas != "" {
+			messages()
+		}
 		if note == nil {
 			return
 		}
@@ -199,14 +209,13 @@ func (a *application) content(c *ui.Context) {
 			a.document = markdown.ParseMarkdown(a.renderedSource)
 		}
 		atmosphere := deriveNoteAtmosphere(note.Title, c.Theme().Dark)
-		inset := sidebar.HeaderHeight(c)
 		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).Children(func() {
-			ui.Column(c).FillWidth().MinWidth(0).MinHeight(max(0, atmosphereHeight-inset)).AlignItems(ui.Center).Draw(func(p *ui.Painter, r ui.Rect) {
-				// The old scroll surface began beneath the floating titlebar.
-				// Shell reserves that inset, so retain the old atmosphere origin.
-				r.Y -= inset
+			// Inset the content, not the scroll viewport, so its background reaches
+			// behind Shell's floating titlebar without being clipped below it.
+			ui.Column(c).FillWidth().MinWidth(0).MinHeight(atmosphereHeight).Padding(inset, 0, 0, 0).AlignItems(ui.Center).Draw(func(p *ui.Painter, r ui.Rect) {
 				atmosphere.draw(p, r)
 			}).Children(func() {
+				messages()
 				ui.Column(c).FillWidth().MaxWidth(noteMaxWidth).MinWidth(0).Padding(max(0, 56-inset), 16, 56, 16).Gap(22).Children(func() {
 					noteMetadataPanel(c, note.Summary, a.model.Document.Metadata, atmosphere.panel.ui())
 					a.document.Render(c, markdown.MarkdownOptions{OnLink: a.openLink, Images: a.images}).FillWidth()

@@ -57,6 +57,17 @@ func TestNativeAtmosphere(t *testing.T) {
 				if err != nil || im.Bounds().Dx() < width {
 					t.Fatalf("invalid capture: %v", err)
 				}
+				// Sample away from title controls and the sidebar separator. The
+				// wash must reach the top edge, not start below the header clip.
+				scale := float64(im.Bounds().Dx()) / float64(width)
+				x := im.Bounds().Min.X + int(272*scale)
+				top := im.At(x, im.Bounds().Min.Y+int(2*scale))
+				base := im.At(x, im.Bounds().Min.Y+int(780*scale))
+				tr, tg, tb, _ := top.RGBA()
+				br, bg, bb, _ := base.RGBA()
+				if tr == br && tg == bg && tb == bb {
+					t.Fatalf("article background does not reach titlebar: title=%q width=%d theme=%s", fixtures[i].Title, width, mode)
+				}
 				if dir := os.Getenv("LOCUS_SCREENSHOTS"); dir != "" {
 					if err := os.MkdirAll(dir, 0700); err != nil {
 						t.Fatal(err)
