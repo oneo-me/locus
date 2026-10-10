@@ -23,11 +23,11 @@ const maxBody = 32 << 20
 // Note paths are slash-separated library-relative directory names.
 // Empty directories are omitted; organizing directories have HasBody=false.
 type Note struct {
-	Path, Title, Summary, Canvas string
-	HasBody                      bool
-	Archived                     bool
-	Modified                     bool
-	Children                     []*Note
+	Path, Title, Summary, Canvas, Icon string
+	HasBody                            bool
+	Archived                           bool
+	Modified                           bool
+	Children                           []*Note
 }
 
 type Document struct {
@@ -168,6 +168,7 @@ func (l *Library) scanAll(parent string, includeArchived bool) ([]*Note, error) 
 				note.Title = title
 			}
 			note.Summary = scalar(metadata, "summary")
+			note.Icon = strings.TrimSpace(scalar(metadata, "icon"))
 			note.HasBody = true
 			for _, name := range []string{"index.html", "index.json"} {
 				candidate := path.Join(p, "canvas", name)

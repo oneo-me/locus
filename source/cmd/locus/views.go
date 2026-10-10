@@ -46,13 +46,7 @@ func (a *application) left(c *ui.Context) {
 		components.TreeVirtualized(c, &a.tree, a.roots, func(p string) []string { return a.children[p] }, func(p string) {
 			if n := a.index[p]; n != nil {
 				ui.Row(c).Grow(1).MinWidth(0).MinHeight(20).AlignItems(ui.Center).Gap(8).Children(func() {
-					icon := lucide.FileText
-					if !n.HasBody {
-						icon = lucide.Folder
-					} else if n.Canvas != "" {
-						icon = lucide.PanelsTopLeft
-					}
-					components.Icon(c, icon).Size(16, 16).Shrink(0).TextColor(c.Theme().TextMuted)
+					a.noteIcon(c, n, 14)
 					components.Text(c, n.Title).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 					if n.Modified {
 						ui.Box(c).Label(a.text("Modified files")).Size(5, 5).Radius(2.5).Background(c.Theme().Accent).Shrink(0)
@@ -134,6 +128,7 @@ func (a *application) title(c *ui.Context) {
 		title := "Locus"
 		if note != nil {
 			title = note.Title
+			ui.Box(c).Shrink(0).Padding(0, 4, 0, 0).Children(func() { a.noteIcon(c, note, 16) })
 		}
 		components.Text(c, title).Bold().SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 		if note != nil && note.HasBody {

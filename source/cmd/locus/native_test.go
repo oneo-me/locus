@@ -42,8 +42,17 @@ func TestNativeReading(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "note"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	body := "---\ntitle: 中文 Reading test\nsummary: Native Go and Onevra\n---\n# Markdown\n\n中文与 English `inline code` and **bold text**.\n\n| Name | Value |\n| --- | --- |\n| 中文 | A table |\n\n```go\nfmt.Println(\"Locus\")\n```\n"
+	body := "---\ntitle: 中文 Reading test\nsummary: Native Go and Onevra\nicon: 👩🏽‍💻\n---\n# Markdown\n\n中文与 English `inline code` and **bold text**.\n\n| Name | Value |\n| --- | --- |\n| 中文 | A table |\n\n```go\nfmt.Println(\"Locus\")\n```\n"
 	if err := os.WriteFile(filepath.Join(root, "note/index.md"), []byte(body), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "picture/assets"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "picture/index.md"), []byte("---\ntitle: Picture icon\nicon: assets/icon.png\n---\nImage note"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "picture/assets/icon.png"), iconPNG(t, 64, 32), 0600); err != nil {
 		t.Fatal(err)
 	}
 	a := &application{cursor: -1}
@@ -51,7 +60,7 @@ func TestNativeReading(t *testing.T) {
 	a.model.Changed = func() { a.shell.Window().Invalidate() }
 	mygo.RunOnMain(func() { a.start(root) })
 	defer mygo.RunOnMain(func() { a.shell.Window().Destroy() })
-	waitNative(t, func() bool { return !a.model.Loading })
+	waitNative(t, func() bool { return !a.model.Loading && a.noteIcons["picture"] != nil })
 	mygo.RunOnMain(func() { a.selectNote("note") })
 	waitNative(t, func() bool { return a.model.Document.Body != "" })
 	for _, mode := range []mygo.ThemeSource{mygo.ThemeLight, mygo.ThemeDark} {
@@ -74,6 +83,18 @@ func TestNativeReading(t *testing.T) {
 			}
 		}
 	}
+	mygo.RunOnMain(func() { a.selectNote("picture") })
+	waitNative(t, func() bool { return a.model.Document.Body == "Image note" })
+	var previousIconPresent bool
+	mygo.RunOnMain(func() { previousIconPresent = a.noteIcons["picture"] != nil })
+	if !previousIconPresent {
+		t.Fatal("missing selected PNG icon")
+	}
+	if err := os.Remove(filepath.Join(root, "picture/assets/icon.png")); err != nil {
+		t.Fatal(err)
+	}
+	// The recursive watcher must invalidate icons even when note text is unchanged.
+	waitNative(t, func() bool { return a.noteIcons["picture"] == nil && !a.model.Loading })
 	mygo.RunOnMain(func() {
 		if a.model.Error != nil {
 			t.Error(a.model.Error)

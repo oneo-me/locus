@@ -6,7 +6,7 @@
 
 A note is a non-hidden directory containing `index.md`; the selected root itself is not a note. Organizing directories appear only when they contain visible descendants. `assets`, `canvas`, and `node_modules` are not child notes. Scanning excludes symlink directories. A boolean `archived: true` hides the entire subtree; a quoted string does not count as the flag. Settings separately lists explicitly archived notes for restoration.
 
-Titles fall back to directory names; summaries come from YAML. Selected documents retain the parsed YAML tree and complete Markdown body. Source files are never regenerated simply to display metadata. Scans read metadata or the first ordinary body line, capped at 1 MiB; selected bodies and individual resources are capped at 32 MiB. Hierarchies deeper than 256 levels are rejected. Malformed YAML, unsafe bodies, excessive metadata, and I/O failures fail a scan visibly rather than fabricate a complete partial projection.
+Titles fall back to directory names; summaries and icon declarations come from YAML. The string `icon` field supplies an Emoji or the reserved `assets/icon.png` reference (`icon.png` is also accepted as shorthand); it does not authorize arbitrary image paths or remote fetching. Selected documents retain the parsed YAML tree and complete Markdown body. Source files are never regenerated simply to display metadata. Scans read metadata or the first ordinary body line, capped at 1 MiB; selected bodies and individual resources are capped at 32 MiB. Hierarchies deeper than 256 levels are rejected. Malformed YAML, unsafe bodies, excessive metadata, and I/O failures fail a scan visibly rather than fabricate a complete partial projection.
 
 ## Addresses and rooted access
 

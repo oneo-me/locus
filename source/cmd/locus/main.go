@@ -58,6 +58,10 @@ type application struct {
 	historyIndex                               int
 	launching, exporting                       bool
 	images                                     map[string]*ui.Bitmap
+	iconRoot                                   string
+	iconProjection                             *library.Note
+	iconTicket                                 uint64
+	noteIcons                                  map[string]*ui.Bitmap
 	imageKey                                   string
 	imageTicket                                uint64
 	archiveOpen                                bool
@@ -217,6 +221,7 @@ func (a *application) changed() {
 	}
 	a.syncCanvas()
 	a.loadImages()
+	a.loadNoteIcons()
 	if a.shell != nil {
 		a.shell.Window().Invalidate()
 	}
