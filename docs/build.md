@@ -65,7 +65,7 @@ On an explicitly available desktop session, run native tests:
 LOCUS_NATIVE_SMOKE=1 GOWORK=off go test ./cmd/locus -run TestNative -count=1 -timeout=45s
 ```
 
-Optionally set `LOCUS_SCREENSHOTS` to retain captures. Tests open a temporary Markdown library and a real Onevra WebView, checking template initialization, resource fetch, DOM interaction, settings retention, and release on departure. Surface captures do not establish OS material appearance or native browser overlay composition. Complete keyboard, pointer, accessibility, terminal authorization, and installation acceptance remains manual; do not launch external terminals or Agents automatically for it.
+Optionally set `LOCUS_SCREENSHOTS` to retain captures, including article backgrounds and metadata across reference titles, light/dark themes, and narrow/wide windows. Tests open a temporary Markdown library and a real Onevra WebView, checking template initialization, resource fetch, DOM interaction, settings retention, and release on departure. Surface captures do not establish OS material appearance or native browser overlay composition. Complete keyboard, pointer, accessibility, terminal authorization, and installation acceptance remains manual; do not launch external terminals or Agents automatically for it.
 
 Documentation changes require size budgets, Subjects coverage, relative links and anchors, and changelog structure verification, followed by `git diff --check` from the repository root. Keep English and Chinese README content aligned. Report actual checks and platforms, not historical evidence from another implementation.
 

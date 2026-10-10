@@ -15,7 +15,6 @@ import (
 	"github.com/oneo-me/onevra/plugins/command"
 	"github.com/oneo-me/onevra/plugins/markdown"
 	"github.com/oneo-me/onevra/shells/sidebar"
-	"go.yaml.in/yaml/v3"
 )
 
 func paths(notes []*library.Note) []string {
@@ -199,38 +198,24 @@ func (a *application) content(c *ui.Context) {
 			a.renderedSource = a.model.Document.Body
 			a.document = markdown.ParseMarkdown(a.renderedSource)
 		}
-		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).
-			Padding(c.Theme().Space(6)).Children(func() {
-			if note.Summary != "" {
-				components.Text(c, note.Summary).Wrap().TextColor(c.Theme().TextMuted)
-			}
-			metadata(c, a.model.Document.Metadata)
-			a.document.Render(c, markdown.MarkdownOptions{OnLink: a.openLink, Images: a.images}).FillWidth()
+		atmosphere := deriveNoteAtmosphere(note.Title, c.Theme().Dark)
+		inset := sidebar.HeaderHeight(c)
+		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).Children(func() {
+			ui.Column(c).FillWidth().MinWidth(0).MinHeight(max(0, atmosphereHeight-inset)).AlignItems(ui.Center).Draw(func(p *ui.Painter, r ui.Rect) {
+				// The old scroll surface began beneath the floating titlebar.
+				// Shell reserves that inset, so retain the old atmosphere origin.
+				r.Y -= inset
+				atmosphere.draw(p, r)
+			}).Children(func() {
+				ui.Column(c).FillWidth().MaxWidth(noteMaxWidth).MinWidth(0).Padding(max(0, 56-inset), 16, 56, 16).Gap(22).Children(func() {
+					noteMetadataPanel(c, note.Summary, a.model.Document.Metadata, atmosphere.panel.ui())
+					a.document.Render(c, markdown.MarkdownOptions{OnLink: a.openLink, Images: a.images}).FillWidth()
+				})
+			})
 		})
 	})
 	a.commandDialog(c)
 	a.settingsDialog(c)
-}
-func metadata(c *ui.Context, node *yaml.Node) {
-	if node == nil || len(node.Content) == 0 || node.Content[0].Kind != yaml.MappingNode {
-		return
-	}
-	mapping := *node.Content[0]
-	mapping.Content = nil
-	for i := 0; i+1 < len(node.Content[0].Content); i += 2 {
-		k, v := node.Content[0].Content[i], node.Content[0].Content[i+1]
-		switch k.Value {
-		case "title", "summary", "icon":
-			continue
-		}
-		mapping.Content = append(mapping.Content, k, v)
-	}
-	if len(mapping.Content) > 0 {
-		data, err := yaml.Marshal(&mapping)
-		if err == nil {
-			components.Text(c, strings.TrimSpace(string(data))).Wrap().TextColor(c.Theme().TextMuted)
-		}
-	}
 }
 func (a *application) selectNote(p string) {
 	parts := strings.Split(p, "/")

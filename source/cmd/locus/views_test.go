@@ -117,8 +117,8 @@ func TestArchivedMetadataIsCustomProperty(t *testing.T) {
 	if err := yaml.Unmarshal([]byte("title: Note\narchived: true\n"), &node); err != nil {
 		t.Fatal(err)
 	}
-	tt := ui.NewTester(func(c *ui.Context) { metadata(c, &node) }, 500, 300)
-	if !tt.HasText("archived: true") {
+	tt := ui.NewTester(func(c *ui.Context) { noteMetadataPanel(c, "", &node, c.Theme().Surface) }, 500, 300)
+	if !tt.HasText("archived") || !tt.HasText("true") {
 		t.Fatal("legacy archived field should be displayed as custom metadata")
 	}
 }

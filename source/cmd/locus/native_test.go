@@ -42,7 +42,7 @@ func TestNativeReading(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "note"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	body := "---\ntitle: 中文 Reading test\nsummary: Native Go and Onevra\nicon: 👩🏽‍💻\n---\n# Markdown\n\n中文与 English `inline code` and **bold text**.\n\n| Name | Value |\n| --- | --- |\n| 中文 | A table |\n\n```go\nfmt.Println(\"Locus\")\n```\n"
+	body := "---\ntitle: 中文 Reading test\nsummary: Native Go and Onevra\nicon: 👩🏽‍💻\ntags: [native, 中文]\nstatus: draft\n---\n# Markdown\n\n中文与 English `inline code` and **bold text**.\n\n| Name | Value |\n| --- | --- |\n| 中文 | A table |\n\n```go\nfmt.Println(\"Locus\")\n```\n"
 	if err := os.WriteFile(filepath.Join(root, "note/index.md"), []byte(body), 0600); err != nil {
 		t.Fatal(err)
 	}
