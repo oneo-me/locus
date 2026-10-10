@@ -4,6 +4,8 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+- Limit sidebar resizing to 520 logical pixels so it leaves room for note content.
+
 - Remember each library’s tree expansion when switching libraries and reopening the app.
 
 - Remove note archiving and archive restoration from Settings; previously archived notes and their descendants are visible again without modifying their files.

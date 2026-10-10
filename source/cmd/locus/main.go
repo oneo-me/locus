@@ -145,7 +145,7 @@ func (a *application) start(root string) {
 	if err := mygo.Protocol.Handle(canvas.Scheme, &a.router); err != nil {
 		a.feedback = err.Error()
 	}
-	a.shell = sidebar.NewShell(sidebar.ShellOptions{Title: "Locus", Width: 980, Height: 820, MinWidth: 980, MinHeight: 820, LeftWidth: 252, LeftMinWidth: 252, Left: a.left, Content: a.content, ContentTitle: a.title, LeftHeader: a.navigation, LeftToolbar: a.toolbar})
+	a.shell = sidebar.NewShell(sidebar.ShellOptions{Title: "Locus", Width: 980, Height: 820, MinWidth: 980, MinHeight: 820, LeftWidth: 252, LeftMinWidth: 252, LeftMaxWidth: 520, Left: a.left, Content: a.content, ContentTitle: a.title, LeftHeader: a.navigation, LeftToolbar: a.toolbar})
 	a.model.Dispatch = func(fn func()) { a.post(fn) }
 	a.model.Changed = a.changed
 	a.resetTree()
