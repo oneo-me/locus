@@ -1,11 +1,13 @@
 package terminal
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -102,6 +104,71 @@ func TestAgentShellFunction(t *testing.T) {
 					t.Fatalf("exit %d, want %d: %s", cmd.ProcessState.ExitCode(), code, out)
 				}
 			})
+		}
+	}
+}
+
+func TestResolveShell(t *testing.T) {
+	for _, tc := range []struct {
+		name, program, platform, login, available, want string
+		lookupErr                                       error
+	}{
+		{name: "PATH wins", program: "fish", platform: "darwin", login: "/custom/fish", available: "fish", want: "/path/fish"},
+		{name: "login shell", program: "fish", platform: "darwin", login: "/custom/fish", available: "/custom/fish", want: "/custom/fish"},
+		{name: "Apple Silicon Homebrew", program: "fish", platform: "darwin", available: "/opt/homebrew/bin/fish", want: "/opt/homebrew/bin/fish"},
+		{name: "Intel Homebrew", program: "fish", platform: "darwin", available: "/usr/local/bin/fish", want: "/usr/local/bin/fish"},
+		{name: "MacPorts", program: "fish", platform: "darwin", available: "/opt/local/bin/fish", want: "/opt/local/bin/fish"},
+		{name: "system shell", program: "zsh", platform: "darwin", available: "/bin/zsh", want: "/bin/zsh"},
+		{name: "other login shell", program: "fish", platform: "linux", login: "/custom/bash", available: "/custom/bash"},
+		{name: "no mac paths on Linux", program: "fish", platform: "linux", available: "/opt/homebrew/bin/fish"},
+		{name: "explicit missing path", program: "/missing/fish", platform: "darwin", available: "/opt/homebrew/bin/fish"},
+		{name: "missing executable", program: "fish", platform: "darwin"},
+		{name: "relative PATH rejected", program: "fish", platform: "darwin", available: "/opt/homebrew/bin/fish", lookupErr: exec.ErrDot},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			lookup := func(name string) (string, error) {
+				if name == tc.available {
+					if name == "fish" {
+						return "/path/fish", nil
+					}
+					return name, nil
+				}
+				err := tc.lookupErr
+				if err == nil {
+					err = exec.ErrNotFound
+				}
+				return "", &exec.Error{Name: name, Err: err}
+			}
+			got, err := resolveShell(tc.program, tc.platform, tc.login, lookup)
+			if got != tc.want || (err != nil) != (tc.want == "") {
+				t.Fatalf("got %q, %v; want %q", got, err, tc.want)
+			}
+			if tc.lookupErr != nil && !errors.Is(err, tc.lookupErr) {
+				t.Fatalf("lost lookup error: %v", err)
+			}
+		})
+	}
+}
+
+func TestResolveCommandDesktopPATH(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS desktop PATH regression")
+	}
+	program := "/opt/homebrew/bin/fish"
+	if _, err := exec.LookPath(program); err != nil {
+		t.Skip("Homebrew fish is not installed")
+	}
+	t.Setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
+	t.Setenv("SHELL", "/bin/zsh")
+	for _, agent := range []string{"", "gemini"} {
+		argv, err := ResolveCommand("fish", agent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, _ := Command("fish", agent)
+		want[0] = program
+		if !reflect.DeepEqual(argv, want) {
+			t.Fatalf("got %v; want %v", argv, want)
 		}
 	}
 }

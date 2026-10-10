@@ -74,7 +74,7 @@ func (a *application) startTerminal(agent string) {
 	}
 	root, shell := a.model.Root, a.cfg.Shell
 	a.terminal.start(func() (*terminal.Terminal, error) {
-		argv, err := launch.Command(shell, agent)
+		argv, err := launch.ResolveCommand(shell, agent)
 		if err != nil {
 			return nil, err
 		}
