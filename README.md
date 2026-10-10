@@ -29,7 +29,7 @@ Canvas export creates a ZIP containing the page and resources loaded in the curr
 
 ## Agents and settings
 
-Settings offers appearance/language choices, editor and export preferences, archive restoration, MCP, and terminal/Agent selection. Preferences retain existing TOML fields and detect external changes before saving. Sidebar and current-note state are saved on close.
+Settings offers appearance/language choices, editor and export preferences, archive restoration, MCP, and terminal/Agent selection. Preferences retain existing YAML fields and detect external changes before saving. Sidebar and current-note state are saved on close.
 
 Enable MCP in Settings to expose read-only discovery at `http://127.0.0.1:2301/mcp`. Clients need filesystem access to the returned paths. Local-network mode has no authentication and exposes searchable note content and paths; enable it only on a trusted network. See [MCP access](docs/mcp.md).
 

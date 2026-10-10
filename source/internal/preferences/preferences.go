@@ -1,29 +1,49 @@
-// Package preferences owns TOML persistence, preserving unrelated fields and
+// Package preferences owns YAML persistence, preserving unrelated fields and
 // refusing to overwrite a settings file modified outside this process.
 package preferences
 
 import (
 	"bytes"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
 
-	"github.com/pelletier/go-toml/v2"
+	"go.yaml.in/yaml/v3"
 )
 
 type Config struct {
-	Library  string `toml:"library_path,omitempty"`
-	Theme    string `toml:"theme"`
-	Language string `toml:"language"`
-	Editor   string `toml:"editor"`
-	Terminal string `toml:"terminal"`
-	Agent    string `toml:"agent"`
-	Shell    string `toml:"agent_shell"`
-	Export   string `toml:"export_directory,omitempty"`
-	MCP      bool   `toml:"mcp_enabled"`
-	Network  bool   `toml:"mcp_local_network"`
-	Port     int    `toml:"mcp_port"`
+	Library  string `yaml:"library_path,omitempty"`
+	Theme    string `yaml:"theme"`
+	Language string `yaml:"language"`
+	Editor   string `yaml:"editor"`
+	Terminal string `yaml:"terminal"`
+	Agent    string `yaml:"agent"`
+	Shell    string `yaml:"agent_shell"`
+	Export   string `yaml:"export_directory,omitempty"`
+	MCP      bool   `yaml:"mcp_enabled"`
+	Network  bool   `yaml:"mcp_local_network"`
+	Port     int    `yaml:"mcp_port"`
+}
+
+// decodeDocument rejects extra documents instead of silently discarding them on save.
+func decodeDocument(b []byte, value any) error {
+	decoder := yaml.NewDecoder(bytes.NewReader(b))
+	if err := decoder.Decode(value); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
+	}
+	var extra yaml.Node
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err != nil {
+			return err
+		}
+		return errors.New("configuration must contain only one YAML document")
+	}
+	return nil
 }
 
 func Default() Config {
@@ -48,10 +68,10 @@ func Load(path string) (Config, *Store, error) {
 	}
 	var fields map[string]any
 	if len(b) > 0 {
-		if err = toml.Unmarshal(b, &fields); err != nil {
+		if err = decodeDocument(b, &fields); err != nil {
 			return cfg, nil, err
 		}
-		if err = toml.Unmarshal(b, &cfg); err != nil {
+		if err = decodeDocument(b, &cfg); err != nil {
 			return Default(), nil, err
 		}
 	}
@@ -73,12 +93,12 @@ func (s *Store) Save(cfg Config) error {
 	if !bytes.Equal(current, s.original) {
 		return errors.New("settings changed outside Locus; restart before saving")
 	}
-	b, err := toml.Marshal(cfg)
+	b, err := yaml.Marshal(cfg)
 	if err != nil {
 		return err
 	}
 	var updated map[string]any
-	if err = toml.Unmarshal(b, &updated); err != nil {
+	if err = yaml.Unmarshal(b, &updated); err != nil {
 		return err
 	}
 	fields := make(map[string]any, len(s.fields))
@@ -92,7 +112,7 @@ func (s *Store) Save(cfg Config) error {
 	for key, value := range updated {
 		fields[key] = value
 	}
-	b, err = toml.Marshal(fields)
+	b, err = yaml.Marshal(fields)
 	if err != nil {
 		return err
 	}
@@ -132,10 +152,10 @@ func AtomicWrite(path string, data []byte) error {
 }
 
 type State struct {
-	Library      string  `toml:"library"`
-	Selected     string  `toml:"selected"`
-	SidebarWidth float32 `toml:"sidebar_width"`
-	Collapsed    bool    `toml:"sidebar_collapsed"`
+	Library      string  `yaml:"library"`
+	Selected     string  `yaml:"selected"`
+	SidebarWidth float32 `yaml:"sidebar_width"`
+	Collapsed    bool    `yaml:"sidebar_collapsed"`
 }
 
 func LoadState(path string) (State, error) {
@@ -147,11 +167,11 @@ func LoadState(path string) (State, error) {
 	if err != nil {
 		return s, err
 	}
-	err = toml.Unmarshal(b, &s)
+	err = decodeDocument(b, &s)
 	return s, err
 }
 func SaveState(path string, s State) error {
-	b, err := toml.Marshal(s)
+	b, err := yaml.Marshal(s)
 	if err != nil {
 		return err
 	}

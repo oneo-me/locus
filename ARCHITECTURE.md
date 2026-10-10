@@ -39,7 +39,7 @@ The browser uses a registered custom URL scheme, not a local web server. A rando
 | `internal/workspace` | Asynchronous scans, reads, selected body, errors, and stale-result isolation |
 | `internal/canvas` | HTML/JSON entry resolution, read-only resource protocol, page bootstrap, CSP, and ZIP export |
 | `internal/discovery` | Three read-only MCP tools, transport, request boundary checks, listening, and shutdown |
-| `internal/preferences` | TOML preferences/state, atomic replacement, external-change checks, and ordered save worker |
+| `internal/preferences` | YAML preferences/state, atomic replacement, external-change checks, and ordered save worker |
 | `internal/terminal` | Platform handoff and shell quoting; no session ownership |
 | `internal/skills` | Embedded authoring skill and explicit, non-overwriting installation |
 | Onevra | Shell, controls, Markdown, command palette, and native WebView composition |
@@ -52,12 +52,12 @@ Internal domain packages do not import UI code. The app assembles them through p
 | Location | Contents |
 | --- | --- |
 | Selected library | Notes, frontmatter, attachments, canvases, and child directories |
-| `~/.oneo/locus/settings.toml` | Library path, appearance, language, editor, terminal/Agent, export directory, and MCP configuration |
-| `~/.oneo/locus/state.toml` | Selected note/library and sidebar width/collapse state |
+| `~/.oneo/locus/settings.yaml` | Library path, appearance, language, editor, terminal/Agent, export directory, and MCP configuration |
+| `~/.oneo/locus/state.yaml` | Selected note/library and sidebar width/collapse state |
 | Chosen export directory | Non-overwriting canvas ZIP snapshots |
 | Library or home `.agents/skills/locus` | Explicitly installed copy of the bundled authoring skill |
 
-Existing recognized TOML fields are read directly; unrelated preference fields survive saves. Malformed settings are not overwritten. Presentation state is not a content authority. Configuration writes are atomic replacements, not a transaction with content or another process.
+Existing recognized YAML fields are read directly; unrelated preference fields survive saves. Malformed settings are not overwritten. Presentation state is not a content authority. Configuration writes are atomic replacements, not a transaction with content or another process.
 
 ## Subjects
 

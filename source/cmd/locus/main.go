@@ -73,8 +73,8 @@ func main() {
 		log.Fatal(err)
 	}
 	data := filepath.Join(home, ".oneo", "locus")
-	cfg, store, loadErr := preferences.Load(filepath.Join(data, "settings.toml"))
-	a := &application{cursor: -1, cfg: cfg, statePath: filepath.Join(data, "state.toml"), stateWritable: true, restore: true, historyIndex: -1}
+	cfg, store, loadErr := preferences.Load(filepath.Join(data, "settings.yaml"))
+	a := &application{cursor: -1, cfg: cfg, statePath: filepath.Join(data, "state.yaml"), stateWritable: true, restore: true, historyIndex: -1}
 	if loadErr != nil {
 		a.storageError = loadErr.Error()
 	}
