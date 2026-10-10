@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -33,6 +34,7 @@ type application struct {
 	articleScrollRoot          string
 	articleScrollNote          string
 	choosing, closing          bool
+	quitting                   bool
 	index                      map[string]*library.Note
 	children                   map[string][]string
 	roots                      []string
@@ -100,9 +102,11 @@ func main() {
 		return
 	}
 	mygo.App.OnSecondInstance(func([]string, string) {
-		if a.shell != nil {
-			a.shell.Window().Show()
-			a.shell.Window().Focus()
+		a.showWindow()
+	})
+	mygo.App.OnActivate(func(hasVisibleWindows bool) {
+		if !hasVisibleWindows {
+			a.showWindow()
 		}
 	})
 	mygo.App.WhenReady(func() {
@@ -123,13 +127,20 @@ func main() {
 				})
 			})
 		}
-		a.shell.Window().OnClose(func(*mygo.CloseEvent) { a.saveState() })
-		a.shell.Window().OnClosed(func() { mygo.App.Quit() })
 	})
-	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) { a.saveState() })
+	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) {
+		a.quitting = true
+		a.saveState()
+	})
 	mygo.App.OnWillQuit(func(*mygo.QuitEvent) { a.stop(); a.writer.Close() })
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
+	}
+}
+func (a *application) showWindow() {
+	if a.shell != nil && !a.closing && !a.quitting {
+		a.shell.Window().Show()
+		a.shell.Window().Focus()
 	}
 }
 func (a *application) post(fn func()) {
@@ -154,6 +165,13 @@ func (a *application) start(root string) {
 	a.resetTree()
 	a.applyAppearance()
 	a.installMenu()
+	a.shell.Window().OnClose(func(e *mygo.CloseEvent) {
+		a.saveState()
+		if runtime.GOOS == "darwin" && !a.quitting {
+			e.PreventDefault()
+			a.shell.Window().Hide()
+		}
+	})
 	a.shell.Window().OnClosed(a.stop)
 	if a.state.SidebarWidth >= 252 {
 		a.shell.SetLeftWidth(a.state.SidebarWidth)
