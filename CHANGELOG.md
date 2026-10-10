@@ -8,6 +8,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 - Simplify workspace navigation with sidebar search and header history controls, compact tree rows with subtle modification markers and edge-aligned scrolling, and quick theme and MCP icon controls. Group archive and canvas download in the top-right More actions menu.
 - Open Settings as a dialog without leaving the workspace, and show a dedicated library-selection screen when no library is selected.
+- Rename the library action in Settings to “Select library” and remove the About page.
 
 - Leave the content area blank when no note is selected, and expand note and canvas pages to fill it while preserving Markdown reading padding and space for the floating titlebar.
 - Use the Onevra desktop interface for Markdown reading and native canvases. See [current platform scope](README.md#development-and-platform-scope) for workflows still unavailable in the rewritten application.
