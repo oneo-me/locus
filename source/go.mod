@@ -3,7 +3,7 @@ module github.com/oneo-me/locus
 go 1.27.1
 
 require (
-	github.com/egoist/mygo v0.3.7
+	github.com/egoist/mygo v0.3.8-0.20261010090026-0f79256101ac
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/oneo-me/onevra v0.0.0
