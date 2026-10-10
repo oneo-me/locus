@@ -3,6 +3,8 @@ package main
 import (
 	"testing"
 
+	"go.yaml.in/yaml/v3"
+
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/locus/internal/preferences"
@@ -72,12 +74,12 @@ func TestHeaderMoreActions(t *testing.T) {
 			a.model.Selected = "note"
 			tt := ui.NewTester(a.title, 650, 48)
 			more, ok := tt.Find("More actions")
-			if !ok {
-				t.Fatal("missing more actions menu")
+			if ok != (canvas != "") {
+				t.Fatal("more actions menu should only appear for canvases")
 			}
 			for _, label := range []string{"Copy reference", "Edit note", "Open directory"} {
 				button, ok := tt.Find(label)
-				if !ok || button.X+button.W > more.X {
+				if !ok || (canvas != "" && button.X+button.W > more.X) {
 					t.Fatalf("expected %s before more actions: %+v", label, button)
 				}
 			}
@@ -87,6 +89,37 @@ func TestHeaderMoreActions(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSettingsWithoutArchive(t *testing.T) {
+	for _, language := range []string{"english", "chinese"} {
+		t.Run(language, func(t *testing.T) {
+			a := &application{cfg: preferences.Default()}
+			a.cfg.Language = language
+			tt := ui.NewTester(func(c *ui.Context) { a.settings(c, false) }, 900, 700)
+			for _, label := range []string{a.text("General"), a.text("Appearance"), a.text("Agents"), "MCP"} {
+				if !tt.HasText(label) {
+					t.Fatalf("missing settings category %s", label)
+				}
+			}
+			for _, label := range []string{"Archived notes", "已归档笔记", "Restore", "恢复"} {
+				if tt.HasText(label) {
+					t.Fatalf("settings still exposes %s", label)
+				}
+			}
+		})
+	}
+}
+
+func TestArchivedMetadataIsCustomProperty(t *testing.T) {
+	var node yaml.Node
+	if err := yaml.Unmarshal([]byte("title: Note\narchived: true\n"), &node); err != nil {
+		t.Fatal(err)
+	}
+	tt := ui.NewTester(func(c *ui.Context) { metadata(c, &node) }, 500, 300)
+	if !tt.HasText("archived: true") {
+		t.Fatal("legacy archived field should be displayed as custom metadata")
 	}
 }
 

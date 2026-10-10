@@ -135,16 +135,13 @@ func (a *application) title(c *ui.Context) {
 			sidebar.IconButton(c, lucide.Link(), a.text("Copy reference")).OnClick(func() { mygo.Clipboard.WriteText(library.Address(note.Path)) })
 			sidebar.IconButton(c, lucide.Pencil(), a.text("Edit note")).OnClick(func() { a.fileAction(note.Path, true) })
 			sidebar.IconButton(c, lucide.Folder(), a.text("Open directory")).OnClick(func() { a.fileAction(note.Path, false) })
-			sidebar.IconButton(c, lucide.Ellipsis(), a.text("More actions")).Menu(func(m *ui.Menu) {
-				if m.Item(a.text("Archive note")).Chosen() {
-					a.askArchive(note.Path)
-				}
-				if note.Canvas != "" {
+			if note.Canvas != "" {
+				sidebar.IconButton(c, lucide.Ellipsis(), a.text("More actions")).Menu(func(m *ui.Menu) {
 					if m.Item(a.text("Export canvas")).Disabled(a.session == nil || a.exporting).Chosen() {
 						a.exportCanvas()
 					}
-				}
-			})
+				})
+			}
 		}
 	})
 }
@@ -203,7 +200,6 @@ func (a *application) content(c *ui.Context) {
 		})
 	})
 	a.commandDialog(c)
-	a.archiveDialog(c)
 	a.settingsDialog(c)
 }
 func metadata(c *ui.Context, node *yaml.Node) {
@@ -215,7 +211,7 @@ func metadata(c *ui.Context, node *yaml.Node) {
 	for i := 0; i+1 < len(node.Content[0].Content); i += 2 {
 		k, v := node.Content[0].Content[i], node.Content[0].Content[i+1]
 		switch k.Value {
-		case "title", "summary", "icon", "archived":
+		case "title", "summary", "icon":
 			continue
 		}
 		mapping.Content = append(mapping.Content, k, v)

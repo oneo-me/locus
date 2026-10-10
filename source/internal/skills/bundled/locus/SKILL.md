@@ -20,7 +20,7 @@ The default Streamable HTTP URL is `http://127.0.0.1:2301/mcp`; the user can cha
 
 Each note is a directory containing `index.md`, with optional `assets/`, `canvas/`, and child-note directories. Directories without `index.md` may organize descendants. `assets` and `canvas` are reserved names; hidden directories, symbolic links and installed `node_modules` are excluded from note discovery. The root itself is not a note.
 
-YAML frontmatter owns `title`, `summary`, `icon` and `archived`; other fields are retained as authored and shown as custom properties. Keep unrelated fields, prose, and newline style when editing. Use `archived: true` to archive a note and hide its descendants from ordinary navigation; remove that flag or set it to false to restore it. The reserved icon is `assets/icon.png`, referenced by `icon` in frontmatter, and is not an ordinary attachment.
+YAML frontmatter owns `title`, `summary`, and `icon`; other fields are retained as authored and shown as custom properties. Keep unrelated fields, prose, and newline style when editing. The reserved icon is `assets/icon.png`, referenced by `icon` in frontmatter, and is not an ordinary attachment.
 
 Create a note by creating its directory and `index.md`. Use existing parent directories or create explicit organization directories as needed. Avoid overwriting existing files. Read complete current files before replacement; if they have changed since reading, reconcile those changes. Moves carry the entire note directory, including descendants, assets and canvas. Review inbound Markdown links, relative outbound links, canvas/script references and template addresses after moving or renaming. Permanent deletion removes real files: follow the user's requested scope and authorization.
 

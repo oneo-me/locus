@@ -18,7 +18,7 @@ Each background task opens an independent rooted handle. Scan and read tickets r
 
 The app caches parsed Markdown independently of frames. Summaries and custom YAML are displayed above the body; custom values currently use a readable YAML presentation rather than a property editor. Local Markdown images are decoded outside frame builders through the library resource boundary, with count, file-size, and pixel limits. Remote images are not fetched automatically. Onevra owns selectable text, tables, and code presentation.
 
-Visible `locus://` note links and relative links to existing projected notes navigate internally. HTTP, HTTPS, and mail links go to the operating system. Other destinations are not executed. Header buttons copy a reference, open the note in the selected editor, and open its directory. A trailing More actions menu contains archive (with confirmation) and canvas export where present; export is disabled until a canvas session is available and while an export is running. Skills and content mutations are explicit user actions.
+Visible `locus://` note links and relative links to existing projected notes navigate internally. HTTP, HTTPS, and mail links go to the operating system. Other destinations are not executed. Header buttons copy a reference, open the note in the selected editor, and open its directory. Canvas notes have a trailing More actions menu for export; export is disabled until a canvas session is available and while an export is running. Ordinary notes have no More actions menu. Skill installation is an explicit user action.
 
 ## Canvas and settings
 

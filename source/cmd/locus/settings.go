@@ -61,9 +61,6 @@ func (a *application) settings(c *ui.Context, narrow bool) {
 				}
 			}),
 		}}}},
-		{ID: "archive", Section: a.text("Library"), Icon: lucide.ArchiveRestore(), Title: a.text("Archived notes"), Groups: []components.SettingsGroup{{ID: "archived", Items: []components.SettingsItem{
-			{ID: "empty", Title: a.text("No archived notes.")},
-		}}}},
 		{ID: "appearance", Section: a.text("Application"), Icon: lucide.Palette(), Title: a.text("Appearance"), Groups: []components.SettingsGroup{{ID: "appearance", Items: []components.SettingsItem{
 			item("theme", "Theme", func(c *ui.Context) { a.selectSetting(c, "Theme", &a.cfg.Theme, []string{"system", "light", "dark"}) }),
 			item("language", "Language", func(c *ui.Context) {
@@ -131,17 +128,6 @@ func (a *application) settings(c *ui.Context, narrow bool) {
 			}),
 		}}}},
 	}
-	if len(a.archived) > 0 {
-		items := make([]components.SettingsItem, 0, len(a.archived))
-		for _, note := range a.archived {
-			items = append(items, components.SettingsItem{ID: note.Path, Title: note.Title, Description: note.Path, Build: func(c *ui.Context) {
-				components.Button(c, a.text("Restore"), components.ButtonSecondary).Shrink(0).OnClick(func() { a.restoreNote(note.Path) })
-			}})
-		}
-		categories[1].Groups[0].Items = items
-	}
-	// Keep categories in each component-owned sidebar section contiguous.
-	categories = []components.SettingsCategory{categories[0], categories[2], categories[1], categories[3], categories[4]}
 	ui.Column(c).Fill().MinHeight(0).Children(func() {
 		for _, message := range []string{a.storageError, a.feedback} {
 			if message != "" {
@@ -190,7 +176,7 @@ func (a *application) text(english string) string {
 var zh = map[string]string{
 	"Application": "应用", "Integrations": "集成", "Select library": "选择文档库",
 	"Choose a library": "选择笔记库", "Close settings": "关闭设置",
-	"Search settings": "搜索设置", "Search settings…": "搜索设置…", "Settings category": "设置分类", "Search results": "搜索结果", "No matching settings.": "没有匹配的设置。", "No archived notes.": "暂无已归档笔记。", "Install authoring skill globally": "全局安装编写技能",
-	"More actions": "更多操作", "Archive note": "归档笔记", "Archive": "归档", "Archived notes": "已归档笔记", "Restore": "恢复", "Cancel": "取消", "Hide this note and its descendants? Files are preserved and can be restored in Settings.": "隐藏这篇笔记及其子笔记？文件会保留，可在设置中恢复。",
+	"Search settings": "搜索设置", "Search settings…": "搜索设置…", "Settings category": "设置分类", "Search results": "搜索结果", "No matching settings.": "没有匹配的设置。", "Install authoring skill globally": "全局安装编写技能",
+	"More actions": "更多操作",
 	"Open library": "打开文档库", "Search notes": "搜索笔记", "Settings": "设置", "Refresh": "刷新", "Open Agent": "打开 Agent", "Loading…": "加载中…", "Back": "返回", "Forward": "前进", "Copy reference": "复制引用", "Edit note": "编辑笔记", "Open directory": "打开所在目录", "Export canvas": "导出画布", "Exported": "已导出", "File": "文件", "View": "视图", "General": "通用", "Library": "文档库", "Editor": "编辑器", "Export directory": "导出目录", "Appearance": "外观", "Theme": "主题", "Language": "语言", "Agents": "Agent", "Terminal": "终端", "Shell": "Shell", "Install authoring skill": "安装编写技能", "Install in library": "安装到文档库", "Install globally": "安装到全局", "Skill installed": "技能已安装", "Enable read-only discovery": "启用只读发现", "Local network": "局域网", "Port": "端口", "Apply connection": "应用连接设置", "Status": "状态", "Stopped": "已停止", "Network clients can search note content and obtain local paths without authentication.": "网络客户端无需身份验证即可搜索笔记内容并获取本机文件路径。", "system": "跟随系统", "default": "默认", "light": "浅色", "dark": "深色", "english": "English", "chinese": "简体中文", "visual-studio-code": "VS Code", "Select a note in the sidebar.": "在侧栏选择一篇笔记。", "Open a Markdown library to start reading.": "打开 Markdown 文档库开始阅读。", "No visible notes. Notes use a directory containing index.md.": "没有可见笔记。每篇笔记是包含 index.md 的目录。",
 }

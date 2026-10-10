@@ -49,7 +49,7 @@ func TestScanStructure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(notes) != 3 {
+	if len(notes) != 5 {
 		t.Fatalf("roots=%d", len(notes))
 	}
 	note := Find(notes, "guide")
@@ -59,7 +59,12 @@ func TestScanStructure(t *testing.T) {
 	if group := Find(notes, "group"); group == nil || group.HasBody || len(group.Children) != 1 {
 		t.Fatalf("group=%+v", group)
 	}
-	for _, p := range []string{"archive", "archive/child", ".hidden", "empty", "node_modules", "guide/assets/nested"} {
+	for _, p := range []string{"archive", "archive/child", "upper", "quoted"} {
+		if Find(notes, p) == nil {
+			t.Errorf("custom archived metadata hid note %s", p)
+		}
+	}
+	for _, p := range []string{".hidden", "empty", "node_modules", "guide/assets/nested"} {
 		if Find(notes, p) != nil {
 			t.Errorf("unexpected note %s", p)
 		}
@@ -72,6 +77,7 @@ func TestReadFrontmatter(t *testing.T) {
 	}{
 		{"plain", "# Title\nBody", "# Title\nBody", false},
 		{"yaml", "---\ntitle: Note\ncustom:\n  tags: [一, two]\n---\nBody\n", "Body\n", true},
+		{"legacy-archived", "---\narchived: true\n---\nBody\n", "Body\n", true},
 		{"bom-crlf", "\ufeff---\r\ntitle: Note\r\n---\r\nBody\r\n", "Body\r\n", true},
 		{"unterminated", "---\ntitle: Text", "---\ntitle: Text", false},
 		{"empty", "", "", false},

@@ -32,6 +32,6 @@ Windows uses a new system console with an inherited working directory. Other pla
 
 ## Verification
 
-Tests cover discovery paths, archive exclusion, pagination, search, real MCP client/HTTP calls, tool inventory, and Host/Origin rejection. Installer tests verify copied content, existing-target preservation, and redirected-parent rejection. Terminal tests verify validation and shell quoting without launching a terminal or Agent.
+Tests cover discovery paths, visibility of notes with legacy archive metadata, pagination, search, real MCP client/HTTP calls, tool inventory, and Host/Origin rejection. Installer tests verify copied content, existing-target preservation, and redirected-parent rejection. Terminal tests verify validation and shell quoting without launching a terminal or Agent.
 
 Local-network deployment, permissions, actual Terminal/Ghostty behavior, selected-shell startup files, Windows consoles, and client skill reloading require user acceptance. See [MCP access](../mcp.md) for client setup and [Development checks](../build.md#development-checks) for automated commands.

@@ -4,10 +4,12 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+- Remove note archiving and archive restoration from Settings; previously archived notes and their descendants are visible again without modifying their files.
+
 - Store preferences and interface state in `settings.yaml` and `state.yaml` instead of TOML/JSON files. Reapply settings or manually convert existing configuration to YAML; legacy files remain untouched.
 
 - Display note Emoji and PNG icons in the sidebar and beside the page title, refreshing them when note files change.
-- Simplify workspace navigation with sidebar search and header history controls, compact tree rows with subtle modification markers and edge-aligned scrolling, and quick theme and MCP icon controls. Group archive and canvas download in the top-right More actions menu.
+- Simplify workspace navigation with sidebar search and header history controls, compact tree rows with subtle modification markers and edge-aligned scrolling, and quick theme and MCP icon controls. Keep canvas download in the top-right More actions menu.
 - Open Settings as a dialog without leaving the workspace, and show a dedicated library-selection screen when no library is selected.
 - Rename the library action in Settings to “Select library” and remove the About page.
 

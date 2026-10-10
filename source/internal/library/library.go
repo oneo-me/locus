@@ -25,7 +25,6 @@ const maxBody = 32 << 20
 type Note struct {
 	Path, Title, Summary, Canvas, Icon string
 	HasBody                            bool
-	Archived                           bool
 	Modified                           bool
 	Children                           []*Note
 }
@@ -121,9 +120,8 @@ func (l *Library) regular(p string) error {
 	return nil
 }
 
-func (l *Library) Scan() ([]*Note, error)              { return l.scan("") }
-func (l *Library) scan(parent string) ([]*Note, error) { return l.scanAll(parent, false) }
-func (l *Library) scanAll(parent string, includeArchived bool) ([]*Note, error) {
+func (l *Library) Scan() ([]*Note, error) { return l.scan("") }
+func (l *Library) scan(parent string) ([]*Note, error) {
 	if strings.Count(parent, "/") >= 255 {
 		return nil, errors.New("note hierarchy exceeds 256 levels")
 	}
@@ -160,10 +158,6 @@ func (l *Library) scanAll(parent string, includeArchived bool) ([]*Note, error) 
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", bodyPath, err)
 			}
-			note.Archived = scalar(metadata, "archived") == "true"
-			if note.Archived && !includeArchived {
-				continue
-			}
 			if title := scalar(metadata, "title"); title != "" {
 				note.Title = title
 			}
@@ -180,7 +174,7 @@ func (l *Library) scanAll(parent string, includeArchived bool) ([]*Note, error) 
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("%s: %w", bodyPath, err)
 		}
-		note.Children, err = l.scanAll(p, includeArchived)
+		note.Children, err = l.scan(p)
 		if err != nil {
 			return nil, err
 		}
@@ -202,12 +196,6 @@ func scalar(node *yaml.Node, key string) string {
 	for i := 0; i+1 < len(mapping.Content); i += 2 {
 		value := mapping.Content[i+1]
 		if mapping.Content[i].Value == key && value.Kind == yaml.ScalarNode {
-			if key == "archived" {
-				if value.Tag != "!!bool" {
-					return ""
-				}
-				return strings.ToLower(value.Value)
-			}
 			if value.Tag != "!!str" {
 				return ""
 			}

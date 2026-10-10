@@ -1,10 +1,10 @@
 # Library
 
-`internal/library` owns content interpretation, file access, archive updates, and rebuildable projections. It has no UI dependencies. The workspace owns presentation and selected-body orchestration.
+`internal/library` owns content interpretation, file access, and rebuildable projections. It has no UI dependencies. The workspace owns presentation and selected-body orchestration.
 
 ## File model and navigation
 
-A note is a non-hidden directory containing `index.md`; the selected root itself is not a note. Organizing directories appear only when they contain visible descendants. `assets`, `canvas`, and `node_modules` are not child notes. Scanning excludes symlink directories. A boolean `archived: true` hides the entire subtree; a quoted string does not count as the flag. Settings separately lists explicitly archived notes for restoration.
+A note is a non-hidden directory containing `index.md`; the selected root itself is not a note. Organizing directories appear only when they contain visible descendants. `assets`, `canvas`, and `node_modules` are not child notes. Scanning excludes symlink directories. All notes are visible regardless of an `archived` frontmatter value; it is ordinary custom metadata and does not hide descendants. Existing files are not rewritten.
 
 Titles fall back to directory names; summaries and icon declarations come from YAML. The string `icon` field supplies an Emoji or the reserved `assets/icon.png` reference (`icon.png` is also accepted as shorthand); it does not authorize arbitrary image paths or remote fetching. Selected documents retain the parsed YAML tree and complete Markdown body. Source files are never regenerated simply to display metadata. Scans read metadata or the first ordinary body line, capped at 1 MiB; selected bodies and individual resources are capped at 32 MiB. Hierarchies deeper than 256 levels are rejected. Malformed YAML, unsafe bodies, excessive metadata, and I/O failures fail a scan visibly rather than fabricate a complete partial projection.
 
@@ -14,13 +14,7 @@ Titles fall back to directory names; summaries and icon declarations come from Y
 
 The user-selected root is canonicalized and opened with Go's rooted filesystem API. Body/resource components reject symlinks and non-regular files. Rooted operations additionally prevent a concurrent path replacement from escaping the root, but component checks do not create a transactional snapshot against another process mutating directories inside it.
 
-Resource access accepts only an owning note's `index.md` or files under its `assets/` and `canvas/`. Hidden resource files are allowed inside those trees; `node_modules`, traversal, symlinks, directory browsing, and arbitrary project files are not. Note-body part extraction preserves original YAML/body bytes rather than reserializing values. Consumers decide whether a projected note is visible; raw resource access is not an archive authorization boundary.
-
-## Archive updates
-
-Archiving is an explicit, confirmed UI action. The app captures a SHA-256 content version before confirmation. The library checks that version, prepares the changed body in a same-directory temporary file, synchronizes it, checks the version again, and replaces the target. Restoration uses the same mechanism.
-
-Only the archive field is changed; unrelated frontmatter, prose, BOM, and newline style remain intact. Complex archive values and flow-style frontmatter require external editing rather than potentially lossy rewriting. Source files without frontmatter receive a new block. Multi-process checks are optimistic: there is no atomic compare-and-swap with external editors, and the final check-to-rename interval is not a cross-process transaction.
+Resource access accepts only an owning note's `index.md` or files under its `assets/` and `canvas/`. Hidden resource files are allowed inside those trees; `node_modules`, traversal, symlinks, directory browsing, and arbitrary project files are not. Note-body part extraction preserves original YAML/body bytes rather than reserializing values.
 
 ## Watching and Git
 
@@ -30,4 +24,4 @@ Git status is optional and runs with a timeout only when the selected library is
 
 ## Verification
 
-Tests cover hierarchy and archive filtering, Unicode addresses, unsafe paths and symlinks, BOM/CRLF preservation, malformed and oversized inputs, version conflicts, recursive watch notifications and cancellation, and canvas/MCP resource boundaries. Target-platform checks remain necessary for external-editor races, permission failures, unusual filesystem layouts, and large libraries. See [Development checks](../build.md#development-checks).
+Tests cover hierarchy and visibility regardless of custom archive metadata, Unicode addresses, unsafe paths and symlinks, BOM/CRLF preservation, malformed and oversized inputs, recursive watch notifications and cancellation, and canvas/MCP resource boundaries. Target-platform checks remain necessary for external-editor races, permission failures, unusual filesystem layouts, and large libraries. See [Development checks](../build.md#development-checks).

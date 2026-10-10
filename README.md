@@ -17,11 +17,11 @@ GOWORK=off go run ./cmd/locus
 GOWORK=off go run ./cmd/locus -library /path/to/library
 ```
 
-When no library is selected, a standalone welcome screen prompts you to choose **Open library**. You can also select a library in the Settings dialog. Each note is a directory containing `index.md`; directory nesting supplies the hierarchy. YAML frontmatter provides titles, summaries, and archive state. Attachments live in `assets/`; canvases live in `canvas/`. Hidden directories and reserved resource directories are not notes.
+When no library is selected, a standalone welcome screen prompts you to choose **Open library**. You can also select a library in the Settings dialog. Each note is a directory containing `index.md`; directory nesting supplies the hierarchy. YAML frontmatter provides titles, summaries, and custom properties. Attachments live in `assets/`; canvases live in `canvas/`. Hidden directories and reserved resource directories are not notes.
 
 ## Reading and canvases
 
-Browse the native tree or search notes through the command palette. Read Markdown, local images, summaries, and custom YAML. The toolbar copies references, opens notes in an editor, opens directories, and archives notes after confirmation. Restore archived notes in Settings. External file changes refresh projections; Git modification hints appear when the library is a repository root.
+Browse the native tree or search notes through the command palette. Read Markdown, local images, summaries, and custom YAML. The toolbar copies references, opens notes in an editor, and opens directories. External file changes refresh projections; Git modification hints appear when the library is a repository root.
 
 A note can own an HTML fragment and `canvas/main.js`, or a JSON template invocation. The Onevra WebView displays it inside the workspace. Settings hides and retains the page; leaving releases it. Refresh or reopen after editing canvas source. See the bundled [canvas reference](source/internal/skills/bundled/locus/references/canvas.md).
 
@@ -29,7 +29,7 @@ Canvas export creates a ZIP containing the page and resources loaded in the curr
 
 ## Agents and settings
 
-Settings offers appearance/language choices, editor and export preferences, archive restoration, MCP, and terminal/Agent selection. Preferences retain existing YAML fields and detect external changes before saving. Sidebar and current-note state are saved on close.
+Settings offers appearance/language choices, editor and export preferences, MCP, and terminal/Agent selection. Preferences retain existing YAML fields and detect external changes before saving. Sidebar and current-note state are saved on close.
 
 Enable MCP in Settings to expose read-only discovery at `http://127.0.0.1:2301/mcp`. Clients need filesystem access to the returned paths. Local-network mode has no authentication and exposes searchable note content and paths; enable it only on a trusted network. See [MCP access](docs/mcp.md).
 

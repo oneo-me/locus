@@ -5,7 +5,7 @@ Locus is a local-first Markdown workspace implemented in Go with Onevra and MyGo
 ## Core constraints
 
 1. **Files own content facts.** Each note is a directory containing `index.md`, optional `assets/` and `canvas/`, and child-note directories. Organizing directories can have no body. Derived projections are rebuildable.
-2. **The library owns file boundaries.** Rooted access, path validation, bounded reads, and optimistic archive updates stay independent of UI code. External editors operate on the same files; caches never overwrite their content.
+2. **The library owns file boundaries.** Rooted access, path validation, and bounded reads stay independent of UI code. External editors operate on the same files; caches never overwrite their content.
 3. **The workspace owns asynchronous selection.** File scans and reads run in background tasks, with generation checks before results enter the UI thread. Onevra owns generic controls, not product state.
 4. **Agents remain external.** MCP only discovers real files. External clients own reads, edits, model calls, permissions, and sessions. Terminals launch only after an explicit user action.
 5. **A note owns its canvas.** The native browser receives a read-only resource protocol scoped to the selected library. No filesystem-write, shell, or Agent service is bound to page JavaScript.
@@ -24,7 +24,7 @@ Go desktop process
 ├─ Optional MCP HTTP server → read-only discovery
 └─ Ordered settings writer
 
-Local library ← Locus archive operations / external editors and Agents
+Local library ← external editors and Agents
 External terminal ← explicit user launch; external software owns its session
 ```
 
@@ -35,7 +35,7 @@ The browser uses a registered custom URL scheme, not a local web server. A rando
 | Package | Responsibility |
 | --- | --- |
 | `cmd/locus` | Native lifecycle, menus, UI composition, settings coordination, history, image loading, and canvas ownership |
-| `internal/library` | Hierarchy, metadata, archives, resources, safe addresses, file watching, and Git projections |
+| `internal/library` | Hierarchy, metadata, resources, safe addresses, file watching, and Git projections |
 | `internal/workspace` | Asynchronous scans, reads, selected body, errors, and stale-result isolation |
 | `internal/canvas` | HTML/JSON entry resolution, read-only resource protocol, page bootstrap, CSP, and ZIP export |
 | `internal/discovery` | Three read-only MCP tools, transport, request boundary checks, listening, and shutdown |
@@ -65,7 +65,7 @@ The overview is limited to 16 KiB and each subject to 24 KiB. Keep each mechanis
 
 | Document | Read before changing |
 | --- | --- |
-| [Library](docs/architecture/library.md) | Note structure, path/resource boundaries, archives, watching, and Git projections |
+| [Library](docs/architecture/library.md) | Note structure, path/resource boundaries, watching, and Git projections |
 | [Desktop workspace](docs/architecture/workspace.md) | UI composition, async state, navigation, reading, native actions, and acceptance |
 | [Canvas](docs/architecture/canvas.md) | Native browser lifecycle, resources, HTML/JSON, security policy, and export |
 | [Agent integration](docs/architecture/mcp.md) | MCP tools, Host/Origin protection, lifecycle, skills, and terminal handoff |

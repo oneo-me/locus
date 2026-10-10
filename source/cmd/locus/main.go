@@ -22,51 +22,48 @@ import (
 )
 
 type application struct {
-	shell                                      *sidebar.Shell
-	model                                      workspace.Model
-	tree                                       components.TreeVirtualizedState[string]
-	cursor                                     int
-	renderedSource                             string
-	document                                   *markdown.MarkdownDocument
-	choosing, closing                          bool
-	index                                      map[string]*library.Note
-	children                                   map[string][]string
-	roots                                      []string
-	cfg                                        preferences.Config
-	writer                                     *preferences.Writer
-	state                                      preferences.State
-	statePath                                  string
-	stateWritable                              bool
-	restore                                    bool
-	feedback, storageError                     string
-	watchCancel                                context.CancelFunc
-	watchRoot                                  string
-	watchGeneration                            uint64
-	service                                    *discovery.Service
-	mcpKey, mcpError                           string
-	router                                     canvas.Router
-	web                                        *webview.WebView
-	session                                    *canvas.Session
-	canvasKey                                  string
-	canvasGeneration                           uint64
-	canvasError                                string
-	canvasLoading                              bool
-	settingsOpen, commandsOpen                 bool
-	settingState                               components.SettingsState
-	palette                                    command.State
-	history                                    []string
-	historyIndex                               int
-	launching, exporting                       bool
-	images                                     map[string]*ui.Bitmap
-	iconRoot                                   string
-	iconProjection                             *library.Note
-	iconTicket                                 uint64
-	noteIcons                                  map[string]*ui.Bitmap
-	imageKey                                   string
-	imageTicket                                uint64
-	archiveOpen                                bool
-	archiveRoot, archiveTarget, archiveVersion string
-	archived                                   []*library.Note
+	shell                      *sidebar.Shell
+	model                      workspace.Model
+	tree                       components.TreeVirtualizedState[string]
+	cursor                     int
+	renderedSource             string
+	document                   *markdown.MarkdownDocument
+	choosing, closing          bool
+	index                      map[string]*library.Note
+	children                   map[string][]string
+	roots                      []string
+	cfg                        preferences.Config
+	writer                     *preferences.Writer
+	state                      preferences.State
+	statePath                  string
+	stateWritable              bool
+	restore                    bool
+	feedback, storageError     string
+	watchCancel                context.CancelFunc
+	watchRoot                  string
+	watchGeneration            uint64
+	service                    *discovery.Service
+	mcpKey, mcpError           string
+	router                     canvas.Router
+	web                        *webview.WebView
+	session                    *canvas.Session
+	canvasKey                  string
+	canvasGeneration           uint64
+	canvasError                string
+	canvasLoading              bool
+	settingsOpen, commandsOpen bool
+	settingState               components.SettingsState
+	palette                    command.State
+	history                    []string
+	historyIndex               int
+	launching, exporting       bool
+	images                     map[string]*ui.Bitmap
+	iconRoot                   string
+	iconProjection             *library.Note
+	iconTicket                 uint64
+	noteIcons                  map[string]*ui.Bitmap
+	imageKey                   string
+	imageTicket                uint64
 }
 
 func main() {
@@ -227,7 +224,6 @@ func (a *application) changed() {
 	}
 }
 func (a *application) openLibrary(root string) {
-	a.archiveOpen = false
 	a.restore = false
 	a.history = nil
 	a.historyIndex = -1
@@ -357,9 +353,6 @@ func (a *application) refresh() {
 func (a *application) toggleSettings() {
 	a.settingsOpen = !a.settingsOpen
 	a.commandsOpen = false
-	if a.settingsOpen {
-		a.loadArchived()
-	}
 	if a.web != nil {
 		a.web.SetVisible(!a.settingsOpen)
 	}
