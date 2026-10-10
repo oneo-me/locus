@@ -4,7 +4,7 @@
 
 ## Composition and navigation
 
-The initial and minimum window size is 980 × 820 logical pixels. The sidebar starts at 252 pixels and cannot be reduced below that configured width. Shell owns collapse, resize, native materials, and titlebar controls. App content uses Shell's header inset; controls do not occupy the drag strip.
+The initial and minimum window size is 980 × 820 logical pixels. The sidebar starts at 252 pixels and cannot be reduced below that configured width. Shell owns collapse, resize, native materials, and titlebar controls. The content surface extends to the window top beneath Shell's floating header. Its top padding matches Shell's dynamic header height, keeping body content and controls below the titlebar without an additional fixed gap. Note and canvas pages fill the remaining content width and height without outer side or bottom margins. Markdown's scroll region provides theme-scaled reading padding around the summary, metadata, and body; this inner padding is separate from the titlebar safe inset and does not inset the canvas viewport. With a library open but no note selected, the content area stays blank except for actionable errors or feedback.
 
 The virtual tree uses library-relative paths as stable identities. A keyed projection avoids searching the entire hierarchy for every rendered row. The app exposes open-library and command-search actions and displays optional Git modification markers. Selection loads a complete body in the background; organizing directories have no body. Back/forward history stays window-local and skips invalidated paths. Library switches clear history and component selection.
 

@@ -100,7 +100,7 @@ func (a *application) content(c *ui.Context) {
 	if c.Shortcut(mods, ui.KeyE) {
 		a.commandsOpen = !a.commandsOpen
 	}
-	ui.Column(c).Fill().MinHeight(0).Padding(sidebar.HeaderHeight(c), 24, 16, 24).Children(func() {
+	ui.Column(c).Fill().MinWidth(0).MinHeight(0).Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
 		for _, message := range []string{a.storageError, a.feedback, a.mcpError} {
 			if message != "" {
 				components.Text(c, message).Wrap().TextColor(c.Theme().Danger)
@@ -111,13 +111,6 @@ func (a *application) content(c *ui.Context) {
 		}
 		note := library.Find(a.model.Notes, a.model.Selected)
 		if note == nil {
-			message := "Select a note in the sidebar."
-			if a.model.Root == "" {
-				message = "Open a Markdown library to start reading."
-			} else if !a.model.Loading && len(a.model.Notes) == 0 {
-				message = "No visible notes. Notes use a directory containing index.md."
-			}
-			components.Text(c, a.text(message)).Wrap()
 			return
 		}
 		if note.Canvas != "" {
@@ -141,7 +134,8 @@ func (a *application) content(c *ui.Context) {
 			a.renderedSource = a.model.Document.Body
 			a.document = markdown.ParseMarkdown(a.renderedSource)
 		}
-		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().Children(func() {
+		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).
+			Padding(c.Theme().Space(6)).Children(func() {
 			if note.Summary != "" {
 				components.Text(c, note.Summary).Wrap().TextColor(c.Theme().TextMuted)
 			}

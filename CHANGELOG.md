@@ -6,6 +6,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 - Open Settings as a dialog without leaving the workspace, and show a dedicated library-selection screen when no library is selected.
 
+- Leave the content area blank when no note is selected, and expand note and canvas pages to fill it while preserving Markdown reading padding and space for the floating titlebar.
 - Use the Onevra desktop interface for Markdown reading and native canvases. See [current platform scope](README.md#development-and-platform-scope) for workflows still unavailable in the rewritten application.
 - Canvas export now produces a ZIP of resources loaded in the current session; unpack it and serve it locally when required for browser modules or fetch.
 - Install bundled authoring skills as independent copies without overwriting existing destinations; updating a copy requires explicit reinstallation.
