@@ -126,7 +126,7 @@ func (a *application) content(c *ui.Context) {
 			}
 			if a.canvasError != "" {
 				components.Text(c, a.canvasError).Wrap().TextColor(c.Theme().Danger)
-			} else if a.web != nil {
+			} else if a.web != nil && !a.settingsOpen {
 				if err := a.web.Err(); err != nil {
 					components.Text(c, err.Error()).Wrap()
 				} else {
@@ -151,6 +151,7 @@ func (a *application) content(c *ui.Context) {
 	})
 	a.commandDialog(c)
 	a.archiveDialog(c)
+	a.settingsDialog(c)
 }
 func metadata(c *ui.Context, node *yaml.Node) {
 	if node == nil || len(node.Content) == 0 || node.Content[0].Kind != yaml.MappingNode {

@@ -4,7 +4,7 @@ The application owns runtime preferences and composes Onevra Settings; `internal
 
 ## Runtime preferences
 
-Settings is a replacement page in the same window. It provides library/editor/export controls, system/light/dark appearance, system/English/Chinese language choice, terminal/Agent/shell choices, explicit skill installation, archive restoration, MCP controls, and About. Returning restores the workspace and a retained canvas. The app maps settings changes to explicit library, browser, service, and terminal operations; those services do not read configuration files themselves.
+Settings is a modal dialog in the same window, available over both the workspace and the standalone library picker. It provides library/editor/export controls, system/light/dark appearance, system/English/Chinese language choice, terminal/Agent/shell choices, explicit skill installation, archive restoration, MCP controls, and About. Closing via the header button, Escape, or backdrop restores access to the underlying page and a retained canvas. The app maps settings changes to explicit library, browser, service, and terminal operations; those services do not read configuration files themselves.
 
 Appearance uses MyGo's theme source and Onevra's semantic theme. Canvas appearance updates through the retained Page API without rerunning main. English and Chinese labels are product-owned; user content is never translated. System language comes from MyGo's application locale. Native OS labels and errors can remain platform-provided. Component-specific accessibility/localization and complete bilingual acceptance still need review.
 

@@ -153,6 +153,8 @@ func (a *application) start(root string) {
 	a.shell.SetLeftExpanded(!a.state.Collapsed)
 	if root != "" {
 		a.model.Open(root)
+	} else {
+		a.shell.SetPage(a.libraryPicker)
 	}
 }
 func (a *application) resetTree() {
@@ -204,6 +206,13 @@ func (a *application) changed() {
 			if a.state.Library == a.model.Root && library.Find(a.model.Notes, a.state.Selected) != nil {
 				a.selectNote(a.state.Selected)
 			}
+		}
+	}
+	if a.shell != nil {
+		if a.model.Root == "" {
+			a.shell.SetPage(a.libraryPicker)
+		} else {
+			a.shell.SetPage(nil)
 		}
 	}
 	a.syncCanvas()
@@ -345,13 +354,11 @@ func (a *application) toggleSettings() {
 	a.commandsOpen = false
 	if a.settingsOpen {
 		a.loadArchived()
-		a.shell.SetPage(a.settings)
-	} else {
-		a.shell.SetPage(nil)
 	}
 	if a.web != nil {
 		a.web.SetVisible(!a.settingsOpen)
 	}
+	a.shell.Window().Invalidate()
 }
 func (a *application) installMenu() {
 	action := func(fn func()) func(*mygo.MenuItem, *mygo.Window) { return func(*mygo.MenuItem, *mygo.Window) { fn() } }

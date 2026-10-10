@@ -22,7 +22,7 @@ Visible `locus://` note links and relative links to existing projected notes nav
 
 Canvas selection prepares resources in the background and creates the native browser on the UI thread outside rendering. Leaving closes it; settings hides and retains it. Ordinary file watching updates note facts and canvas entry-point existence but does not rerun a live page's scripts. Refresh or reopening reruns the saved canvas. See [Canvas](canvas.md) for lifecycle and export details.
 
-Settings replaces the main Shell page and returns without rebuilding the browser document. The command palette is a native overlay. Application startup uses a single-instance lock; a second invocation activates the retained window. Window closing saves presentation state and quitting flushes settings. See [Settings and persistence](settings.md).
+Without a selected library, a standalone Shell replacement page prompts the user to open a library and keeps settings accessible. Selecting a library restores the workspace without changing its sidebar presentation. Settings opens in a modal dialog over either page, with a close button, Escape, and backdrop dismissal; closing it retains the selected note and browser document. The command palette is a native overlay. Application startup uses a single-instance lock; a second invocation activates the retained window. Window closing saves presentation state and quitting flushes settings. See [Settings and persistence](settings.md).
 
 ## Acceptance boundaries
 

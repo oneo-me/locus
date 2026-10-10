@@ -17,7 +17,7 @@ GOWORK=off go run ./cmd/locus
 GOWORK=off go run ./cmd/locus -library /path/to/library
 ```
 
-选择**打开文档库**，或在设置中选择文档库。每篇笔记是包含 `index.md` 的目录，目录嵌套表达层级。YAML frontmatter 提供标题、概要和归档状态。附件放在 `assets/`，画布放在 `canvas/`；隐藏目录和保留的资源目录不作为笔记。
+未选择文档库时，独立欢迎界面会提示你**打开文档库**；也可在设置对话框中选择文档库。每篇笔记是包含 `index.md` 的目录，目录嵌套表达层级。YAML frontmatter 提供标题、概要和归档状态。附件放在 `assets/`，画布放在 `canvas/`；隐藏目录和保留的资源目录不作为笔记。
 
 ## 阅读与画布
 

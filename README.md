@@ -17,7 +17,7 @@ GOWORK=off go run ./cmd/locus
 GOWORK=off go run ./cmd/locus -library /path/to/library
 ```
 
-Choose **Open library** or select a library in Settings. Each note is a directory containing `index.md`; directory nesting supplies the hierarchy. YAML frontmatter provides titles, summaries, and archive state. Attachments live in `assets/`; canvases live in `canvas/`. Hidden directories and reserved resource directories are not notes.
+When no library is selected, a standalone welcome screen prompts you to choose **Open library**. You can also select a library in the Settings dialog. Each note is a directory containing `index.md`; directory nesting supplies the hierarchy. YAML frontmatter provides titles, summaries, and archive state. Attachments live in `assets/`; canvases live in `canvas/`. Hidden directories and reserved resource directories are not notes.
 
 ## Reading and canvases
 
