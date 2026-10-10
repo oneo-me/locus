@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/oneo-me/locus/internal/library"
 )
 
 func TestMain(m *testing.M) {
@@ -96,6 +97,24 @@ func TestNativeReading(t *testing.T) {
 	if !previousIconPresent {
 		t.Fatal("missing selected PNG icon")
 	}
+	source := filepath.Join(t.TempDir(), "upload.png")
+	if err := os.WriteFile(source, iconPNG(t, 1200, 600), 0600); err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := library.PrepareIcon(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lib, err := library.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = lib.SetIcon("note", prepared)
+	lib.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitNative(t, func() bool { return a.noteIcons["note"] != nil && !a.model.Loading })
 	if err := os.Remove(filepath.Join(root, "picture/assets/icon.png")); err != nil {
 		t.Fatal(err)
 	}

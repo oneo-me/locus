@@ -135,9 +135,12 @@ func (a *application) title(c *ui.Context) {
 			sidebar.IconButton(c, lucide.Link(), a.text("Copy reference")).OnClick(func() { mygo.Clipboard.WriteText(library.Address(note.Path)) })
 			sidebar.IconButton(c, lucide.Pencil(), a.text("Edit note")).OnClick(func() { a.fileAction(note.Path, true) })
 			sidebar.IconButton(c, lucide.Folder(), a.text("Open directory")).OnClick(func() { a.fileAction(note.Path, false) })
-			if note.Canvas != "" {
+			{
 				sidebar.IconButton(c, lucide.Ellipsis(), a.text("More actions")).Menu(func(m *ui.Menu) {
-					if m.Item(a.text("Export canvas")).Disabled(a.session == nil || a.exporting).Chosen() {
+					if m.Item(a.text("Upload icon")).Disabled(a.choosing).Chosen() {
+						a.uploadIcon(note.Path)
+					}
+					if note.Canvas != "" && m.Item(a.text("Export canvas")).Disabled(a.session == nil || a.exporting).Chosen() {
 						a.exportCanvas()
 					}
 				})

@@ -56,6 +56,6 @@ GOWORK=off go tool packer build
 
 产物输出至 `dist/`，当前打包目标为 Apple Silicon macOS。不需要 Rust 工具链。竞态检查与原生冒烟测试详见[运行与构建](docs/build.md)；职责边界和验证范围见[架构说明](ARCHITECTURE.md)。
 
-macOS 的原生 Markdown 与 WebView 流程已有自动冒烟测试。Windows 和 Linux 需要独立验收；实验性 WebView 后端支持 macOS 与 64 位 Windows，不支持 Linux。自动更新、侧栏排序、图标上传、更丰富的附件与画廊扩展、字体控件及完整窗口位置尺寸恢复尚未实现。[GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 中的发布下载可能与本开发分支不同；本地打包不会自动发布。
+macOS 的原生 Markdown 与 WebView 流程已有自动冒烟测试。Windows 和 Linux 需要独立验收；实验性 WebView 后端支持 macOS 与 64 位 Windows，不支持 Linux。自动更新、侧栏排序、更丰富的附件与画廊扩展、字体控件及完整窗口位置尺寸恢复尚未实现。[GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 中的发布下载可能与本开发分支不同；本地打包不会自动发布。
 
 采用 [MIT 开源协议](LICENSE)。

@@ -129,8 +129,8 @@ func TestHeaderMoreActions(t *testing.T) {
 			a.model.Selected = "note"
 			tt := ui.NewTester(a.title, 650, 48)
 			more, ok := tt.Find("More actions")
-			if ok != (canvas != "") {
-				t.Fatal("more actions menu should only appear for canvases")
+			if !ok {
+				t.Fatal("more actions menu should appear for every note")
 			}
 			for _, label := range []string{"Copy reference", "Edit note", "Open directory"} {
 				button, ok := tt.Find(label)
@@ -138,7 +138,7 @@ func TestHeaderMoreActions(t *testing.T) {
 					t.Fatalf("expected %s before more actions: %+v", label, button)
 				}
 			}
-			for _, label := range []string{"Archive note", "Export canvas"} {
+			for _, label := range []string{"Upload icon", "Export canvas"} {
 				if _, ok := tt.Find(label); ok {
 					t.Fatalf("%s should be inside the menu, not a header button", label)
 				}

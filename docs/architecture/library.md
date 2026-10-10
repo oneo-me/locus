@@ -8,6 +8,8 @@ A note is a non-hidden directory containing `index.md`; the selected root itself
 
 Titles fall back to directory names; summaries and icon declarations come from YAML. The string `icon` field supplies an Emoji or the reserved `assets/icon.png` reference (`icon.png` is also accepted as shorthand); it does not authorize arbitrary image paths or remote fetching. Selected documents retain the parsed YAML tree and complete Markdown body. Source files are never regenerated simply to display metadata. Scans read metadata or the first ordinary body line, capped at 1 MiB; selected bodies and individual resources are capped at 32 MiB. Hierarchies deeper than 256 levels are rejected. Malformed YAML, unsafe bodies, excessive metadata, and I/O failures fail a scan visibly rather than fabricate a complete partial projection.
 
+Icon upload accepts regular PNG files up to 16 MiB and 16 million pixels, checks dimensions before decoding, and scales down proportionally to fit 64 × 64 without enlarging small images. Output is limited to 256 KiB. Rooted writes replace `assets/icon.png` and set `icon: assets/icon.png`; unrelated frontmatter, body bytes, BOM, and newline style are preserved. Complex icon fields or flow-style frontmatter are rejected rather than rewritten. Each file replacement is atomic, with icon rollback if the body replacement fails; the pair is not a transaction against external editors.
+
 ## Addresses and rooted access
 
 `locus://` addresses encode individual path segments. Decoding happens once and rejects hidden/reserved note segments, traversal, empty segments, encoded separators, invalid UTF-8, null bytes, queries, fragments, absolute paths, and backslashes. Plain paths supplied to MCP stay literal until encoded for the common address validator.

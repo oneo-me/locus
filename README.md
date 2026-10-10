@@ -56,6 +56,6 @@ GOWORK=off go tool packer build
 
 Outputs go to `dist/`; the configured packaging target is Apple Silicon macOS. No Rust toolchain is needed. See [Running and building](docs/build.md) for race checks and native smoke tests, and [Architecture](ARCHITECTURE.md) for boundaries and verification.
 
-macOS native Markdown and WebView workflows have automated smoke tests. Windows and Linux need separate acceptance; the experimental WebView backend supports macOS and 64-bit Windows, not Linux. Automatic updates, sidebar reordering, icon upload, richer attachment/gallery extensions, font controls, and full window-bounds restoration are not implemented. Published downloads at [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) may differ from this development branch; local packaging does not publish them.
+macOS native Markdown and WebView workflows have automated smoke tests. Windows and Linux need separate acceptance; the experimental WebView backend supports macOS and 64-bit Windows, not Linux. Automatic updates, sidebar reordering, richer attachment/gallery extensions, font controls, and full window-bounds restoration are not implemented. Published downloads at [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) may differ from this development branch; local packaging does not publish them.
 
 Licensed under the [MIT License](LICENSE).

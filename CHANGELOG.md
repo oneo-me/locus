@@ -13,7 +13,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 - Store preferences and interface state in `settings.yaml` and `state.yaml` instead of TOML/JSON files. Reapply settings or manually convert existing configuration to YAML; legacy files remain untouched.
 
-- Display note Emoji and PNG icons in the sidebar and beside the page title, refreshing them when note files change.
+- Display note Emoji and PNG icons in the sidebar and beside the page title, refreshing them when note files change. Upload PNG icons from More actions, automatically shrinking large images.
 - Simplify workspace navigation with sidebar search and header history controls, compact tree rows with subtle modification markers and edge-aligned scrolling, and quick theme and MCP icon controls. Keep canvas download in the top-right More actions menu.
 - Support mouse side buttons for back/forward note history in the workspace, even with the sidebar collapsed.
 - Open Settings as a dialog without leaving the workspace, and show a dedicated library-selection screen when no library is selected.
