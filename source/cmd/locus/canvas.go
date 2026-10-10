@@ -11,7 +11,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/oneo-me/locus/internal/library"
-	"github.com/oneo-me/onevra/plugins/webview"
+	"github.com/oneo-me/onevra/source/plugins/webview"
 )
 
 func (a *application) syncCanvas() {

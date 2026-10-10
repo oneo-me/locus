@@ -6,7 +6,7 @@ require (
 	github.com/egoist/mygo v0.3.8-0.20261010090026-0f79256101ac
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/modelcontextprotocol/go-sdk v1.8.0
-	github.com/oneo-me/onevra v0.0.0
+	github.com/oneo-me/onevra/source v0.0.0
 	github.com/yuin/goldmark v1.7.16
 	go.yaml.in/yaml/v3 v3.0.4
 )
@@ -29,8 +29,8 @@ require (
 	golang.org/x/time v0.15.0 // indirect
 )
 
-replace github.com/oneo-me/onevra => /Users/oneo/.oneo/neorio/worktrees/onevra-5adb910b/webview/source
+replace github.com/oneo-me/onevra/source => /Users/oneo/.oneo/neorio/worktrees/onevra-5adb910b/webview/source
 
 replace github.com/egoist/mygo => /Users/oneo/.oneo/neorio/worktrees/onevra-5adb910b/webview/source/.mygo/mygo
 
-tool github.com/oneo-me/onevra/tools/packer
+tool github.com/oneo-me/onevra/source/tools/packer

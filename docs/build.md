@@ -9,7 +9,7 @@ Use Go 1.27.1 or later, a native desktop session, and a compatible checkout of *
 For another machine, adjust the paths from `source/`:
 
 ```sh
-go mod edit -replace=github.com/oneo-me/onevra=/path/to/onevra/source
+go mod edit -replace=github.com/oneo-me/onevra/source=/path/to/onevra/source
 go mod edit -replace=github.com/egoist/mygo=/path/to/onevra/source/.mygo/mygo
 GOWORK=off go mod download
 ```

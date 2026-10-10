@@ -11,11 +11,11 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/locus/internal/terminal"
-	"github.com/oneo-me/onevra/components"
-	"github.com/oneo-me/onevra/icons/lucide"
-	"github.com/oneo-me/onevra/plugins/command"
-	"github.com/oneo-me/onevra/plugins/markdown"
-	"github.com/oneo-me/onevra/shells/sidebar"
+	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
+	"github.com/oneo-me/onevra/source/plugins/command"
+	"github.com/oneo-me/onevra/source/plugins/markdown"
+	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
 func paths(notes []*library.Note) []string {

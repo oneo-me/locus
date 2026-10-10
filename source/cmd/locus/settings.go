@@ -7,9 +7,9 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/skills"
-	"github.com/oneo-me/onevra/components"
-	"github.com/oneo-me/onevra/icons/lucide"
-	"github.com/oneo-me/onevra/shells/sidebar"
+	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
+	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
 func (a *application) selectSetting(c *ui.Context, label string, value *string, options []string) {

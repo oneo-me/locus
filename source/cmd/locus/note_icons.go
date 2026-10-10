@@ -9,8 +9,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
-	"github.com/oneo-me/onevra/components"
-	"github.com/oneo-me/onevra/icons/lucide"
+	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 )
 
 // Text icons retain variation selectors, joiners, modifiers, and flag sequences.

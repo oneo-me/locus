@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
-	"github.com/oneo-me/onevra/plugins/webview"
+	"github.com/oneo-me/onevra/source/plugins/webview"
 )
 
 func TestNativeCanvas(t *testing.T) {

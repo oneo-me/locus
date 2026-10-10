@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/components"
-	"github.com/oneo-me/onevra/shells/sidebar"
+	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
 // The replacement page leaves the workspace's sidebar presentation untouched.

@@ -14,11 +14,11 @@ import (
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/locus/internal/preferences"
 	"github.com/oneo-me/locus/internal/workspace"
-	"github.com/oneo-me/onevra/components"
-	"github.com/oneo-me/onevra/plugins/command"
-	"github.com/oneo-me/onevra/plugins/markdown"
-	"github.com/oneo-me/onevra/plugins/webview"
-	"github.com/oneo-me/onevra/shells/sidebar"
+	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/plugins/command"
+	"github.com/oneo-me/onevra/source/plugins/markdown"
+	"github.com/oneo-me/onevra/source/plugins/webview"
+	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
 type application struct {

@@ -10,8 +10,8 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/locus/internal/preferences"
-	"github.com/oneo-me/onevra/shells/sidebar"
-	"github.com/oneo-me/onevra/theme"
+	"github.com/oneo-me/onevra/source/shells/sidebar"
+	"github.com/oneo-me/onevra/source/theme"
 )
 
 func TestArticleHeaderFollowsScroll(t *testing.T) {
