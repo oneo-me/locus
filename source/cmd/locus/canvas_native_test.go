@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
-	"github.com/oneo-me/onevra/source/plugins/webview"
 )
 
 func TestNativeCanvas(t *testing.T) {
@@ -39,7 +38,7 @@ func TestNativeCanvas(t *testing.T) {
 	waitNative(t, func() bool { return !a.model.Loading })
 	mygo.RunOnMain(func() { a.selectNote("caller") })
 	waitNative(t, func() bool { return a.web != nil || a.canvasError != "" })
-	var web *webview.WebView
+	var web *mygo.WebView
 	mygo.RunOnMain(func() {
 		web = a.web
 		if a.canvasError != "" {
@@ -93,7 +92,7 @@ func TestNativeCanvas(t *testing.T) {
 	}
 	mygo.RunOnMain(func() {
 		a.selectNote("ordinary")
-		if a.web != nil || a.session != nil {
+		if a.web != nil || a.session != nil || !web.IsDestroyed() {
 			t.Error("leaving a canvas did not release browser")
 		}
 	})

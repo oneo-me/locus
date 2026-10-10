@@ -8,7 +8,7 @@ Locus is a local-first Markdown workspace with a native desktop interface built 
 
 ## Quick start
 
-Requires Go 1.27.1 or later, a native desktop session, and **Onevra's WebView branch with its customized MyGo**. `source/go.mod` explicitly replaces both modules with local checkouts. Adjust those paths as described in [dependency setup](docs/build.md#dependencies).
+Requires Go 1.27.1 or later and a native desktop session. Published Onevra and MyGo dependencies are pinned in `source/go.mod`; no local dependency checkouts are required. See [dependency setup](docs/build.md#dependencies).
 
 ```sh
 cd source
@@ -25,7 +25,7 @@ Local image groups can use legacy `gallery` fences with Markdown images from the
 
 Browse the native tree or search notes through the command palette. Read Markdown, local images, summaries, and custom YAML. The toolbar copies references, opens notes in an editor, and opens directories. External file changes refresh projections; Git modification hints appear when the library is a repository root.
 
-A note can own an HTML fragment and `canvas/main.js`, or a JSON template invocation. The Onevra WebView displays it inside the workspace. Settings hides and retains the page; leaving releases it. Refresh or reopen after editing canvas source. See the bundled [canvas reference](source/resources/skills/locus/references/canvas.md).
+A note can own an HTML fragment and `canvas/main.js`, or a JSON template invocation. MyGo's built-in WebView displays it inside the workspace. Settings hides and retains the page; leaving releases it. Refresh or reopen after editing canvas source. See the bundled [canvas reference](source/resources/skills/locus/references/canvas.md).
 
 Canvas export creates a ZIP containing the page and resources loaded in the current session. Unpack it and use a local HTTP server when required for modules, fetch, or Workers. Unloaded dependencies are not discovered automatically, and online services still require network access.
 
@@ -58,6 +58,6 @@ GOWORK=off go tool packer build
 
 Outputs go to `dist/`; successful builds automatically open the current version's release directory. The configured packaging target is Apple Silicon macOS. No Rust toolchain is needed. See [Running and building](docs/build.md) for race checks and native smoke tests, and [Architecture](ARCHITECTURE.md) for boundaries and verification.
 
-macOS native Markdown and WebView workflows have automated smoke tests. Windows and Linux need separate acceptance; the experimental WebView backend supports macOS and 64-bit Windows, not Linux. Automatic updates, sidebar reordering, dedicated attachment lists, font controls, and full window-bounds restoration are not implemented. Published downloads at [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) may differ from this development branch; local packaging does not publish them.
+macOS native Markdown and WebView workflows have automated smoke tests. Windows and Linux need separate acceptance; MyGo provides native WebView backends for macOS, Windows, and Linux, but this branch has only been exercised on macOS. Automatic updates, sidebar reordering, dedicated attachment lists, font controls, and full window-bounds restoration are not implemented. Published downloads at [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) may differ from this development branch; local packaging does not publish them.
 
 Licensed under the [MIT License](LICENSE).

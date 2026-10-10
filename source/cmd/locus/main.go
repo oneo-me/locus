@@ -18,7 +18,6 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/plugins/command"
 	"github.com/oneo-me/onevra/source/plugins/markdown"
-	"github.com/oneo-me/onevra/source/plugins/webview"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
@@ -55,7 +54,7 @@ type application struct {
 	service                    *discovery.Service
 	mcpKey, mcpError           string
 	router                     canvas.Router
-	web                        *webview.WebView
+	web                        *mygo.WebView
 	session                    *canvas.Session
 	canvasKey                  string
 	canvasGeneration           uint64
@@ -329,7 +328,7 @@ func (a *application) stop() {
 	}
 	a.canvasGeneration++
 	if a.web != nil {
-		a.web.Close()
+		a.web.Destroy()
 		a.web = nil
 	}
 	a.router.CloseAll()
@@ -394,9 +393,6 @@ func (a *application) toggleSettings() {
 	a.settingsOpen = !a.settingsOpen
 	a.terminalOpen = false
 	a.commandsOpen = false
-	if a.web != nil {
-		a.web.SetVisible(!a.settingsOpen)
-	}
 	a.shell.Window().Invalidate()
 }
 func (a *application) installMenu() {

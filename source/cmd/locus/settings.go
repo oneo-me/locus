@@ -38,10 +38,6 @@ func (a *application) settingsDialog(c *ui.Context) {
 		panel.Width(width).Height(min(c.Theme().Space(145), h-2*inset)).Padding(0).Gap(0).Clip()
 		a.settings(c, width < c.Theme().Space(170))
 	})
-	// Escape and backdrop dismissal update the binding directly.
-	if !a.settingsOpen && a.web != nil {
-		a.web.SetVisible(true)
-	}
 }
 
 func (a *application) settings(c *ui.Context, narrow bool) {

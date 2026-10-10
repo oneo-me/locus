@@ -1,6 +1,6 @@
 # Canvas
 
-`internal/canvas` owns page preparation, resource handling, bootstrap, and export. `cmd/locus` owns the current browser/session and native actions. Onevra's WebView plugin and customized MyGo own native attachment, layout, clipping, focus, and input routing. The app uses their public APIs rather than copying a bridge.
+`internal/canvas` owns page preparation, resource handling, bootstrap, and export. `cmd/locus` owns the current browser/session and native actions. MyGo's built-in WebView and UI element own native attachment, layout, clipping, focus, and input routing. The app uses their public APIs rather than copying a bridge.
 
 ## Entry points and lifecycle
 
@@ -8,7 +8,7 @@ A note owns exactly one `canvas/index.html` or `canvas/index.json`. HTML is a fr
 
 The host supplies Tailwind, base styling, system appearance, and a bootstrap that imports main once after page resources load. Initialization failures display a readable error. Timers and later handlers remain page-owned. Explicit theme settings update the retained page without reloading. There is no Node runtime, package installation, TypeScript transpilation, or web development server.
 
-Preparation happens off the UI thread. A generation check discards results from older selections before native browser creation. Each page uses a random custom-scheme origin and its own rooted library handle. Leaving the note unregisters the origin and closes the browser. Settings hides the slot while retaining the document. Host shutdown releases all sessions, including preparation racing with shutdown.
+Preparation happens off the UI thread. A generation check discards results from older selections before native browser creation. Each page uses a random custom-scheme origin and its own rooted library handle. Leaving the note unregisters the origin and closes the browser. Settings omits the `ui.WebView` element while retaining the document; MyGo hides browsers absent from the frame. Departure and shutdown explicitly destroy the WebView. Host shutdown releases all sessions, including preparation racing with shutdown.
 
 A live page is not automatically reloaded after source writes. Explicit refresh/reopening rereads the fragment and template input and reruns main. The app can update entry-point mode after a file scan without silently discarding page interaction state.
 
@@ -30,6 +30,6 @@ Export rejects pages whose main module has not loaded and sessions exceeding the
 
 ## Platform and verification
 
-The selected Onevra branch supports experimental native composition on macOS and 64-bit Windows; other platforms report unsupported. Rectangular clipping and overlays are supported by the dependency. Rounded native masks, transformed/opacity-animated browser surfaces, and unified DOM/toolkit Tab traversal are not guaranteed. Browser dialogs and fullscreen belong to the dependency's hidden donor window.
+MyGo supplies native WebView composition on macOS, Windows, and Linux. Its UI element owns clipping, overlays, and browser/toolkit focus traversal; the browser belongs to the workspace window rather than an app-managed donor window. Locus verification on macOS does not establish those interactions on other platforms.
 
 Unit tests cover templates, JSON escaping, CSP, resource traversal/symlink rejection, origin release, export contents, and conflicting entry points. macOS native tests verify real template initialization, resource fetch, DOM interaction, settings retention, and browser release. Full visual composition, pointer routing, input methods, accessibility, and Windows execution require target-platform acceptance. No external terminal or Agent is launched for these tests.

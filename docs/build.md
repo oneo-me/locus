@@ -4,19 +4,15 @@ Locus has one Go module under `source/` and uses Onevra's Go packager. No Rust t
 
 ## Dependencies
 
-Use Go 1.27.1 or later, a native desktop session, and a compatible checkout of **Onevra's WebView branch** with its prepared customized MyGo. Both local replacements must be present in Locus's `go.mod`; replacement directives in Onevra's module are not transitive.
+Use Go 1.27.1 or later and a native desktop session. `source/go.mod` pins published Onevra `v0.2026.2` and MyGo `v0.4.0`; `source/go.sum` records their checksums. WebView uses MyGo's built-in API, so no local replacements, patched checkouts, or preparation scripts are needed.
 
-For another machine, adjust the paths from `source/`:
+Download dependencies from `source/`:
 
 ```sh
-go mod edit -replace=github.com/oneo-me/onevra/source=/path/to/onevra/source
-go mod edit -replace=github.com/egoist/mygo=/path/to/onevra/source/.mygo/mygo
 GOWORK=off go mod download
 ```
 
-If the branch's `.mygo/mygo` checkout is absent, follow that branch's WebView preparation instructions before building Locus. Do not substitute unpatched upstream MyGo: the native-slot API is part of the dependency contract. The local replacements are not locked by `go.sum`; record and coordinate their revisions when distributing builds.
-
-macOS requires macOS 13 or later; native packaging needs Xcode and Command Line Tools. Onevra's experimental WebView also targets 64-bit Windows. Other platforms require MyGo's native dependencies and separate verification; the canvas backend reports unsupported where unavailable.
+macOS requires macOS 13 or later; native packaging needs Xcode and Command Line Tools. MyGo also provides Windows and Linux WebView backends. Those platforms require MyGo's native dependencies and separate Locus verification.
 
 ## Running
 
@@ -65,7 +61,7 @@ On an explicitly available desktop session, run native tests:
 LOCUS_NATIVE_SMOKE=1 GOWORK=off go test ./cmd/locus -run TestNative -count=1 -timeout=45s
 ```
 
-Optionally set `LOCUS_SCREENSHOTS` to retain captures, including article backgrounds and metadata across reference titles, light/dark themes, and narrow/wide windows. Tests open a temporary Markdown library and a real Onevra WebView, checking template initialization, resource fetch, DOM interaction, settings retention, and release on departure. A terminal connection fixture also checks native terminal rendering and session cleanup without launching a shell or Agent. Surface captures do not establish OS material appearance or native browser overlay composition. Complete keyboard, pointer, accessibility, terminal authorization, and installation acceptance remains manual; do not launch external terminals or Agents automatically for it.
+Optionally set `LOCUS_SCREENSHOTS` to retain captures, including article backgrounds and metadata across reference titles, light/dark themes, and narrow/wide windows. Tests open a temporary Markdown library and a real MyGo WebView, checking template initialization, resource fetch, DOM interaction, settings retention, and release on departure. A terminal connection fixture also checks native terminal rendering and session cleanup without launching a shell or Agent. Surface captures do not establish OS material appearance or native browser overlay composition. Complete keyboard, pointer, accessibility, terminal authorization, and installation acceptance remains manual; do not launch external terminals or Agents automatically for it.
 
 Documentation changes require size budgets, Subjects coverage, relative links and anchors, and changelog structure verification, followed by `git diff --check` from the repository root. Keep English and Chinese README content aligned. Report actual checks and platforms, not historical evidence from another implementation.
 

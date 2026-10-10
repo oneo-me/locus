@@ -12,14 +12,14 @@ Locus is a local-first Markdown workspace implemented in Go with Onevra and MyGo
 
 ## Dependencies and process flow
 
-`source/go.mod` and `source/go.sum` own dependencies. Locus uses the Onevra WebView branch and that branch's prepared, customized MyGo checkout. Both replacements must appear in Locus's top-level module: dependency-module `replace` directives are not inherited. Local replacements are not pinned by `go.sum`; keep the two checkouts compatible. See [dependency setup](docs/build.md#dependencies).
+`source/go.mod` and `source/go.sum` own dependencies. Locus uses published Onevra `v0.2026.2` and MyGo `v0.4.0`, pinned with module checksums and no local replacements. MyGo supplies the built-in WebView. See [dependency setup](docs/build.md#dependencies).
 
 ```text
 Go desktop process
 ├─ MyGo native event loop
 │  └─ Onevra sidebar Shell
 │     ├─ Virtual document tree, Markdown, commands, settings
-│     └─ Onevra WebView native slot → system browser
+│     └─ MyGo WebView → system browser
 ├─ Background scans, reads, Git projections and recursive file watcher
 ├─ Optional MCP HTTP server → read-only discovery
 ├─ Built-in terminal popover → MyGo PTY and external shell/Agent CLI
@@ -43,10 +43,10 @@ The browser uses a registered custom URL scheme, not a local web server. A rando
 | `internal/preferences` | YAML preferences/state, atomic replacement, external-change checks, and ordered save worker |
 | `internal/terminal` | Shell/Agent choices and validated launch arguments |
 | `internal/skills` | Resource-based authoring skill and explicit, non-overwriting installation |
-| Onevra | Shell, controls, Markdown, command palette, and native WebView composition |
-| MyGo | OS event loop, rendering, input, menus, dialogs, browser API, terminal emulator/PTYs, and desktop integration |
+| Onevra | Shell, controls, Markdown, and command palette |
+| MyGo | OS event loop, rendering, input, menus, dialogs, browser API and native WebView composition, terminal emulator/PTYs, and desktop integration |
 
-Internal domain packages do not import UI code. The app assembles them through public APIs. Canvas preparation, image decoding, scans, and note reads happen outside frame construction; native browser creation occurs after preparation returns to the UI thread. The app does not copy Onevra's native bridge or MyGo's patch into its source.
+Internal domain packages do not import UI code. The app assembles them through public APIs. Canvas preparation, image decoding, scans, and note reads happen outside frame construction; native browser creation occurs after preparation returns to the UI thread. The app does not copy a native browser bridge into its source.
 
 ## Storage
 
@@ -93,4 +93,4 @@ There is one Go module. No Cargo workspace, project-owned native bridge, or alte
 
 [Development checks](docs/build.md#development-checks) cover tests, race detection, vet, build, packaging, and opt-in native tests. Native tests exercise Markdown and real WebView initialization, template data, local fetch, DOM interaction, settings hide/show, and release on note departure. They do not establish full pointer/keyboard, accessibility, installation, or cross-platform acceptance. Do not launch external terminals or Agents as a substitute for user acceptance.
 
-Automatic update delivery, sidebar reordering, font controls, and full window-bounds restoration are not implemented. Canvas ZIP export contains the resources loaded in the current session rather than a complete dependency crawler. Windows and Linux require their own verification; native canvases are available only where Onevra's experimental backend supports them.
+Automatic update delivery, sidebar reordering, font controls, and full window-bounds restoration are not implemented. Canvas ZIP export contains the resources loaded in the current session rather than a complete dependency crawler. Windows and Linux require their own verification; native canvases depend on MyGo's platform browser backend.

@@ -203,11 +203,7 @@ func (a *application) content(c *ui.Context) {
 			if a.canvasError != "" {
 				components.Text(c, a.canvasError).Wrap().TextColor(c.Theme().Danger)
 			} else if a.web != nil && !a.settingsOpen {
-				if err := a.web.Err(); err != nil {
-					components.Text(c, err.Error()).Wrap()
-				} else {
-					a.web.View(c).Fill()
-				}
+				ui.WebView(c, a.web).Fill()
 			} else {
 				components.Text(c, a.text("Loading…"))
 			}

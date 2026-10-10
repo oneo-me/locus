@@ -11,7 +11,6 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/oneo-me/locus/internal/library"
-	"github.com/oneo-me/onevra/source/plugins/webview"
 )
 
 func (a *application) syncCanvas() {
@@ -29,7 +28,7 @@ func (a *application) syncCanvas() {
 	a.canvasError = ""
 	a.canvasLoading = false
 	if a.web != nil {
-		a.web.Close()
+		a.web.Destroy()
 		a.web = nil
 	}
 	a.router.Close(a.session)
@@ -52,7 +51,7 @@ func (a *application) syncCanvas() {
 				return
 			}
 			a.session = session
-			browser, err := webview.NewWebView(a.shell.Window(), mygo.PageOptions{DevTools: mygo.DevToolsDisabled})
+			browser, err := a.shell.Window().NewWebView(mygo.WebViewOptions{Page: mygo.PageOptions{DevTools: mygo.DevToolsDisabled}})
 			if err != nil {
 				a.canvasError = err.Error()
 				a.router.Close(session)
@@ -83,7 +82,6 @@ func (a *application) syncCanvas() {
 			})
 			browser.Page().OnDOMReady(func() { a.post(a.syncCanvasTheme) })
 			browser.Page().LoadURL(session.URL())
-			browser.SetVisible(!a.settingsOpen)
 		})
 	}()
 }
