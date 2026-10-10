@@ -3,6 +3,6 @@ identifier: me.oneo.locus
 version: "0.2026.1"
 main: ./cmd/locus
 out: ../dist
-openReleases: false
+openReleases: true
 platforms:
   - darwin/arm64/zip
