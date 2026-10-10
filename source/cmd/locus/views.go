@@ -189,7 +189,8 @@ func (a *application) content(c *ui.Context) {
 		}
 		if note.Canvas != "" {
 			if note.Summary != "" {
-				components.Text(c, note.Summary).Wrap()
+				components.Text(c, note.Summary).FillWidth().MinWidth(0).Shrink(0).Padding(0, 16, 12, 16).Wrap()
+				ui.Box(c).FillWidth().Height(1).Shrink(0).Background(c.Theme().Border)
 			}
 			if a.canvasError != "" {
 				components.Text(c, a.canvasError).Wrap().TextColor(c.Theme().Danger)

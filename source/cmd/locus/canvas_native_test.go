@@ -21,7 +21,7 @@ func TestNativeCanvas(t *testing.T) {
 		"template/canvas/index.html": "<main class=\"p-6\"><button id=\"counter\">Ready</button><div id=\"data\"></div></main>",
 		"template/canvas/main.js":    `export async function main(data) { document.querySelector('#counter').textContent=data.message; const response=await fetch('locus://template/canvas/data.json'); document.querySelector('#data').textContent=(await response.json()).value; document.querySelector('#counter').onclick=()=>document.querySelector('#counter').textContent='Clicked'; }`,
 		"template/canvas/data.json":  `{"value":"Local resource"}`,
-		"caller/index.md":            "---\ntitle: Canvas 调用\n---\n",
+		"caller/index.md":            "---\ntitle: Canvas 调用\nsummary: Canvas summary with comfortable spacing. 画布概要与下方内容分隔。\n---\n",
 		"caller/canvas/index.json":   `{"template":"locus://template","data":{"message":"Template input"}}`,
 		"ordinary/index.md":          "Ordinary Markdown",
 	} {
