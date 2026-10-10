@@ -1,0 +1,15 @@
+name: Locus
+identifier: me.oneo.locus
+version: "0.2026.1"
+main: ./cmd/locus
+out: ../dist
+openReleases: false
+platforms:
+  - darwin/arm64/zip
+macos:
+  icon: icon.icon
+  minimumSystemVersion: "13.0"
+windows:
+  icon: icon.ico
+linux:
+  icon: ../icon.png

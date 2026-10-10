@@ -4,59 +4,58 @@
 
 [English](README.md) | **简体中文**
 
-Locus 是本地优先的 Markdown 知识工作台，使用 Rust 和 GPUI 构建原生桌面界面，服务于长期维护个人知识的开发者、创作者和一人团队。用户可以阅读与组织笔记、查看文件变化、打开笔记画布和外部终端，并通过 MCP 让 Agent 发现和维护同一套本地文件。
-
-Markdown 文档树始终是知识内容的唯一事实来源，用户可以直接访问、编辑和版本管理。外部 Agent 通过 MCP 接口定位文件，按 Locus skill 使用自身文件工具编辑；模型调用、账户、权限、远程数据策略与计费由对应客户端负责。
-
-![Locus 工作台预览](preview.jpeg)
+Locus 是本地优先的 Markdown 工作台，使用 Go、Onevra 和 MyGo 构建原生桌面界面。笔记始终是普通文件：在 Locus 中阅读和组织，用喜欢的编辑器修改，通过只读 MCP 让外部 Agent 发现同一套文件。
 
 ## 快速开始
 
-macOS 用户可从 [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 下载 Apple Silicon / Intel 通用 ZIP，解压后将 `Locus.app` 移入「应用程序」。发布版通过 Sparkle 自动检查与下载更新，并由原生更新流程处理安装和重启。没有内置更新器的旧版用户，需要先手动安装一次首个支持更新的版本；源码构建不包含自动更新。默认发布版使用 ad-hoc 签名，未经 Apple 公证，首次打开可能被 macOS 拦截；确认信任该发布版本后，可在尝试打开应用后前往「系统设置 → 隐私与安全」允许打开。维护者配置见[手动发布说明](docs/build.md#manual-macos-releases)；推送 tag 不会触发自动发布。
-
-「设置 → 关于」显示应用版本、许可证与项目链接，以及更新状态。macOS 应用菜单中的「关于 Locus」打开此页，「检查更新」则打开此页并开始 Sparkle 检查；页面内也提供相同的检查按钮和手动下载链接。
-
-启动应用后，在设置中选择本地 Markdown 文档库。每篇笔记由目录中的 `index.md` 表达；应用会读取外部编辑器与 Agent 对真实文件的修改。
-
-从源码运行需要 Rust 和平台构建工具，在项目根目录执行：
+需要 Go 1.27.1 或以上、原生桌面会话，以及 **Onevra 的 WebView 分支及其定制 MyGo**。`source/go.mod` 显式通过本地路径替换这两个模块，请按[依赖设置](docs/build.md#dependencies)调整源码位置。
 
 ```sh
 cd source
-cargo run --locked -p oneo-tool-packer -- run
+GOWORK=off go run ./cmd/locus
+# 也可以在启动时指定文档库：
+GOWORK=off go run ./cmd/locus -library /path/to/library
 ```
 
-该命令构建并启动 macOS 的 `dist/Locus Dev.app`（Windows 为 `dist/Locus Dev/`），包含应用资源。开发版仍共享现有 Locus 设置与数据。详见[运行与构建](docs/build.md)。
+选择**打开文档库**，或在设置中选择文档库。每篇笔记是包含 `index.md` 的目录，目录嵌套表达层级。YAML frontmatter 提供标题、概要和归档状态。附件放在 `assets/`，画布放在 `canvas/`；隐藏目录和保留的资源目录不作为笔记。
 
-macOS 需要 Xcode 与 Command Line Tools，最低系统版本为 macOS 13；Windows 需要 Visual Studio C++ 工具链与 Windows SDK。
+## 阅读与画布
 
-## 笔记与画布
+通过原生目录树浏览，或在命令面板中搜索笔记。阅读 Markdown、本地图片、概要及自定义 YAML。工具栏提供复制引用、在编辑器中打开笔记、打开目录及确认后归档；已归档笔记可在设置中恢复。外部文件变化会刷新派生视图；文档库为 Git 仓库根目录时，会显示文件修改提示。
 
-文档库是用户选择的本地根目录。目录层级组织笔记，每篇笔记的标题、图标、概要和归档状态来自 `index.md` 的 YAML frontmatter。`assets/` 存放附件，`assets/icon.png` 为笔记图标；`assets` 和 `canvas` 是保留目录，不作为子笔记。
+笔记可以拥有 HTML 片段与 `canvas/main.js`，或 JSON 模板调用。Onevra WebView 在工作区内显示页面；进入设置会隐藏并保留页面，离开笔记会释放它。修改画布源文件后，需刷新或重新打开。详见内置的[画布参考](source/internal/skills/bundled/locus/references/canvas.md)。
 
-通过侧栏或命令面板选择笔记，标题栏工具栏依次提供复制引用、编辑笔记、打开所在目录和更多菜单；更多菜单提供图标上传和归档，侧栏右键菜单保留这四项操作并绑定对应笔记。归档项在设置中恢复。外部文件变更会更新应用的派生视图，Git 状态提示正文、画布和附件的变化。
+画布导出会生成 ZIP，包含页面及本次会话中已加载的资源。解压后，如模块、fetch 或 Worker 需要，请通过本地 HTTP 服务打开。未加载的依赖不会自动收集，在线服务仍然需要网络。
 
-Markdown 支持连续文本选择、全选和复制。概要和自定义 YAML 在正文头部展示，对象与数组递归展开并保留顺序、空集合与 null。
+## Agent 与设置
 
-有 `canvas/index.html` 与 `canvas/main.js` 的笔记运行 HTML/JavaScript 画布，模版调用方使用互斥的 `canvas/index.json`。原生画布当前支持 macOS，标题栏和头部以下显示网页，内置 Tailwind，通过系统 WebView 读取文件。画布笔记的 `index.md` 只保留 frontmatter；普通笔记显示 Markdown 正文。
+设置提供外观与语言、编辑器与导出目录、归档恢复、MCP、终端与 Agent 选择。偏好设置保留已有 TOML 字段，并在保存前检测外部修改。侧栏和当前笔记状态在关闭时保存。
 
-保存画布后手动刷新或重新进入笔记生效，离开时释放网页临时状态。标题栏更多菜单中的“下载画布”导出已保存的入口、数据和引用资源；默认保存到系统下载目录，可在通用设置中修改。结果为单个 HTML 或带 `canvas.html` 和资源的目录，同名自动编号；动态资源需先加载，在线数据仍需网络，模块或 Worker 可能需要本地 HTTP 服务。编写规则见随软件发布的 skill [画布参考](source/resources/skills/locus/references/canvas.md)与[附件参考](source/resources/skills/locus/references/attachments.md)。
+在设置中启用 MCP，默认只读发现地址为 `http://127.0.0.1:2301/mcp`。客户端需要能够访问返回的文件路径。局域网模式没有身份验证，会暴露可搜索的笔记内容和路径，请只在可信网络中启用。详见 [MCP 接入](docs/mcp.md)。
 
-## 外部 Agent
+可主动将内置 Locus 技能安装到文档库或用户主目录。安装会保留已有目标，并创建独立副本；更新副本需要明确重新安装。外部终端拥有 Agent 会话，仅在用户请求时启动，不会随应用启动自动执行。
 
-在终端设置中选择系统终端或 Ghostty，并选择 Codex、pi、OpenCode 或 Claude Code，Unix 平台还可通过 Shell 选项选择默认、zsh、bash 或 fish（3.0 或以上），需要先安装所选 Shell；默认系统终端、Codex 与原有平台 Shell。需要先安装所选软件。Locus 在当前文档库根目录运行 `codex`、`pi`、`opencode` 或 `claude`；切换文档库、修改设置或退出 Locus 不结束已有外部会话。
-
-macOS 系统终端使用 Terminal，每次创建新窗口；Ghostty 需要 1.3.0 或以上，优先在最近使用的窗口中新建标签页，没有窗口时创建窗口。默认使用 zsh；选择 bash 或 fish 后加载对应 Shell 的登录与交互配置，Agent 退出或找不到命令时保留所选 Shell。Windows 使用系统控制台。
-
-| 操作 | macOS 快捷键 |
+| 操作 | 快捷键 |
 | --- | --- |
-| 命令面板 | Command+E |
-| 设置 | Command+, |
-| 打开 Agent | Command 与反引号 |
-| 刷新当前笔记或聚焦的画布 | Command+R 或 F5 |
-| 关闭窗口 | Command+W |
+| 打开文档库 | Command/Ctrl+O |
+| 搜索笔记与操作 | Command/Ctrl+E |
+| 刷新当前内容 | Command/Ctrl+R 或 F5 |
+| 设置 | Command/Ctrl+, |
+| 打开 Agent | Command/Ctrl 与反引号 |
+| 关闭窗口 / 退出 | Command/Ctrl+W / Command/Ctrl+Q |
 
-其他平台使用对应的 Control 组合键。MCP 在设置中启用，默认关闭、端口为 `2301`；只提供 `/mcp` 只读发现。使用方法放在随应用发布的 skills 中，在「技能」设置中选择笔记库或全局 `.agents/skills` 后自动安装，切换位置时移除旧的 Locus 链接。局域网模式没有身份验证，客户端可以搜索笔记内容并获取本机路径。
+## 开发与平台范围
 
-源码位于 `source/`，最终应用产物位于 `dist/`。
+```sh
+cd source
+GOWORK=off go test ./...
+GOWORK=off go vet ./...
+GOWORK=off go tool packer run
+GOWORK=off go tool packer build
+```
+
+产物输出至 `dist/`，当前打包目标为 Apple Silicon macOS。不需要 Rust 工具链。竞态检查与原生冒烟测试详见[运行与构建](docs/build.md)；职责边界和验证范围见[架构说明](ARCHITECTURE.md)。
+
+macOS 的原生 Markdown 与 WebView 流程已有自动冒烟测试。Windows 和 Linux 需要独立验收；实验性 WebView 后端支持 macOS 与 64 位 Windows，不支持 Linux。自动更新、侧栏排序、图标上传、更丰富的附件与画廊扩展、字体控件及完整窗口位置尺寸恢复尚未实现。[GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 中的发布下载可能与本开发分支不同；本地打包不会自动发布。
 
 采用 [MIT 开源协议](LICENSE)。

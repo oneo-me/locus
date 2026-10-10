@@ -4,59 +4,58 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-Locus is a local-first Markdown knowledge workspace with a native desktop interface built with Rust and GPUI. It serves developers, creators, and one-person teams maintaining personal knowledge over time. Users can read and organize notes, inspect file changes, open note canvases and external terminals, and use MCP to let Agents discover and maintain the same local files.
-
-The Markdown document tree is the sole source of truth for knowledge content. Users can access, edit, and version the files directly. External Agents locate files through MCP and edit them with their own filesystem tools following the Locus skill. Their clients own model calls, accounts, permissions, remote-data policies, and billing.
-
-![Locus workspace preview](preview.jpeg)
+Locus is a local-first Markdown workspace with a native desktop interface built in Go with Onevra and MyGo. Notes stay ordinary files: read and organize them in Locus, edit them with your preferred editor, and let external Agents discover the same files through read-only MCP.
 
 ## Quick start
 
-For macOS, download the universal Apple Silicon / Intel ZIP from [GitHub Releases](https://github.com/oneo-me/locus/releases/latest), extract it, and move `Locus.app` into Applications. Release builds check and download updates automatically through Sparkle, which handles installation and restart. Users of older builds without an updater must install the first updater-enabled release manually once. Source builds do not include automatic updating. Default release builds are ad-hoc signed, not Apple-notarized; on first installation, macOS may block opening the app. Only if you trust the release, allow it in System Settings → Privacy & Security after attempting to open it. See [manual release setup](docs/build.md#manual-macos-releases) for maintainer configuration; pushing tags does not trigger automatic publication.
-
-Settings → About shows the app version, license and project links, and update status. On macOS, About Locus in the application menu opens this page; Check for Updates opens it and starts a Sparkle check. The page also provides the same check button and a manual download link.
-
-After launching the app, select a local Markdown library in Settings. Each note is represented by `index.md` in its directory. The app reads changes made to those files by external editors and Agents.
-
-Running from source requires Rust and the platform's build tools. From the repository root:
+Requires Go 1.27.1 or later, a native desktop session, and **Onevra's WebView branch with its customized MyGo**. `source/go.mod` explicitly replaces both modules with local checkouts. Adjust those paths as described in [dependency setup](docs/build.md#dependencies).
 
 ```sh
 cd source
-cargo run --locked -p oneo-tool-packer -- run
+GOWORK=off go run ./cmd/locus
+# Optional startup library:
+GOWORK=off go run ./cmd/locus -library /path/to/library
 ```
 
-This builds and launches `dist/Locus Dev.app` on macOS (or `dist/Locus Dev/` on Windows), including bundled resources. The development app shares existing Locus settings and data. See [Running and building](docs/build.md) for details.
+Choose **Open library** or select a library in Settings. Each note is a directory containing `index.md`; directory nesting supplies the hierarchy. YAML frontmatter provides titles, summaries, and archive state. Attachments live in `assets/`; canvases live in `canvas/`. Hidden directories and reserved resource directories are not notes.
 
-On macOS, install Xcode and Command Line Tools and use macOS 13 or later. On Windows, install Visual Studio C++ tools and the Windows SDK.
+## Reading and canvases
 
-## Notes and canvases
+Browse the native tree or search notes through the command palette. Read Markdown, local images, summaries, and custom YAML. The toolbar copies references, opens notes in an editor, opens directories, and archives notes after confirmation. Restore archived notes in Settings. External file changes refresh projections; Git modification hints appear when the library is a repository root.
 
-A library is a local root directory selected by the user. Directory nesting organizes notes. Each note's title, icon, summary, and archive state come from the YAML frontmatter in `index.md`. Attachments live in `assets/`, and `assets/icon.png` is the note icon. The reserved directories `assets` and `canvas` are not child notes.
+A note can own an HTML fragment and `canvas/main.js`, or a JSON template invocation. The Onevra WebView displays it inside the workspace. Settings hides and retains the page; leaving releases it. Refresh or reopen after editing canvas source. See the bundled [canvas reference](source/internal/skills/bundled/locus/references/canvas.md).
 
-Select notes through the sidebar or command palette. The titlebar toolbar provides, in order, copy reference, edit note, open directory, and a more menu. The more menu offers icon upload and archiving. The sidebar context menu retains all four operations and binds them to the corresponding note. Restore archived notes in Settings. External file changes update the app's derived views, and Git indicators reflect changes to the body, canvas, and attachments.
+Canvas export creates a ZIP containing the page and resources loaded in the current session. Unpack it and use a local HTTP server when required for modules, fetch, or Workers. Unloaded dependencies are not discovered automatically, and online services still require network access.
 
-Markdown supports continuous text selection, select all, and copy. Summaries and custom YAML properties appear above the body. Objects and arrays expand recursively, preserving order, empty collections, and null.
+## Agents and settings
 
-Notes with `canvas/index.html` and `canvas/main.js` run an HTML/JavaScript canvas. Template callers instead use the mutually exclusive `canvas/index.json`. Native canvases currently support macOS. Web content appears below the titlebar and metadata, includes bundled Tailwind, and reads files through the system WebView. A canvas note's `index.md` contains only frontmatter; ordinary notes display the Markdown body.
+Settings offers appearance/language choices, editor and export preferences, archive restoration, MCP, and terminal/Agent selection. Preferences retain existing TOML fields and detect external changes before saving. Sidebar and current-note state are saved on close.
 
-After saving a canvas, refresh it manually or reopen the note to load the changes. Leaving the note releases transient page state. Download canvas in the titlebar’s more menu exports the saved entry point, data, and referenced resources. It saves to the system Downloads directory by default; change this in General settings. The result is a single HTML file or a directory containing `canvas.html` and resources, with automatic numbering for duplicate names. Dynamic resources must be loaded first, online data still requires a network, and modules or Workers may require a local HTTP server. Authoring rules are in the bundled skill's [canvas reference](source/resources/skills/locus/references/canvas.md) and [attachment reference](source/resources/skills/locus/references/attachments.md).
+Enable MCP in Settings to expose read-only discovery at `http://127.0.0.1:2301/mcp`. Clients need filesystem access to the returned paths. Local-network mode has no authentication and exposes searchable note content and paths; enable it only on a trusted network. See [MCP access](docs/mcp.md).
 
-## External Agents
+Install the embedded Locus skill explicitly into the library or home directory. Installation preserves existing targets and creates an independent copy. Updating that copy requires explicit reinstallation. External terminals own Agent sessions; launching happens only on request and never as a startup side effect.
 
-In Terminal settings, select the system terminal or Ghostty and choose Codex, pi, OpenCode, or Claude Code. On Unix, the Shell selector offers Default, zsh, bash, and fish (3.0 or later). Install the selected shell first. The defaults are the system terminal, Codex, and the existing platform shell. Install the selected software first. Locus runs `codex`, `pi`, `opencode`, or `claude` at the current library root. Switching libraries, changing settings, or quitting Locus does not terminate existing external sessions.
-
-On macOS, the system terminal is Terminal, which opens a new window for each launch. Ghostty requires version 1.3.0 or later and creates a new tab in the most recently used window, or a window when none exists. Default uses zsh; selecting bash or fish loads that shell's login and interactive configuration instead. Launching keeps the selected shell open if the Agent exits or its command cannot be found. Windows uses the system console.
-
-| Action | macOS shortcut |
+| Action | Shortcut |
 | --- | --- |
-| Command palette | Command+E |
-| Settings | Command+, |
-| Open Agent | Command+backtick |
-| Refresh the current note or focused canvas | Command+R or F5 |
-| Close window | Command+W |
+| Open library | Command/Ctrl+O |
+| Search notes/actions | Command/Ctrl+E |
+| Refresh current content | Command/Ctrl+R or F5 |
+| Settings | Command/Ctrl+, |
+| Open Agent | Command/Ctrl+backtick |
+| Close window / quit | Command/Ctrl+W / Command/Ctrl+Q |
 
-Other platforms use the corresponding Control combinations. Enable MCP in Settings. It is disabled by default and uses port `2301`, exposing only read-only discovery at `/mcp`. Usage instructions live in the bundled skills, which Skills settings automatically installs into the selected library or global `.agents/skills` directory, removing the old Locus link when switching locations. Local-network mode has no authentication; clients can search note content and obtain local paths.
+## Development and platform scope
 
-Source lives in `source/`; final app outputs live in `dist/`.
+```sh
+cd source
+GOWORK=off go test ./...
+GOWORK=off go vet ./...
+GOWORK=off go tool packer run
+GOWORK=off go tool packer build
+```
+
+Outputs go to `dist/`; the configured packaging target is Apple Silicon macOS. No Rust toolchain is needed. See [Running and building](docs/build.md) for race checks and native smoke tests, and [Architecture](ARCHITECTURE.md) for boundaries and verification.
+
+macOS native Markdown and WebView workflows have automated smoke tests. Windows and Linux need separate acceptance; the experimental WebView backend supports macOS and 64-bit Windows, not Linux. Automatic updates, sidebar reordering, icon upload, richer attachment/gallery extensions, font controls, and full window-bounds restoration are not implemented. Published downloads at [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) may differ from this development branch; local packaging does not publish them.
 
 Licensed under the [MIT License](LICENSE).

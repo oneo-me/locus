@@ -1,58 +1,33 @@
 # Library
 
-This document owns current behavior, implementation boundaries, and acceptance requirements.
+`internal/library` owns content interpretation, file access, archive updates, and rebuildable projections. It has no UI dependencies. The workspace owns presentation and selected-body orchestration.
 
-## Purpose
+## File model and navigation
 
-The library lets users and Agents work on the same local Markdown files. It owns the content model, file boundaries, and rebuildable projections, not window layout, user preferences, Agent runtimes, or terminal processes.
+A note is a non-hidden directory containing `index.md`; the selected root itself is not a note. Organizing directories appear only when they contain visible descendants. `assets`, `canvas`, and `node_modules` are not child notes. Scanning excludes symlink directories. A boolean `archived: true` hides the entire subtree; a quoted string does not count as the flag. Settings separately lists explicitly archived notes for restoration.
 
-## Objects and rules
+Titles fall back to directory names; summaries come from YAML. Selected documents retain the parsed YAML tree and complete Markdown body. Source files are never regenerated simply to display metadata. Scans read metadata or the first ordinary body line, capped at 1 MiB; selected bodies and individual resources are capped at 32 MiB. Hierarchies deeper than 256 levels are rejected. Malformed YAML, unsafe bodies, excessive metadata, and I/O failures fail a scan visibly rather than fabricate a complete partial projection.
 
-- A library is a local root directory selected by the user.
-- `index.md` in a non-hidden directory defines a note. Directory nesting defines note hierarchy; directories without `index.md` may only organize descendants.
-- Titles, icons, summaries, and archive state come from YAML frontmatter. Missing titles may fall back to directory names. Other frontmatter fields are preserved and presented as custom metadata.
-- `assets/` holds attachments; the dedicated icon `assets/icon.png` does not count as an attachment. `canvas/` holds the canvas entry point and resources. The reserved directory names `assets` and `canvas` cannot be notes or organizing directories, and scanning does not identify their contents as child notes. Note paths exclude symlinks, hidden directories, and `node_modules`.
-- `locus://<library-relative path>` is the canonical library address. Spaces, percent signs, and hashes may be encoded. Navigation, MCP, and canvas components decode once and reject encoded separators and parent segments. Standard Markdown links reference body content; target resolution must stay within library boundaries.
-- Explicitly archived notes and their descendants are excluded from ordinary navigation. Settings can still discover explicitly archived entries and restore them individually.
+## Addresses and rooted access
 
-Markdown, canvas, and attachment files are content facts. Titles, navigation, search, relationships, attachment counts, Git status, and thumbnails derive from files and must not become authoritative data.
+`locus://` addresses encode individual path segments. Decoding happens once and rejects hidden/reserved note segments, traversal, empty segments, encoded separators, invalid UTF-8, null bytes, queries, fragments, absolute paths, and backslashes. Plain paths supplied to MCP stay literal until encoded for the common address validator.
 
-Custom YAML properties display the current note's original values. They do not inherit parent properties or turn custom fields into website or project-directory operations.
+The user-selected root is canonicalized and opened with Go's rooted filesystem API. Body/resource components reject symlinks and non-regular files. Rooted operations additionally prevent a concurrent path replacement from escaping the root, but component checks do not create a transactional snapshot against another process mutating directories inside it.
 
-## Navigation and reading
+Resource access accepts only an owning note's `index.md` or files under its `assets/` and `canvas/`. Hidden resource files are allowed inside those trees; `node_modules`, traversal, symlinks, directory browsing, and arbitrary project files are not. Note-body part extraction preserves original YAML/body bytes rather than reserializing values. Consumers decide whether a projected note is visible; raw resource access is not an archive authorization boundary.
 
-Scanning builds navigation and metadata projections. Complete bodies are read only after selection. The workspace persists sibling order separately without changing content directories. See [Desktop workspace](workspace.md#reading-and-metadata) for reading and metadata presentation.
+## Archive updates
 
-## Canvases
+Archiving is an explicit, confirmed UI action. The app captures a SHA-256 content version before confirmation. The library checks that version, prepares the changed body in a same-directory temporary file, synchronizes it, checks the version again, and replaces the target. Restoration uses the same mechanism.
 
-A note identifies its single owned canvas with `canvas/index.html` or the mutually exclusive `canvas/index.json`. Scanning checks entry-point existence without executing source. `canvas` and `assets` are reserved directories. Canvas files do not count as attachments, and installed `node_modules` are excluded from note resources and library change notifications. A canvas replaces the reading area below the title and metadata; otherwise the body is displayed. See [Canvas](canvas.md) for runtime, reuse, and resource contracts and [Desktop workspace](workspace.md) for native layout and commands.
+Only the archive field is changed; unrelated frontmatter, prose, BOM, and newline style remain intact. Complex archive values and flow-style frontmatter require external editing rather than potentially lossy rewriting. Source files without frontmatter receive a new block. Multi-process checks are optimistic: there is no atomic compare-and-swap with external editors, and the final check-to-rename interval is not a cross-process transaction.
 
-## File changes and conflicts
+## Watching and Git
 
-Startup and library switches build an in-memory projection without retaining every complete body. Recursive watching uses the same boundaries. Relevant events are briefly coalesced before a full background navigation-tree rebuild; individual events do not directly mutate derived state. If paths cannot be reliably identified, perform a full reconciliation. Note and attachment creation, deletion, and archiving refresh projections through the same batch.
+The app owns one cancellable recursive fsnotify watcher per library. It adds real directories, excludes hidden directories and `node_modules`, and coalesces events for 150 ms before requesting reconciliation. New directories trigger subscription reconciliation. Changes during an in-flight scan request another scan rather than silently dropping freshness. Watch failures are shown and do not fall back to polling. Switching libraries cancels the old watcher and invalidates its queued callbacks.
 
-Changes relevant to the current note reload its body in the background while retaining existing content and reading position. Deletion, archiving, or invalidation clears selection and body. Late tasks from old libraries or selections must not overwrite current state. Watch failures preserve the last successful projection and expose an error instead of using polling to imply freshness.
+Git status is optional and runs with a timeout only when the selected library is the repository root. Porcelain NUL-delimited paths, including rename pairs, attribute body, attachment, and canvas changes to their notes, then aggregate through ancestors. Git failure removes indicators without preventing reading. Git indexes are not content authorities.
 
-When files conflict with caches, external writes, or user operations, expose the real state and do not silently overwrite newer files. Archiving, restoration, and icon updates must maintain real files atomically, preserving unrelated frontmatter, body, BOM, and newline style. Reject writes that cannot be made safely.
+## Verification
 
-## Git and attachments
-
-Git status uses the library root as the repository boundary. Changes to `index.md` and files at any depth under `canvas/` and `assets/` are attributed to their owning notes and aggregated through ancestors. If the library is not a Git repository root or Git is unavailable, change indicators degrade without blocking reading.
-
-Local raster images can produce aspect-preserving thumbnails and note icons. Thumbnails and remote link icons are rebuildable caches outside the library. Uploading a note icon writes `assets/icon.png` in the current note and synchronizes frontmatter, without overwriting symlinks or non-regular files.
-
-## Interfaces and dependencies
-
-- [Desktop workspace](workspace.md) consumes navigation, current bodies, and explicit archive, restore, and icon-update operations.
-- [Agent integration](mcp.md) reuses the content model. Read-only discovery locates files, clients read and write real content with their own filesystem tools, and skills define workflows.
-- [Library terminal](terminal.md) receives only the current library root and does not read or modify domain state.
-- `source/crates/locus-library/src/` owns scanning, reading, mutations, Git projections, and watching, independently of GPUI.
-- GPUI Kit TextView owns generic Markdown parsing, layout, and selection. `source/crates/locus-ui/src/markdown_extensions/` adds galleries, attachments, images, link icons, and platform behavior through extension interfaces.
-
-Domain changes must at least verify path normalization, boundary traversal, frontmatter fidelity, archiving, icon writes, create/delete refreshes, Git aggregation, event batches, current-body reloads, and late-task isolation.
-
-## Content operation implementation
-
-`locus-library/src/access.rs` defines logical addresses and content targets, file reads and writes, SHA-256 versions, and safety boundaries. `access/organize.rs` handles subtree manifests, moves, deletion, and Markdown links. It reuses scanner metadata interpretation and existing icon/frontmatter mutation capabilities for consistency with interface and canvas consumers. `reference.rs` decodes logical addresses once for navigation, link icons, MCP, and canvas components so encoded addresses identify the same object through every entry point. Content interfaces recognize the note structure of `index.md`, `assets/`, `canvas/`, and child-note directories; user configuration remains TOML.
-
-`content_version_from_reader` computes SHA-256 in chunks and returns the byte count and lowercase hexadecimal digest. These domain interfaces serve code consuming the library directly. MCP exposes only discovery tools; external clients maintain files and handle edit conflicts themselves.
+Tests cover hierarchy and archive filtering, Unicode addresses, unsafe paths and symlinks, BOM/CRLF preservation, malformed and oversized inputs, version conflicts, recursive watch notifications and cancellation, and canvas/MCP resource boundaries. Target-platform checks remain necessary for external-editor races, permission failures, unusual filesystem layouts, and large libraries. See [Development checks](../build.md#development-checks).

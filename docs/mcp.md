@@ -1,18 +1,24 @@
 # MCP access
 
-Locus provides read-only note discovery at the Streamable HTTP URL `http://127.0.0.1:2301/mcp`. Enable it in Settings → MCP; the service is disabled by default, and its port is configurable. Configure the client with this URL, replacing the port when changed.
+Enable **Settings → MCP → Enable read-only discovery** after selecting a library. The default Streamable HTTP endpoint is:
 
-The three tools are `list_articles`, `search_articles` and `resolve_article`. They return note metadata and absolute local file paths. Clients use their own filesystem tools to read and edit content, so they need access to the selected library's files. The service does not provide a full endpoint, content-write or transfer tools, or built-in documentation resources.
+```text
+http://127.0.0.1:2301/mcp
+```
 
-Local-network mode exposes discovery without authentication: connected clients can search note content and obtain local paths. For network access, replace the host with this computer's IP. Host validation accepts localhost, loopback addresses and the local IP receiving the connection; arbitrary hostnames are rejected. Changing the library or restarting the service invalidates existing sessions. Settings and the sidebar show runtime status; settings exposes startup errors.
+The port is configurable; choose Apply connection after editing it. Disabling the service or changing libraries closes the old listener. Settings displays the real listening address or error. The transport is stateless; clients must not depend on durable server sessions.
 
-## Install authoring skills
+The three tools are `list_articles`, `search_articles`, and `resolve_article`. They return note metadata and absolute local file/directory paths. Clients read and edit those paths with their own filesystem tools and therefore need access to the same files. MCP does not transfer complete content, write notes, or run Agents.
 
-In Settings → Skills, select Library or Global under Installation location to install automatically:
+Local-network mode listens beyond loopback without authentication. Connected clients can search note content and obtain paths. Use it only on a trusted network; change the client URL to this computer's IP. Host and Origin checks defend against unrelated browser origins and arbitrary hostnames, not unauthorized clients already able to reach the trusted endpoint.
 
-- Library installs to `<library>/.agents/skills/locus`; select a library in General first.
-- Global installs to `~/.agents/skills/locus`.
+## Install authoring guidance
 
-Installation reports the actual destination or a failure. Installation creates a directory symlink to the running application’s bundled `skills/locus` directory. Select the location again to update an existing link or retry. Real directories/files and other skills are preserved; move an existing real installation before retrying. Changing the selection installs the new link first, then removes the Locus symlink from the other location. If installation fails, the old link remains; cleanup errors are reported separately. Real installations at the old location are preserved. Moving or deleting the application can break the link; select the location again from the new application location. Windows may require Developer Mode or permission to create directory symlinks; failures are reported rather than falling back to copying. Agent discovery/reloading follows the client's own skill support.
+In Settings → Agents, choose **Install in library** or **Install globally**:
 
-The [Locus skill](../source/resources/skills/locus/SKILL.md) contains note discovery and authoring workflows, with task-specific [attachment](../source/resources/skills/locus/references/attachments.md) and [canvas](../source/resources/skills/locus/references/canvas.md) references. These files are packaged under `Contents/Resources/skills` on macOS and `resources/skills` in the Windows portable directory; installation links to that resource directory. Debug runs outside an application bundle link to the source resources. MCP descriptions remain minimal.
+- Library copies the embedded skill to `<library>/.agents/skills/locus`.
+- Global copies it to `~/.agents/skills/locus`.
+
+Existing files, directories, and symlinks at the destination are not overwritten. Move the old installation before reinstalling. Redirected parent directories are rejected. Installation failures report their reason; an incomplete new installation may require inspection before retrying. The app does not remove a copy at another location or start an Agent automatically.
+
+The bundled [skill](../source/internal/skills/bundled/locus/SKILL.md) defines note workflows, with [attachment](../source/internal/skills/bundled/locus/references/attachments.md) and [canvas](../source/internal/skills/bundled/locus/references/canvas.md) references. Copies remain usable when the app is moved, but do not update automatically. Client discovery and reloading depend on the client's own skill support.

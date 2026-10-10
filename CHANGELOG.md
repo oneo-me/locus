@@ -4,9 +4,10 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
-- Remove tag-triggered GitHub Actions macOS publishing. Maintainers can still invoke the release script manually; installed Sparkle update support is retained.
-
-- Run the app through `oneo-tool-packer run` or the VS Code `dev` task to build and launch a resource-complete development bundle (`Locus Dev.app` on macOS) without replacing the release app, while retaining terminal logs. Development skill installation now uses only packaged resources, just like release builds, instead of falling back to the source tree.
+- Use the Onevra desktop interface for Markdown reading and native canvases. See [current platform scope](README.md#development-and-platform-scope) for workflows still unavailable in the rewritten application.
+- Canvas export now produces a ZIP of resources loaded in the current session; unpack it and serve it locally when required for browser modules or fetch.
+- Install bundled authoring skills as independent copies without overwriting existing destinations; updating a copy requires explicit reinstallation.
+- Automatic updates are unavailable in the Go application; download releases manually until update delivery is configured.
 
 ## [0.2026.1] - 2026-10-04
 

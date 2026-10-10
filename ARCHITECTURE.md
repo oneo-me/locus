@@ -1,114 +1,96 @@
 # Locus architecture
 
-This document is the overview of the current system. Read it in full before changing code, then select the relevant details from [Subjects](#subjects). See [README.md](README.md) for the product introduction and usage. The desktop workspace subject owns visible interface conventions.
-
-Locus is a local-first Markdown knowledge workspace with a native desktop interface built with Rust and GPUI Kit. Users read, organize, and review local notes while external editors and Agents operate on the same files. The app provides read-only MCP file discovery; bundled skills, installed through Settings, define its usage.
+Locus is a local-first Markdown workspace implemented in Go with Onevra and MyGo. This overview maps the current implementation; read it before making changes, then read the relevant [Subjects](#subjects). [README](README.md) introduces usage and [Running and building](docs/build.md) owns development commands.
 
 ## Core constraints
 
-1. **The document tree owns content facts.** Each note is represented by `index.md` in its directory and owns `assets/`, `canvas/`, and child notes. Directories without a body can organize descendants.
-2. **Derived state is rebuildable.** Navigation, search, relationships, Git status, and image caches derive from real files. Configuration and caches cannot become content authorities.
-3. **Ownership is explicit.** The workspace orchestrates selection and presentation, the settings entity owns runtime preferences, the shared shell owns windows and generic layout, the library owns the file model and safety boundaries, and the MCP controller owns service lifecycle.
-4. **MCP discovers real files.** `/mcp` returns original paths through read-only tools. External clients own file operations, model calls, execution permissions, and sessions. The Locus skill defines usage rules.
-5. **The current note owns its canvas.** HTML/JavaScript or JSON template calls run in the macOS system WebView. The workspace manages creation and release; the canvas package manages pages, resources, and export.
-6. **Generic capabilities remain product-neutral.** `oneo-gpui*` accepts neutral configuration, labels, data, and events. Locus product models, preferences, and localization stay in product packages.
+1. **Files own content facts.** Each note is a directory containing `index.md`, optional `assets/` and `canvas/`, and child-note directories. Organizing directories can have no body. Derived projections are rebuildable.
+2. **The library owns file boundaries.** Rooted access, path validation, bounded reads, and optimistic archive updates stay independent of UI code. External editors operate on the same files; caches never overwrite their content.
+3. **The workspace owns asynchronous selection.** File scans and reads run in background tasks, with generation checks before results enter the UI thread. Onevra owns generic controls, not product state.
+4. **Agents remain external.** MCP only discovers real files. External clients own reads, edits, model calls, permissions, and sessions. Terminals launch only after an explicit user action.
+5. **A note owns its canvas.** The native browser receives a read-only resource protocol scoped to the selected library. No filesystem-write, shell, or Agent service is bound to page JavaScript.
 
-## Processes and data flow
+## Dependencies and process flow
+
+`source/go.mod` and `source/go.sum` own dependencies. Locus uses the Onevra WebView branch and that branch's prepared, customized MyGo checkout. Both replacements must appear in Locus's top-level module: dependency-module `replace` directives are not inherited. Local replacements are not pinned by `go.sum`; keep the two checkouts compatible. See [dependency setup](docs/build.md#dependencies).
 
 ```text
-Locus native desktop process
-├─ GPUI / OS event loop
-│  └─ Main window: document navigation + current note / inline settings
-│     └─ macOS WebKit: current note canvas
-└─ Optional MCP thread: Tokio + Axum + rmcp
-   └─ /mcp: read-only file discovery
+Go desktop process
+├─ MyGo native event loop
+│  └─ Onevra sidebar Shell
+│     ├─ Virtual document tree, Markdown, commands, settings
+│     └─ Onevra WebView native slot → system browser
+├─ Background scans, reads, Git projections and recursive file watcher
+├─ Optional MCP HTTP server → read-only discovery
+└─ Ordered settings writer
 
-Local document tree ← desktop app / MCP / external editors and Agents
-External terminal ← workspace launches the selected Agent on demand
+Local library ← Locus archive operations / external editors and Agents
+External terminal ← explicit user launch; external software owns its session
 ```
 
-Startup loads preferences and interface state, resolves appearance and language, and creates the workspace. Library scanning builds navigation and Git projections and watches files recursively. Selecting a note reads its complete body. Notes with a canvas display it below the header; other notes display Markdown.
+The browser uses a registered custom URL scheme, not a local web server. A random session origin routes each canvas to its own rooted file handle. Leaving a canvas closes the browser and releases its origin; settings hides the native slot while preserving the document.
 
-File events are coalesced before rebuilding projections in the background. Changes relevant to the current note reload its body. Read results are isolated by library path and generation so late tasks cannot overwrite a newer selection. Adding or removing a canvas entry point updates page mode; already loaded pages read new source after manual refresh or reopening.
-
-MCP discovers the same library on each call. Clients maintain content with their own filesystem tools. The workspace maps settings to explicit service configuration and stops the old service before starting a replacement. Agents launch at the library root captured when triggered. The workspace captures only the terminal, Agent, shell, and directory and hands off launching in the background. External terminals own sessions, tabs, PTYs, and process lifecycle. See [Library terminal](docs/architecture/terminal.md) for launch behavior and failure boundaries.
-
-## Module boundaries
-
-Source is a Rust 2024 Cargo workspace with `locus` as its default package. All direct dependency versions are declared in `[workspace.dependencies]` in `source/Cargo.toml`; member packages inherit them with `workspace = true` and retain their own feature, optionality, and platform requirements. Resolved versions are fixed by `source/Cargo.lock`. Applications and shared components in one process use the same GPUI type instance.
+## Ownership
 
 | Package | Responsibility |
 | --- | --- |
-| `locus` | Product initialization, app startup, menus, and workspace assembly |
-| `locus-workspace` | Navigation, reading, canvas orchestration, terminal handoff, interface state, and product actions |
-| `locus-settings` | Preferences entity, settings pages including About, archive restoration, and settings events |
-| `locus-updater` | App-wide update status and the macOS Sparkle controller/delegate |
-| `locus-preferences` | Product fields, defaults, validation, storage names, and option labels |
-| `locus-library` | File model, scanning, reading and writing, watching, versions, links, and Git projections |
-| `locus-mcp` | Read-only discovery tools, transport sessions, listening, and shutdown control |
-| `locus-canvas` | WebView host, resource protocol, page lifecycle, themes, and export |
-| `locus-ui` | Markdown extensions, icons and image caches, and platform file and terminal launching |
-| `oneo-gpui` | App shell, windows, layout, appearance controls, and TOML configuration service |
-| `oneo-gpui-webview` | Native macOS page composition, clipping, visibility, input, and focus |
-| `oneo-tool-packer` | Independent build, app assembly, and development launch CLI |
+| `cmd/locus` | Native lifecycle, menus, UI composition, settings coordination, history, image loading, and canvas ownership |
+| `internal/library` | Hierarchy, metadata, archives, resources, safe addresses, file watching, and Git projections |
+| `internal/workspace` | Asynchronous scans, reads, selected body, errors, and stale-result isolation |
+| `internal/canvas` | HTML/JSON entry resolution, read-only resource protocol, page bootstrap, CSP, and ZIP export |
+| `internal/discovery` | Three read-only MCP tools, transport, request boundary checks, listening, and shutdown |
+| `internal/preferences` | TOML preferences/state, atomic replacement, external-change checks, and ordered save worker |
+| `internal/terminal` | Platform handoff and shell quoting; no session ownership |
+| `internal/skills` | Embedded authoring skill and explicit, non-overwriting installation |
+| Onevra | Shell, controls, Markdown, command palette, and native WebView composition |
+| MyGo | OS event loop, rendering, input, menus, dialogs, browser API, and desktop integration |
 
-The main product dependency chain is `locus → locus-workspace → locus-settings`. The workspace also consumes public interfaces from canvas, UI, preferences, library, and MCP. Settings consumes UI, preferences, library, MCP, and the updater service. The app initializes the updater, which owns its native backend and has no settings or workspace dependency. Canvas consumes the library, shared language, and macOS WebView. UI consumes the library and preferences. The library is MCP's only product-domain dependency and does not depend on GUI code. Feature packages do not depend back on the app binary.
+Internal domain packages do not import UI code. The app assembles them through public APIs. Canvas preparation, image decoding, scans, and note reads happen outside frame construction; native browser creation occurs after preparation returns to the UI thread. The app does not copy Onevra's native bridge or MyGo's patch into its source.
 
 ## Storage
 
-| Location | Owner and contents |
+| Location | Contents |
 | --- | --- |
-| User-selected library | Markdown, frontmatter, attachments, canvases, and directory hierarchy |
-| `~/.oneo/locus/settings.toml` | User preferences, including library, editor, export directory, appearance, terminal, Agent shell, and MCP |
-| `~/.oneo/locus/state.toml` | Window restoration, current selection, and sidebar state |
-| `~/.oneo/locus/sidebar-order.toml` | Sibling order by library and parent path |
-| `~/.oneo/locus/thumbnails/`, `link-icons/` | Rebuildable image caches |
+| Selected library | Notes, frontmatter, attachments, canvases, and child directories |
+| `~/.oneo/locus/settings.toml` | Library path, appearance, language, editor, terminal/Agent, export directory, and MCP configuration |
+| `~/.oneo/locus/state.toml` | Selected note/library and sidebar width/collapse state |
+| Chosen export directory | Non-overwriting canvas ZIP snapshots |
+| Library or home `.agents/skills/locus` | Explicitly installed copy of the bundled authoring skill |
 
-The configuration service reads TOML and saves atomically; runtime entities own configuration changes. Note operations use safe paths and content-version checks. External editors participate in optimistic conflict checking. Operations spanning multiple files do not promise transactional rollback after a crash.
+Existing recognized TOML fields are read directly; unrelated preference fields survive saves. Malformed settings are not overwritten. Presentation state is not a content authority. Configuration writes are atomic replacements, not a transaction with content or another process.
 
 ## Subjects
 
-Each subject owns current mechanisms, boundaries, and verification methods. The overview is limited to 16 KiB and each architecture subject to 24 KiB. See [AGENTS.md](AGENTS.md#verification) for documentation verification requirements.
+The overview is limited to 16 KiB and each subject to 24 KiB. Keep each mechanism in its owning subject, with current limitations distinguished from implemented behavior.
 
 | Document | Read before changing |
 | --- | --- |
-| [Library](docs/architecture/library.md) | File structure, addresses, scanning, watching, Git, content operations, and safety boundaries |
-| [Desktop workspace](docs/architecture/workspace.md) | Tree navigation, reading and YAML, history, menus, commands, and focus |
-| [Canvas](docs/architecture/canvas.md) | HTML/JSON, templates, resources, page lifecycle, composition, and export |
-| [Agent integration](docs/architecture/mcp.md) | MCP discovery, skill installation, Host validation, and service lifecycle |
-| [Settings and persistence](docs/architecture/settings.md) | Preference ownership, configuration I/O, appearance, language, and save scheduling |
-| [Shared app shell](docs/architecture/shell.md) | Initialization, windows, layout, debug FPS, and platform behavior |
-| [Library terminal](docs/architecture/terminal.md) | Terminal selection, commands, path quoting, handoff, and failure handling |
-| [WebView integration](docs/architecture/webview.md) | Generic native component construction, visibility, input, and composition limits |
-| [App packaging](docs/architecture/packaging.md) | CLI, targets, icons, resources, signing, runtime libraries, and output replacement |
-| [macOS releases and updates](docs/architecture/updates.md) | Version tags, GitHub Release publication, signing, notarization, and Sparkle updates |
+| [Library](docs/architecture/library.md) | Note structure, path/resource boundaries, archives, watching, and Git projections |
+| [Desktop workspace](docs/architecture/workspace.md) | UI composition, async state, navigation, reading, native actions, and acceptance |
+| [Canvas](docs/architecture/canvas.md) | Native browser lifecycle, resources, HTML/JSON, security policy, and export |
+| [Agent integration](docs/architecture/mcp.md) | MCP tools, Host/Origin protection, lifecycle, skills, and terminal handoff |
+| [Settings and persistence](docs/architecture/settings.md) | Preference ownership, configuration safety, language, appearance, and shutdown saving |
+| [App packaging](docs/architecture/packaging.md) | Go tools, app identity, embedded resources, platform coverage, and release boundary |
 
 ## Repository layout
 
 ```text
-AGENTS.md               Development and documentation maintenance rules
-ARCHITECTURE.md         System overview and subject index
-README.md               Default English product introduction and quick start
-README.zh-CN.md         Simplified Chinese translation with language switching
-CHANGELOG.md            Pending user-visible changes and confirmed releases
-LICENSE                 MIT license
-docs/architecture/      Current system description, one document per subject
-docs/build.md           Running, building, and app delivery
-docs/mcp.md             Client connections and MCP usage
-source/Cargo.toml       Workspace and direct dependency baseline
-source/Cargo.lock       Resolved versions
-source/crates/          Product and generic Rust packages
-source/resources/skills/ Bundled skills installed through symlinks on demand
-source/packer.toml      App identity and packaging resources
-scripts/                Bun development and release scripts
-.vscode/                Development and build tasks
-dist/                   App outputs, ignored by Git
+source/go.mod, go.sum    Go module and dependency hashes
+source/cmd/locus/        Desktop application and native smoke tests
+source/internal/         Product packages and headless tests
+source/internal/skills/bundled/        Embedded skills and installer
+source/packer.yaml       Onevra Go packager configuration
+source/icon.icon/        macOS app icon project
+source/icon.ico          Windows icon asset
+.vscode/tasks.json       Go development and build tasks
+docs/                    Architecture and usage instructions
+dist/                    Ignored app outputs
 ```
 
-The Cargo workspace manages `source/crates/`. There are currently no JavaScript/TypeScript subpackages or root Bun workspace manifest. When introducing subpackages, register their actual paths in the new workspace manifest. The app version remains in `source/Cargo.toml`. The manually invoked release script publishes universal macOS bundles to GitHub Releases, using ad-hoc signing by default without an Apple developer account; Developer ID signing and notarization are optional. Distributed builds embed Sparkle for background update checking and downloading; `locus-updater` retains its native controller and publishes status to Settings → About. Application-menu About and Check for Updates commands navigate to that page; Sparkle owns installation and relaunch. Source runs and ordinary local bundles do not contain an updater. See [macOS releases and updates](docs/architecture/updates.md).
+There is one Go module. No Cargo workspace, project-owned native bridge, or alternate implementation is required. Do not install or invoke Rust tooling.
 
-## Verification and known limitations
+## Verification and current limitations
 
-See [AGENTS.md](AGENTS.md) for routine checks and [Running and building](docs/build.md) for platform build environments. Historical check records do not establish that the current commit has been revalidated.
+[Development checks](docs/build.md#development-checks) cover tests, race detection, vet, build, packaging, and opt-in native tests. Native tests exercise Markdown and real WebView initialization, template data, local fetch, DOM interaction, settings hide/show, and release on note departure. They do not establish full pointer/keyboard, accessibility, installation, or cross-platform acceptance. Do not launch external terminals or Agents as a substitute for user acceptance.
 
-Native canvases currently support macOS. Windows builds and native behavior require Windows tooling and hardware verification; macOS compilation is not a substitute. The workspace subject records known clipping issues with mixed Chinese text and table text. Shutdown saving is constrained by GPUI's wait limit; see the settings subject for details.
+Automatic update delivery, sidebar reordering, icon upload, richer attachment/gallery extensions, font controls, and full window-bounds restoration are not implemented. Canvas ZIP export contains the resources loaded in the current session rather than a complete dependency crawler. Windows and Linux require their own verification; native canvases are available only where Onevra's experimental backend supports them.

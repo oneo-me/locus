@@ -2,19 +2,21 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "dev",
+      "label": "run",
       "type": "shell",
-      "command": "cargo run --locked -p oneo-tool-packer -- run",
+      "command": "go tool packer run",
       "options": {
-        "cwd": "${workspaceFolder}/source"
+        "cwd": "${workspaceFolder}/source",
+        "env": { "GOWORK": "off" }
       }
     },
     {
       "label": "build",
       "type": "shell",
-      "command": "cargo run --locked -p oneo-tool-packer --",
+      "command": "go tool packer build",
       "options": {
-        "cwd": "${workspaceFolder}/source"
+        "cwd": "${workspaceFolder}/source",
+        "env": { "GOWORK": "off" }
       }
     }
   ]
