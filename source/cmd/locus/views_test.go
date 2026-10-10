@@ -1,0 +1,82 @@
+package main
+
+import (
+	"testing"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/locus/internal/library"
+	"github.com/oneo-me/locus/internal/preferences"
+)
+
+func TestSidebarSearchOpensCommands(t *testing.T) {
+	a := &application{cfg: preferences.Default()}
+	a.cfg.Language = "english"
+	tt := ui.NewTester(a.left, 252, 600)
+	if err := tt.Click("Search notes"); err != nil {
+		t.Fatal(err)
+	}
+	if !a.commandsOpen {
+		t.Fatal("search did not open command palette")
+	}
+	tt = ui.NewTester(a.title, 650, 48)
+	if !tt.HasText("Locus") {
+		t.Fatal("missing content title")
+	}
+	for _, label := range []string{"Back", "Forward", "Search notes"} {
+		if _, ok := tt.Find(label); ok {
+			t.Fatalf("%s still in content header", label)
+		}
+	}
+}
+
+func TestSidebarLayout(t *testing.T) {
+	a := &application{cfg: preferences.Default(), historyIndex: -1}
+	a.cfg.Language = "english"
+	a.model.Root = "/private/library"
+	a.model.Notes = []*library.Note{{Path: "one", Title: "First note", HasBody: true}, {Path: "two", Title: "Second note"}}
+	a.resetTree()
+	tt := ui.NewTester(a.left, 252, 600)
+	for _, label := range []string{"Open library", a.model.Root} {
+		if tt.HasText(label) {
+			t.Fatalf("sidebar exposes %s", label)
+		}
+	}
+	search, ok := tt.Find("Search notes")
+	if !ok || search.Y < 48 || search.X+search.W > 252 {
+		t.Fatalf("search must fit below the sidebar header: %+v", search)
+	}
+	first, ok := tt.Find("First note")
+	if !ok {
+		t.Fatal("missing first row")
+	}
+	second, ok := tt.Find("Second note")
+	if !ok || second.Y-first.Y < 28 || second.Y-first.Y >= 36 {
+		t.Fatalf("unexpected compact tree spacing: %+v %+v", first, second)
+	}
+}
+
+func TestSidebarFooter(t *testing.T) {
+	a := &application{cfg: preferences.Default(), settingsOpen: true}
+	a.cfg.Language = "english"
+	a.settingState.Query = "old query"
+	tt := ui.NewTester(func(c *ui.Context) { ui.Toolbar(c, func() { a.toolbar(c) }).FillWidth() }, 252, 48)
+	for _, label := range []string{"Refresh", "Open Agent"} {
+		if _, ok := tt.Find(label); ok {
+			t.Fatalf("unexpected footer action %s", label)
+		}
+	}
+	theme, ok := tt.Find("Theme")
+	if !ok {
+		t.Fatal("missing theme menu")
+	}
+	mcp, ok := tt.Find("MCP")
+	if !ok || mcp.X <= theme.X || mcp.X < 180 {
+		t.Fatalf("MCP not trailing: %+v", mcp)
+	}
+	if err := tt.Click("MCP"); err != nil {
+		t.Fatal(err)
+	}
+	if a.settingState.Category != "mcp" || a.settingState.Query != "" {
+		t.Fatal("MCP did not select unfiltered settings category")
+	}
+}

@@ -42,38 +42,88 @@ func (a *application) left(c *ui.Context) {
 	}
 	project(a.model.Notes)
 	ui.Column(c).Fill().MinHeight(0).Padding(sidebar.HeaderHeight(c), 8, 8, 8).Gap(8).Children(func() {
-		components.Button(c, a.text("Open library"), components.ButtonSecondary).FillWidth().Disabled(a.choosing).OnClick(a.chooseLibrary)
-		components.Button(c, a.text("Search notes"), components.ButtonGhost).FillWidth().OnClick(func() { a.commandsOpen = true })
-		if a.model.Root != "" {
-			components.Text(c, a.model.Root).SingleLine().Ellipsis("…").TextColor(c.Theme().TextMuted)
-		}
+		a.search(c)
 		components.TreeVirtualized(c, &a.tree, a.roots, func(p string) []string { return a.children[p] }, func(p string) {
 			if n := a.index[p]; n != nil {
-				if n.Modified {
-					components.Text(c, "●").Label(a.text("Modified files")).TextColor(c.Theme().Accent)
-				}
-				components.Text(c, n.Title).SingleLine().Ellipsis("…").MinWidth(0)
+				ui.Row(c).Grow(1).MinWidth(0).MinHeight(20).AlignItems(ui.Center).Gap(8).Children(func() {
+					icon := lucide.FileText
+					if !n.HasBody {
+						icon = lucide.Folder
+					} else if n.Canvas != "" {
+						icon = lucide.PanelsTopLeft
+					}
+					components.Icon(c, icon).Size(16, 16).Shrink(0).TextColor(c.Theme().TextMuted)
+					components.Text(c, n.Title).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
+					if n.Modified {
+						components.Text(c, "●").Label(a.text("Modified files")).TextColor(c.Theme().Accent).Shrink(0)
+					}
+				})
 			}
 		}).FillWidth().Grow(1).MinHeight(0)
 	})
 }
 func (a *application) toolbar(c *ui.Context) {
 	sidebar.IconButton(c, lucide.Settings(), a.text("Settings")).OnClick(a.toggleSettings)
-	sidebar.IconButton(c, lucide.RefreshCw(), a.text("Refresh")).Disabled(a.model.Loading || a.model.Root == "").OnClick(a.refresh)
-	sidebar.IconButton(c, lucide.SquareTerminal(), a.text("Open Agent")).Disabled(a.model.Root == "" || a.launching).OnClick(a.launchAgent)
+	icon := lucide.Monitor()
+	switch a.cfg.Theme {
+	case "light":
+		icon = lucide.Sun()
+	case "dark":
+		icon = lucide.Moon()
+	}
+	sidebar.IconButton(c, icon, a.text("Theme")).Menu(a.themeMenu)
 	if a.model.Loading {
 		components.Text(c, a.text("Loading…"))
 	}
-	if a.service != nil {
-		components.Text(c, "MCP").TextColor(c.Theme().Accent)
+	ui.Spacer(c)
+	button := components.Button(c, "MCP", components.ButtonGhost).OnClick(a.openMCPSettings)
+	if a.mcpError != "" {
+		button.TextColor(c.Theme().Danger)
+	} else if a.service != nil {
+		button.TextColor(c.Theme().Accent)
 	}
 }
+
+func (a *application) themeMenu(m *ui.Menu) {
+	for _, mode := range []string{"system", "light", "dark"} {
+		if m.Item(a.text(mode)).Checked(a.cfg.Theme == mode).Chosen() {
+			a.cfg.Theme = mode
+			a.saveConfig()
+			a.syncCanvasTheme()
+		}
+	}
+}
+
+func (a *application) openMCPSettings() {
+	a.settingState.Category = "mcp"
+	a.settingState.Query = ""
+	if !a.settingsOpen {
+		a.toggleSettings()
+	}
+}
+
+func (a *application) navigation(c *ui.Context) {
+	sidebar.IconButton(c, lucide.ArrowLeft(), a.text("Back")).Disabled(a.historyIndex <= 0).OnClick(func() { a.back(-1) })
+	sidebar.IconButton(c, lucide.ArrowRight(), a.text("Forward")).Disabled(a.historyIndex+1 >= len(a.history)).OnClick(func() { a.back(1) })
+}
+
+func (a *application) search(c *ui.Context) {
+	components.Button(c, "", components.ButtonSecondary).Label(a.text("Search notes")).FillWidth().Shrink(0).MinWidth(0).Gap(8).
+		TextColor(c.Theme().TextMuted).OnClick(func() { a.commandsOpen = true }).Children(func() {
+		components.Icon(c, lucide.Search).Size(16, 16).Shrink(0)
+		components.Text(c, a.text("Search notes")).Grow(1).MinWidth(0).SingleLine().Ellipsis("…")
+		shortcut := "Ctrl E"
+		if runtime.GOOS == "darwin" {
+			shortcut = "⌘ E"
+		}
+		components.Text(c, shortcut).Shrink(0)
+	})
+}
+
 func (a *application) title(c *ui.Context) {
 	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(4).Children(func() {
-		sidebar.IconButton(c, lucide.ArrowLeft(), a.text("Back")).Disabled(a.historyIndex <= 0).OnClick(func() { a.back(-1) })
-		sidebar.IconButton(c, lucide.ArrowRight(), a.text("Forward")).Disabled(a.historyIndex+1 >= len(a.history)).OnClick(func() { a.back(1) })
-		title := "Locus"
 		note := library.Find(a.model.Notes, a.model.Selected)
+		title := "Locus"
 		if note != nil {
 			title = note.Title
 		}
