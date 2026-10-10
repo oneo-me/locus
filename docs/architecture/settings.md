@@ -18,12 +18,12 @@ A single writer goroutine serializes preference snapshots. Pending work is coale
 
 ## Presentation state
 
-`state.yaml` stores current library/selection and sidebar width/collapse, separately from preferences and content. Selection is restored only when its library matches and the note is still visible. A damaged state file is not overwritten during that run. The current implementation saves presentation state on window close/quit rather than continuously persisting window bounds. Full size/position restoration and sibling ordering are not implemented.
+`state.yaml` stores current library/selection, per-library tree expansion, and sidebar width/collapse, separately from preferences and content. Expansion is keyed by canonical library root and library-relative node paths. Switching libraries retains each tree in memory; close/quit persists all visited trees. Restoration waits for a successful scan, ignores removed branches, and preserves expanded descendants beneath collapsed parents. Restoring selection does not reopen saved collapsed ancestors; explicit navigation still reveals its destination. Older state files without tree expansion retain selection-reveal behavior. Selection is restored only when its library matches and the note is still visible. A damaged state file is not overwritten during that run. The current implementation saves presentation state on window close/quit rather than continuously persisting window bounds. Full size/position restoration and sibling ordering are not implemented.
 
 The single-instance lock prevents ordinary duplicate app launches from concurrently writing product state. External tools may still edit configuration, and their conflicts must not be hidden. Logs report shutdown state-save failures; runtime feedback surfaces preference failures.
 
 ## Verification
 
-Tests cover YAML defaults and round trips, preservation of unknown fields, detected external changes, malformed-file refusal, symlink targets, and writer flush ordering. Workspace tests cover restoration-adjacent stale reads and removed selections; native tests cover settings/browser retention.
+Tests cover YAML defaults and round trips, preservation of unknown fields, detected external changes, malformed-file refusal, symlink targets, and writer flush ordering. Tree tests cover expansion round trips, library isolation, refresh pruning, keyboard expansion/collapse, and selection beneath collapsed ancestors. Workspace tests cover restoration-adjacent stale reads and removed selections; native tests cover settings/browser retention and tree expansion across window recreation and library switches.
 
 Actual theme/language switching, native menus, keyboard paths, long error labels, permissions, slow-disk shutdown, and state restoration after real app relaunch require target-platform acceptance. Compilation and headless tests are not substitutes.

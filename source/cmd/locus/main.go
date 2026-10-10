@@ -26,6 +26,7 @@ type application struct {
 	model                      workspace.Model
 	tree                       components.TreeVirtualizedState[string]
 	cursor                     int
+	treeRoot                   string
 	renderedSource             string
 	document                   *markdown.MarkdownDocument
 	articleScroll              ui.ScrollState
@@ -162,6 +163,7 @@ func (a *application) start(root string) {
 	}
 }
 func (a *application) resetTree() {
+	a.treeRoot = ""
 	a.tree = components.TreeVirtualizedState[string]{}
 	a.cursor = -1
 	a.tree.List.Selected = &a.cursor
@@ -176,6 +178,7 @@ func (a *application) changed() {
 		return
 	}
 	if !a.model.Loading && a.model.Error == nil && a.model.Root != "" {
+		a.restoreTreeExpansion()
 		if a.watchRoot != a.model.Root {
 			if a.watchCancel != nil {
 				a.watchCancel()
@@ -208,7 +211,11 @@ func (a *application) changed() {
 		if a.restore {
 			a.restore = false
 			if a.state.Library == a.model.Root && library.Find(a.model.Notes, a.state.Selected) != nil {
-				a.selectNote(a.state.Selected)
+				if _, saved := a.state.ExpandedNodes[a.model.Root]; saved {
+					a.focusNote(a.state.Selected)
+				} else {
+					a.selectNote(a.state.Selected)
+				}
 			}
 		}
 	}
@@ -227,6 +234,7 @@ func (a *application) changed() {
 	}
 }
 func (a *application) openLibrary(root string) {
+	a.rememberTreeExpansion()
 	a.restore = false
 	a.history = nil
 	a.historyIndex = -1
@@ -271,7 +279,8 @@ func (a *application) saveState() {
 	if a.shell == nil || !a.stateWritable || a.statePath == "" {
 		return
 	}
-	state := preferences.State{Library: a.model.Root, Selected: a.model.Selected, SidebarWidth: a.shell.LeftWidth(), Collapsed: !a.shell.LeftExpanded()}
+	a.rememberTreeExpansion()
+	state := preferences.State{ExpandedNodes: a.state.ExpandedNodes, Library: a.model.Root, Selected: a.model.Selected, SidebarWidth: a.shell.LeftWidth(), Collapsed: !a.shell.LeftExpanded()}
 	if err := preferences.SaveState(a.statePath, state); err != nil {
 		log.Print(err)
 		a.storageError = err.Error()

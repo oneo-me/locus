@@ -3,6 +3,7 @@ package preferences
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -115,14 +116,14 @@ func TestInvalidYAML(t *testing.T) {
 
 func TestStateYAML(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "state.yaml")
-	if got, err := LoadState(p); err != nil || got != (State{}) {
+	if got, err := LoadState(p); err != nil || !reflect.DeepEqual(got, State{}) {
 		t.Fatalf("missing state: %+v %v", got, err)
 	}
-	want := State{Library: "/tmp/中文", Selected: "note", SidebarWidth: 234.5, Collapsed: true}
+	want := State{Library: "/tmp/中文", Selected: "note", SidebarWidth: 234.5, Collapsed: true, ExpandedNodes: map[string][]string{"/tmp/中文": {"parent", "parent/child"}, "/tmp/empty": {}}}
 	if err := SaveState(p, want); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := LoadState(p); err != nil || got != want {
+	if got, err := LoadState(p); err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("state round trip: %+v %v", got, err)
 	}
 	for _, input := range []string{"sidebar_width: [", "library: notes\n---\nselected: note\n"} {

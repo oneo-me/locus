@@ -152,10 +152,11 @@ func AtomicWrite(path string, data []byte) error {
 }
 
 type State struct {
-	Library      string  `yaml:"library"`
-	Selected     string  `yaml:"selected"`
-	SidebarWidth float32 `yaml:"sidebar_width"`
-	Collapsed    bool    `yaml:"sidebar_collapsed"`
+	ExpandedNodes map[string][]string `yaml:"expanded_nodes,omitempty"`
+	Library       string              `yaml:"library"`
+	Selected      string              `yaml:"selected"`
+	SidebarWidth  float32             `yaml:"sidebar_width"`
+	Collapsed     bool                `yaml:"sidebar_collapsed"`
 }
 
 func LoadState(path string) (State, error) {

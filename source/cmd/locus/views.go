@@ -245,6 +245,11 @@ func (a *application) selectNote(p string) {
 	for i := 1; i < len(parts); i++ {
 		a.tree.Open.Add(strings.Join(parts[:i], "/"))
 	}
+	a.focusNote(p)
+}
+
+func (a *application) focusNote(p string) {
+	a.cursor = -1
 	row := 0
 	var walk func([]*library.Note)
 	walk = func(notes []*library.Note) {

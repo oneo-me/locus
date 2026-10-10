@@ -4,6 +4,8 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+- Remember each library’s tree expansion when switching libraries and reopening the app.
+
 - Remove note archiving and archive restoration from Settings; previously archived notes and their descendants are visible again without modifying their files.
 - Restore title-derived article backgrounds and a shared description and nested YAML panel in light and dark themes. The titlebar gains a glass background and bottom border only after scrolling down.
 
