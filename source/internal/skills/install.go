@@ -1,20 +1,20 @@
-// Package skills embeds the product's authoring skill in every Go build.
+// Package skills installs the product's authoring skill from app resources.
 package skills
 
 import (
-	"embed"
 	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 )
 
-//go:embed bundled
-var bundled embed.FS
-
 // Install writes a new skill directory only. Existing files, directories and
 // symlinks are never replaced. The user explicitly chooses library or home root.
-func Install(root string) error {
+func Install(root, resources string) error {
+	bundled := os.DirFS(filepath.Join(resources, "skills", "locus"))
+	if _, err := fs.ReadFile(bundled, "SKILL.md"); err != nil {
+		return err
+	}
 	canonical, err := filepath.Abs(root)
 	if err != nil {
 		return err
@@ -46,11 +46,11 @@ func Install(root string) error {
 		return err
 	}
 	defer os.RemoveAll(staging)
-	err = fs.WalkDir(bundled, "bundled/locus", func(p string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(bundled, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		rel, err := filepath.Rel("bundled/locus", p)
+		rel, err := filepath.Rel(".", p)
 		if err != nil {
 			return err
 		}
@@ -58,7 +58,10 @@ func Install(root string) error {
 		if d.IsDir() {
 			return os.MkdirAll(dest, 0700)
 		}
-		data, err := bundled.ReadFile(p)
+		if !d.Type().IsRegular() {
+			return errors.New("skill resource is not a regular file: " + p)
+		}
+		data, err := fs.ReadFile(bundled, p)
 		if err != nil {
 			return err
 		}

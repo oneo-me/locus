@@ -26,7 +26,7 @@ CSP permits local scripts/styles/fonts, HTTPS images and data fetch, and local/b
 
 Export creates a new randomly named ZIP in the chosen directory, defaulting to Downloads. It contains `canvas.html`, Tailwind's license, and bounded snapshots of resources requested by the current session. The generated page uses archive-relative resources and preserves template data. Body/YAML part responses receive separate snapshot filenames. Existing outputs are never overwritten; failed writes remove the partial ZIP.
 
-Export rejects pages whose main module has not loaded and sessions exceeding the 64 MiB snapshot budget. It does not crawl unused files, discover unloaded dynamic dependencies, save transient DOM state, or promise a standalone single-file HTML. Remote services still require a network. After unpacking, serve the directory over local HTTP when the browser restricts module imports, fetch, or Workers under file origins. See the bundled [authoring reference](../../source/internal/skills/bundled/locus/references/canvas.md).
+Export rejects pages whose main module has not loaded and sessions exceeding the 64 MiB snapshot budget. It does not crawl unused files, discover unloaded dynamic dependencies, save transient DOM state, or promise a standalone single-file HTML. Remote services still require a network. After unpacking, serve the directory over local HTTP when the browser restricts module imports, fetch, or Workers under file origins. See the bundled [authoring reference](../../source/resources/skills/locus/references/canvas.md).
 
 ## Platform and verification
 

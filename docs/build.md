@@ -43,7 +43,7 @@ GOWORK=off go tool packer build
 
 VS Code `run` and `build` tasks invoke these commands. [source/packer.yaml](../source/packer.yaml) targets Apple Silicon macOS by default and outputs to `dist/`. The application identity is Locus. Final archives appear under the packager's versioned release directory. Explicitly configure and verify additional target architectures before claiming support.
 
-See [App packaging](architecture/packaging.md) for resource ownership and platform boundaries. Skills and canvas runtime resources are embedded in the Go binary, including direct source runs.
+See [App packaging](architecture/packaging.md) for resource ownership and platform boundaries. Skills are ordinary files in `source/resources/skills/`, copied automatically by packer and located through MyGo's resource path. Direct runs from `source/` use that same directory; distributing a bare executable alone does not include skills. Canvas runtime resources remain embedded in the Go binary.
 
 ## Development checks
 

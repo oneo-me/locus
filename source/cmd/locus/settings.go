@@ -153,7 +153,10 @@ func (a *application) libraryDescription() string {
 
 func (a *application) installSkill(root string) {
 	go func() {
-		err := skills.Install(root)
+		resources, err := mygo.App.Path(mygo.PathResources)
+		if err == nil {
+			err = skills.Install(root, resources)
+		}
 		a.post(func() {
 			if err != nil {
 				a.feedback = err.Error()

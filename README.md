@@ -1,4 +1,4 @@
-![Locus icon](icon.png)
+![Locus icon](source/resources/icon.png)
 
 # Locus
 
@@ -23,7 +23,7 @@ When no library is selected, a standalone welcome screen prompts you to choose *
 
 Browse the native tree or search notes through the command palette. Read Markdown, local images, summaries, and custom YAML. The toolbar copies references, opens notes in an editor, and opens directories. External file changes refresh projections; Git modification hints appear when the library is a repository root.
 
-A note can own an HTML fragment and `canvas/main.js`, or a JSON template invocation. The Onevra WebView displays it inside the workspace. Settings hides and retains the page; leaving releases it. Refresh or reopen after editing canvas source. See the bundled [canvas reference](source/internal/skills/bundled/locus/references/canvas.md).
+A note can own an HTML fragment and `canvas/main.js`, or a JSON template invocation. The Onevra WebView displays it inside the workspace. Settings hides and retains the page; leaving releases it. Refresh or reopen after editing canvas source. See the bundled [canvas reference](source/resources/skills/locus/references/canvas.md).
 
 Canvas export creates a ZIP containing the page and resources loaded in the current session. Unpack it and use a local HTTP server when required for modules, fetch, or Workers. Unloaded dependencies are not discovered automatically, and online services still require network access.
 
@@ -33,7 +33,7 @@ Settings offers appearance/language choices, editor and export preferences, MCP,
 
 Enable MCP in Settings to expose read-only discovery at `http://127.0.0.1:2301/mcp`. Clients need filesystem access to the returned paths. Local-network mode has no authentication and exposes searchable note content and paths; enable it only on a trusted network. See [MCP access](docs/mcp.md).
 
-Install the embedded Locus skill explicitly into the library or home directory. Installation preserves existing targets and creates an independent copy. Updating that copy requires explicit reinstallation. External terminals own Agent sessions; launching happens only on request and never as a startup side effect.
+Install the bundled Locus skill explicitly into the library or home directory. Installation preserves existing targets and creates an independent copy. Updating that copy requires explicit reinstallation. External terminals own Agent sessions; launching happens only on request and never as a startup side effect.
 
 | Action | Shortcut |
 | --- | --- |

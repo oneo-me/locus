@@ -16,9 +16,9 @@ Local-network mode listens beyond loopback without authentication. Connected cli
 
 In Settings → Agents, choose **Install in library** or **Install globally**:
 
-- Library copies the embedded skill to `<library>/.agents/skills/locus`.
+- Library copies the bundled skill to `<library>/.agents/skills/locus`.
 - Global copies it to `~/.agents/skills/locus`.
 
 Existing files, directories, and symlinks at the destination are not overwritten. Move the old installation before reinstalling. Redirected parent directories are rejected. Installation failures report their reason; an incomplete new installation may require inspection before retrying. The app does not remove a copy at another location or start an Agent automatically.
 
-The bundled [skill](../source/internal/skills/bundled/locus/SKILL.md) defines note workflows, with [attachment](../source/internal/skills/bundled/locus/references/attachments.md) and [canvas](../source/internal/skills/bundled/locus/references/canvas.md) references. Copies remain usable when the app is moved, but do not update automatically. Client discovery and reloading depend on the client's own skill support.
+The bundled [skill](../source/resources/skills/locus/SKILL.md) defines note workflows, with [attachment](../source/resources/skills/locus/references/attachments.md) and [canvas](../source/resources/skills/locus/references/canvas.md) references. Copies remain usable when the app is moved, but do not update automatically. Client discovery and reloading depend on the client's own skill support.

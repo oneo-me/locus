@@ -1,4 +1,4 @@
-![Locus 图标](icon.png)
+![Locus 图标](source/resources/icon.png)
 
 # Locus
 
@@ -23,7 +23,7 @@ GOWORK=off go run ./cmd/locus -library /path/to/library
 
 通过原生目录树浏览，或在命令面板中搜索笔记。阅读 Markdown、本地图片、概要及自定义 YAML。工具栏提供复制引用、在编辑器中打开笔记及打开目录。外部文件变化会刷新派生视图；文档库为 Git 仓库根目录时，会显示文件修改提示。
 
-笔记可以拥有 HTML 片段与 `canvas/main.js`，或 JSON 模板调用。Onevra WebView 在工作区内显示页面；进入设置会隐藏并保留页面，离开笔记会释放它。修改画布源文件后，需刷新或重新打开。详见内置的[画布参考](source/internal/skills/bundled/locus/references/canvas.md)。
+笔记可以拥有 HTML 片段与 `canvas/main.js`，或 JSON 模板调用。Onevra WebView 在工作区内显示页面；进入设置会隐藏并保留页面，离开笔记会释放它。修改画布源文件后，需刷新或重新打开。详见内置的[画布参考](source/resources/skills/locus/references/canvas.md)。
 
 画布导出会生成 ZIP，包含页面及本次会话中已加载的资源。解压后，如模块、fetch 或 Worker 需要，请通过本地 HTTP 服务打开。未加载的依赖不会自动收集，在线服务仍然需要网络。
 

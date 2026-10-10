@@ -41,7 +41,7 @@ The browser uses a registered custom URL scheme, not a local web server. A rando
 | `internal/discovery` | Three read-only MCP tools, transport, request boundary checks, listening, and shutdown |
 | `internal/preferences` | YAML preferences/state, atomic replacement, external-change checks, and ordered save worker |
 | `internal/terminal` | Platform handoff and shell quoting; no session ownership |
-| `internal/skills` | Embedded authoring skill and explicit, non-overwriting installation |
+| `internal/skills` | Resource-based authoring skill and explicit, non-overwriting installation |
 | Onevra | Shell, controls, Markdown, command palette, and native WebView composition |
 | MyGo | OS event loop, rendering, input, menus, dialogs, browser API, and desktop integration |
 
@@ -70,7 +70,7 @@ The overview is limited to 16 KiB and each subject to 24 KiB. Keep each mechanis
 | [Canvas](docs/architecture/canvas.md) | Native browser lifecycle, resources, HTML/JSON, security policy, and export |
 | [Agent integration](docs/architecture/mcp.md) | MCP tools, Host/Origin protection, lifecycle, skills, and terminal handoff |
 | [Settings and persistence](docs/architecture/settings.md) | Preference ownership, configuration safety, language, appearance, and shutdown saving |
-| [App packaging](docs/architecture/packaging.md) | Go tools, app identity, embedded resources, platform coverage, and release boundary |
+| [App packaging](docs/architecture/packaging.md) | Go tools, app identity, bundled resources, platform coverage, and release boundary |
 
 ## Repository layout
 
@@ -78,10 +78,9 @@ The overview is limited to 16 KiB and each subject to 24 KiB. Keep each mechanis
 source/go.mod, go.sum    Go module and dependency hashes
 source/cmd/locus/        Desktop application and native smoke tests
 source/internal/         Product packages and headless tests
-source/internal/skills/bundled/        Embedded skills and installer
+source/resources/skills/ Bundled authoring skills
 source/packer.yaml       Onevra Go packager configuration
-source/icon.icon/        macOS app icon project
-source/icon.ico          Windows icon asset
+source/resources/icon.* Platform icon assets
 .vscode/tasks.json       Go development and build tasks
 docs/                    Architecture and usage instructions
 dist/                    Ignored app outputs

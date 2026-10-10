@@ -18,9 +18,9 @@ HTTP requests are bounded and protected against cross-origin browser requests. H
 
 ## Skill installation
 
-The `internal/skills` package embeds the skill and its references, so direct Go runs and bundles have the same content. Installation explicitly targets the selected library or home directory's `.agents/skills/locus`. It creates a copy, not a source-tree-dependent symlink. Existing targets are refused, including earlier copies and symlinks; the user must move them before reinstalling. Redirected `.agents` or `skills` parents are rejected.
+The desktop app resolves MyGo's resource directory and passes it to `internal/skills`, which reads the skill and references from `skills/locus/`. The source files live in `source/resources/skills/` and packer copies them into the app; they are not embedded in the executable. Missing resources fail installation rather than creating an empty skill. Installation explicitly targets the selected library or home directory's `.agents/skills/locus`. It creates a copy, not a source-tree-dependent symlink. Existing targets are refused, including earlier copies and symlinks; the user must move them before reinstalling. Redirected `.agents` or `skills` parents are rejected.
 
-The installer stages embedded files, reserves a previously absent destination, then moves entries into it. It does not claim a multi-file transaction: publication failures may leave an incomplete new directory and report its path for inspection. It never merges into an existing installation or cleans up other skill locations automatically. Moving the app does not invalidate installed copies; updates require explicit reinstallation.
+The installer stages resource files, reserves a previously absent destination, then moves entries into it. It does not claim a multi-file transaction: publication failures may leave an incomplete new directory and report its path for inspection. It never merges into an existing installation or cleans up other skill locations automatically. Moving the app does not invalidate installed copies; updates require explicit reinstallation.
 
 ## External terminals
 
