@@ -10,6 +10,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 - Display note Emoji and PNG icons in the sidebar and beside the page title, refreshing them when note files change.
 - Simplify workspace navigation with sidebar search and header history controls, compact tree rows with subtle modification markers and edge-aligned scrolling, and quick theme and MCP icon controls. Keep canvas download in the top-right More actions menu.
+- Support mouse side buttons for back/forward note history in the workspace, even with the sidebar collapsed.
 - Open Settings as a dialog without leaving the workspace, and show a dedicated library-selection screen when no library is selected.
 - Rename the library action in Settings to “Select library” and remove the About page.
 

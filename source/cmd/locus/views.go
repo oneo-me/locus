@@ -146,6 +146,15 @@ func (a *application) title(c *ui.Context) {
 	})
 }
 func (a *application) content(c *ui.Context) {
+	// MyGo maps native mouse side buttons to these navigation keys.
+	if !a.settingsOpen && !a.commandsOpen && !a.choosing {
+		if c.Shortcut(0, ui.KeyBack) {
+			a.back(-1)
+		}
+		if c.Shortcut(0, ui.KeyForward) {
+			a.back(1)
+		}
+	}
 	mods := ui.Ctrl
 	if runtime.GOOS == "darwin" {
 		mods = ui.Cmd
