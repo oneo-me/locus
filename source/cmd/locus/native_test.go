@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +44,7 @@ func TestNativeReading(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := "---\ntitle: 中文 Reading test\nsummary: Native Go and Onevra\nicon: 👩🏽‍💻\ntags: [native, 中文]\nstatus: draft\n---\n# Markdown\n\n中文与 English `inline code` and **bold text**.\n\n| Name | Value |\n| --- | --- |\n| 中文 | A table |\n\n```go\nfmt.Println(\"Locus\")\n```\n"
+	body += strings.Repeat("\nA paragraph for scrolling beneath the titlebar.\n", 60)
 	if err := os.WriteFile(filepath.Join(root, "note/index.md"), []byte(body), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -65,22 +67,26 @@ func TestNativeReading(t *testing.T) {
 	waitNative(t, func() bool { return a.model.Document.Body != "" })
 	for _, mode := range []mygo.ThemeSource{mygo.ThemeLight, mygo.ThemeDark} {
 		mygo.RunOnMain(func() { mygo.Theme.SetSource(mode); a.shell.Window().Invalidate() })
-		time.Sleep(250 * time.Millisecond)
-		data, err := a.shell.Window().CapturePage()
-		if err != nil {
-			t.Fatal(err)
-		}
-		decoded, err := png.Decode(bytes.NewReader(data))
-		if err != nil || decoded.Bounds().Dx() < 980 {
-			t.Fatalf("invalid capture: %v", err)
-		}
-		if dir := os.Getenv("LOCUS_SCREENSHOTS"); dir != "" {
-			if err := os.MkdirAll(dir, 0700); err != nil {
+		for step, offset := range []float32{0, 120, 0} {
+			mygo.RunOnMain(func() { a.articleScroll.Y = offset; a.shell.Window().Invalidate() })
+			time.Sleep(250 * time.Millisecond)
+			data, err := a.shell.Window().CapturePage()
+			if err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("reading-%s.png", mode)), data, 0600); err != nil {
-				t.Fatal(err)
+			decoded, err := png.Decode(bytes.NewReader(data))
+			if err != nil || decoded.Bounds().Dx() < 980 {
+				t.Fatalf("invalid capture: %v", err)
 			}
+			if dir := os.Getenv("LOCUS_SCREENSHOTS"); dir != "" {
+				if err := os.MkdirAll(dir, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("reading-%s-%d.png", mode, step)), data, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			waitNative(t, func() bool { return a.articleScroll.Y == offset })
 		}
 	}
 	mygo.RunOnMain(func() { a.selectNote("picture") })

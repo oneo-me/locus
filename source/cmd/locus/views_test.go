@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v3"
@@ -8,7 +10,60 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/locus/internal/preferences"
+	"github.com/oneo-me/onevra/shells/sidebar"
+	"github.com/oneo-me/onevra/theme"
 )
+
+func TestArticleHeaderFollowsScroll(t *testing.T) {
+	for _, mode := range []theme.Mode{theme.Light, theme.Dark} {
+		t.Run(fmt.Sprint(mode), func(t *testing.T) {
+			a := &application{cfg: preferences.Default()}
+			a.model.Root, a.model.Selected = "library", "one"
+			a.model.Notes = []*library.Note{{Path: "one", Title: "Article"}, {Path: "two", Title: "Article"}}
+			a.model.Document.Body = strings.Repeat("A paragraph to scroll.\n\n", 80)
+			var headerHeight float32
+			var border ui.Color
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.Apply(c, mode)
+				headerHeight, border = sidebar.HeaderHeight(c), c.Theme().Border
+				ui.Column(c).Fill().Children(func() { a.content(c) })
+			}, 650, 400)
+			top := tt.Image().RGBAAt(325, 20)
+			topEdge := tt.Image().RGBAAt(325, int(headerHeight)-1)
+			checkScrolled := func() {
+				t.Helper()
+				tt.Scroll(325, 200, 0, 120)
+				if a.articleScroll.Y <= 0 {
+					t.Fatal("article did not scroll")
+				}
+				im := tt.Image()
+				if im.RGBAAt(325, 20) == top {
+					t.Fatal("header did not change after scrolling")
+				}
+				edge := im.RGBAAt(325, int(headerHeight)-1)
+				if edge.R != border.R || edge.G != border.G || edge.B != border.B {
+					t.Fatalf("missing bottom border: got %v, want %v", edge, border)
+				}
+			}
+			checkTop := func() {
+				t.Helper()
+				tt.Frame()
+				if a.articleScroll.Y != 0 || tt.Image().RGBAAt(325, 20) != top || tt.Image().RGBAAt(325, int(headerHeight)-1) != topEdge {
+					t.Fatal("header did not return to its transparent top state")
+				}
+			}
+			checkScrolled()
+			tt.Scroll(325, 200, 0, -120)
+			checkTop()
+			checkScrolled()
+			a.model.Selected = "two"
+			checkTop()
+			checkScrolled()
+			a.model.Root = "other-library"
+			checkTop()
+		})
+	}
+}
 
 func TestSidebarSearchOpensCommands(t *testing.T) {
 	a := &application{cfg: preferences.Default()}

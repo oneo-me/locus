@@ -5,7 +5,7 @@ This file records completed, pending user-visible changes and confirmed release 
 ## [Unreleased]
 
 - Remove note archiving and archive restoration from Settings; previously archived notes and their descendants are visible again without modifying their files.
-- Restore title-derived article backgrounds extending behind the top titlebar and a shared description and nested YAML panel in light and dark themes.
+- Restore title-derived article backgrounds and a shared description and nested YAML panel in light and dark themes. The titlebar gains a glass background and bottom border only after scrolling down.
 
 - Store preferences and interface state in `settings.yaml` and `state.yaml` instead of TOML/JSON files. Reapply settings or manually convert existing configuration to YAML; legacy files remain untouched.
 

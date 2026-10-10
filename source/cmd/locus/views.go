@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/locus/internal/terminal"
@@ -122,8 +123,8 @@ func (a *application) search(c *ui.Context) {
 }
 
 func (a *application) title(c *ui.Context) {
+	note := library.Find(a.model.Notes, a.model.Selected)
 	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(4).Children(func() {
-		note := library.Find(a.model.Notes, a.model.Selected)
 		title := "Locus"
 		if note != nil {
 			title = note.Title
@@ -166,6 +167,10 @@ func (a *application) content(c *ui.Context) {
 	}
 	note := library.Find(a.model.Notes, a.model.Selected)
 	inset := sidebar.HeaderHeight(c)
+	if a.articleScrollRoot != a.model.Root || a.articleScrollNote != a.model.Selected {
+		a.articleScroll = ui.ScrollState{}
+		a.articleScrollRoot, a.articleScrollNote = a.model.Root, a.model.Selected
+	}
 	messages := func() {
 		for _, message := range []string{a.storageError, a.feedback, a.mcpError} {
 			if message != "" {
@@ -210,7 +215,7 @@ func (a *application) content(c *ui.Context) {
 			a.document = markdown.ParseMarkdown(a.renderedSource)
 		}
 		atmosphere := deriveNoteAtmosphere(note.Title, c.Theme().Dark)
-		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).Children(func() {
+		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).TrackScroll(&a.articleScroll).Children(func() {
 			// Inset the content, not the scroll viewport, so its background reaches
 			// behind Shell's floating titlebar without being clipped below it.
 			ui.Column(c).FillWidth().MinWidth(0).MinHeight(atmosphereHeight).Padding(inset, 0, 0, 0).AlignItems(ui.Center).Draw(func(p *ui.Painter, r ui.Rect) {
@@ -224,6 +229,14 @@ func (a *application) content(c *ui.Context) {
 			})
 		})
 	})
+	if note != nil && note.Canvas == "" && a.articleScroll.Y > 0 {
+		// Paint above the article and below Shell's controls without changing
+		// their layout or intercepting input in the floating header.
+		ui.Box(c).Absolute().Top(0).Left(0).Right(0).Height(inset).PassThrough().
+			Material(glass.Glass{Tint: c.Theme().Background.Alpha(0.35)}).Children(func() {
+			ui.Box(c).Absolute().Bottom(0).Left(0).Right(0).Height(1).PassThrough().Background(c.Theme().Border)
+		})
+	}
 	a.commandDialog(c)
 	a.settingsDialog(c)
 }

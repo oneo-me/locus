@@ -28,6 +28,9 @@ type application struct {
 	cursor                     int
 	renderedSource             string
 	document                   *markdown.MarkdownDocument
+	articleScroll              ui.ScrollState
+	articleScrollRoot          string
+	articleScrollNote          string
 	choosing, closing          bool
 	index                      map[string]*library.Note
 	children                   map[string][]string
