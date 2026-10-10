@@ -19,6 +19,8 @@ GOWORK=off go run ./cmd/locus -library /path/to/library
 
 When no library is selected, a standalone welcome screen prompts you to choose **Open library**. You can also select a library in the Settings dialog. Each note is a directory containing `index.md`; directory nesting supplies the hierarchy. YAML frontmatter provides titles, summaries, and custom properties. Attachments live in `assets/`; canvases live in `canvas/`. Hidden directories and reserved resource directories are not notes.
 
+Local image groups can use legacy `gallery` fences with Markdown images from the note’s `assets/` directory, wrapping thumbnails, and an enlarged preview. See the [attachment syntax](source/resources/skills/locus/references/attachments.md#galleries).
+
 ## Reading and canvases
 
 Browse the native tree or search notes through the command palette. Read Markdown, local images, summaries, and custom YAML. The toolbar copies references, opens notes in an editor, and opens directories. External file changes refresh projections; Git modification hints appear when the library is a repository root.
@@ -56,6 +58,6 @@ GOWORK=off go tool packer build
 
 Outputs go to `dist/`; successful builds automatically open the current version's release directory. The configured packaging target is Apple Silicon macOS. No Rust toolchain is needed. See [Running and building](docs/build.md) for race checks and native smoke tests, and [Architecture](ARCHITECTURE.md) for boundaries and verification.
 
-macOS native Markdown and WebView workflows have automated smoke tests. Windows and Linux need separate acceptance; the experimental WebView backend supports macOS and 64-bit Windows, not Linux. Automatic updates, sidebar reordering, richer attachment/gallery extensions, font controls, and full window-bounds restoration are not implemented. Published downloads at [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) may differ from this development branch; local packaging does not publish them.
+macOS native Markdown and WebView workflows have automated smoke tests. Windows and Linux need separate acceptance; the experimental WebView backend supports macOS and 64-bit Windows, not Linux. Automatic updates, sidebar reordering, dedicated attachment lists, font controls, and full window-bounds restoration are not implemented. Published downloads at [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) may differ from this development branch; local packaging does not publish them.
 
 Licensed under the [MIT License](LICENSE).

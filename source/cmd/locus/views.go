@@ -150,7 +150,7 @@ func (a *application) title(c *ui.Context) {
 }
 func (a *application) content(c *ui.Context) {
 	// MyGo maps native mouse side buttons to these navigation keys.
-	if !a.settingsOpen && !a.commandsOpen && !a.terminalOpen && !a.choosing {
+	if !a.settingsOpen && !a.commandsOpen && !a.terminalOpen && !a.galleryPreviewOpen && !a.choosing {
 		if c.Shortcut(0, ui.KeyBack) {
 			a.back(-1)
 		}
@@ -216,6 +216,7 @@ func (a *application) content(c *ui.Context) {
 		if a.document == nil || a.renderedSource != a.model.Document.Body {
 			a.renderedSource = a.model.Document.Body
 			a.document = markdown.ParseMarkdown(a.renderedSource)
+			a.galleries, _ = markdownResources(a.renderedSource)
 		}
 		atmosphere := deriveNoteAtmosphere(note.Title, c.Theme().Dark)
 		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).TrackScroll(&a.articleScroll).Children(func() {
@@ -227,7 +228,7 @@ func (a *application) content(c *ui.Context) {
 				messages()
 				ui.Column(c).FillWidth().MaxWidth(noteMaxWidth).MinWidth(0).Padding(max(0, 56-inset), 16, 56, 16).Gap(22).Children(func() {
 					noteMetadataPanel(c, note.Summary, a.model.Document.Metadata, atmosphere.panel.ui())
-					a.document.Render(c, markdown.MarkdownOptions{OnLink: a.openLink, Images: a.images}).FillWidth()
+					a.document.Render(c, markdown.MarkdownOptions{OnLink: a.openLink, Images: a.images, CodeBlocks: map[string]func(*ui.Context, markdown.MarkdownCodeBlock){"gallery": a.renderGallery}}).FillWidth()
 				})
 			})
 		})
@@ -240,6 +241,7 @@ func (a *application) content(c *ui.Context) {
 			ui.Box(c).Absolute().Bottom(0).Left(0).Right(0).Height(1).PassThrough().Background(c.Theme().Border)
 		})
 	}
+	a.galleryDialog(c)
 	a.commandDialog(c)
 	a.settingsDialog(c)
 }

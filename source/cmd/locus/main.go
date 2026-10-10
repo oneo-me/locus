@@ -30,6 +30,9 @@ type application struct {
 	treeRoot                   string
 	renderedSource             string
 	document                   *markdown.MarkdownDocument
+	galleries                  map[int]galleryBlock
+	galleryPreview             galleryItem
+	galleryPreviewOpen         bool
 	articleScroll              ui.ScrollState
 	articleScrollRoot          string
 	articleScrollNote          string

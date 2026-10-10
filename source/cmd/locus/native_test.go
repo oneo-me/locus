@@ -45,6 +45,15 @@ func TestNativeReading(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := "---\ntitle: 中文 Reading test\nsummary: Native Go and Onevra\nicon: 👩🏽‍💻\ntags: [native, 中文]\nstatus: draft\n---\n# Markdown\n\n中文与 English `inline code` and **bold text**.\n\n| Name | Value |\n| --- | --- |\n| 中文 | A table |\n\n```go\nfmt.Println(\"Locus\")\n```\n"
+	body += "\n```gallery\n![Wide sample](assets/wide.png)\n![Tall sample](assets/tall.png)\n![Missing sample](assets/missing.png)\n```\n"
+	if err := os.MkdirAll(filepath.Join(root, "note/assets"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	for name, data := range map[string][]byte{"wide.png": iconPNG(t, 320, 180), "tall.png": iconPNG(t, 120, 240)} {
+		if err := os.WriteFile(filepath.Join(root, "note/assets", name), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	body += strings.Repeat("\nA paragraph for scrolling beneath the titlebar.\n", 60)
 	if err := os.WriteFile(filepath.Join(root, "note/index.md"), []byte(body), 0600); err != nil {
 		t.Fatal(err)
@@ -65,7 +74,7 @@ func TestNativeReading(t *testing.T) {
 	defer mygo.RunOnMain(func() { a.shell.Window().Destroy() })
 	waitNative(t, func() bool { return !a.model.Loading && a.noteIcons["picture"] != nil })
 	mygo.RunOnMain(func() { a.selectNote("note") })
-	waitNative(t, func() bool { return a.model.Document.Body != "" })
+	waitNative(t, func() bool { return a.model.Document.Body != "" && len(a.images) == 2 })
 	for _, mode := range []mygo.ThemeSource{mygo.ThemeLight, mygo.ThemeDark} {
 		mygo.RunOnMain(func() { mygo.Theme.SetSource(mode); a.shell.Window().Invalidate() })
 		for step, offset := range []float32{0, 120, 0} {
@@ -90,8 +99,23 @@ func TestNativeReading(t *testing.T) {
 			waitNative(t, func() bool { return a.articleScroll.Y == offset })
 		}
 	}
+	mygo.RunOnMain(func() {
+		a.galleryPreview = galleryItem{Target: "assets/wide.png", Alt: "Wide sample"}
+		a.galleryPreviewOpen = true
+		a.shell.Window().Invalidate()
+	})
+	time.Sleep(250 * time.Millisecond)
+	data, err := a.shell.Window().CapturePage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dir := os.Getenv("LOCUS_SCREENSHOTS"); dir != "" {
+		if err := os.WriteFile(filepath.Join(dir, "gallery-preview.png"), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	mygo.RunOnMain(func() { a.selectNote("picture") })
-	waitNative(t, func() bool { return a.model.Document.Body == "Image note" })
+	waitNative(t, func() bool { return a.model.Document.Body == "Image note" && !a.galleryPreviewOpen })
 	var previousIconPresent bool
 	mygo.RunOnMain(func() { previousIconPresent = a.noteIcons["picture"] != nil })
 	if !previousIconPresent {

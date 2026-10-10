@@ -19,6 +19,8 @@ GOWORK=off go run ./cmd/locus -library /path/to/library
 
 未选择文档库时，独立欢迎界面会提示你**打开文档库**；也可在设置对话框中选择文档库。每篇笔记是包含 `index.md` 的目录，目录嵌套表达层级。YAML frontmatter 提供标题、概要和自定义属性。附件放在 `assets/`，画布放在 `canvas/`；隐藏目录和保留的资源目录不作为笔记。
 
+本地图片组支持旧版 `gallery` 围栏：使用笔记 `assets/` 目录中的 Markdown 图片，显示自动换行的缩略图，并可打开大图预览。参见[附件语法](source/resources/skills/locus/references/attachments.md#galleries)。
+
 ## 阅读与画布
 
 通过原生目录树浏览，或在命令面板中搜索笔记。阅读 Markdown、本地图片、概要及自定义 YAML。工具栏提供复制引用、在编辑器中打开笔记及打开目录。外部文件变化会刷新派生视图；文档库为 Git 仓库根目录时，会显示文件修改提示。
@@ -56,6 +58,6 @@ GOWORK=off go tool packer build
 
 产物输出至 `dist/`，构建成功后自动打开当前版本的 release 目录。当前打包目标为 Apple Silicon macOS。不需要 Rust 工具链。竞态检查与原生冒烟测试详见[运行与构建](docs/build.md)；职责边界和验证范围见[架构说明](ARCHITECTURE.md)。
 
-macOS 的原生 Markdown 与 WebView 流程已有自动冒烟测试。Windows 和 Linux 需要独立验收；实验性 WebView 后端支持 macOS 与 64 位 Windows，不支持 Linux。自动更新、侧栏排序、更丰富的附件与画廊扩展、字体控件及完整窗口位置尺寸恢复尚未实现。[GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 中的发布下载可能与本开发分支不同；本地打包不会自动发布。
+macOS 的原生 Markdown 与 WebView 流程已有自动冒烟测试。Windows 和 Linux 需要独立验收；实验性 WebView 后端支持 macOS 与 64 位 Windows，不支持 Linux。自动更新、侧栏排序、专用附件列表、字体控件及完整窗口位置尺寸恢复尚未实现。[GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 中的发布下载可能与本开发分支不同；本地打包不会自动发布。
 
 采用 [MIT 开源协议](LICENSE)。

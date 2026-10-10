@@ -12,9 +12,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
 )
 
 func resourcePath(note, target string) (string, error) {
@@ -45,6 +42,7 @@ func (a *application) loadImages() {
 	ticket := a.imageTicket
 	root, note, body := a.model.Root, a.model.Selected, a.model.Document.Body
 	a.images = nil
+	a.galleryPreviewOpen = false
 	if root == "" || note == "" || body == "" {
 		return
 	}
@@ -56,35 +54,34 @@ func (a *application) loadImages() {
 			return
 		}
 		defer lib.Close()
-		document := goldmark.New().Parser().Parse(text.NewReader([]byte(body)))
-		ast.Walk(document, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-			if !entering {
-				return ast.WalkContinue, nil
+		_, targets := markdownResources(body)
+		seen := map[string]bool{}
+		for _, target := range targets {
+			if seen[target] {
+				continue
 			}
-			im, ok := n.(*ast.Image)
-			if !ok || len(images) >= 64 {
-				return ast.WalkContinue, nil
+			seen[target] = true
+			if len(images) >= 64 {
+				break
 			}
-			target := string(im.Destination)
 			p, err := resourcePath(note, target)
 			if err != nil || p == "" {
-				return ast.WalkContinue, nil
+				continue
 			}
 			data, err := lib.Resource(p)
 			if err != nil {
-				return ast.WalkContinue, nil
+				continue
 			}
 			size, _, err := image.DecodeConfig(bytes.NewReader(data))
 			if err != nil || size.Width <= 0 || size.Height <= 0 || int64(size.Width)*int64(size.Height) > 16_000_000 || pixels+int64(size.Width)*int64(size.Height) > 32_000_000 {
-				return ast.WalkContinue, nil
+				continue
 			}
 			bitmap, err := ui.DecodeBitmap(data)
 			if err == nil {
 				images[target] = bitmap
 				pixels += int64(size.Width) * int64(size.Height)
 			}
-			return ast.WalkContinue, nil
-		})
+		}
 		a.post(func() {
 			if ticket == a.imageTicket {
 				a.images = images
