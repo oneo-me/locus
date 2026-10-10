@@ -60,7 +60,10 @@ type application struct {
 	palette                    command.State
 	history                    []string
 	historyIndex               int
-	launching, exporting       bool
+	exporting                  bool
+	terminalOpen               bool
+	terminalPreferencesChanged bool
+	terminal                   terminalSession
 	images                     map[string]*ui.Bitmap
 	iconRoot                   string
 	iconProjection             *library.Note
@@ -234,6 +237,8 @@ func (a *application) changed() {
 	}
 }
 func (a *application) openLibrary(root string) {
+	a.terminalOpen = false
+	a.terminal.close()
 	a.rememberTreeExpansion()
 	a.restore = false
 	a.history = nil
@@ -291,6 +296,7 @@ func (a *application) stop() {
 		return
 	}
 	a.closing = true
+	a.terminal.close()
 	a.palette.ReleaseInputSource()
 	if a.watchCancel != nil {
 		a.watchCancel()
@@ -364,6 +370,7 @@ func (a *application) refresh() {
 }
 func (a *application) toggleSettings() {
 	a.settingsOpen = !a.settingsOpen
+	a.terminalOpen = false
 	a.commandsOpen = false
 	if a.web != nil {
 		a.web.SetVisible(!a.settingsOpen)
@@ -376,6 +383,6 @@ func (a *application) installMenu() {
 		{Label: "Locus", Submenu: []*mygo.MenuItem{{Label: a.text("Settings"), Accelerator: "CmdOrCtrl+,", Click: action(a.toggleSettings)}, mygo.Separator(), {Role: mygo.RoleQuit}}},
 		{Label: a.text("File"), Submenu: []*mygo.MenuItem{{Label: a.text("Open library"), Accelerator: "CmdOrCtrl+O", Click: action(a.chooseLibrary)}, {Label: a.text("Refresh"), Accelerator: "CmdOrCtrl+R", Click: action(a.refresh)}, {Role: mygo.RoleClose}}},
 		{Role: mygo.RoleEditMenu},
-		{Label: a.text("View"), Submenu: []*mygo.MenuItem{{Label: a.text("Search notes"), Accelerator: "CmdOrCtrl+E", Click: action(func() { a.commandsOpen = !a.commandsOpen; a.shell.Window().Invalidate() })}, {Label: a.text("Open Agent"), Accelerator: "CmdOrCtrl+`", Click: action(a.launchAgent)}}},
+		{Label: a.text("View"), Submenu: []*mygo.MenuItem{{Label: a.text("Search notes"), Accelerator: "CmdOrCtrl+E", Click: action(func() { a.commandsOpen = !a.commandsOpen; a.shell.Window().Invalidate() })}, {Label: a.text("Terminal"), Accelerator: "CmdOrCtrl+`", Click: action(a.toggleTerminal)}}},
 	}))
 }

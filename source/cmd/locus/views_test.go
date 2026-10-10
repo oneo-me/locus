@@ -132,9 +132,9 @@ func TestHeaderMoreActions(t *testing.T) {
 			if !ok {
 				t.Fatal("more actions menu should appear for every note")
 			}
-			for _, label := range []string{"Copy reference", "Edit note", "Open directory"} {
+			for _, label := range []string{"Copy reference", "Edit note", "Open directory", "Terminal"} {
 				button, ok := tt.Find(label)
-				if !ok || (canvas != "" && button.X+button.W > more.X) {
+				if !ok || button.X+button.W > more.X {
 					t.Fatalf("expected %s before more actions: %+v", label, button)
 				}
 			}

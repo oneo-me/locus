@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/skills"
+	launch "github.com/oneo-me/locus/internal/terminal"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
@@ -68,15 +69,19 @@ func (a *application) settings(c *ui.Context, narrow bool) {
 			}),
 		}}}},
 		{ID: "agents", Section: a.text("Integrations"), Icon: lucide.Bot(), Title: a.text("Agents"), Groups: []components.SettingsGroup{{ID: "terminal", Items: []components.SettingsItem{
-			item("terminal", "Terminal", func(c *ui.Context) { a.selectSetting(c, "Terminal", &a.cfg.Terminal, []string{"system", "ghostty"}) }),
-			item("agent", "Agent", func(c *ui.Context) {
-				a.selectSetting(c, "Agent", &a.cfg.Agent, []string{"codex", "pi", "opencode", "claude-code"})
-			}),
 			item("shell", "Shell", func(c *ui.Context) {
-				a.selectSetting(c, "Shell", &a.cfg.Shell, []string{"default", "zsh", "bash", "fish"})
+				before := a.cfg.Shell
+				a.selectSetting(c, "Shell", &a.cfg.Shell, launch.Shells())
+				if before != a.cfg.Shell {
+					a.terminalPreferencesChanged = true
+				}
 			}),
-			item("launch", "Open Agent", func(c *ui.Context) {
-				components.Button(c, a.text("Open Agent"), components.ButtonSecondary).Disabled(a.model.Root == "" || a.launching).OnClick(a.launchAgent)
+			item("agent", "Agent", func(c *ui.Context) {
+				before := a.cfg.Agent
+				a.selectSetting(c, "Agent", &a.cfg.Agent, append([]string{"none"}, launch.Agents()...))
+				if before != a.cfg.Agent {
+					a.terminalPreferencesChanged = true
+				}
 			}),
 			item("library-skill", "Install authoring skill", func(c *ui.Context) {
 				components.Button(c, a.text("Install in library"), components.ButtonSecondary).Disabled(a.model.Root == "").OnClick(func() { a.installSkill(a.model.Root) })
@@ -177,6 +182,7 @@ func (a *application) text(english string) string {
 }
 
 var zh = map[string]string{
+	"Terminal panel": "终端面板", "none": "无（仅 Shell）",
 	"Application": "应用", "Integrations": "集成", "Select library": "选择文档库",
 	"Choose a library": "选择笔记库", "Close settings": "关闭设置",
 	"Search settings": "搜索设置", "Search settings…": "搜索设置…", "Settings category": "设置分类", "Search results": "搜索结果", "No matching settings.": "没有匹配的设置。", "Install authoring skill globally": "全局安装编写技能",

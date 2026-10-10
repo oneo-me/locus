@@ -10,7 +10,6 @@ import (
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
-	"github.com/oneo-me/locus/internal/terminal"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/plugins/command"
@@ -135,22 +134,23 @@ func (a *application) title(c *ui.Context) {
 			sidebar.IconButton(c, lucide.Link(), a.text("Copy reference")).OnClick(func() { mygo.Clipboard.WriteText(library.Address(note.Path)) })
 			sidebar.IconButton(c, lucide.Pencil(), a.text("Edit note")).OnClick(func() { a.fileAction(note.Path, true) })
 			sidebar.IconButton(c, lucide.Folder(), a.text("Open directory")).OnClick(func() { a.fileAction(note.Path, false) })
-			{
-				sidebar.IconButton(c, lucide.Ellipsis(), a.text("More actions")).Menu(func(m *ui.Menu) {
-					if m.Item(a.text("Upload icon")).Disabled(a.choosing).Chosen() {
-						a.uploadIcon(note.Path)
-					}
-					if note.Canvas != "" && m.Item(a.text("Export canvas")).Disabled(a.session == nil || a.exporting).Chosen() {
-						a.exportCanvas()
-					}
-				})
-			}
+		}
+		a.terminalButton(c)
+		if note != nil && note.HasBody {
+			sidebar.IconButton(c, lucide.Ellipsis(), a.text("More actions")).Menu(func(m *ui.Menu) {
+				if m.Item(a.text("Upload icon")).Disabled(a.choosing).Chosen() {
+					a.uploadIcon(note.Path)
+				}
+				if note.Canvas != "" && m.Item(a.text("Export canvas")).Disabled(a.session == nil || a.exporting).Chosen() {
+					a.exportCanvas()
+				}
+			})
 		}
 	})
 }
 func (a *application) content(c *ui.Context) {
 	// MyGo maps native mouse side buttons to these navigation keys.
-	if !a.settingsOpen && !a.commandsOpen && !a.choosing {
+	if !a.settingsOpen && !a.commandsOpen && !a.terminalOpen && !a.choosing {
 		if c.Shortcut(0, ui.KeyBack) {
 			a.back(-1)
 		}
@@ -274,7 +274,7 @@ func (a *application) commandDialog(c *ui.Context) {
 	if !a.commandsOpen {
 		return
 	}
-	items := []command.Item{{ID: "@settings", Title: a.text("Settings")}, {ID: "@open", Title: a.text("Open library")}, {ID: "@refresh", Title: a.text("Refresh")}, {ID: "@agent", Title: a.text("Open Agent")}}
+	items := []command.Item{{ID: "@settings", Title: a.text("Settings")}, {ID: "@open", Title: a.text("Open library")}, {ID: "@refresh", Title: a.text("Refresh")}, {ID: "@agent", Title: a.text("Terminal")}}
 	var walk func([]*library.Note)
 	walk = func(notes []*library.Note) {
 		for _, n := range notes {
@@ -293,7 +293,7 @@ func (a *application) commandDialog(c *ui.Context) {
 		case "@refresh":
 			a.refresh()
 		case "@agent":
-			a.launchAgent()
+			a.toggleTerminal()
 		default:
 			p := strings.TrimPrefix(id, "note/")
 			a.navigate(p)
@@ -324,21 +324,5 @@ func (a *application) fileAction(note string, edit bool) {
 		if err != nil {
 			a.post(func() { a.feedback = err.Error() })
 		}
-	}()
-}
-func (a *application) launchAgent() {
-	if a.launching || a.model.Root == "" {
-		return
-	}
-	a.launching = true
-	root, cfg := a.model.Root, a.cfg
-	go func() {
-		err := terminal.Launch(root, cfg.Terminal, cfg.Shell, cfg.Agent)
-		a.post(func() {
-			a.launching = false
-			if err != nil {
-				a.feedback = err.Error()
-			}
-		})
 	}()
 }

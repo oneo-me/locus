@@ -7,7 +7,7 @@ Locus is a local-first Markdown workspace implemented in Go with Onevra and MyGo
 1. **Files own content facts.** Each note is a directory containing `index.md`, optional `assets/` and `canvas/`, and child-note directories. Organizing directories can have no body. Derived projections are rebuildable.
 2. **The library owns file boundaries.** Rooted access, path validation, and bounded reads stay independent of UI code. External editors operate on the same files; caches never overwrite their content.
 3. **The workspace owns asynchronous selection.** File scans and reads run in background tasks, with generation checks before results enter the UI thread. Onevra owns generic controls, not product state.
-4. **Agents remain external.** MCP only discovers real files. External clients own reads, edits, model calls, permissions, and sessions. Terminals launch only after an explicit user action.
+4. **Agents remain external programs.** MCP only discovers real files. Agent CLIs own reads, edits, model calls, and permissions. The workspace hosts explicit terminal sessions through Onevra’s MyGo terminal; no process launches on startup.
 5. **A note owns its canvas.** The native browser receives a read-only resource protocol scoped to the selected library. No filesystem-write, shell, or Agent service is bound to page JavaScript.
 
 ## Dependencies and process flow
@@ -22,10 +22,11 @@ Go desktop process
 │     └─ Onevra WebView native slot → system browser
 ├─ Background scans, reads, Git projections and recursive file watcher
 ├─ Optional MCP HTTP server → read-only discovery
+├─ Built-in terminal popover → MyGo PTY and external shell/Agent CLI
 └─ Ordered settings writer
 
 Local library ← external editors and Agents
-External terminal ← explicit user launch; external software owns its session
+Shell/Agent CLI ← explicit user launch in the built-in terminal
 ```
 
 The browser uses a registered custom URL scheme, not a local web server. A random session origin routes each canvas to its own rooted file handle. Leaving a canvas closes the browser and releases its origin; settings hides the native slot while preserving the document.
@@ -40,10 +41,10 @@ The browser uses a registered custom URL scheme, not a local web server. A rando
 | `internal/canvas` | HTML/JSON entry resolution, read-only resource protocol, page bootstrap, CSP, and ZIP export |
 | `internal/discovery` | Three read-only MCP tools, transport, request boundary checks, listening, and shutdown |
 | `internal/preferences` | YAML preferences/state, atomic replacement, external-change checks, and ordered save worker |
-| `internal/terminal` | Platform handoff and shell quoting; no session ownership |
+| `internal/terminal` | Shell/Agent choices and validated launch arguments |
 | `internal/skills` | Resource-based authoring skill and explicit, non-overwriting installation |
 | Onevra | Shell, controls, Markdown, command palette, and native WebView composition |
-| MyGo | OS event loop, rendering, input, menus, dialogs, browser API, and desktop integration |
+| MyGo | OS event loop, rendering, input, menus, dialogs, browser API, terminal emulator/PTYs, and desktop integration |
 
 Internal domain packages do not import UI code. The app assembles them through public APIs. Canvas preparation, image decoding, scans, and note reads happen outside frame construction; native browser creation occurs after preparation returns to the UI thread. The app does not copy Onevra's native bridge or MyGo's patch into its source.
 
@@ -52,7 +53,7 @@ Internal domain packages do not import UI code. The app assembles them through p
 | Location | Contents |
 | --- | --- |
 | Selected library | Notes, frontmatter, attachments, canvases, and child directories |
-| `~/.oneo/locus/settings.yaml` | Library path, appearance, language, editor, terminal/Agent, export directory, and MCP configuration |
+| `~/.oneo/locus/settings.yaml` | Library path, appearance, language, editor, shell/Agent, export directory, and MCP configuration |
 | `~/.oneo/locus/state.yaml` | Selected note/library, per-library tree expansion, and sidebar width/collapse state |
 | Chosen export directory | Non-overwriting canvas ZIP snapshots |
 | Library or home `.agents/skills/locus` | Explicitly installed copy of the bundled authoring skill |
@@ -68,7 +69,7 @@ The overview is limited to 16 KiB and each subject to 24 KiB. Keep each mechanis
 | [Library](docs/architecture/library.md) | Note structure, path/resource boundaries, watching, and Git projections |
 | [Desktop workspace](docs/architecture/workspace.md) | UI composition, async state, navigation, reading, native actions, and acceptance |
 | [Canvas](docs/architecture/canvas.md) | Native browser lifecycle, resources, HTML/JSON, security policy, and export |
-| [Agent integration](docs/architecture/mcp.md) | MCP tools, Host/Origin protection, lifecycle, skills, and terminal handoff |
+| [Agent integration](docs/architecture/mcp.md) | MCP tools, Host/Origin protection, lifecycle, skills, and built-in terminal sessions |
 | [Settings and persistence](docs/architecture/settings.md) | Preference ownership, configuration safety, language, appearance, and shutdown saving |
 | [App packaging](docs/architecture/packaging.md) | Go tools, app identity, bundled resources, platform coverage, and release boundary |
 

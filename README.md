@@ -29,11 +29,11 @@ Canvas export creates a ZIP containing the page and resources loaded in the curr
 
 ## Agents and settings
 
-Settings offers appearance/language choices, editor and export preferences, MCP, and terminal/Agent selection. Preferences retain existing YAML fields and detect external changes before saving. Sidebar and current-note state are saved on close.
+Settings offers appearance/language choices, editor and export preferences, MCP, shell/Agent selection, and skill installation. Preferences retain existing YAML fields and detect external changes before saving. Sidebar and current-note state are saved on close.
 
 Enable MCP in Settings to expose read-only discovery at `http://127.0.0.1:2301/mcp`. Clients need filesystem access to the returned paths. Local-network mode has no authentication and exposes searchable note content and paths; enable it only on a trusted network. See [MCP access](docs/mcp.md).
 
-Install the bundled Locus skill explicitly into the library or home directory. Installation preserves existing targets and creates an independent copy. Updating that copy requires explicit reinstallation. External terminals own Agent sessions; launching happens only on request and never as a startup side effect.
+Install the bundled Locus skill explicitly into the library or home directory. Installation preserves existing targets and creates an independent copy. Updating that copy requires explicit reinstallation. The titlebar terminal button, left of More actions, opens a 600 × 500 popover showing only the built-in terminal. Choose a shell and Agent in Settings; None opens just the shell. Changes apply the next time the terminal opens. Hiding the popover retains the session, while switching libraries or quitting closes it. When the Agent exits normally or with interrupt status, the terminal and popover close automatically; Ctrl+C only triggers this if it exits the Agent. Failed launches and other errors keep their output visible. Shells and Agent CLIs must be installed separately and launch only on request.
 
 | Action | Shortcut |
 | --- | --- |
@@ -41,7 +41,7 @@ Install the bundled Locus skill explicitly into the library or home directory. I
 | Search notes/actions | Command/Ctrl+E |
 | Refresh current content | Command/Ctrl+R or F5 |
 | Settings | Command/Ctrl+, |
-| Open Agent | Command/Ctrl+backtick |
+| Toggle terminal | Command/Ctrl+backtick |
 | Close window / quit | Command/Ctrl+W / Command/Ctrl+Q |
 
 ## Development and platform scope

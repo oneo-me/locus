@@ -1,6 +1,6 @@
 # Locus
 
-Read [ARCHITECTURE.md](ARCHITECTURE.md) in full before making changes, then read the relevant subjects listed in Subjects. Locus is a local Markdown workspace implemented in Go with Onevra and MyGo. Use the Onevra WebView branch and its customized MyGo through both top-level replacements in `source/go.mod`; dependency replacements are not transitive. Do not install or invoke Rust tooling. Document implemented behavior and verification honestly, including unfinished workflows. The document tree owns content facts, the workspace owns presentation and orchestration, and external terminals own Agent sessions.
+Read [ARCHITECTURE.md](ARCHITECTURE.md) in full before making changes, then read the relevant subjects listed in Subjects. Locus is a local Markdown workspace implemented in Go with Onevra and MyGo. Use the Onevra WebView branch and its customized MyGo through both top-level replacements in `source/go.mod`; dependency replacements are not transitive. Do not install or invoke Rust tooling. Document implemented behavior and verification honestly, including unfinished workflows. The document tree owns content facts, the workspace owns presentation and orchestration, and Agent CLIs own Agent behavior while the workspace hosts explicit built-in terminal sessions.
 
 ## Documentation maintenance
 
