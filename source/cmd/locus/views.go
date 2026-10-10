@@ -41,8 +41,8 @@ func (a *application) left(c *ui.Context) {
 		}
 	}
 	project(a.model.Notes)
-	ui.Column(c).Fill().MinHeight(0).Padding(sidebar.HeaderHeight(c), 8, 8, 8).Gap(8).Children(func() {
-		a.search(c)
+	ui.Column(c).Fill().MinHeight(0).Padding(sidebar.HeaderHeight(c), 0, 0, 0).Gap(8).Children(func() {
+		ui.Box(c).FillWidth().Shrink(0).Padding(0, 8).Children(func() { a.search(c) })
 		components.TreeVirtualized(c, &a.tree, a.roots, func(p string) []string { return a.children[p] }, func(p string) {
 			if n := a.index[p]; n != nil {
 				ui.Row(c).Grow(1).MinWidth(0).MinHeight(20).AlignItems(ui.Center).Gap(8).Children(func() {
@@ -55,11 +55,11 @@ func (a *application) left(c *ui.Context) {
 					components.Icon(c, icon).Size(16, 16).Shrink(0).TextColor(c.Theme().TextMuted)
 					components.Text(c, n.Title).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 					if n.Modified {
-						components.Text(c, "●").Label(a.text("Modified files")).TextColor(c.Theme().Accent).Shrink(0)
+						ui.Box(c).Label(a.text("Modified files")).Size(5, 5).Radius(2.5).Background(c.Theme().Accent).Shrink(0)
 					}
 				})
 			}
-		}).FillWidth().Grow(1).MinHeight(0)
+		}).Label("Document tree").FillWidth().Grow(1).MinHeight(0).Padding(0, 8, 8, 8)
 	})
 }
 func (a *application) toolbar(c *ui.Context) {
@@ -71,17 +71,17 @@ func (a *application) toolbar(c *ui.Context) {
 	case "dark":
 		icon = lucide.Moon()
 	}
-	sidebar.IconButton(c, icon, a.text("Theme")).Menu(a.themeMenu)
 	if a.model.Loading {
 		components.Text(c, a.text("Loading…"))
 	}
 	ui.Spacer(c)
-	button := components.Button(c, "MCP", components.ButtonGhost).OnClick(a.openMCPSettings)
+	button := sidebar.IconButton(c, lucide.Radio(), "MCP").OnClick(a.openMCPSettings)
 	if a.mcpError != "" {
 		button.TextColor(c.Theme().Danger)
 	} else if a.service != nil {
 		button.TextColor(c.Theme().Accent)
 	}
+	sidebar.IconButton(c, icon, a.text("Theme")).Menu(a.themeMenu)
 }
 
 func (a *application) themeMenu(m *ui.Menu) {
@@ -108,8 +108,16 @@ func (a *application) navigation(c *ui.Context) {
 }
 
 func (a *application) search(c *ui.Context) {
-	components.Button(c, "", components.ButtonSecondary).Label(a.text("Search notes")).FillWidth().Shrink(0).MinWidth(0).Gap(8).
-		TextColor(c.Theme().TextMuted).OnClick(func() { a.commandsOpen = true }).Children(func() {
+	t := c.Theme()
+	// Match Onevra TextBox styling while retaining command-trigger semantics.
+	button := components.Button(c, "", components.ButtonGhost).Label(a.text("Search notes")).FillWidth().Shrink(0).MinWidth(0).Gap(t.Space(1.5))
+	border := t.Border
+	if button.Hovered() || button.Focused() {
+		border = border.Mix(t.Text, 0.25)
+	}
+	button.Padding(t.Space(1.5), t.Space(2.5)).Radius(t.Radius).
+		Background(t.Surface.Alpha(0.5)).Border(1, border).
+		TextColor(t.TextMuted).OnClick(func() { a.commandsOpen = true }).Children(func() {
 		components.Icon(c, lucide.Search).Size(16, 16).Shrink(0)
 		components.Text(c, a.text("Search notes")).Grow(1).MinWidth(0).SingleLine().Ellipsis("…")
 		shortcut := "Ctrl E"

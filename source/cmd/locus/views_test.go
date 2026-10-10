@@ -33,7 +33,7 @@ func TestSidebarLayout(t *testing.T) {
 	a := &application{cfg: preferences.Default(), historyIndex: -1}
 	a.cfg.Language = "english"
 	a.model.Root = "/private/library"
-	a.model.Notes = []*library.Note{{Path: "one", Title: "First note", HasBody: true}, {Path: "two", Title: "Second note"}}
+	a.model.Notes = []*library.Note{{Path: "one", Title: "First note", HasBody: true, Modified: true}, {Path: "two", Title: "Second note"}}
 	a.resetTree()
 	tt := ui.NewTester(a.left, 252, 600)
 	for _, label := range []string{"Open library", a.model.Root} {
@@ -44,6 +44,14 @@ func TestSidebarLayout(t *testing.T) {
 	search, ok := tt.Find("Search notes")
 	if !ok || search.Y < 48 || search.X+search.W > 252 {
 		t.Fatalf("search must fit below the sidebar header: %+v", search)
+	}
+	tree, ok := tt.Find("Document tree")
+	if !ok || tree.X != 0 || tree.W != 252 {
+		t.Fatalf("tree viewport must reach sidebar edges: %+v", tree)
+	}
+	marker, ok := tt.Find("Modified files")
+	if !ok || marker.W != 5 || marker.H != 5 {
+		t.Fatalf("expected a small fixed-size modification marker: %+v", marker)
 	}
 	first, ok := tt.Find("First note")
 	if !ok {
@@ -70,8 +78,11 @@ func TestSidebarFooter(t *testing.T) {
 		t.Fatal("missing theme menu")
 	}
 	mcp, ok := tt.Find("MCP")
-	if !ok || mcp.X <= theme.X || mcp.X < 180 {
-		t.Fatalf("MCP not trailing: %+v", mcp)
+	if !ok || mcp.X+mcp.W > theme.X || theme.X < 210 {
+		t.Fatalf("expected MCP before trailing theme button: MCP=%+v theme=%+v", mcp, theme)
+	}
+	if mcp.W != theme.W || mcp.H != theme.H {
+		t.Fatal("MCP and theme should have matching icon-button hit targets")
 	}
 	if err := tt.Click("MCP"); err != nil {
 		t.Fatal(err)

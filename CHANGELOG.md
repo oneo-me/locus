@@ -6,7 +6,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 - Store preferences and interface state in `settings.yaml` and `state.yaml` instead of TOML/JSON files. Reapply settings or manually convert existing configuration to YAML; legacy files remain untouched.
 
-- Simplify workspace navigation with sidebar search and header history controls, compact tree rows with icons, and quick theme and MCP settings access.
+- Simplify workspace navigation with sidebar search and header history controls, compact tree rows with subtle modification markers and edge-aligned scrolling, and quick theme and MCP icon controls.
 - Open Settings as a dialog without leaving the workspace, and show a dedicated library-selection screen when no library is selected.
 
 - Leave the content area blank when no note is selected, and expand note and canvas pages to fill it while preserving Markdown reading padding and space for the floating titlebar.
