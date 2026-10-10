@@ -63,6 +63,33 @@ func TestSidebarLayout(t *testing.T) {
 	}
 }
 
+func TestHeaderMoreActions(t *testing.T) {
+	for _, canvas := range []string{"", "html"} {
+		t.Run("canvas="+canvas, func(t *testing.T) {
+			a := &application{cfg: preferences.Default()}
+			a.cfg.Language = "english"
+			a.model.Notes = []*library.Note{{Path: "note", Title: "Note", HasBody: true, Canvas: canvas}}
+			a.model.Selected = "note"
+			tt := ui.NewTester(a.title, 650, 48)
+			more, ok := tt.Find("More actions")
+			if !ok {
+				t.Fatal("missing more actions menu")
+			}
+			for _, label := range []string{"Copy reference", "Edit note", "Open directory"} {
+				button, ok := tt.Find(label)
+				if !ok || button.X+button.W > more.X {
+					t.Fatalf("expected %s before more actions: %+v", label, button)
+				}
+			}
+			for _, label := range []string{"Archive note", "Export canvas"} {
+				if _, ok := tt.Find(label); ok {
+					t.Fatalf("%s should be inside the menu, not a header button", label)
+				}
+			}
+		})
+	}
+}
+
 func TestSidebarFooter(t *testing.T) {
 	a := &application{cfg: preferences.Default(), settingsOpen: true}
 	a.cfg.Language = "english"
