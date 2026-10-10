@@ -54,6 +54,7 @@ func TestNativeReading(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	body += "\n```attachments\n[report.pdf](assets/report.pdf)\n[中文 文件.csv](assets/中文%20文件.csv)\n```\n"
 	body += strings.Repeat("\nA paragraph for scrolling beneath the titlebar.\n", 60)
 	if err := os.WriteFile(filepath.Join(root, "note/index.md"), []byte(body), 0600); err != nil {
 		t.Fatal(err)

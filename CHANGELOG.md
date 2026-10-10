@@ -5,6 +5,7 @@ This file records completed, pending user-visible changes and confirmed release 
 ## [Unreleased]
 
 - Restore Markdown `gallery` blocks with wrapping local-image thumbnails and an enlarged preview.
+- Restore legacy `attachments` Markdown blocks as file lists that reveal attachments in the system file manager.
 
 - Find installed Homebrew and MacPorts shells when opening the built-in terminal from a macOS app launched with a minimal PATH.
 - Keep Locus active in the macOS Dock after closing the main window, and restore the workspace when its Dock icon is clicked.

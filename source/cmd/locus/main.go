@@ -33,6 +33,7 @@ type application struct {
 	galleries                  map[int]galleryBlock
 	galleryPreview             galleryItem
 	galleryPreviewOpen         bool
+	attachmentBlocks           map[string]attachmentBlock
 	articleScroll              ui.ScrollState
 	articleScrollRoot          string
 	articleScrollNote          string

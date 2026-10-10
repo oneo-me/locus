@@ -40,6 +40,17 @@ Use ordinary Markdown links to actual resources:
 
 Relative file links reveal the validated resource in the system file manager rather than executing an attachment. Do not use absolute filesystem paths or links escaping the selected library. Keep attachment descriptions in surrounding text.
 
-Dedicated `attachments` fences still appear as code rather than interactive resource lists. Use standard Markdown file links instead. The sidebar and page title render an Emoji from the frontmatter `icon` string, or the reserved PNG when `icon: assets/icon.png` is set (`icon.png` is accepted as shorthand). Missing or invalid images fall back to the default note icon. The note’s More actions menu offers Upload icon for PNG files, scaling large images proportionally to fit 64 × 64 and updating the reserved file and frontmatter reference. Preserve existing icon files when maintaining unrelated content.
+Legacy `attachments` fences display an ordered file list:
+
+````markdown
+```attachments
+[field-summary.pdf](assets/field-summary.pdf)
+[source-data.csv](assets/source-data.csv)
+```
+````
+
+Include only links to direct files in this note’s `assets/` directory, with labels matching their filenames. URL-encode spaces in destinations when needed. The reserved `assets/icon.png` is excluded. Keep descriptions outside the fence. Invalid syntax shows an explanation; activating a missing or unsafe file reports an error. File buttons reveal validated attachments in the system file manager.
+
+The sidebar and page title render an Emoji from the frontmatter `icon` string, or the reserved PNG when `icon: assets/icon.png` is set (`icon.png` is accepted as shorthand). Missing or invalid images fall back to the default note icon. The note’s More actions menu offers Upload icon for PNG files, scaling large images proportionally to fit 64 × 64 and updating the reserved file and frontmatter reference. Preserve existing icon files when maintaining unrelated content.
 
 For canvas-owned resources and fetch, read [canvas.md](canvas.md).

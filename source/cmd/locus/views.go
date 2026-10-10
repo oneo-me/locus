@@ -217,6 +217,7 @@ func (a *application) content(c *ui.Context) {
 			a.renderedSource = a.model.Document.Body
 			a.document = markdown.ParseMarkdown(a.renderedSource)
 			a.galleries, _ = markdownResources(a.renderedSource)
+			a.attachmentBlocks = prepareAttachments(a.renderedSource)
 		}
 		atmosphere := deriveNoteAtmosphere(note.Title, c.Theme().Dark)
 		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).TrackScroll(&a.articleScroll).Children(func() {
@@ -228,7 +229,7 @@ func (a *application) content(c *ui.Context) {
 				messages()
 				ui.Column(c).FillWidth().MaxWidth(noteMaxWidth).MinWidth(0).Padding(max(0, 56-inset), 16, 56, 16).Gap(22).Children(func() {
 					noteMetadataPanel(c, note.Summary, a.model.Document.Metadata, atmosphere.panel.ui())
-					a.document.Render(c, markdown.MarkdownOptions{OnLink: a.openLink, Images: a.images, CodeBlocks: map[string]func(*ui.Context, markdown.MarkdownCodeBlock){"gallery": a.renderGallery}}).FillWidth()
+					a.document.Render(c, markdown.MarkdownOptions{OnLink: a.openLink, Images: a.images, CodeBlocks: map[string]func(*ui.Context, markdown.MarkdownCodeBlock){"gallery": a.renderGallery, "attachments": a.renderAttachments}}).FillWidth()
 				})
 			})
 		})
