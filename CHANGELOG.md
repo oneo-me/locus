@@ -4,6 +4,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+- Start the note scrollbar 8 logical pixels below the floating titlebar instead of beneath it.
 - Restore Markdown `gallery` blocks with wrapping local-image thumbnails and an enlarged preview.
 - Restore legacy `attachments` Markdown blocks as file lists that reveal attachments in the system file manager.
 

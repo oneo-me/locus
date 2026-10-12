@@ -216,9 +216,10 @@ func (a *application) content(c *ui.Context) {
 			a.attachmentBlocks = prepareAttachments(a.renderedSource)
 		}
 		atmosphere := deriveNoteAtmosphere(note.Title, c.Theme().Dark)
-		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).TrackScroll(&a.articleScroll).Children(func() {
+		components.ScrollView(c, components.ScrollViewOptions{}).Key(note.Path).Fill().MinWidth(0).TrackScroll(&a.articleScroll).ScrollbarInsets(inset+8, 0, 0).Children(func() {
 			// Inset the content, not the scroll viewport, so its background reaches
-			// behind Shell's floating titlebar without being clipped below it.
+			// behind Shell's floating titlebar without being clipped below it. The
+			// scrollbar track starts 8 DIPs below that titlebar.
 			ui.Column(c).FillWidth().MinWidth(0).MinHeight(atmosphereHeight).Padding(inset, 0, 0, 0).AlignItems(ui.Center).Draw(func(p *ui.Painter, r ui.Rect) {
 				atmosphere.draw(p, r)
 			}).Children(func() {
