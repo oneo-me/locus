@@ -29,7 +29,7 @@ Local library ← external editors and Agents
 Shell/Agent CLI ← explicit user launch in the built-in terminal
 ```
 
-The browser uses a registered custom URL scheme, not a local web server. A random session origin routes each canvas to its own rooted file handle. Leaving a canvas closes the browser and releases its origin; settings hides the native slot while preserving the document.
+The browser uses a registered custom URL scheme, not a local web server. A random session origin routes each canvas to its own rooted file handle. Leaving a canvas closes the browser and releases its origin; the Settings dialog draws over the live browser through MyGo hybrid composition.
 
 ## Ownership
 
@@ -91,6 +91,6 @@ There is one Go module. No Cargo workspace, project-owned native bridge, or alte
 
 ## Verification and current limitations
 
-[Development checks](docs/build.md#development-checks) cover tests, race detection, vet, build, packaging, and opt-in native tests. Native tests exercise Markdown and real WebView initialization, template data, local fetch, DOM interaction, settings hide/show, and release on note departure. They do not establish full pointer/keyboard, accessibility, installation, or cross-platform acceptance. Do not launch external terminals or Agents as a substitute for user acceptance.
+[Development checks](docs/build.md#development-checks) cover tests, race detection, vet, build, packaging, and opt-in native tests. Native tests exercise Markdown and real WebView initialization, template data, local fetch, DOM interaction, page state across Settings, and release on note departure. They do not establish full pointer/keyboard, accessibility, installation, or cross-platform acceptance. Do not launch external terminals or Agents as a substitute for user acceptance.
 
 Automatic update delivery, sidebar reordering, font controls, and full window-bounds restoration are not implemented. Canvas ZIP export contains the resources loaded in the current session rather than a complete dependency crawler. Windows and Linux require their own verification; native canvases depend on MyGo's platform browser backend.
