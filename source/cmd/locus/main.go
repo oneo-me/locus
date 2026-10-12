@@ -16,8 +16,8 @@ import (
 	"github.com/oneo-me/locus/internal/preferences"
 	"github.com/oneo-me/locus/internal/workspace"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/plugins/command"
-	"github.com/oneo-me/onevra/source/plugins/markdown"
+	"github.com/oneo-me/onevra/source/components/command"
+	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 

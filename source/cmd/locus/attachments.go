@@ -9,8 +9,8 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/icons/lucide"
-	"github.com/oneo-me/onevra/source/plugins/markdown"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
@@ -31,6 +31,10 @@ func parseAttachments(source string) attachmentBlock {
 	invalid := func() attachmentBlock { return attachmentBlock{invalid: true} }
 	for p := doc.FirstChild(); p != nil; p = p.NextSibling() {
 		if _, ok := p.(*ast.TextBlock); ok && p.ChildCount() == 0 {
+			continue
+		}
+		// Reference definitions resolve links and images but render nothing.
+		if _, ok := p.(*ast.LinkReferenceDefinition); ok {
 			continue
 		}
 		if _, ok := p.(*ast.Paragraph); !ok {

@@ -11,9 +11,9 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/components/command"
+	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/icons/lucide"
-	"github.com/oneo-me/onevra/source/plugins/command"
-	"github.com/oneo-me/onevra/source/plugins/markdown"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 

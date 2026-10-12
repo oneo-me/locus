@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/preferences"
-	"github.com/oneo-me/onevra/source/plugins/markdown"
+	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/theme"
 )
 

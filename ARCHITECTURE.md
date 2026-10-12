@@ -12,7 +12,7 @@ Locus is a local-first Markdown workspace implemented in Go with Onevra and MyGo
 
 ## Dependencies and process flow
 
-`source/go.mod` and `source/go.sum` own dependencies. Locus uses published Onevra `v0.2026.2` and MyGo `v0.4.0`, pinned with module checksums and no local replacements. MyGo supplies the built-in WebView. See [dependency setup](docs/build.md#dependencies).
+`source/go.mod` and `source/go.sum` own dependencies. Locus uses published Onevra `v0.2026.6` and MyGo `v0.4.5`, pinned with module checksums and no local replacements. MyGo supplies the built-in WebView. See [dependency setup](docs/build.md#dependencies).
 
 ```text
 Go desktop process

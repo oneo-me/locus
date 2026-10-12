@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/plugins/markdown"
+	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -58,6 +58,10 @@ func parseGallery(source string) galleryBlock {
 	}
 	for block := root.FirstChild(); block != nil; block = block.NextSibling() {
 		if _, ok := block.(*ast.TextBlock); ok && block.FirstChild() == nil {
+			continue
+		}
+		// Reference definitions resolve links and images but render nothing.
+		if _, ok := block.(*ast.LinkReferenceDefinition); ok {
 			continue
 		}
 		if _, ok := block.(*ast.Paragraph); !ok {
