@@ -58,8 +58,10 @@ Formatting must produce no paths. Default tests do not open native windows or la
 On an explicitly available desktop session, run native tests:
 
 ```sh
-LOCUS_NATIVE_SMOKE=1 GOWORK=off go test ./cmd/locus -run TestNative -count=1 -timeout=45s
+LOCUS_NATIVE_SMOKE=1 GOWORK=off go test ./cmd/locus -run TestNative -count=1 -timeout=90s
 ```
+
+On macOS these tests run in the background: the test app uses the accessory activation policy (no Dock icon or activation), windows are created hidden, and the harness asks hidden windows to display so input and captures receive fresh frames. The reading test fails if a window becomes visible or focused or the app activates. Set `LOCUS_NATIVE_FOREGROUND=1` to show windows instead; the close-and-reopen lifecycle test shows its window and runs only in that mode. Other platforms keep visible windows until hidden frame delivery is verified there.
 
 Optionally set `LOCUS_SCREENSHOTS` to retain captures, including article backgrounds and metadata across reference titles, light/dark themes, and narrow/wide windows. Tests open a temporary Markdown library and a real MyGo WebView, checking template initialization, resource fetch, DOM interaction, settings retention, and release on departure. A terminal connection fixture also checks native terminal rendering and session cleanup without launching a shell or Agent. Surface captures do not establish OS material appearance or native browser overlay composition. Complete keyboard, pointer, accessibility, terminal authorization, and installation acceptance remains manual; do not launch external terminals or Agents automatically for it.
 

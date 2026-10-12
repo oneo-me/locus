@@ -32,7 +32,7 @@ func TestNativeCanvas(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	a := &application{cursor: -1}
+	a := &application{cursor: -1, hidden: nativeBackground()}
 	mygo.RunOnMain(func() { a.start(root) })
 	defer mygo.RunOnMain(func() { a.shell.Window().Destroy() })
 	waitNative(t, func() bool { return !a.model.Loading })

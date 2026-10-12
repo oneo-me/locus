@@ -98,7 +98,7 @@ func TestNativeTerminal(t *testing.T) {
 	defer server.Close()
 	defer client.Close()
 	root := t.TempDir()
-	a := &application{cfg: preferences.Default()}
+	a := &application{cfg: preferences.Default(), hidden: nativeBackground()}
 	mygo.RunOnMain(func() { a.start(root) })
 	defer mygo.RunOnMain(func() { a.shell.Window().Destroy() })
 	waitNative(t, func() bool { return !a.model.Loading })
@@ -169,7 +169,7 @@ func TestNativeTerminalExit(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()
 	defer server.Close()
-	a := &application{cfg: preferences.Default()}
+	a := &application{cfg: preferences.Default(), hidden: nativeBackground()}
 	root := t.TempDir()
 	mygo.RunOnMain(func() { a.start(root) })
 	defer mygo.RunOnMain(func() { a.shell.Window().Destroy() })
@@ -198,7 +198,7 @@ func TestNativeTerminalProcessExit(t *testing.T) {
 	}
 	for _, code := range []int{0, 130, 127, 1} {
 		t.Run(fmt.Sprint(code), func(t *testing.T) {
-			a := &application{cfg: preferences.Default()}
+			a := &application{cfg: preferences.Default(), hidden: nativeBackground()}
 			root := t.TempDir()
 			mygo.RunOnMain(func() { a.start(root) })
 			defer mygo.RunOnMain(func() { a.shell.Window().Destroy() })

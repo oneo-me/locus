@@ -23,10 +23,21 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	mygo.App.SetName("Locus Go Test")
+	if nativeBackground() {
+		mygo.App.SetActivationPolicy(mygo.ActivationPolicyAccessory) // No Dock icon or activation.
+	}
 	mygo.App.SetPath(mygo.PathUserData, directory)
 	mygo.App.OnWindowAllClosed(func() {})
 	result := make(chan int, 1)
-	mygo.App.WhenReady(func() { go func() { result <- m.Run(); mygo.App.Quit() }() })
+	mygo.App.WhenReady(func() {
+		go func() {
+			stopFrames := startNativeFrames()
+			code := m.Run()
+			stopFrames()
+			result <- code
+			mygo.App.Quit()
+		}()
+	})
 	if err := mygo.App.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -68,7 +79,7 @@ func TestNativeReading(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "picture/assets/icon.png"), iconPNG(t, 64, 32), 0600); err != nil {
 		t.Fatal(err)
 	}
-	a := &application{cursor: -1}
+	a := &application{cursor: -1, hidden: nativeBackground()}
 	a.model.Dispatch = mygo.RunOnMain
 	a.model.Changed = func() { a.shell.Window().Invalidate() }
 	mygo.RunOnMain(func() { a.start(root) })
@@ -149,9 +160,7 @@ func TestNativeReading(t *testing.T) {
 		if a.model.Error != nil {
 			t.Error(a.model.Error)
 		}
-		if !a.shell.Window().IsVisible() {
-			t.Error("window not visible")
-		}
+		checkNativeBackground(t, a.shell.Window())
 		a.shell.SetLeftExpanded(false)
 		a.shell.SetLeftExpanded(true)
 	})

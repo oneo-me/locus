@@ -11,8 +11,8 @@ import (
 )
 
 func TestNativeWindowCloseAndReopen(t *testing.T) {
-	if os.Getenv("LOCUS_NATIVE_SMOKE") != "1" || runtime.GOOS != "darwin" {
-		t.Skip("requires a macOS desktop session")
+	if os.Getenv("LOCUS_NATIVE_SMOKE") != "1" || runtime.GOOS != "darwin" || nativeBackground() {
+		t.Skip("reopening shows the window; requires LOCUS_NATIVE_FOREGROUND=1 in a macOS desktop session")
 	}
 	root := t.TempDir()
 	root, err := filepath.EvalSymlinks(root)

@@ -13,7 +13,7 @@ func TestNativeLibraryPicker(t *testing.T) {
 	if os.Getenv("LOCUS_NATIVE_SMOKE") != "1" {
 		t.Skip("requires a native desktop session")
 	}
-	a := &application{cursor: -1}
+	a := &application{cursor: -1, hidden: nativeBackground()}
 	mygo.RunOnMain(func() { a.start("") })
 	defer mygo.RunOnMain(func() { a.shell.Window().Destroy() })
 	capture := func(name string) {

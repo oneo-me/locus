@@ -24,7 +24,7 @@ func TestNativeTreeExpansionReopen(t *testing.T) {
 	}
 	otherRoot := t.TempDir()
 	statePath := filepath.Join(t.TempDir(), "state.yaml")
-	a := &application{cfg: preferences.Default(), statePath: statePath, stateWritable: true}
+	a := &application{cfg: preferences.Default(), statePath: statePath, stateWritable: true, hidden: nativeBackground()}
 	mygo.RunOnMain(func() { a.start(root) })
 	waitNative(t, func() bool { return a.treeRoot != "" && !a.model.Loading })
 	mygo.RunOnMain(func() {
@@ -38,7 +38,7 @@ func TestNativeTreeExpansionReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b := &application{cfg: preferences.Default(), state: state, restore: true}
+	b := &application{cfg: preferences.Default(), state: state, restore: true, hidden: nativeBackground()}
 	mygo.RunOnMain(func() { b.start(root) })
 	defer mygo.RunOnMain(func() { b.shell.Window().Destroy() })
 	waitNative(t, func() bool { return b.treeRoot != "" && !b.model.Loading && !b.restore })

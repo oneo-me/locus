@@ -35,7 +35,7 @@ func TestNativeAtmosphere(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	a := &application{cursor: -1}
+	a := &application{cursor: -1, hidden: nativeBackground()}
 	a.model.Dispatch = mygo.RunOnMain
 	a.model.Changed = func() { a.shell.Window().Invalidate() }
 	mygo.RunOnMain(func() { a.start(root) })
