@@ -40,7 +40,7 @@ GOWORK=off go run ./cmd/locus -library /path/to/library
 | 操作 | 快捷键 |
 | --- | --- |
 | 打开文档库 | Command/Ctrl+O |
-| 搜索笔记与操作 | Command/Ctrl+E |
+| 搜索笔记与操作 | Command/Ctrl+F |
 | 刷新当前内容 | Command/Ctrl+R 或 F5 |
 | 设置 | Command/Ctrl+, |
 | 展开或收起终端 | Command/Ctrl 与反引号 |

@@ -40,7 +40,7 @@ Install the bundled Locus skill explicitly into the library or home directory. I
 | Action | Shortcut |
 | --- | --- |
 | Open library | Command/Ctrl+O |
-| Search notes/actions | Command/Ctrl+E |
+| Search notes/actions | Command/Ctrl+F |
 | Refresh current content | Command/Ctrl+R or F5 |
 | Settings | Command/Ctrl+, |
 | Toggle terminal | Command/Ctrl+backtick |

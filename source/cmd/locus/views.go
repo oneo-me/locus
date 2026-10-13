@@ -113,9 +113,9 @@ func (a *application) search(c *ui.Context) {
 		TextColor(t.TextMuted).OnClick(func() { a.commandsOpen = true }).Children(func() {
 		components.Icon(c, lucide.Search).Size(16, 16).Shrink(0)
 		components.Text(c, a.text("Search notes")).Grow(1).MinWidth(0).SingleLine().Ellipsis("…")
-		shortcut := "Ctrl E"
+		shortcut := "Ctrl F"
 		if runtime.GOOS == "darwin" {
-			shortcut = "⌘ E"
+			shortcut = "⌘ F"
 		}
 		components.Text(c, shortcut).Shrink(0)
 	})
@@ -166,7 +166,7 @@ func (a *application) content(c *ui.Context) {
 	if c.Shortcut(0, ui.KeyF5) {
 		a.refresh()
 	}
-	if c.Shortcut(mods, ui.KeyE) {
+	if c.Shortcut(mods, ui.KeyF) {
 		a.commandsOpen = !a.commandsOpen
 	}
 	note := library.Find(a.model.Notes, a.model.Selected)
