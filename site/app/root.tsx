@@ -12,7 +12,11 @@ import type { Route } from "./+types/root";
 import "./app.css";
 
 export const links: Route.LinksFunction = () => [
-  { rel: "icon", type: "image/png", href: "/icon.png" },
+  {
+    rel: "icon",
+    type: "image/png",
+    href: `${import.meta.env.BASE_URL}icon.png`,
+  },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

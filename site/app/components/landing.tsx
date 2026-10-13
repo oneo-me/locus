@@ -20,6 +20,7 @@ import {
 } from "~/content";
 
 const locales = Object.keys(localePaths) as Locale[];
+const iconUrl = `${import.meta.env.BASE_URL}icon.png`;
 
 export function Landing({ locale }: { locale: Locale }) {
   const text = content[locale];
@@ -28,7 +29,7 @@ export function Landing({ locale }: { locale: Locale }) {
     <div className="flex min-h-svh flex-col">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
         <Link to={localePaths[locale]} className="flex items-center gap-2 font-semibold">
-          <img src="/icon.png" alt="" className="size-7" />
+          <img src={iconUrl} alt="" className="size-7" />
           Locus
         </Link>
         <nav className="flex items-center gap-1">
@@ -58,7 +59,7 @@ export function Landing({ locale }: { locale: Locale }) {
 
       <main className="flex-1">
         <section className="mx-auto flex max-w-3xl flex-col items-center px-6 pt-16 pb-20 text-center sm:pt-24">
-          <img src="/icon.png" alt="" className="mb-8 size-24 sm:size-28" />
+          <img src={iconUrl} alt="" className="mb-8 size-24 sm:size-28" />
           <Badge variant="secondary">{text.badge}</Badge>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
             {text.heading}

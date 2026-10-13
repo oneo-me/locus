@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "react-router dev",
-    "build": "react-router build && cp build/client/__spa-fallback.html build/client/404.html",
+    "build": "react-router build && bun scripts/postbuild.ts",
     "preview": "bun run build && wrangler dev",
     "deploy": "bun run build && wrangler deploy",
     "typecheck": "react-router typegen && tsc"
