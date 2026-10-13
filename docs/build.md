@@ -4,7 +4,7 @@ Locus has one Go module under `source/` and uses Onevra's Go packager. No Rust t
 
 ## Dependencies
 
-Use Go 1.27.1 or later and a native desktop session. `source/go.mod` pins published Onevra `v0.2026.6` and MyGo `v0.4.5`; `source/go.sum` records their checksums. WebView uses MyGo's built-in API, so no local replacements, patched checkouts, or preparation scripts are needed.
+Use Go 1.27.1 or later and a native desktop session. `source/go.mod` pins published Onevra `v0.2026.8` and MyGo `v0.4.8`; `source/go.sum` records their checksums. WebView uses MyGo's built-in API, so no local replacements, patched checkouts, or preparation scripts are needed.
 
 Download dependencies from `source/`:
 

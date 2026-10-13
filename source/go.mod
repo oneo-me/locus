@@ -4,10 +4,10 @@ go 1.27.1
 
 require (
 	github.com/ebitengine/purego v0.11.1
-	github.com/egoist/mygo v0.4.5
+	github.com/egoist/mygo v0.4.8
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/modelcontextprotocol/go-sdk v1.8.0
-	github.com/oneo-me/onevra/source v0.2026.6
+	github.com/oneo-me/onevra/source v0.2026.8
 	github.com/yuin/goldmark v1.8.6
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/image v0.47.0
