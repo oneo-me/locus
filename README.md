@@ -58,6 +58,8 @@ GOWORK=off go tool packer build
 
 Outputs go to `dist/`; successful builds automatically open the current version's release directory. The configured packaging target is Apple Silicon macOS. No Rust toolchain is needed. See [Running and building](docs/build.md) for race checks and native smoke tests, and [Architecture](ARCHITECTURE.md) for boundaries and verification.
 
+The official website in `site/` links to GitHub Releases for downloads and deploys to Cloudflare as static files. See [Official website](docs/site.md).
+
 macOS native Markdown and WebView workflows have automated smoke tests. Windows and Linux need separate acceptance; MyGo provides native WebView backends for macOS, Windows, and Linux, but this branch has only been exercised on macOS. Automatic updates, sidebar reordering, dedicated attachment lists, font controls, and full window-bounds restoration are not implemented. Published downloads at [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) may differ from this development branch; local packaging does not publish them.
 
 Licensed under the [MIT License](LICENSE).

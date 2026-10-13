@@ -58,6 +58,8 @@ GOWORK=off go tool packer build
 
 产物输出至 `dist/`，构建成功后自动打开当前版本的 release 目录。当前打包目标为 Apple Silicon macOS。不需要 Rust 工具链。竞态检查与原生冒烟测试详见[运行与构建](docs/build.md)；职责边界和验证范围见[架构说明](ARCHITECTURE.md)。
 
+`site/` 中的官方网站通过 GitHub Releases 提供下载，并以静态文件形式部署到 Cloudflare。详见[官方网站](docs/site.md)。
+
 macOS 的原生 Markdown 与 WebView 流程已有自动冒烟测试。Windows 和 Linux 需要独立验收；MyGo 提供 macOS、Windows 和 Linux 原生 WebView 后端，但本分支仅在 macOS 上进行了验证。自动更新、侧栏排序、专用附件列表、字体控件及完整窗口位置尺寸恢复尚未实现。[GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 中的发布下载可能与本开发分支不同；本地打包不会自动发布。
 
 采用 [MIT 开源协议](LICENSE)。
