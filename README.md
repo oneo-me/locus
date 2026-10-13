@@ -4,49 +4,33 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-Locus is a local-first Markdown workspace with a native desktop interface built in Go with Onevra and MyGo. Notes stay ordinary files: read and organize them in Locus, edit them with your preferred editor, and let external Agents discover the same files through read-only MCP.
+Locus is a local-first Markdown notebook for macOS. Notes stay ordinary files in a folder you choose, so you can read and organize them in Locus while editing them in any app you like.
 
-## Quick start
+## Features
 
-Requires Go 1.27.1 or later and a native desktop session. Published Onevra and MyGo dependencies are pinned in `source/go.mod`; no local dependency checkouts are required. See [dependency setup](docs/build.md#dependencies).
+- **Plain files, no lock-in**: each note is a folder containing `index.md`; nested folders form the note tree, and attachments live beside the note.
+- **Built-in reading**: browse the tree or search notes and actions, then read Markdown, local images, summaries, and custom YAML properties.
+- **Canvases**: a note can show its own HTML and JavaScript page, such as a dashboard or chart, inside the workspace.
+- **Agent friendly**: optional read-only MCP lets external Agents find the same notes, and a built-in terminal opens your shell or Agent CLI on request.
+- **Comfortable by default**: light and dark themes, an English or Chinese interface, back/forward history, and remembered navigation and sidebar state.
 
-```sh
-cd source
-GOWORK=off go run ./cmd/locus
-# Optional startup library:
-GOWORK=off go run ./cmd/locus -library /path/to/library
-```
+## Install
 
-When no library is selected, a standalone welcome screen prompts you to choose **Open library**. You can also select a library in the Settings dialog. Each note is a directory containing `index.md`; directory nesting supplies the hierarchy. YAML frontmatter provides titles, summaries, and custom properties. Attachments live in `assets/`; canvases live in `canvas/`. Hidden directories and reserved resource directories are not notes.
+Download the latest release from [GitHub Releases](https://github.com/oneo-me/locus/releases/latest), then move Locus to Applications. macOS 13 or later on Apple Silicon is required.
 
-Local image groups can use legacy `gallery` fences with Markdown images from the note’s `assets/` directory, wrapping thumbnails, and an enlarged preview. See the [attachment syntax](source/resources/skills/locus/references/attachments.md#galleries).
+Published downloads can lag behind the development branch; Windows and Linux builds are not available yet.
 
-## Reading and canvases
+## Getting started
 
-Browse the native tree or search notes through the command palette. Read Markdown, local images, summaries, and custom YAML. The toolbar copies references, opens notes in an editor, and opens directories. External file changes refresh projections; Git modification hints appear when the library is a repository root.
+1. Launch Locus and choose **Open library** to select the folder that holds your notes. Command/Ctrl+O opens the picker again.
+2. Add notes outside Locus: create a folder containing an `index.md` file in Finder, an editor, or an Agent. Locus follows file changes automatically.
+3. Search notes and commands with Command/Ctrl+F. The note toolbar copies a reference, opens the note in your editor, or opens its folder.
+4. Open **Settings** with Command/Ctrl+, for theme, language, editor, export folder, shell and Agent choices, and skills.
+5. To let Agents read your notes, enable MCP in Settings and connect a client to `http://127.0.0.1:2301/mcp`. See [MCP access](docs/mcp.md).
 
-A note can own an HTML fragment and `canvas/main.js`, or a JSON template invocation. MyGo's built-in WebView displays it inside the workspace. Settings hides and retains the page; leaving releases it. Refresh or reopen after editing canvas source. See the bundled [canvas reference](source/resources/skills/locus/references/canvas.md).
+## Development
 
-Canvas export creates a ZIP containing the page and resources loaded in the current session. Unpack it and use a local HTTP server when required for modules, fetch, or Workers. Unloaded dependencies are not discovered automatically, and online services still require network access.
-
-## Agents and settings
-
-Settings offers appearance/language choices, editor and export preferences, MCP, shell/Agent selection, and skill installation. Preferences retain existing YAML fields and detect external changes before saving. Sidebar and current-note state are saved on close.
-
-Enable MCP in Settings to expose read-only discovery on this computer at `http://127.0.0.1:2301/mcp`. Clients need filesystem access to the returned paths. See [MCP access](docs/mcp.md).
-
-Install the bundled Locus skill explicitly into the library or home directory. Installation preserves existing targets and creates an independent copy. Updating that copy requires explicit reinstallation. The titlebar terminal button, left of More actions, opens a 600 × 500 popover showing only the built-in terminal. Choose a shell and Agent in Settings; None opens just the shell. Changes apply the next time the terminal opens. Hiding the popover retains the session, while switching libraries or quitting closes it. When the Agent exits normally or with interrupt status, the terminal and popover close automatically; Ctrl+C only triggers this if it exits the Agent. Failed launches and other errors keep their output visible. While a session is starting or running, the titlebar terminal button pulses, so a terminal left open after hiding the popover stays visible. Shells and Agent CLIs must be installed separately and launch only on request.
-
-| Action | Shortcut |
-| --- | --- |
-| Open library | Command/Ctrl+O |
-| Search notes/actions | Command/Ctrl+F |
-| Refresh current content | Command/Ctrl+R or F5 |
-| Settings | Command/Ctrl+, |
-| Toggle terminal | Command/Ctrl+backtick |
-| Close window / quit | Command/Ctrl+W / Command/Ctrl+Q |
-
-## Development and platform scope
+Build and test from `source/` with Go 1.27.1 or later:
 
 ```sh
 cd source
@@ -56,10 +40,12 @@ GOWORK=off go tool packer run
 GOWORK=off go tool packer build
 ```
 
-Outputs go to `dist/`; successful builds automatically open the current version's release directory. The configured packaging target is Apple Silicon macOS. No Rust toolchain is needed. See [Running and building](docs/build.md) for race checks and native smoke tests, and [Architecture](ARCHITECTURE.md) for boundaries and verification.
+See [Running and building](docs/build.md) for dependencies, checks and packaging, [Architecture](ARCHITECTURE.md) for design boundaries, and [AGENTS.md](AGENTS.md) for contributor rules. User-visible changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
-The official website in `site/` links to GitHub Releases for downloads and deploys as static files to Cloudflare or GitHub Pages. See [Official website](docs/site.md).
+## Current limitations
 
-macOS native Markdown and WebView workflows have automated smoke tests. Windows and Linux need separate acceptance; MyGo provides native WebView backends for macOS, Windows, and Linux, but this branch has only been exercised on macOS. Automatic updates, sidebar reordering, dedicated attachment lists, font controls, and full window-bounds restoration are not implemented. Published downloads at [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) may differ from this development branch; local packaging does not publish them.
+- Windows and Linux are unverified; native macOS Markdown and canvas workflows have automated smoke tests.
+- Automatic updates are not implemented; install new releases manually.
+- Sidebar reordering, dedicated attachment lists, font controls, and full window-bounds restoration are not implemented.
 
 Licensed under the [MIT License](LICENSE).

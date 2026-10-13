@@ -34,7 +34,7 @@ This file records completed, pending user-visible changes and confirmed release 
 - Rename the library action in Settings to “Select library” and remove the About page.
 
 - Leave the content area blank when no note is selected, and expand note and canvas pages to fill it while preserving Markdown reading padding and space for the floating titlebar. Give canvas summaries breathing room and a divider separating them from the canvas.
-- Use the Onevra desktop interface for Markdown reading and native canvases. See [current platform scope](README.md#development-and-platform-scope) for workflows still unavailable in the rewritten application.
+- Use the Onevra desktop interface for Markdown reading and native canvases. See [current limitations](README.md#current-limitations) for workflows still unavailable in the rewritten application.
 - Canvas export now produces a ZIP of resources loaded in the current session; unpack it and serve it locally when required for browser modules or fetch.
 - Install bundled authoring skills as independent copies without overwriting existing destinations; updating a copy requires explicit reinstallation.
 - Automatic updates are unavailable in the Go application; download releases manually until update delivery is configured.
