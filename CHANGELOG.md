@@ -4,8 +4,8 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
-- Remove MCP local-network mode: read-only discovery always binds loopback, so only clients on this computer can connect. The former `mcp_local_network` setting is dropped on the next save.
-- Report errors and action confirmations with Onevra toasts at the top of the window instead of inline red text; a repeated model error reports once until it clears.
+- Restrict MCP discovery to loopback, so only clients on this computer can connect; the `mcp_local_network` setting is dropped on the next save.
+- Report errors and confirmations as toasts at the top of the window instead of inline red text; a repeated error reports once until it clears.
 - Narrow the Settings dialog width.
 - Open note/action search with Command/Ctrl+F instead of Command/Ctrl+E.
 - Keep the canvas page visible behind the Settings dialog instead of hiding it.
@@ -14,27 +14,34 @@ This file records completed, pending user-visible changes and confirmed release 
 - Restore legacy `attachments` Markdown blocks as file lists that reveal attachments in the system file manager.
 
 - Find installed Homebrew and MacPorts shells when opening the built-in terminal from a macOS app launched with a minimal PATH.
-- Keep Locus active in the macOS Dock after closing the main window, and restore the workspace when its Dock icon is clicked. Development runs (`go run` or the packager's `run` command) instead quit when the window closes so they leave no Dock activity.
+- Keep Locus in the macOS Dock after closing the main window, and restore the workspace when its Dock icon is clicked.
+- Quit on window close in development runs, so `go run` and packager `run` leave no Dock activity.
 
 - Limit sidebar resizing to 520 logical pixels so it leaves room for note content.
-- Open a terminal-only popover from the titlebar, with common shell and Agent choices in Settings and no external terminal application required; normal or interrupt exits close the popover, while failures keep their output visible.
+- Open a terminal-only popover from the titlebar, with common shell and Agent choices in Settings and no external terminal application required.
+- Close the terminal popover on normal or interrupt exits, while failed launches keep their output visible.
 - Pulse the titlebar terminal button while a session is starting or running, so a terminal left behind a dismissed popover stays visible from any page.
 
 - Remember each library’s tree expansion when switching libraries and reopening the app.
 
-- Remove note archiving and archive restoration from Settings; previously archived notes and their descendants are visible again without modifying their files.
-- Restore title-derived article backgrounds and a shared description and nested YAML panel in light and dark themes. The titlebar gains a glass background and bottom border only after scrolling down.
+- Remove note archiving from Settings; previously archived notes and their descendants are visible again without modifying their files.
+- Restore title-derived article backgrounds and a shared description and nested YAML panel in light and dark themes.
+- Show the titlebar glass background and bottom border only after scrolling down.
 
-- Store preferences and interface state in `settings.yaml` and `state.yaml` instead of TOML/JSON files. Reapply settings or manually convert existing configuration to YAML; legacy files remain untouched.
+- Store preferences and interface state in `settings.yaml` and `state.yaml` instead of TOML/JSON; convert existing configuration to YAML.
+- Legacy TOML and JSON files remain untouched by the conversion.
 
-- Display note Emoji and PNG icons in the sidebar and beside the page title, refreshing them when note files change. Upload PNG icons from More actions, automatically shrinking large images.
-- Simplify workspace navigation with sidebar search and header history controls, compact tree rows with subtle modification markers and edge-aligned scrolling, and quick theme and MCP icon controls. Keep canvas download in the top-right More actions menu.
+- Show note Emoji and PNG icons in the sidebar and beside the page title, refreshed when note files change.
+- Upload PNG icons from More actions, with large images shrunk automatically.
+- Add sidebar search, header history controls, compact tree rows with modification markers, and quick theme and MCP controls.
+- Keep canvas download in the top-right More actions menu.
 - Support mouse side buttons for back/forward note history in the workspace, even with the sidebar collapsed.
 - Open Settings as a dialog without leaving the workspace, and show a dedicated library-selection screen when no library is selected.
 - Rename the library action in Settings to “Select library” and remove the About page.
 
-- Leave the content area blank when no note is selected, and expand note and canvas pages to fill it while preserving Markdown reading padding and space for the floating titlebar. Give canvas summaries breathing room and a divider separating them from the canvas.
-- Use the Onevra desktop interface for Markdown reading and native canvases. See [current limitations](README.md#current-limitations) for workflows still unavailable in the rewritten application.
+- Leave the content area blank when no note is selected, and expand note and canvas pages to fill it while preserving reading padding.
+- Give canvas summaries breathing room and a divider separating them from the canvas.
+- Use the Onevra desktop interface for Markdown reading and native canvases. See [current limitations](README.md#current-limitations) for unavailable workflows.
 - Canvas export now produces a ZIP of resources loaded in the current session; unpack it and serve it locally when required for browser modules or fetch.
 - Install bundled authoring skills as independent copies without overwriting existing destinations; updating a copy requires explicit reinstallation.
 - Automatic updates are unavailable in the Go application; download releases manually until update delivery is configured.
