@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "locus-site",
+  "compatibility_date": "2026-10-13",
+  "assets": {
+    "directory": "./build/client",
+    // Unknown paths load 404.html, a copy of React Router's SPA fallback, which renders the root error boundary.
+    "not_found_handling": "404-page"
+  }
+}
