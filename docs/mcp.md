@@ -6,11 +6,11 @@ Enable **Settings → MCP → Enable read-only discovery** after selecting a lib
 http://127.0.0.1:2301/mcp
 ```
 
-The port is configurable; choose Apply connection after editing it. Disabling the service or changing libraries closes the old listener. Settings displays the real listening address or error. The transport is stateless; clients must not depend on durable server sessions.
+The port is configurable; choose Apply connection after editing it. The endpoint always binds loopback, so only clients on this computer can connect. Disabling the service or changing libraries closes the old listener. Settings displays the real listening address or error. The transport is stateless; clients must not depend on durable server sessions.
 
 The three tools are `list_articles`, `search_articles`, and `resolve_article`. They return note metadata and absolute local file/directory paths. Clients read and edit those paths with their own filesystem tools and therefore need access to the same files. MCP does not transfer complete content, write notes, or run Agents.
 
-Local-network mode listens beyond loopback without authentication. Connected clients can search note content and obtain paths. Use it only on a trusted network; change the client URL to this computer's IP. Host and Origin checks defend against unrelated browser origins and arbitrary hostnames, not unauthorized clients already able to reach the trusted endpoint.
+Host and Origin checks defend against unrelated browser origins and arbitrary hostnames.
 
 ## Install authoring guidance
 

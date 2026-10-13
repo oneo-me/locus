@@ -4,7 +4,7 @@ The app coordinates read-only MCP discovery, explicit skill installation, and bu
 
 ## Discovery and transport
 
-`internal/discovery` uses the official Go MCP SDK and Streamable HTTP at `/mcp`. Each service captures one library root. It is disabled by default, binds `127.0.0.1:2301` by default, and can explicitly bind `0.0.0.0` for local-network use. Network mode has no authentication; the settings description warns that clients can search note content and obtain local paths.
+`internal/discovery` uses the official Go MCP SDK and Streamable HTTP at `/mcp`. Each service captures one library root. It is disabled by default and always binds loopback at `127.0.0.1:<port>`, defaulting to port 2301. Settings exposes only the port, so other machines cannot reach the endpoint.
 
 The service exposes only:
 
@@ -14,7 +14,7 @@ The service exposes only:
 
 Responses identify navigation paths and real absolute file/directory paths. Organizing directories have no body file. Each call scans current content; MCP has no content-write tools, content-transfer service, or documentation Resources capability. Clients must have access to the returned local files and use their own tools to edit them. The bundled skill owns authoring guidance.
 
-HTTP requests are bounded and protected against cross-origin browser requests. Host validation allows localhost, loopback addresses, and the local IP receiving the request, rejecting arbitrary hostnames and unrelated IPs. SDK localhost protection remains enabled. There is no wildcard CORS policy. Stateless transport does not retain client sessions across calls. Disabling, changing the library, or applying connection settings closes the old listener before creating a new server. Failures appear in settings; listening is not described as running before bind succeeds.
+HTTP requests are bounded and protected against cross-origin browser requests. Host validation allows localhost and loopback addresses, rejecting arbitrary hostnames and unrelated IPs. SDK localhost protection remains enabled. There is no wildcard CORS policy. Stateless transport does not retain client sessions across calls. Disabling, changing the library, or applying connection settings closes the old listener before creating a new server. Failures appear in settings; listening is not described as running before bind succeeds.
 
 ## Skill installation
 
@@ -36,4 +36,4 @@ Native loading occurs off the UI thread. A generation guard disposes of late res
 
 Tests cover discovery paths, visibility of notes with legacy archive metadata, pagination, search, real MCP client/HTTP calls, tool inventory, and Host/Origin rejection. Installer tests verify copied content, existing-target preservation, and redirected-parent rejection. Isolated shell-function fixtures verify login-shell invocation and propagation of success, failure, and interrupt statuses without calling installed Agents. Terminal tests verify launch arguments, rejection of unknown commands, popover dimensions and dismissal, settings choices, header ordering, stale asynchronous completions, and stale exit notifications without launching an Agent. An opt-in native test uses a connection fixture to render the actual terminal in light/dark themes, retain it across dismissal, close it on library change, and automatically dismiss the popover when the connection exits, without launching any shell or Agent. Additional native tests run a controlled shell fixture to verify that success and interrupt dismiss the terminal while nonzero failures preserve output; they never launch an Agent.
 
-Local-network deployment, permissions, actual shell and Agent interaction, selected-shell startup files, Windows PTYs, and client skill reloading require user acceptance. See [MCP access](../mcp.md) for client setup and [Development checks](../build.md#development-checks) for automated commands.
+Permissions, actual shell and Agent interaction, selected-shell startup files, Windows PTYs, and client skill reloading require user acceptance. See [MCP access](../mcp.md) for client setup and [Development checks](../build.md#development-checks) for automated commands.
