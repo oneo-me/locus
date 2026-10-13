@@ -6,3 +6,6 @@ out: ../dist
 openReleases: true
 platforms:
   - darwin/arm64/zip
+  - darwin/amd64/zip
+  - windows/amd64/zip
+  - linux/amd64/tar.gz

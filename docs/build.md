@@ -37,7 +37,7 @@ GOWORK=off go tool packer run
 GOWORK=off go tool packer build
 ```
 
-VS Code `run` and `build` tasks invoke these commands. [source/packer.yaml](../source/packer.yaml) targets Apple Silicon macOS by default and outputs to `dist/`. The application identity is Locus. After a successful build, the packager automatically opens `dist/releases/<version>/` containing the final archives in the system file manager. Set `openReleases: false` in `source/packer.yaml` to disable this for unattended builds. Explicitly configure and verify additional target architectures before claiming support.
+VS Code `run` and `build` tasks invoke these commands. [source/packer.yaml](../source/packer.yaml) targets Apple Silicon and Intel macOS (`zip`), Windows x64 (`zip`), and Linux x64 (`tar.gz`), and outputs to `dist/`. The application identity is Locus. Packer cross-compiles the Windows and Linux targets from the macOS host and produces one archive per target. After a successful build, the packager automatically opens `dist/releases/<version>/` containing the final archives in the system file manager. Set `openReleases: false` in `source/packer.yaml` to disable this for unattended builds. Verify native behavior on each target platform before claiming support.
 
 See [App packaging](architecture/packaging.md) for resource ownership and platform boundaries. Skills are ordinary files in `source/resources/skills/`, copied automatically by packer and located through MyGo's resource path. Direct runs from `source/` use that same directory; distributing a bare executable alone does not include skills. Canvas runtime resources remain embedded in the Go binary.
 
@@ -69,6 +69,6 @@ Documentation changes require size budgets, Subjects coverage, relative links an
 
 ## Release notes
 
-[CHANGELOG.md](../CHANGELOG.md) records user-visible pending outcomes and confirmed releases. The version in `source/packer.yaml` is not proof of publication. Before an explicitly authorized release, review scope, move completed shipping entries from `Unreleased` to the confirmed version, retain `Unreleased` and deferred entries, and synchronize packaging. Verify installation on every target platform before distribution.
+[CHANGELOG.md](../CHANGELOG.md) records user-visible pending outcomes and confirmed releases. The version in `source/packer.yaml` is not proof of publication. Before an authorized release, review scope, move completed shipping entries from `Unreleased` to the confirmed version, retain `Unreleased` and deferred entries, and synchronize the packaging version in `source/packer.yaml` and the MCP server version in `internal/discovery`.
 
-There is no automated publication or automatic-update integration configured. Creating tags does not publish artifacts. Packaging does not authorize uploading releases or changing signing/update credentials. See [release boundary](architecture/packaging.md#release-boundary).
+Publication is manual: build every configured target with `go tool packer build` and upload the archives from `dist/releases/<version>/` to a GitHub Release whose tag matches the packaged version. No tag-triggered workflow, release script, or automatic publisher is configured, and automatic updates remain unavailable. Verify installation on every target platform before distribution. See [release boundary](architecture/packaging.md#release-boundary).

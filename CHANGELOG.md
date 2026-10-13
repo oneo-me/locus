@@ -12,3 +12,4 @@ This file records completed, pending user-visible changes and confirmed release 
 - Let external Agents read your notes through read-only MCP on this computer; local-network access is no longer available.
 - Open a built-in terminal with your shell or Agent CLI, and manage bundled authoring skills in Settings.
 - Install Locus from GitHub Releases; automatic updates are not implemented yet.
+- Download builds for macOS (Apple Silicon and Intel), Windows x64, and Linux x64 from GitHub Releases.

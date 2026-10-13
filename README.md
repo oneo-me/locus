@@ -4,7 +4,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-Locus is a local-first Markdown notebook for macOS. Notes stay ordinary files in a folder you choose, so you can read and organize them in Locus while editing them in any app you like.
+Locus is a local-first Markdown notebook for macOS, Windows, and Linux. Notes stay ordinary files in a folder you choose, so you can read and organize them in Locus while editing them in any app you like.
 
 ## Features
 
@@ -16,9 +16,13 @@ Locus is a local-first Markdown notebook for macOS. Notes stay ordinary files in
 
 ## Install
 
-Download the latest release from [GitHub Releases](https://github.com/oneo-me/locus/releases/latest), then move Locus to Applications. macOS 13 or later on Apple Silicon is required.
+Download the latest release from [GitHub Releases](https://github.com/oneo-me/locus/releases/latest).
 
-Published downloads can lag behind the development branch; Windows and Linux builds are not available yet.
+- **macOS**: move `Locus.app` to Applications. macOS 13 or later, Apple Silicon or Intel.
+- **Windows**: unpack the zip and run `Locus.exe`. Windows 10 or later with the WebView2 runtime.
+- **Linux**: unpack the tarball and run `locus`. GTK 3 and WebKitGTK are required.
+
+Published downloads can lag behind the development branch. Windows and Linux archives build from the same source but still need target-platform acceptance testing.
 
 ## Getting started
 
@@ -44,7 +48,7 @@ See [Running and building](docs/build.md) for dependencies, checks and packaging
 
 ## Current limitations
 
-- Windows and Linux are unverified; native macOS Markdown and canvas workflows have automated smoke tests.
+- Windows and Linux are unverified; native macOS Markdown and canvas workflows have automated smoke tests, while Windows and Linux archives are cross-built and need target-platform acceptance.
 - Automatic updates are not implemented; install new releases manually.
 - Sidebar reordering, dedicated attachment lists, font controls, and full window-bounds restoration are not implemented.
 

@@ -9,7 +9,7 @@
 | `/` | English |
 | `/zh-CN` | Simplified Chinese |
 
-`site/app/content.ts` owns all page text, the repository URL, and download links; keep both languages aligned with [README](../README.md). `site/app/components/landing.tsx` renders the shared layout. The download button opens `https://github.com/oneo-me/locus/releases/latest`, which GitHub redirects to the newest published release, or to the release list when none exists. The site does not host or mirror archives. Its platform note states the configured Apple Silicon macOS package target; update it when [packaging](architecture/packaging.md) adds verified targets.
+`site/app/content.ts` owns all page text, the repository URL, and download links; keep both languages aligned with [README](../README.md). `site/app/components/landing.tsx` renders the shared layout. The download button opens `https://github.com/oneo-me/locus/releases/latest`, which GitHub redirects to the newest published release, or to the release list when none exists. The website does not host or mirror archives: the release page offers one archive per configured target. The platform note lists those targets; keep it aligned with [packaging](architecture/packaging.md).
 
 The page follows the system light or dark appearance through `prefers-color-scheme`. shadcn/ui uses the `base-nova` style on Base UI; add components with `bunx --bun shadcn@latest add <component>` from `site/`.
 

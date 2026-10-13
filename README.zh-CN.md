@@ -4,7 +4,7 @@
 
 [English](README.md) | **简体中文**
 
-Locus 是面向 macOS 的本地优先 Markdown 笔记本。笔记始终是普通文件，因此你可以在 Locus 中阅读和整理，同时用任何喜欢的应用编辑它们。
+Locus 是面向 macOS、Windows 和 Linux 的本地优先 Markdown 笔记本。笔记始终是普通文件，因此你可以在 Locus 中阅读和整理，同时用任何喜欢的应用编辑它们。
 
 ## 功能
 
@@ -16,9 +16,13 @@ Locus 是面向 macOS 的本地优先 Markdown 笔记本。笔记始终是普通
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 下载最新版本，然后把 Locus 移动到“应用程序”。需要 Apple Silicon 上的 macOS 13 或更高版本。
+从 [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 下载最新版本。
 
-已发布的下载可能落后于开发分支；暂未提供 Windows 和 Linux 版本。
+- **macOS**：将 `Locus.app` 移到“应用程序”。需要 macOS 13 或更高版本，支持 Apple Silicon 和 Intel。
+- **Windows**：解压 zip 并运行 `Locus.exe`。需要 Windows 10 或更高版本以及 WebView2 运行时。
+- **Linux**：解压 tar.gz 并运行 `locus`。需要 GTK 3 和 WebKitGTK。
+
+已发布的下载可能落后于开发分支。Windows 和 Linux 归档由同一源码交叉构建，仍需在目标平台上完成验收测试。
 
 ## 快速上手
 
@@ -44,7 +48,7 @@ GOWORK=off go tool packer build
 
 ## 当前限制
 
-- Windows 和 Linux 尚未验证；macOS 原生的 Markdown 与画布流程已有自动冒烟测试。
+- Windows 和 Linux 尚未验证；macOS 原生的 Markdown 与画布流程已有自动冒烟测试，Windows 和 Linux 归档为交叉构建，仍需在目标平台上验收。
 - 尚未实现自动更新，请手动安装新版本。
 - 侧栏排序、专用附件列表、字体控件及完整窗口位置尺寸恢复尚未实现。
 
