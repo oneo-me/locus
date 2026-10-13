@@ -18,6 +18,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 - Limit sidebar resizing to 520 logical pixels so it leaves room for note content.
 - Open a terminal-only popover from the titlebar, with common shell and Agent choices in Settings and no external terminal application required; normal or interrupt exits close the popover, while failures keep their output visible.
+- Pulse the titlebar terminal button while a session is starting or running, so a terminal left behind a dismissed popover stays visible from any page.
 
 - Remember each library’s tree expansion when switching libraries and reopening the app.
 
