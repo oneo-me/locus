@@ -141,6 +141,14 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+// retainWindowOnClose reports whether closing the main window hides the
+// retained workspace instead of quitting. Packaged macOS builds keep the app
+// active in the Dock, while development runs exit so they leave no Dock
+// activity behind.
+func (a *application) retainWindowOnClose() bool {
+	return runtime.GOOS == "darwin" && !a.quitting && !mygo.IsDev()
+}
 func (a *application) showWindow() {
 	if a.shell != nil && !a.closing && !a.quitting {
 		a.shell.Window().Show()
@@ -171,7 +179,7 @@ func (a *application) start(root string) {
 	a.installMenu()
 	a.shell.Window().OnClose(func(e *mygo.CloseEvent) {
 		a.saveState()
-		if runtime.GOOS == "darwin" && !a.quitting {
+		if a.retainWindowOnClose() {
 			e.PreventDefault()
 			a.shell.Window().Hide()
 		}

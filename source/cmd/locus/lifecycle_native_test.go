@@ -10,10 +10,35 @@ import (
 	"github.com/oneo-me/locus/internal/preferences"
 )
 
+// TestRetainWindowOnClose pins the development and packaged close behavior
+// without opening a window.
+func TestRetainWindowOnClose(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("window retention is macOS-only")
+	}
+	t.Setenv("MYGO_ENV", "")
+	a := &application{}
+	if a.retainWindowOnClose() {
+		t.Error("development runs should quit instead of keeping the window hidden")
+	}
+	t.Setenv("MYGO_ENV", "production")
+	if !a.retainWindowOnClose() {
+		t.Error("packaged runs should retain the hidden window")
+	}
+	a.quitting = true
+	if a.retainWindowOnClose() {
+		t.Error("an explicit quit should not retain the window")
+	}
+}
+
 func TestNativeWindowCloseAndReopen(t *testing.T) {
 	if os.Getenv("LOCUS_NATIVE_SMOKE") != "1" || runtime.GOOS != "darwin" || nativeBackground() {
 		t.Skip("reopening shows the window; requires LOCUS_NATIVE_FOREGROUND=1 in a macOS desktop session")
 	}
+	// The retained window belongs to packaged builds; development runs quit on
+	// close, so exercise the packaged branch explicitly.
+	t.Setenv("MYGO_ENV", "production")
+
 	root := t.TempDir()
 	root, err := filepath.EvalSymlinks(root)
 	if err != nil {

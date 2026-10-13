@@ -24,7 +24,7 @@ GOWORK=off go run ./cmd/locus
 GOWORK=off go run ./cmd/locus -library /path/to/library
 ```
 
-The library can also be chosen through Open library. Existing preferences load from `~/.oneo/locus/settings.yaml`. Settings and note operations affect real local data; development uses the same product storage unless a test supplies isolated fixtures. Tests do not operate on the user's library.
+On macOS, these development runs exit when the main window closes so they leave no Dock activity; packaged builds keep the retained window instead. The library can also be chosen through Open library. Existing preferences load from `~/.oneo/locus/settings.yaml`. Settings and note operations affect real local data; development uses the same product storage unless a test supplies isolated fixtures. Tests do not operate on the user's library.
 
 The app watches external file changes. Canvas scripts rerun only after explicit refresh or reopening. Native canvases use a custom protocol; the app does not start an HTML development server or install Node dependencies.
 

@@ -10,7 +10,7 @@ This file records completed, pending user-visible changes and confirmed release 
 - Restore legacy `attachments` Markdown blocks as file lists that reveal attachments in the system file manager.
 
 - Find installed Homebrew and MacPorts shells when opening the built-in terminal from a macOS app launched with a minimal PATH.
-- Keep Locus active in the macOS Dock after closing the main window, and restore the workspace when its Dock icon is clicked.
+- Keep Locus active in the macOS Dock after closing the main window, and restore the workspace when its Dock icon is clicked. Development runs (`go run` or the packager's `run` command) instead quit when the window closes so they leave no Dock activity.
 
 - Limit sidebar resizing to 520 logical pixels so it leaves room for note content.
 - Open a terminal-only popover from the titlebar, with common shell and Agent choices in Settings and no external terminal application required; normal or interrupt exits close the popover, while failures keep their output visible.
