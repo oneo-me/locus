@@ -19,10 +19,13 @@ type terminalSession struct {
 	generation uint64
 	term       *terminal.Terminal
 	loading    bool
-	err        error
+	// exited records that the current process ended, so that the running
+	// indicator stops even when a failure retains the terminal for output.
+	exited bool
+	err    error
 }
 
-func (s *terminalSession) start(create func() (*terminal.Terminal, error), exited ...func(*terminal.Terminal)) {
+func (s *terminalSession) start(create func() (*terminal.Terminal, error), onExit ...func(*terminal.Terminal)) {
 	s.close()
 	s.mu.Lock()
 	generation := s.generation
@@ -40,9 +43,17 @@ func (s *terminalSession) start(create func() (*terminal.Terminal, error), exite
 		}
 		s.term, s.err, s.loading = term, err, false
 		s.mu.Unlock()
-		if term != nil && len(exited) > 0 {
-			<-term.Done()
-			exited[0](term)
+		if term == nil {
+			return
+		}
+		<-term.Done()
+		s.mu.Lock()
+		if generation == s.generation {
+			s.exited = true
+		}
+		s.mu.Unlock()
+		if len(onExit) > 0 {
+			onExit[0](term)
 		}
 	}()
 }
@@ -53,11 +64,22 @@ func (s *terminalSession) snapshot() (*terminal.Terminal, bool, error) {
 	return s.term, s.loading, s.err
 }
 
+// running reports whether a terminal is starting or its process is alive, for
+// the persistent header indicator that points at background work.
+func (s *terminalSession) running() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.loading {
+		return true
+	}
+	return s.term != nil && !s.exited
+}
+
 func (s *terminalSession) close() {
 	s.mu.Lock()
 	s.generation++
 	term := s.term
-	s.term, s.err, s.loading = nil, nil, false
+	s.term, s.err, s.loading, s.exited = nil, nil, false, false
 	s.mu.Unlock()
 	if term != nil {
 		_ = term.Close()
@@ -132,6 +154,9 @@ func (a *application) toggleTerminal() {
 
 func (a *application) terminalButton(c *ui.Context) {
 	anchor := sidebar.IconButton(c, lucide.Terminal(), a.text("Terminal")).Disabled(a.model.Root == "").OnClick(a.toggleTerminal)
+	if a.terminal.running() {
+		a.markRunningTerminal(c, anchor)
+	}
 	components.Popover(c, anchor, &a.terminalOpen, func(panel ui.Element) {
 		panel.Label(a.text("Terminal panel")).Width(600).Height(500).Padding(0).Gap(0).Clip()
 		term, loading, err := a.terminal.snapshot()
@@ -143,5 +168,33 @@ func (a *application) terminalButton(c *ui.Context) {
 		case term != nil:
 			terminal.View(c, term).Key(term).FillWidth().Grow(1).MinHeight(0).AutoFocus()
 		}
+	})
+}
+
+// terminalRunningFrames breathe the header indicator from rest to full accent
+// and back. Keyframes copies the slice when it starts a sequence.
+var terminalRunningFrames = []ui.Keyframe{
+	{At: 0, Value: 0},
+	{At: 650 * time.Millisecond, Value: 1, Ease: ui.EaseInOut},
+}
+
+// markRunningTerminal makes the titlebar terminal button pulse while a session
+// is starting or running, so the header still points at background work after
+// the popover is dismissed. The pulse comes from a repeating keyframe
+// sequence; Reduce Motion keeps the accent mark without movement.
+func (a *application) markRunningTerminal(c *ui.Context, button ui.Element) {
+	t := c.Theme()
+	pulse := float32(1)
+	if !c.Preferences().ReduceMotion {
+		pulse = button.Keyframes("locus.terminal.running", terminalRunningFrames,
+			ui.KeyframeOptions{Repeat: ui.RepeatForever, Alternate: true})
+	}
+	button.TextColor(t.TextMuted.Mix(t.Accent, 0.55+0.45*pulse))
+	button.DrawOver(func(p *ui.Painter, r ui.Rect) {
+		if r.W < 2 || r.H < 2 {
+			return
+		}
+		p.Stroke(ui.Rect{X: r.X + 1, Y: r.Y + 1, W: r.W - 2, H: r.H - 2},
+			t.Accent.Alpha(0.18+0.5*pulse), t.Radius, 1+0.5*pulse)
 	})
 }

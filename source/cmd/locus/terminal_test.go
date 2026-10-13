@@ -88,6 +88,56 @@ func TestTerminalLoadCancellation(t *testing.T) {
 	t.Fatal("terminal creation did not complete")
 }
 
+// TestTerminalRunningIndicator pins the state the header animation follows: a
+// terminal counts as running while it starts and while its process is alive,
+// and stops when creation fails, the process exits, or the session closes.
+func TestTerminalRunningIndicator(t *testing.T) {
+	var s terminalSession
+	if s.running() {
+		t.Fatal("empty session reports running")
+	}
+	blocked := make(chan struct{})
+	s.start(func() (*terminal.Terminal, error) {
+		<-blocked
+		return nil, errors.New("no terminal")
+	})
+	if !s.running() {
+		t.Fatal("starting session is not running")
+	}
+	close(blocked)
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		_, loading, err := s.snapshot()
+		if !loading && err != nil {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if s.running() {
+		t.Fatal("failed session reports running")
+	}
+	// These identity-only fixtures do not own native terminal resources.
+	s.mu.Lock()
+	s.term, s.exited = new(terminal.Terminal), false
+	s.mu.Unlock()
+	if !s.running() {
+		t.Fatal("live session is not running")
+	}
+	s.mu.Lock()
+	s.exited = true
+	s.mu.Unlock()
+	if s.running() {
+		t.Fatal("exited session reports running")
+	}
+	s.mu.Lock()
+	s.term = nil
+	s.mu.Unlock()
+	s.close()
+	if s.running() {
+		t.Fatal("closed session reports running")
+	}
+}
+
 // TestNativeTerminal uses a connection fixture: it renders the actual terminal
 // on macOS without starting a shell, external terminal, or Agent.
 func TestNativeTerminal(t *testing.T) {
@@ -188,8 +238,16 @@ func TestNativeTerminalExit(t *testing.T) {
 	if _, _, err := a.terminal.snapshot(); err != nil {
 		t.Fatal(err)
 	}
+	mygo.RunOnMain(func() {
+		if !a.terminal.running() {
+			t.Error("live terminal is not running")
+		}
+	})
 	_ = server.Close()
-	waitNative(t, func() bool { term, _, _ := a.terminal.snapshot(); return term == nil && !a.terminalOpen })
+	waitNative(t, func() bool {
+		term, _, _ := a.terminal.snapshot()
+		return term == nil && !a.terminalOpen && !a.terminal.running()
+	})
 }
 
 func TestNativeTerminalProcessExit(t *testing.T) {
