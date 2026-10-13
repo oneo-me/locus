@@ -86,7 +86,7 @@ func (a *application) settings(c *ui.Context, narrow bool) {
 				components.Button(c, a.text("Install globally"), components.ButtonSecondary).OnClick(func() {
 					home, err := os.UserHomeDir()
 					if err != nil {
-						a.feedback = err.Error()
+						a.errorNotice(err.Error())
 					} else {
 						a.installSkill(home)
 					}
@@ -130,11 +130,6 @@ func (a *application) settings(c *ui.Context, narrow bool) {
 		}}}},
 	}
 	ui.Column(c).Fill().MinHeight(0).Children(func() {
-		for _, message := range []string{a.storageError, a.feedback} {
-			if message != "" {
-				components.Text(c, message).FillWidth().Padding(12, 16).Wrap().TextColor(c.Theme().Danger)
-			}
-		}
 		components.Settings(c, &a.settingState, categories, components.SettingsOptions{
 			Title: a.text("Settings"), Narrow: narrow,
 			SearchLabel: a.text("Search settings"), SearchPlaceholder: a.text("Search settings…"),
@@ -160,9 +155,9 @@ func (a *application) installSkill(root string) {
 		}
 		a.post(func() {
 			if err != nil {
-				a.feedback = err.Error()
+				a.errorNotice(err.Error())
 			} else {
-				a.feedback = a.text("Skill installed")
+				a.successNotice(a.text("Skill installed"))
 			}
 		})
 	}()

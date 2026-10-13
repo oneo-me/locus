@@ -137,7 +137,7 @@ func (a *application) revealAttachment(item attachmentItem) {
 		if err != nil {
 			a.post(func() {
 				if a.model.Root == root && a.model.Selected == note {
-					a.feedback = err.Error()
+					a.errorNotice(err.Error())
 				}
 			})
 		}

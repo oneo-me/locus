@@ -34,9 +34,9 @@ func (a *application) uploadIcon(note string) {
 				return
 			}
 			if err != nil {
-				a.feedback = a.text("Icon upload failed") + ": " + err.Error()
+				a.errorNotice(a.text("Icon upload failed") + ": " + err.Error())
 			} else if changed {
-				a.feedback = a.text("Icon updated")
+				a.successNotice(a.text("Icon updated"))
 				a.model.Refresh()
 			}
 		})

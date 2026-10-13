@@ -48,7 +48,8 @@ type application struct {
 	stateWritable              bool
 	restore                    bool
 	hidden                     bool // Native tests prepare the window without showing it.
-	feedback, storageError     string
+	notices                    []notice
+	reportedError              string
 	watchCancel                context.CancelFunc
 	watchRoot                  string
 	watchGeneration            uint64
@@ -90,12 +91,12 @@ func main() {
 	cfg, store, loadErr := preferences.Load(filepath.Join(data, "settings.yaml"))
 	a := &application{cursor: -1, cfg: cfg, statePath: filepath.Join(data, "state.yaml"), stateWritable: true, restore: true, historyIndex: -1}
 	if loadErr != nil {
-		a.storageError = loadErr.Error()
+		a.errorNotice(loadErr.Error())
 	}
 	a.state, err = preferences.LoadState(a.statePath)
 	if err != nil {
 		a.stateWritable = false
-		a.storageError = err.Error()
+		a.errorNotice(err.Error())
 	}
 	mygo.App.SetName("Locus")
 	if err := os.MkdirAll(data, 0700); err != nil {
@@ -122,13 +123,9 @@ func main() {
 		a.start(root)
 		if store != nil {
 			a.writer = preferences.NewWriter(store, func(err error) {
-				a.post(func() {
-					if err != nil {
-						a.storageError = err.Error()
-					} else {
-						a.storageError = ""
-					}
-				})
+				if err != nil {
+					a.post(func() { a.errorNotice(err.Error()) })
+				}
 			})
 		}
 	})
@@ -169,9 +166,9 @@ func (a *application) start(root string) {
 		a.cfg = preferences.Default()
 	}
 	if err := mygo.Protocol.Handle(canvas.Scheme, &a.router); err != nil {
-		a.feedback = err.Error()
+		a.errorNotice(err.Error())
 	}
-	a.shell = sidebar.NewShell(sidebar.ShellOptions{Title: "Locus", Hidden: a.hidden, Width: 980, Height: 820, MinWidth: 980, MinHeight: 820, LeftWidth: 252, LeftMinWidth: 252, LeftMaxWidth: 520, Left: a.left, Content: a.content, ContentTitle: a.title, LeftHeader: a.navigation, LeftToolbar: a.toolbar})
+	a.shell = sidebar.NewShell(sidebar.ShellOptions{Title: "Locus", Hidden: a.hidden, Width: 980, Height: 820, MinWidth: 980, MinHeight: 820, LeftWidth: 252, LeftMinWidth: 252, LeftMaxWidth: 520, Left: a.left, Content: a.content, ContentTitle: a.title, LeftHeader: a.navigation, LeftToolbar: a.toolbar, Toasts: components.ToastOptions{Placement: components.ToastTop}})
 	a.model.Dispatch = func(fn func()) { a.post(fn) }
 	a.model.Changed = a.changed
 	a.resetTree()
@@ -210,6 +207,14 @@ func (a *application) changed() {
 	if a.closing {
 		return
 	}
+	if a.model.Error != nil {
+		if message := a.model.Error.Error(); message != a.reportedError {
+			a.reportedError = message
+			a.errorNotice(message)
+		}
+	} else {
+		a.reportedError = ""
+	}
 	if !a.model.Loading && a.model.Error == nil && a.model.Root != "" {
 		a.restoreTreeExpansion()
 		if a.watchRoot != a.model.Root {
@@ -232,7 +237,7 @@ func (a *application) changed() {
 			}, func(err error) {
 				a.post(func() {
 					if generation == a.watchGeneration {
-						a.feedback = err.Error()
+						a.errorNotice(err.Error())
 					}
 				})
 			})
@@ -297,7 +302,7 @@ func (a *application) chooseLibrary() {
 		a.post(func() {
 			a.choosing = false
 			if err != nil {
-				a.feedback = err.Error()
+				a.errorNotice(err.Error())
 			} else if len(paths) == 1 {
 				a.openLibrary(paths[0])
 			}
@@ -318,7 +323,7 @@ func (a *application) saveState() {
 	state := preferences.State{ExpandedNodes: a.state.ExpandedNodes, Library: a.model.Root, Selected: a.model.Selected, SidebarWidth: a.shell.LeftWidth(), Collapsed: !a.shell.LeftExpanded()}
 	if err := preferences.SaveState(a.statePath, state); err != nil {
 		log.Print(err)
-		a.storageError = err.Error()
+		a.errorNotice(err.Error())
 	}
 }
 func (a *application) stop() {
@@ -369,6 +374,7 @@ func (a *application) restartMCP() {
 	service, err := discovery.Start(a.model.Root, a.cfg.Port, a.cfg.Network)
 	if err != nil {
 		a.mcpError = err.Error()
+		a.errorNotice(err.Error())
 	} else {
 		a.service = service
 	}

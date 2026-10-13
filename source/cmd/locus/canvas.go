@@ -48,12 +48,14 @@ func (a *application) syncCanvas() {
 			a.canvasLoading = false
 			if err != nil {
 				a.canvasError = err.Error()
+				a.errorNotice(err.Error())
 				return
 			}
 			a.session = session
 			browser, err := a.shell.Window().NewWebView(mygo.WebViewOptions{Page: mygo.PageOptions{DevTools: mygo.DevToolsDisabled}})
 			if err != nil {
 				a.canvasError = err.Error()
+				a.errorNotice(err.Error())
 				a.router.Close(session)
 				a.session = nil
 				return
@@ -77,6 +79,7 @@ func (a *application) syncCanvas() {
 				a.post(func() {
 					if a.web == browser {
 						a.canvasError = err.Error()
+						a.errorNotice(err.Error())
 					}
 				})
 			})
@@ -100,14 +103,14 @@ func (a *application) exportCanvas() {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			a.exporting = false
-			a.feedback = err.Error()
+			a.errorNotice(err.Error())
 			return
 		}
 		directory = filepath.Join(home, directory[2:])
 	}
 	if !filepath.IsAbs(directory) {
 		a.exporting = false
-		a.feedback = "Export directory must be an absolute path"
+		a.errorNotice("Export directory must be an absolute path")
 		return
 	}
 	go func() {
@@ -115,9 +118,9 @@ func (a *application) exportCanvas() {
 		a.post(func() {
 			a.exporting = false
 			if err != nil {
-				a.feedback = err.Error()
+				a.errorNotice(err.Error())
 			} else {
-				a.feedback = a.text("Exported") + ": " + target
+				a.successNotice(a.text("Exported") + ": " + target)
 			}
 		})
 	}()
@@ -139,7 +142,7 @@ func (a *application) openLink(target string) {
 	if strings.HasPrefix(target, "locus://") {
 		p, err := library.ParseAddress(target)
 		if err != nil {
-			a.feedback = err.Error()
+			a.errorNotice(err.Error())
 		} else if library.Find(a.model.Notes, p) != nil {
 			a.navigate(p)
 			a.selectNote(p)
@@ -176,7 +179,7 @@ func (a *application) openLink(target string) {
 	if err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https" || parsed.Scheme == "mailto") {
 		go func() {
 			if err := mygo.Shell.OpenExternal(target); err != nil {
-				a.post(func() { a.feedback = err.Error() })
+				a.post(func() { a.errorNotice(err.Error()) })
 			}
 		}()
 	}

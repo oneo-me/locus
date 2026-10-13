@@ -35,7 +35,7 @@ The browser uses a registered custom URL scheme, not a local web server. A rando
 
 | Package | Responsibility |
 | --- | --- |
-| `cmd/locus` | Native lifecycle, menus, UI composition, settings coordination, history, image loading, and canvas ownership |
+| `cmd/locus` | Native lifecycle, menus, UI composition, settings coordination, history, image loading, toast notifications, and canvas ownership |
 | `internal/library` | Hierarchy, metadata, resources, safe addresses, file watching, and Git projections |
 | `internal/workspace` | Asynchronous scans, reads, selected body, errors, and stale-result isolation |
 | `internal/canvas` | HTML/JSON entry resolution, read-only resource protocol, page bootstrap, CSP, and ZIP export |

@@ -149,6 +149,7 @@ func (a *application) title(c *ui.Context) {
 	})
 }
 func (a *application) content(c *ui.Context) {
+	a.flushNotices(c)
 	// MyGo maps native mouse side buttons to these navigation keys.
 	if !a.settingsOpen && !a.commandsOpen && !a.terminalOpen && !a.galleryPreviewOpen && !a.choosing {
 		if c.Shortcut(0, ui.KeyBack) {
@@ -174,24 +175,11 @@ func (a *application) content(c *ui.Context) {
 		a.articleScroll = ui.ScrollState{}
 		a.articleScrollRoot, a.articleScrollNote = a.model.Root, a.model.Selected
 	}
-	messages := func() {
-		for _, message := range []string{a.storageError, a.feedback, a.mcpError} {
-			if message != "" {
-				components.Text(c, message).Wrap().TextColor(c.Theme().Danger)
-			}
-		}
-		if a.model.Error != nil {
-			components.Text(c, a.model.Error.Error()).Wrap().TextColor(c.Theme().Danger)
-		}
-	}
 	contentInset := inset
 	if note != nil && note.Canvas == "" {
 		contentInset = 0
 	}
 	ui.Column(c).Fill().MinWidth(0).MinHeight(0).Padding(contentInset, 0, 0, 0).Children(func() {
-		if note == nil || note.Canvas != "" {
-			messages()
-		}
 		if note == nil {
 			return
 		}
@@ -223,7 +211,6 @@ func (a *application) content(c *ui.Context) {
 			ui.Column(c).FillWidth().MinWidth(0).MinHeight(atmosphereHeight).Padding(inset, 0, 0, 0).AlignItems(ui.Center).Draw(func(p *ui.Painter, r ui.Rect) {
 				atmosphere.draw(p, r)
 			}).Children(func() {
-				messages()
 				ui.Column(c).FillWidth().MaxWidth(noteMaxWidth).MinWidth(0).Padding(max(0, 56-inset), 16, 56, 16).Gap(22).Children(func() {
 					noteMetadataPanel(c, note.Summary, a.model.Document.Metadata, atmosphere.panel.ui())
 					a.document.Render(c, markdown.MarkdownOptions{OnLink: a.openLink, Images: a.images, CodeBlocks: map[string]func(*ui.Context, markdown.MarkdownCodeBlock){"gallery": a.renderGallery, "attachments": a.renderAttachments}}).FillWidth()
@@ -322,7 +309,7 @@ func (a *application) fileAction(note string, edit bool) {
 			}
 		}
 		if err != nil {
-			a.post(func() { a.feedback = err.Error() })
+			a.post(func() { a.errorNotice(err.Error()) })
 		}
 	}()
 }
