@@ -33,7 +33,7 @@ func (a *application) settingsDialog(c *ui.Context) {
 	}
 	w, h := c.Size()
 	inset := sidebar.HeaderHeight(c)
-	width := min(c.Theme().Space(210), w-2*inset)
+	width := min(c.Theme().Space(195), w-2*inset)
 	components.Dialog(c, &a.settingsOpen, components.DialogOptions{Label: a.text("Settings"), Inset: inset}, func(panel ui.Element) {
 		panel.Width(width).Height(min(c.Theme().Space(145), h-2*inset)).Padding(0).Gap(0).Clip()
 		a.settings(c, width < c.Theme().Space(170))
