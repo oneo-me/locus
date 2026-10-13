@@ -371,7 +371,7 @@ func (a *application) restartMCP() {
 	if !a.cfg.MCP {
 		return
 	}
-	service, err := discovery.Start(a.model.Root, a.cfg.Port, a.cfg.Network)
+	service, err := discovery.Start(a.model.Root, a.cfg.Port)
 	if err != nil {
 		a.mcpError = err.Error()
 		a.errorNotice(err.Error())

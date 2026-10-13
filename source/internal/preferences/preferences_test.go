@@ -56,7 +56,7 @@ func TestYAMLRoundTrip(t *testing.T) {
 	}
 	cfg.Library = "/tmp/中文: notes"
 	cfg.Export = "/tmp/export"
-	cfg.MCP, cfg.Network, cfg.Port = true, true, 3456
+	cfg.MCP, cfg.Port = true, 3456
 	if err := store.Save(cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -93,6 +93,27 @@ func TestNestedYAMLFields(t *testing.T) {
 	custom := store.fields["custom"].(map[string]any)
 	if custom["enabled"] != true || len(custom["list"].([]any)) != 2 {
 		t.Fatalf("unknown nested fields lost: %+v", custom)
+	}
+}
+
+func TestRemovedLegacyNetworkField(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "settings.yaml")
+	if err := os.WriteFile(p, []byte("mcp_enabled: true\nmcp_local_network: true\nmcp_port: 3456\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, store, err := Load(p)
+	if err != nil || !cfg.MCP || cfg.Port != 3456 {
+		t.Fatalf("load: %+v %v", cfg, err)
+	}
+	if err := store.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "mcp_local_network") {
+		t.Fatalf("legacy field retained: %s", b)
 	}
 }
 

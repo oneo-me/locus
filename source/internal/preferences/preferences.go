@@ -23,7 +23,6 @@ type Config struct {
 	Shell    string `yaml:"agent_shell"`
 	Export   string `yaml:"export_directory,omitempty"`
 	MCP      bool   `yaml:"mcp_enabled"`
-	Network  bool   `yaml:"mcp_local_network"`
 	Port     int    `yaml:"mcp_port"`
 }
 
@@ -105,8 +104,8 @@ func (s *Store) Save(cfg Config) error {
 	for k, v := range s.fields {
 		fields[k] = v
 	}
-	// Empty optional values remove their corresponding fields, not unrelated ones.
-	for _, key := range []string{"library_path", "export_directory"} {
+	// Empty optional values and removed legacy keys delete their fields, not unrelated ones.
+	for _, key := range []string{"library_path", "export_directory", "mcp_local_network"} {
 		delete(fields, key)
 	}
 	for key, value := range updated {

@@ -4,6 +4,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+- Remove MCP local-network mode: read-only discovery always binds loopback, so only clients on this computer can connect. The former `mcp_local_network` setting is dropped on the next save.
 - Report errors and action confirmations with Onevra toasts at the top of the window instead of inline red text; a repeated model error reports once until it clears.
 - Keep the canvas page visible behind the Settings dialog instead of hiding it.
 - Start the note scrollbar 8 logical pixels below the floating titlebar instead of beneath it.

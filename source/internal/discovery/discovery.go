@@ -206,12 +206,7 @@ func Handler(root string) http.Handler {
 			host = h
 		}
 		host = strings.Trim(host, "[]")
-		allowed := host == "localhost" || (net.ParseIP(host) != nil && net.ParseIP(host).IsLoopback())
-		if local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
-			ip, _, _ := net.SplitHostPort(local.String())
-			allowed = allowed || (net.ParseIP(host) != nil && net.ParseIP(host).Equal(net.ParseIP(ip)))
-		}
-		if !allowed {
+		if host != "localhost" && !(net.ParseIP(host) != nil && net.ParseIP(host).IsLoopback()) {
 			http.Error(w, "Host rejected", 403)
 			return
 		}
@@ -225,18 +220,14 @@ type Service struct {
 	Address string
 }
 
-func Start(root string, port int, network bool) (*Service, error) {
+func Start(root string, port int) (*Service, error) {
 	if root == "" {
 		return nil, errors.New("select a library before enabling MCP")
 	}
 	if port < 1 || port > 65535 {
 		return nil, errors.New("invalid MCP port")
 	}
-	host := "127.0.0.1"
-	if network {
-		host = "0.0.0.0"
-	}
-	ln, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	ln, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 	if err != nil {
 		return nil, err
 	}
