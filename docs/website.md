@@ -12,9 +12,9 @@
 | `/ja` | Japanese |
 | `/ko` | Korean |
 
-`website/app/content.ts` owns all page text, the repository URL, and download links. Keep every language aligned with [README](../README.md). `website/app/components/landing.tsx` renders the shared layout, and the header links to the other languages. The download button opens `https://github.com/oneo-me/locus/releases/latest`, which GitHub redirects to the newest published release, or to the release list when none exists. The website does not host packages. The platform note lists the same targets as [packaging](architecture/packaging.md).
+`website/app/content.ts` owns all page text, the repository URL, and download links. Keep every language aligned with [README](../README.md). `website/app/components/landing.tsx` renders the shared layout; its header offers a language dropdown, a light, dark, or system theme setting, and an icon link to the repository. The download button opens `https://github.com/oneo-me/locus/releases/latest`, which GitHub redirects to the newest published release, or to the release list when none exists. The website does not host packages. The platform note lists the same targets as [packaging](architecture/packaging.md).
 
-The page follows the system light or dark appearance through `prefers-color-scheme`. shadcn/ui uses the `base-nova` style on Base UI; add components with `bunx --bun shadcn@latest add <component>` from `website/`.
+`website/app/lib/theme.ts` owns the theme choice. It persists the selection in `localStorage` under `locus-theme`, and `root.tsx` injects an inline script that applies the `.dark` class before paint, so the stored appearance is used without a flash. `app.css` defines the `.dark` variable set and the class-based `dark` variant. shadcn/ui uses the `base-nova` style on Base UI; add components with `bunx --bun shadcn@latest add <component>` from `website/`.
 
 ## Development
 

@@ -9,6 +9,8 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
+import { TooltipProvider } from "~/components/ui/tooltip";
+import { themeInitScript } from "~/lib/theme";
 import "./app.css";
 
 export const links: Route.LinksFunction = () => [
@@ -28,11 +30,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript() }} />
         <Meta />
         <Links />
       </head>
       <body>
-        {children}
+        <TooltipProvider>{children}</TooltipProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

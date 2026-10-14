@@ -13,10 +13,17 @@ export const localePaths: Record<Locale, string> = {
   ko: "/ko",
 };
 
+export const locales = Object.keys(localePaths) as Locale[];
+
 export type Content = {
   title: string;
   description: string;
   languageName: string;
+  languageLabel: string;
+  themeLabel: string;
+  themeLight: string;
+  themeDark: string;
+  themeSystem: string;
   badge: string;
   heading: string;
   lead: string;
@@ -35,6 +42,11 @@ export const content: Record<Locale, Content> = {
     description:
       "A native desktop workspace for Markdown notes that stay ordinary files, with HTML canvases and read-only MCP discovery for Agents.",
     languageName: "English",
+    languageLabel: "Language",
+    themeLabel: "Theme",
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeSystem: "System",
     badge: "Open source · MIT",
     heading: "Your notes, as plain files.",
     lead: "Locus is a local-first Markdown workspace with a native desktop interface. Read and organize notes in Locus, edit them in your favorite editor, and let Agents discover the same files.",
@@ -68,6 +80,11 @@ export const content: Record<Locale, Content> = {
     description:
       "原生桌面 Markdown 工作区：笔记始终是普通文件，支持 HTML 画布，并通过只读 MCP 供 Agent 发现。",
     languageName: "简体中文",
+    languageLabel: "语言",
+    themeLabel: "主题",
+    themeLight: "浅色",
+    themeDark: "深色",
+    themeSystem: "跟随系统",
     badge: "开源 · MIT",
     heading: "你的笔记，就是普通文件。",
     lead: "Locus 是一个本地优先、拥有原生桌面界面的 Markdown 工作区。在 Locus 中阅读和整理笔记，用你喜欢的编辑器编辑，并让 Agent 发现同一批文件。",
@@ -101,6 +118,11 @@ export const content: Record<Locale, Content> = {
     description:
       "原生桌面 Markdown 工作區：筆記始終是普通檔案，支援 HTML 畫布，並透過唯讀 MCP 供 Agent 發現。",
     languageName: "繁體中文",
+    languageLabel: "語言",
+    themeLabel: "主題",
+    themeLight: "淺色",
+    themeDark: "深色",
+    themeSystem: "跟隨系統",
     badge: "開源 · MIT",
     heading: "你的筆記，就是普通檔案。",
     lead: "Locus 是一個本地優先、擁有原生桌面介面的 Markdown 工作區。在 Locus 中閱讀和整理筆記，用你喜歡的編輯器編輯，並讓 Agent 發現同一批檔案。",
@@ -134,6 +156,11 @@ export const content: Record<Locale, Content> = {
     description:
       "ノートが普通のファイルのまま残る、ネイティブのデスクトップ Markdown ワークスペース。HTML キャンバスと、Agent 向けの読み取り専用 MCP に対応します。",
     languageName: "日本語",
+    languageLabel: "言語",
+    themeLabel: "テーマ",
+    themeLight: "ライト",
+    themeDark: "ダーク",
+    themeSystem: "システム",
     badge: "オープンソース · MIT",
     heading: "ノートは、普通のファイルです。",
     lead: "Locus は、ネイティブのデスクトップ画面を持つローカルファーストの Markdown ワークスペースです。Locus でノートを読み、整理し、好きなエディタで編集し、同じファイルを Agent に見つけさせます。",
@@ -167,6 +194,11 @@ export const content: Record<Locale, Content> = {
     description:
       "노트가 평범한 파일로 남는 네이티브 데스크톱 Markdown 작업 공간입니다. HTML 캔버스와 Agent용 읽기 전용 MCP를 제공합니다.",
     languageName: "한국어",
+    languageLabel: "언어",
+    themeLabel: "테마",
+    themeLight: "라이트",
+    themeDark: "다크",
+    themeSystem: "시스템",
     badge: "오픈 소스 · MIT",
     heading: "노트는 평범한 파일입니다.",
     lead: "Locus는 네이티브 데스크톱 화면을 갖춘 로컬 우선 Markdown 작업 공간입니다. Locus에서 노트를 읽고 정리하고, 원하는 편집기에서 수정하고, Agent가 같은 파일을 찾게 하세요.",

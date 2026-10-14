@@ -1,6 +1,9 @@
 import { ArrowUpRight, Download } from "lucide-react";
 import { Link } from "react-router";
 
+import { GitHubIcon } from "~/components/github-icon";
+import { LanguageMenu } from "~/components/language-menu";
+import { ThemeMenu } from "~/components/theme-menu";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -11,6 +14,11 @@ import {
 } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
+import {
   content,
   downloadUrl,
   localePaths,
@@ -19,7 +27,6 @@ import {
   type Locale,
 } from "~/content";
 
-const locales = Object.keys(localePaths) as Locale[];
 const iconUrl = `${import.meta.env.BASE_URL}icon.png`;
 
 export function Landing({ locale }: { locale: Locale }) {
@@ -33,27 +40,26 @@ export function Landing({ locale }: { locale: Locale }) {
           Locus
         </Link>
         <nav className="flex flex-wrap items-center justify-end gap-1">
-          {locales
-            .filter((other) => other !== locale)
-            .map((other) => (
-              <Button
-                key={other}
-                variant="ghost"
-                size="sm"
-                nativeButton={false}
-                render={<Link to={localePaths[other]} hrefLang={other} />}
-              >
-                {content[other].languageName}
-              </Button>
-            ))}
-          <Button
-            variant="ghost"
-            size="sm"
-            nativeButton={false}
-            render={<a href={repositoryUrl} />}
-          >
-            GitHub
-          </Button>
+          <LanguageMenu locale={locale} text={text} />
+          <ThemeMenu text={text} />
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  nativeButton={false}
+                  aria-label={text.source}
+                  render={
+                    <a href={repositoryUrl} target="_blank" rel="noreferrer" />
+                  }
+                />
+              }
+            >
+              <GitHubIcon />
+            </TooltipTrigger>
+            <TooltipContent>{text.source}</TooltipContent>
+          </Tooltip>
         </nav>
       </header>
 
