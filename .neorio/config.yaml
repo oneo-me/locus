@@ -1,0 +1,21 @@
+icon: source/resources/icon.png
+commands:
+  - id: run
+    command: GOWORK=off go tool packer run
+    directory: source
+  - id: build
+    command: GOWORK=off go tool packer build
+    directory: source
+menu:
+  - id: test
+    name: Test
+    command: GOWORK=off go test ./...
+    directory: source
+  - id: vet
+    name: Vet
+    command: GOWORK=off go vet ./...
+    directory: source
+  - id: site
+    name: Site dev
+    command: bun run dev
+    directory: site
