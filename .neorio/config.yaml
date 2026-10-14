@@ -1,13 +1,29 @@
 icon: source/assets/icon.png
-commands:
-  - id: run
-    command: GOWORK=off go tool mygo dev
-    directory: source
-  - id: build
-    command: GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,linux/amd64
-    directory: source
-menu:
-  - id: website
-    name: website
+tasks:
+  - label: Run
+    group: run
+    command: go
+    args: [tool, mygo, dev]
+    options:
+      cwd: source
+      env:
+        GOWORK: "off"
+  - label: Build
+    group: build
+    command: go
+    args:
+      - tool
+      - mygo
+      - build
+      - -platform
+      - darwin/arm64,darwin/amd64,windows/amd64,linux/amd64
+    options:
+      cwd: source
+      env:
+        GOWORK: "off"
+    outputDirectory: ../dist
+  - label: website
+    type: shell
     command: bun install && bun run dev
-    directory: website
+    options:
+      cwd: website
