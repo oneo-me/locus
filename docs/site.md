@@ -56,4 +56,4 @@ bun run preview    # build, then serve locally with wrangler dev
 
 `.github/workflows/deploy-pages.yml` builds with `SITE_BASE=/<repository>/` and publishes `site/build/client` on pushes to `main` that touch `site/`, or when started manually with `workflow_dispatch`. Enable Pages with "GitHub Actions" as the source in the repository settings. Set the repository variable `SITE_BASE` to `/` when a user/org site or a custom domain serves the build from the domain root.
 
-This workflow is the only automated deployment; the Cloudflare commands above remain manual.
+This workflow deploys the website only. App releases are [published from version tags](architecture/packaging.md#release). The Cloudflare commands above remain manual.

@@ -11,5 +11,5 @@ This file records completed, pending user-visible changes and confirmed release 
 - Choose light or dark themes and an English, Simplified Chinese, Traditional Chinese, Japanese, or Korean interface.
 - Let external Agents read your notes through read-only MCP on this computer; local-network access is no longer available.
 - Open a built-in terminal with your shell or Agent CLI, and manage bundled authoring skills in Settings.
-- Install Locus from GitHub Releases; automatic updates are not implemented yet.
+- Check for updates from a packaged app and install a newer GitHub release.
 - Download macOS disk images, the Windows app, and a Linux archive for Apple Silicon, Intel, Windows x64, and Linux x64.

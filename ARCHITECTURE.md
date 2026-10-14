@@ -71,7 +71,7 @@ The overview is limited to 16 KiB and each subject to 24 KiB. Keep each mechanis
 | [Canvas](docs/architecture/canvas.md) | Native browser lifecycle, resources, HTML/JSON, security policy, and export |
 | [Agent integration](docs/architecture/mcp.md) | MCP tools, Host/Origin protection, lifecycle, skills, and built-in terminal sessions |
 | [Settings and persistence](docs/architecture/settings.md) | Preference ownership, configuration safety, language, appearance, and shutdown saving |
-| [App packaging](docs/architecture/packaging.md) | Go tools, app identity, bundled resources, platform coverage, and release boundary |
+| [App packaging](docs/architecture/packaging.md) | Go tools, app identity, bundled resources, platform coverage, releases, and updates |
 
 ## Repository layout
 
@@ -94,4 +94,4 @@ There is one Go module. The [official website](docs/site.md) is a separate Bun p
 
 [Development checks](docs/build.md#development-checks) cover tests, race detection, vet, build, packaging, and opt-in native tests. Native tests exercise Markdown and real WebView initialization, template data, local fetch, DOM interaction, page state across Settings, and release on note departure. They do not establish full pointer/keyboard, accessibility, installation, or cross-platform acceptance. Do not launch external terminals or Agents as a substitute for user acceptance.
 
-Automatic update delivery, sidebar reordering, font controls, and full window-bounds restoration are not implemented. Canvas ZIP export contains the resources loaded in the current session rather than a complete dependency crawler. Windows and Linux require their own verification; native canvases depend on MyGo's platform browser backend.
+Sidebar reordering, font controls, and full window-bounds restoration are not implemented. Canvas ZIP export contains the resources loaded in the current session rather than a complete dependency crawler. Windows and Linux require their own verification; native canvases depend on MyGo's platform browser backend.

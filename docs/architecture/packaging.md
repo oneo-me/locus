@@ -31,13 +31,15 @@ Each target is a directory under `dist/`. The build does not open a file manager
 
 A macOS host can cross-compile Windows and Linux. A disk image needs macOS. Inspect identity, version, icon, executable, and the bundled skill before treating a directory as a release.
 
-## Release boundary
+## Release
 
-Packaging is local assembly, not publication. No tag-triggered workflow, release script, update feed, or automatic publisher is configured. Build the targets above and upload those artifacts to a GitHub Release by hand. Keep the tag aligned with `version` in `source/mygo.json` and the MCP server version in `internal/discovery`.
+Pushing a tag `v` plus the `version` in `source/mygo.json` runs [release.yml](../../.github/workflows/release.yml). The workflow checks that tag against the version and the matching [CHANGELOG](../../CHANGELOG.md) section, builds the targets above, and publishes the GitHub Release. The Windows job installs NSIS, so the release includes that installer.
 
-Signing, notarization, and update delivery are unconfigured. The app reports automatic updates unavailable and links to the releases page. A successful build does not mean a release was published.
+`updates` in `source/mygo.json` names `oneo-me/locus` and the public update key. The repository secret `MYGO_UPDATER_PRIVATE_KEY` signs the archives and manifests. Keep that secret key out of the repository. The workflow stops before publishing when the secret or the changelog section is missing.
 
-Before an explicitly authorized release, review what ships, move completed entries from `Unreleased` to that version in [CHANGELOG](../../CHANGELOG.md), keep `Unreleased`, synchronize both versions, and verify the build. Do not reuse signing keys, change update credentials, or publish automatically.
+Packaged builds embed the public key and install a newer signed release from that repository. Development builds leave updates disabled. macOS Developer ID signing, notarization, and Windows Authenticode are not configured, so Gatekeeper and SmartScreen can still block a published build.
+
+Before tagging, move completed entries from `Unreleased` to that version, keep `Unreleased`, and use the same version for the MCP server in `internal/discovery`.
 
 ## Verification
 

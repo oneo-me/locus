@@ -22,6 +22,8 @@ Locus 是面向 macOS、Windows 和 Linux 的本地优先 Markdown 笔记本。�
 - **Windows**：在下载的文件夹中运行 `Locus.exe`。需要 Windows 10 或更高版本以及 WebView2 运行时。
 - **Linux**：解压 tar.gz 后运行 `locus`，或安装 `.deb`。需要 GTK 3 和 WebKitGTK。
 
+安装包会检查更新，并可以安装更新的版本。开发构建不会自动更新。
+
 已发布的下载可能落后于开发分支。Windows 和 Linux 归档由同一源码交叉构建，仍需在目标平台上完成验收测试。
 
 ## 快速上手
@@ -49,7 +51,6 @@ GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,
 ## 当前限制
 
 - Windows 和 Linux 尚未验证；macOS 原生的 Markdown 与画布流程已有自动冒烟测试，Windows 和 Linux 归档为交叉构建，仍需在目标平台上验收。
-- 尚未实现自动更新，请手动安装新版本。
 - 侧栏排序、专用附件列表、字体控件及完整窗口位置尺寸恢复尚未实现。
 
 采用 [MIT 开源协议](LICENSE)。

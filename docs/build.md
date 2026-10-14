@@ -71,6 +71,6 @@ Documentation changes require size budgets, Subjects coverage, relative links an
 
 ## Release notes
 
-[CHANGELOG.md](../CHANGELOG.md) records user-visible pending outcomes and confirmed releases. The version in `source/mygo.json` is not proof of publication. Before an authorized release, review scope, move completed shipping entries from `Unreleased` to the confirmed version, retain `Unreleased` and deferred entries, and synchronize that version with the MCP server version in `internal/discovery`.
+[CHANGELOG.md](../CHANGELOG.md) records user-visible pending outcomes and confirmed releases. The version in `source/mygo.json` is not proof of publication. Before tagging, move completed shipping entries from `Unreleased` to that version, keep `Unreleased`, and use the same version for the MCP server in `internal/discovery`.
 
-Publication is manual: build every target and upload the artifacts from `dist/` to a GitHub Release whose tag matches the packaged version. No tag-triggered workflow, release script, or automatic publisher is configured, and automatic updates remain unavailable. Verify installation on every target platform before distribution. See [release boundary](architecture/packaging.md#release-boundary).
+Pushing the tag `v` plus that version runs the release workflow. It publishes installers and signed updates. See [Release](architecture/packaging.md#release).

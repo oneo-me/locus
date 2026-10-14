@@ -22,6 +22,8 @@ Download the latest release from [GitHub Releases](https://github.com/oneo-me/lo
 - **Windows**: run `Locus.exe` from the downloaded folder. Windows 10 or later, with the WebView2 runtime.
 - **Linux**: unpack the tar.gz and run `locus`, or install the `.deb`. GTK 3 and WebKitGTK are required.
 
+A packaged app checks for updates and can install a newer release. Development builds do not update.
+
 Published downloads can lag behind the development branch. Windows and Linux archives build from the same source but still need target-platform acceptance testing.
 
 ## Getting started
@@ -49,7 +51,6 @@ See [Running and building](docs/build.md) for dependencies, checks and packaging
 ## Current limitations
 
 - Windows and Linux are unverified; native macOS Markdown and canvas workflows have automated smoke tests, while Windows and Linux archives are cross-built and need target-platform acceptance.
-- Automatic updates are not implemented; install new releases manually.
 - Sidebar reordering, dedicated attachment lists, font controls, and full window-bounds restoration are not implemented.
 
 Licensed under the [MIT License](LICENSE).

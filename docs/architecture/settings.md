@@ -6,6 +6,8 @@ The application owns runtime preferences and composes Onevra Settings. `internal
 
 Settings is a modal dialog in the same window, over the workspace and the library picker. It covers the library, editor, export directory, appearance, language, skill installation, and MCP. The library button is labeled “Select library” and opens the native directory picker. Settings has no About page.
 
+Check for Updates stays on the application menu. Its window uses the interface language from launch.
+
 Closing with the header button, Escape, or the backdrop returns to the page underneath, including a retained canvas. Shell and Agent choices live in the Agents category and are persisted. Agent offers None for a shell-only session. A change applies the next time the terminal opens and replaces the previous session. Settings does not launch a terminal or an Agent. The legacy terminal preference stays readable and unused.
 
 The app maps settings changes onto library, browser, and service operations. Those services do not read configuration files themselves. Appearance uses MyGo's theme source and Onevra's semantic theme. The sidebar theme menu stores the same system, light, and dark values. Its icon reflects the selected mode.
@@ -18,7 +20,11 @@ Product-owned labels are translated. User content is not. Native OS labels and e
 
 ## Configuration ownership and safety
 
-Preferences live in `~/.oneo/locus/settings.yaml`. Recognized fields load without rewriting the file on startup. Unknown fields are preserved on save. A missing file produces defaults. Only `settings.yaml` and `state.yaml` are used. Legacy TOML and JSON files are not read, migrated, or deleted. Reapply preferences in Settings, or convert the old file to YAML by hand. Renaming a TOML file is not enough.
+Preferences live in `~/.oneo/locus/settings.yaml`. Recognized fields load without rewriting the file on startup. Unknown fields are preserved on save. A missing file produces defaults.
+
+The preferences package uses only `settings.yaml` and `state.yaml`. MyGo's updater writes `updater.json` beside them.
+
+Legacy TOML and JSON files are not read, migrated, or deleted. Reapply preferences in Settings, or convert the old file to YAML by hand. Renaming a TOML file is not enough.
 
 A parse or read failure keeps the file, disables its writer, and reports a toast. Runtime changes are not described as saved. Saving compares the current bytes with the last loaded or saved snapshot, merges recognized fields into the preserved ones, writes a temporary file in the same directory, and renames it into place. Non-regular targets are refused.
 
