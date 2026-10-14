@@ -10,6 +10,7 @@ Locus is a local-first Markdown notebook for macOS, Windows, and Linux. Notes st
 
 - **Plain files, no lock-in**: each note is a folder containing `index.md`; nested folders form the note tree, and attachments live beside the note.
 - **Built-in reading**: browse the tree or search notes and actions, then read Markdown, local images, summaries, and custom YAML properties.
+- **Relation graph**: open a full-page graph that maps the note hierarchy together with the links between notes.
 - **Canvases**: a note can show its own HTML and JavaScript page, such as a dashboard or chart, inside the workspace.
 - **Agent friendly**: optional read-only MCP lets external Agents find the same notes, and a built-in terminal opens your shell or Agent CLI on request.
 - **Comfortable by default**: light and dark themes; English, Simplified and Traditional Chinese, Japanese, and Korean; back/forward history and remembered sidebar state.
@@ -30,7 +31,7 @@ Published downloads can lag behind the development branch. Windows and Linux arc
 
 1. Launch Locus and choose **Open library** to select the folder that holds your notes. Command/Ctrl+O opens the picker again.
 2. Add notes outside Locus: create a folder containing an `index.md` file in Finder, an editor, or an Agent. Locus follows file changes automatically.
-3. Search notes and commands with Command/Ctrl+F. The note toolbar copies a reference, opens the note in your editor, or opens its folder.
+3. Search notes and commands with Command/Ctrl+F. The note toolbar copies a reference, opens the note in your editor, or opens its folder. The sidebar's graph button shows how notes are connected.
 4. Open **Settings** with Command/Ctrl+, for theme, language, editor, export folder, shell and Agent choices, and skills.
 5. To let Agents read your notes, enable MCP in Settings and connect a client to `http://127.0.0.1:2301/mcp`. See [MCP access](docs/mcp.md).
 

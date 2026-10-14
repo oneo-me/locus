@@ -20,6 +20,10 @@ The user-selected root is canonicalized and opened with Go's rooted filesystem A
 
 Resource access accepts only an owning note's `index.md` or files under its `assets/` and `canvas/`. Hidden resource files are allowed inside those trees; `node_modules`, traversal, symlinks, directory browsing, and arbitrary project files are not. Note-body part extraction preserves original YAML/body bytes rather than reserializing values.
 
+## Relations
+
+`Library.Relations` reads note bodies and returns directed links between existing notes for the relation graph. Only Markdown link destinations resolve: `locus://` addresses, or relative paths that stay inside the library and may end in a note's `index.md`. Images, autolinks, external destinations, fragments, reserved or hidden segments, traversal, and unsafe encodings are ignored, as are links to nodes outside the supplied tree. A note whose body cannot be read is skipped so one unreadable file does not hide the rest. Link extraction is a rebuildable projection and never writes files. Tests cover address and relative resolution, ignored destinations, deduplication, and unreadable bodies.
+
 ## Watching and Git
 
 The app owns one cancellable recursive fsnotify watcher per library. It adds real directories, excludes hidden directories and `node_modules`, and coalesces events for 150 ms before requesting reconciliation. New directories trigger subscription reconciliation. Changes during an in-flight scan request another scan rather than silently dropping freshness. Watch failures are shown and do not fall back to polling. Switching libraries cancels the old watcher and invalidates its queued callbacks.

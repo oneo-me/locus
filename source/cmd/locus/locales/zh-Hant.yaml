@@ -27,6 +27,8 @@ locus.dark:
   other: "深色"
 locus.default:
   other: "預設"
+locus.double_click_a_note:
+  other: "按兩下筆記即可開啟。"
 locus.edit_note:
   other: "編輯筆記"
 locus.editor:
@@ -79,6 +81,8 @@ locus.more_actions:
   other: "更多操作"
 locus.no_matching_settings:
   other: "沒有相符的設定。"
+locus.no_notes:
+  other: "沒有可顯示的筆記。"
 locus.no_visible_notes:
   other: "沒有可見筆記。每篇筆記是包含 index.md 的目錄。"
 locus.none:
@@ -95,6 +99,8 @@ locus.port:
   other: "連接埠"
 locus.refresh:
   other: "重新整理"
+locus.relation_graph:
+  other: "關聯圖譜"
 locus.search_notes:
   other: "搜尋筆記"
 locus.search_results:

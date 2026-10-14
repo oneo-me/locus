@@ -27,6 +27,8 @@ locus.dark:
   other: "深色"
 locus.default:
   other: "默认"
+locus.double_click_a_note:
+  other: "双击笔记即可打开。"
 locus.edit_note:
   other: "编辑笔记"
 locus.editor:
@@ -79,6 +81,8 @@ locus.more_actions:
   other: "更多操作"
 locus.no_matching_settings:
   other: "没有匹配的设置。"
+locus.no_notes:
+  other: "没有可显示的笔记。"
 locus.no_visible_notes:
   other: "没有可见笔记。每篇笔记是包含 index.md 的目录。"
 locus.none:
@@ -95,6 +99,8 @@ locus.port:
   other: "端口"
 locus.refresh:
   other: "刷新"
+locus.relation_graph:
+  other: "关系图谱"
 locus.search_notes:
   other: "搜索笔记"
 locus.search_results:

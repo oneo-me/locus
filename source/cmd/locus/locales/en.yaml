@@ -27,6 +27,8 @@ locus.dark:
   other: "dark"
 locus.default:
   other: "default"
+locus.double_click_a_note:
+  other: "Double-click a note to open it."
 locus.edit_note:
   other: "Edit note"
 locus.editor:
@@ -79,6 +81,8 @@ locus.more_actions:
   other: "More actions"
 locus.no_matching_settings:
   other: "No matching settings."
+locus.no_notes:
+  other: "No notes to show."
 locus.no_visible_notes:
   other: "No visible notes. Notes use a directory containing index.md."
 locus.none:
@@ -95,6 +99,8 @@ locus.port:
   other: "Port"
 locus.refresh:
   other: "Refresh"
+locus.relation_graph:
+  other: "Relation graph"
 locus.search_notes:
   other: "Search notes"
 locus.search_results:

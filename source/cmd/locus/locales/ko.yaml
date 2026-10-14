@@ -27,6 +27,8 @@ locus.dark:
   other: "다크"
 locus.default:
   other: "기본값"
+locus.double_click_a_note:
+  other: "노트를 두 번 클릭하여 엽니다."
 locus.edit_note:
   other: "노트 편집"
 locus.editor:
@@ -79,6 +81,8 @@ locus.more_actions:
   other: "기타 동작"
 locus.no_matching_settings:
   other: "일치하는 설정이 없습니다."
+locus.no_notes:
+  other: "표시할 노트가 없습니다."
 locus.no_visible_notes:
   other: "표시할 노트가 없습니다. 노트는 index.md가 있는 디렉터리입니다."
 locus.none:
@@ -95,6 +99,8 @@ locus.port:
   other: "포트"
 locus.refresh:
   other: "새로 고침"
+locus.relation_graph:
+  other: "관계 그래프"
 locus.search_notes:
   other: "노트 검색"
 locus.search_results:

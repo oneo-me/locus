@@ -57,6 +57,7 @@ func (a *application) left(c *ui.Context) {
 }
 func (a *application) toolbar(c *ui.Context) {
 	sidebar.IconButton(c, lucide.Settings(), a.text("Settings")).OnClick(a.toggleSettings)
+	graphIconButton(c, lucide.Network(), a.text("Relation graph")).Disabled(a.model.Root == "").OnClick(a.toggleGraph)
 	icon := lucide.Monitor()
 	switch a.cfg.Theme {
 	case "light":
@@ -231,6 +232,7 @@ func (a *application) content(c *ui.Context) {
 	a.settingsDialog(c)
 }
 func (a *application) selectNote(p string) {
+	a.graphOpen = false
 	parts := strings.Split(p, "/")
 	for i := 1; i < len(parts); i++ {
 		a.tree.Open.Add(strings.Join(parts[:i], "/"))
@@ -261,7 +263,7 @@ func (a *application) commandDialog(c *ui.Context) {
 	if !a.commandsOpen {
 		return
 	}
-	items := []command.Item{{ID: "@settings", Title: a.text("Settings")}, {ID: "@open", Title: a.text("Open library")}, {ID: "@refresh", Title: a.text("Refresh")}, {ID: "@agent", Title: a.text("Terminal")}}
+	items := []command.Item{{ID: "@settings", Title: a.text("Settings")}, {ID: "@open", Title: a.text("Open library")}, {ID: "@refresh", Title: a.text("Refresh")}, {ID: "@agent", Title: a.text("Terminal")}, {ID: "@graph", Title: a.text("Relation graph"), Disabled: a.model.Root == ""}}
 	var walk func([]*library.Note)
 	walk = func(notes []*library.Note) {
 		for _, n := range notes {
@@ -281,6 +283,8 @@ func (a *application) commandDialog(c *ui.Context) {
 			a.refresh()
 		case "@agent":
 			a.toggleTerminal()
+		case "@graph":
+			a.toggleGraph()
 		default:
 			p := strings.TrimPrefix(id, "note/")
 			a.navigate(p)

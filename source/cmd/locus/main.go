@@ -19,6 +19,7 @@ import (
 	"github.com/oneo-me/locus/internal/workspace"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/command"
+	"github.com/oneo-me/onevra/source/components/graph"
 	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"github.com/oneo-me/onevra/source/theme"
@@ -66,6 +67,13 @@ type application struct {
 	canvasError                string
 	canvasLoading              bool
 	settingsOpen, commandsOpen bool
+	graphOpen                  bool
+	graphState                 graph.State
+	graphLinks                 []library.Relation
+	graphLinksKey              string
+	graphTicket                uint64
+	graphDirty                 bool
+	graphDataCache             graph.Data
 	settingState               components.SettingsState
 	palette                    command.State
 	history                    []string
@@ -240,6 +248,7 @@ func (a *application) changed() {
 				a.post(func() {
 					if generation == a.watchGeneration {
 						a.imageKey = ""
+						a.invalidateGraphRelations()
 						a.model.Refresh()
 					}
 				})
@@ -255,6 +264,9 @@ func (a *application) changed() {
 			a.mcpKey = a.model.Root
 			a.restartMCP()
 		}
+		if a.graphOpen {
+			a.loadGraphRelations()
+		}
 		if a.restore {
 			a.restore = false
 			if a.state.Library == a.model.Root && library.Find(a.model.Notes, a.state.Selected) != nil {
@@ -267,12 +279,9 @@ func (a *application) changed() {
 		}
 	}
 	if a.shell != nil {
-		if a.model.Root == "" {
-			a.shell.SetPage(a.libraryPicker)
-		} else {
-			a.shell.SetPage(nil)
-		}
+		a.syncPage()
 	}
+	a.graphDirty = true
 	a.syncCanvas()
 	a.loadImages()
 	a.loadNoteIcons()
@@ -287,6 +296,7 @@ func (a *application) openLibrary(root string) {
 	a.restore = false
 	a.history = nil
 	a.historyIndex = -1
+	a.invalidateGraphRelations()
 	if a.watchCancel != nil {
 		a.watchCancel()
 		a.watchCancel = nil
@@ -389,6 +399,9 @@ func (a *application) restartMCP() {
 	}
 }
 func (a *application) navigate(p string) {
+	if a.graphOpen {
+		a.graphOpen = false
+	}
 	if a.model.Selected != p {
 		if a.historyIndex+1 < len(a.history) {
 			a.history = a.history[:a.historyIndex+1]
@@ -410,6 +423,7 @@ func (a *application) back(delta int) {
 func (a *application) refresh() {
 	a.imageKey = ""
 	a.canvasKey = ""
+	a.invalidateGraphRelations()
 	a.model.Refresh()
 	a.syncCanvas()
 }

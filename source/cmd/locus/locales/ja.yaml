@@ -27,6 +27,8 @@ locus.dark:
   other: "ダーク"
 locus.default:
   other: "デフォルト"
+locus.double_click_a_note:
+  other: "ノートをダブルクリックして開きます。"
 locus.edit_note:
   other: "ノートを編集"
 locus.editor:
@@ -79,6 +81,8 @@ locus.more_actions:
   other: "その他の操作"
 locus.no_matching_settings:
   other: "一致する設定はありません。"
+locus.no_notes:
+  other: "表示できるノートがありません。"
 locus.no_visible_notes:
   other: "表示できるノートがありません。ノートは index.md を含むディレクトリです。"
 locus.none:
@@ -95,6 +99,8 @@ locus.port:
   other: "ポート"
 locus.refresh:
   other: "再読み込み"
+locus.relation_graph:
+  other: "関係グラフ"
 locus.search_notes:
   other: "ノートを検索"
 locus.search_results:

@@ -18,7 +18,7 @@ A rectangular, non-interactive layer spans the full content width from its top e
 
 The sidebar presents a search-field-style button below its header that opens the command palette. Back and forward navigation is right-aligned in the sidebar header on the same row as Shell's collapse toggle, using Onevra's sidebar-header action slot. These actions disappear with the collapsed sidebar.
 
-The search trigger follows Onevra's translucent text-field styling while remaining a button that opens the command palette. Its bottom toolbar places Settings on the left and an icon-only MCP status button immediately before the rightmost system, light, or dark theme menu. MCP retains its status color, tooltip, and settings action. Refresh and the terminal remain available through commands and menus. Library opening remains available through settings, commands, and the native menu rather than a sidebar button or path label.
+The search trigger follows Onevra's translucent text-field styling while remaining a button that opens the command palette. Its bottom toolbar places Settings and a compact relation-graph action on the left and an icon-only MCP status button immediately before the rightmost system, light, or dark theme menu. The graph action reuses the icon-button treatment with a smaller glyph, because Onevra fixes the icon size and the network glyph reads heavier than the settings and theme glyphs. MCP retains its status color, tooltip, and settings action. Refresh and the terminal remain available through commands and menus. Library opening remains available through settings, commands, and the native menu rather than a sidebar button or path label.
 
 The virtual tree uses library-relative paths as stable identities. A keyed projection avoids searching the entire hierarchy for every rendered row. Compact rows and the selected page title share note icons: frontmatter Emoji or a decoded reserved PNG, with document, organizing-folder, or canvas icons as fallback. Rows also show optional small, fixed-size Git modification dots.
 
@@ -60,6 +60,16 @@ Visible `locus://` note links and relative links to existing projected notes nav
 
 All notes have a trailing More actions menu with Upload icon, which opens a native PNG picker. Canvas notes also offer export, disabled until a canvas session is available and while an export is running. Upload captures the target note and library, performs image processing and writes in the background, and refreshes the projection on success. Cancellation leaves files unchanged. Skill installation is an explicit user action.
 
+### Relation graph
+
+A sidebar action beside Settings and the command palette open the relation graph on Shell's replacement page, the same independent page the library picker uses. It covers the whole window, hides the sidebar and default content, and keeps the floating header as a drag region. A close control in the graph's top-trailing corner returns to the workspace; note-link navigation and double-clicking a node also leave it and select that note. The graph action is disabled without a library.
+
+Nodes are notes with stable library-relative paths, grouped by their top-level directory. Edges combine the parent-to-child hierarchy, drawn faintly, with Markdown links between existing notes. Link destinations resolve `locus://` addresses and library-relative paths that name a note directory or its `index.md`; images, autolinks, external URLs, fragments, traversal, and unsafe segments are ignored.
+
+Opening the graph resets the camera; dragging pans, the wheel or a pinch zooms around the pointer. A library with no notes renders an empty state rather than an error. Selecting a note records history like any other navigation.
+
+Link extraction reads note bodies in one background task per library scan, governed by the same ticket and generation checks as other asynchronous work. The hierarchy and nodes render immediately from the current projection, and link edges appear when the read finishes. Frame construction performs no file I/O, and the projected nodes and edges are cached until the model or link results change.
+
 ## Canvas and settings
 
 Canvas selection prepares resources in the background and creates the native browser on the UI thread outside rendering. Leaving closes it; the browser stays visible beneath the Settings dialog. Ordinary file watching updates note facts and canvas entry-point existence but does not rerun a live page's scripts. Refresh or reopening reruns the saved canvas. See [Canvas](canvas.md) for lifecycle and export details.
@@ -81,5 +91,7 @@ These checks establish numeric source parity and exercise MyGo rendering, not pi
 Gallery tests cover fenced-block dispatch, syntax validation, local-path restrictions, missing-image placeholders, and preview opening and dismissal. The macOS reading smoke test loads gallery images, captures thumbnails and a preview, and verifies dismissal on note departure. A full native-suite run encountered a MyGo accessibility list-state nil dereference; the isolated reading test passed. This does not establish complete native keyboard or accessibility acceptance.
 
 The native reading fixture includes legacy attachment rows in light and dark captures. File-manager activation and full keyboard acceptance remain manual checks. Native icon checks also process a large PNG, update a temporary note, and verify watcher-driven icon refresh.
+
+Graph tests cover hierarchy and link projection, cached rebuilds, the sidebar and command entries, the disabled state without a library, the empty state, and note opening. Native pan, zoom, node dragging, and double-click acceptance remain manual checks.
 
 Real acceptance still covers native picker interaction, long-list scrolling, tree keyboard paths, text selection, themes and languages, resizing, canvas input and overlays, accessibility, and close or reopen behavior. macOS checks do not establish Windows or Linux behavior. Sidebar ordering, font controls, and full window-bounds restoration are not implemented.

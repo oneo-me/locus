@@ -6,6 +6,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 - Browse a library of plain Markdown notes as a tree or through note and action search, with back/forward history and remembered navigation and sidebar state.
 - Read Markdown bodies, summaries, local images and galleries, and custom YAML properties, following external file changes with Git status.
+- Explore notes as a full-page relation graph that combines the document hierarchy with links between notes, opened from the sidebar or command palette.
 - Show a note's own HTML, JavaScript, or JSON template canvas in the workspace, with manual refresh and export.
 - Organize notes with Emoji or PNG icons, copy a reference, open the note in your editor, or reveal its folder.
 - Choose light or dark themes that follow the desktop's text size and higher-contrast preferences, and an English, Simplified Chinese, Traditional Chinese, Japanese, or Korean interface.
