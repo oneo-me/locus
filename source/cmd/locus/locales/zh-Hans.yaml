@@ -1,0 +1,135 @@
+# Interface copy. Message IDs stay stable when English wording changes.
+locus.agent:
+  other: "Agent"
+locus.agents:
+  other: "Agent"
+locus.appearance:
+  other: "外观"
+locus.application:
+  other: "应用"
+locus.apply_connection:
+  other: "应用连接设置"
+locus.back:
+  other: "返回"
+locus.choose_a_library:
+  other: "选择笔记库"
+locus.close:
+  other: "关闭"
+locus.close_settings:
+  other: "关闭设置"
+locus.copy_reference:
+  other: "复制引用"
+locus.could_not_show_attachments:
+  other: "无法显示附件"
+locus.dark:
+  other: "深色"
+locus.default:
+  other: "默认"
+locus.edit_note:
+  other: "编辑笔记"
+locus.editor:
+  other: "编辑器"
+locus.enable_read_only_discovery:
+  other: "启用只读发现"
+locus.export_canvas:
+  other: "导出画布"
+locus.export_directory:
+  other: "导出目录"
+locus.exported:
+  other: "已导出"
+locus.file:
+  other: "文件"
+locus.forward:
+  other: "前进"
+locus.general:
+  other: "通用"
+locus.icon_updated:
+  other: "图标已更新"
+locus.icon_upload_failed:
+  other: "上传图标失败"
+locus.image_unavailable:
+  other: "图片不可用"
+locus.include_at_least_one_image:
+  other: "请在图库中至少添加一张图片。"
+locus.include_only_local_images:
+  other: "图库中只能包含带有替代文本的本地图片。"
+locus.install_authoring_skill:
+  other: "安装编写技能"
+locus.install_authoring_skill_globally:
+  other: "全局安装编写技能"
+locus.install_globally:
+  other: "安装到全局"
+locus.install_in_library:
+  other: "安装到文档库"
+locus.integrations:
+  other: "集成"
+locus.language:
+  other: "语言"
+locus.library:
+  other: "文档库"
+locus.light:
+  other: "浅色"
+locus.loading:
+  other: "加载中…"
+locus.modified_files:
+  other: "已修改的文件"
+locus.more_actions:
+  other: "更多操作"
+locus.no_matching_settings:
+  other: "没有匹配的设置。"
+locus.no_visible_notes:
+  other: "没有可见笔记。每篇笔记是包含 index.md 的目录。"
+locus.none:
+  other: "无（仅 Shell）"
+locus.open_a_markdown_library:
+  other: "打开 Markdown 文档库开始阅读。"
+locus.open_agent:
+  other: "打开 Agent"
+locus.open_directory:
+  other: "打开所在目录"
+locus.open_library:
+  other: "打开文档库"
+locus.port:
+  other: "端口"
+locus.refresh:
+  other: "刷新"
+locus.search_notes:
+  other: "搜索笔记"
+locus.search_results:
+  other: "搜索结果"
+locus.search_settings:
+  other: "搜索设置"
+locus.search_settings_placeholder:
+  other: "搜索设置…"
+locus.select_a_note:
+  other: "在侧栏选择一篇笔记。"
+locus.select_library:
+  other: "选择文档库"
+locus.settings:
+  other: "设置"
+locus.settings_category:
+  other: "设置分类"
+locus.shell:
+  other: "Shell"
+locus.skill_installed:
+  other: "技能已安装"
+locus.status:
+  other: "状态"
+locus.stopped:
+  other: "已停止"
+locus.system:
+  other: "跟随系统"
+locus.terminal:
+  other: "终端"
+locus.terminal_panel:
+  other: "终端面板"
+locus.theme:
+  other: "主题"
+locus.upload_icon:
+  other: "上传图标"
+locus.use_only_assets_links:
+  other: "请仅填写 assets/文件名 链接，链接文字须与文件名一致。"
+locus.view:
+  other: "视图"
+locus.visual_studio_code:
+  other: "VS Code"

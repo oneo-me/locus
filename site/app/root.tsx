@@ -21,7 +21,7 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const lang = pathname.startsWith("/zh-CN") ? "zh-CN" : "en";
+  const lang = documentLang(pathname);
 
   return (
     <html lang={lang}>
@@ -38,6 +38,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </body>
     </html>
   );
+}
+
+function documentLang(pathname: string) {
+  if (pathname.startsWith("/zh-TW")) return "zh-TW";
+  if (pathname.startsWith("/zh-CN")) return "zh-CN";
+  if (pathname.startsWith("/ja")) return "ja";
+  if (pathname.startsWith("/ko")) return "ko";
+  return "en";
 }
 
 export default function App() {

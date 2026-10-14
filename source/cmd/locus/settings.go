@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"strings"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -19,6 +18,25 @@ func (a *application) selectSetting(c *ui.Context, label string, value *string, 
 	control.Popup(func(ui.Element) {
 		for _, option := range options {
 			control.Item(option).Label(a.text(option)).Children(func() { components.Text(c, a.text(option)).SingleLine() })
+		}
+	})
+	if control.Trigger.Changed() {
+		a.saveConfig()
+		a.installMenu()
+		a.syncCanvasTheme()
+	}
+}
+
+func (a *application) languageSetting(c *ui.Context) {
+	control := components.Select(c, &a.cfg.Language)
+	control.Trigger.Label(a.text("Language")).Width(c.Theme().Space(40)).Shrink(0).Children(func() {
+		components.Text(c, a.languageLabel(a.cfg.Language)).SingleLine()
+	})
+	control.Popup(func(ui.Element) {
+		for _, option := range languageOptions {
+			control.Item(option).Label(a.languageLabel(option)).Children(func() {
+				components.Text(c, a.languageLabel(option)).SingleLine()
+			})
 		}
 	})
 	if control.Trigger.Changed() {
@@ -60,9 +78,7 @@ func (a *application) settings(c *ui.Context, narrow bool) {
 		}}}},
 		{ID: "appearance", Section: a.text("Application"), Icon: lucide.Palette(), Title: a.text("Appearance"), Groups: []components.SettingsGroup{{ID: "appearance", Items: []components.SettingsItem{
 			item("theme", "Theme", func(c *ui.Context) { a.selectSetting(c, "Theme", &a.cfg.Theme, []string{"system", "light", "dark"}) }),
-			item("language", "Language", func(c *ui.Context) {
-				a.selectSetting(c, "Language", &a.cfg.Language, []string{"system", "english", "chinese"})
-			}),
+			item("language", "Language", func(c *ui.Context) { a.languageSetting(c) }),
 		}}}},
 		{ID: "agents", Section: a.text("Integrations"), Icon: lucide.Bot(), Title: a.text("Agents"), Groups: []components.SettingsGroup{{ID: "terminal", Items: []components.SettingsItem{
 			item("shell", "Shell", func(c *ui.Context) {
@@ -155,29 +171,4 @@ func (a *application) installSkill(root string) {
 			}
 		})
 	}()
-}
-func (a *application) text(english string) string {
-	chinese := a.cfg.Language == "chinese" || (a.cfg.Language != "english" && strings.HasPrefix(strings.ToLower(mygo.App.Locale()), "zh"))
-	if chinese {
-		if value, ok := zh[english]; ok {
-			return value
-		}
-	}
-	return english
-}
-
-var zh = map[string]string{
-	"Terminal panel": "终端面板", "none": "无（仅 Shell）",
-	"Application": "应用", "Integrations": "集成", "Select library": "选择文档库",
-	"Choose a library": "选择笔记库", "Close settings": "关闭设置",
-	"Search settings": "搜索设置", "Search settings…": "搜索设置…", "Settings category": "设置分类", "Search results": "搜索结果", "No matching settings.": "没有匹配的设置。", "Install authoring skill globally": "全局安装编写技能",
-	"More actions":       "更多操作",
-	"Upload icon":        "上传图标",
-	"Icon upload failed": "上传图标失败",
-	"Icon updated":       "图标已更新",
-	"Include only local images with alt text in the gallery.": "图库中只能包含带有替代文本的本地图片。",
-	"Include at least one image in the gallery.":              "请在图库中至少添加一张图片。",
-	"Image unavailable": "图片不可用", "Close": "关闭",
-	"Could not show attachments": "无法显示附件", "Use only assets/filename links with matching filenames.": "请仅填写 assets/文件名 链接，链接文字须与文件名一致。",
-	"Open library": "打开文档库", "Search notes": "搜索笔记", "Settings": "设置", "Refresh": "刷新", "Open Agent": "打开 Agent", "Loading…": "加载中…", "Back": "返回", "Forward": "前进", "Copy reference": "复制引用", "Edit note": "编辑笔记", "Open directory": "打开所在目录", "Export canvas": "导出画布", "Exported": "已导出", "File": "文件", "View": "视图", "General": "通用", "Library": "文档库", "Editor": "编辑器", "Export directory": "导出目录", "Appearance": "外观", "Theme": "主题", "Language": "语言", "Agents": "Agent", "Terminal": "终端", "Shell": "Shell", "Install authoring skill": "安装编写技能", "Install in library": "安装到文档库", "Install globally": "安装到全局", "Skill installed": "技能已安装", "Enable read-only discovery": "启用只读发现", "Port": "端口", "Apply connection": "应用连接设置", "Status": "状态", "Stopped": "已停止", "system": "跟随系统", "default": "默认", "light": "浅色", "dark": "深色", "english": "English", "chinese": "简体中文", "visual-studio-code": "VS Code", "Select a note in the sidebar.": "在侧栏选择一篇笔记。", "Open a Markdown library to start reading.": "打开 Markdown 文档库开始阅读。", "No visible notes. Notes use a directory containing index.md.": "没有可见笔记。每篇笔记是包含 index.md 的目录。",
 }

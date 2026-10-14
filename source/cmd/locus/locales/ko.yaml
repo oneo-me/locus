@@ -1,0 +1,135 @@
+# Interface copy. Message IDs stay stable when English wording changes.
+locus.agent:
+  other: "Agent"
+locus.agents:
+  other: "Agent"
+locus.appearance:
+  other: "모양"
+locus.application:
+  other: "애플리케이션"
+locus.apply_connection:
+  other: "연결 적용"
+locus.back:
+  other: "뒤로"
+locus.choose_a_library:
+  other: "노트 라이브러리 선택"
+locus.close:
+  other: "닫기"
+locus.close_settings:
+  other: "설정 닫기"
+locus.copy_reference:
+  other: "참조 복사"
+locus.could_not_show_attachments:
+  other: "첨부 파일을 표시할 수 없습니다"
+locus.dark:
+  other: "다크"
+locus.default:
+  other: "기본값"
+locus.edit_note:
+  other: "노트 편집"
+locus.editor:
+  other: "편집기"
+locus.enable_read_only_discovery:
+  other: "읽기 전용 탐색 사용"
+locus.export_canvas:
+  other: "캔버스 내보내기"
+locus.export_directory:
+  other: "내보내기 폴더"
+locus.exported:
+  other: "내보냄"
+locus.file:
+  other: "파일"
+locus.forward:
+  other: "앞으로"
+locus.general:
+  other: "일반"
+locus.icon_updated:
+  other: "아이콘을 업데이트했습니다"
+locus.icon_upload_failed:
+  other: "아이콘 업로드 실패"
+locus.image_unavailable:
+  other: "이미지를 사용할 수 없음"
+locus.include_at_least_one_image:
+  other: "갤러리에 이미지를 하나 이상 추가하세요."
+locus.include_only_local_images:
+  other: "갤러리에는 대체 텍스트가 있는 로컬 이미지만 포함할 수 있습니다."
+locus.install_authoring_skill:
+  other: "작성 스킬 설치"
+locus.install_authoring_skill_globally:
+  other: "작성 스킬을 전역으로 설치"
+locus.install_globally:
+  other: "전역으로 설치"
+locus.install_in_library:
+  other: "라이브러리에 설치"
+locus.integrations:
+  other: "연동"
+locus.language:
+  other: "언어"
+locus.library:
+  other: "라이브러리"
+locus.light:
+  other: "라이트"
+locus.loading:
+  other: "불러오는 중…"
+locus.modified_files:
+  other: "수정된 파일"
+locus.more_actions:
+  other: "기타 동작"
+locus.no_matching_settings:
+  other: "일치하는 설정이 없습니다."
+locus.no_visible_notes:
+  other: "표시할 노트가 없습니다. 노트는 index.md가 있는 디렉터리입니다."
+locus.none:
+  other: "없음(Shell만)"
+locus.open_a_markdown_library:
+  other: "Markdown 라이브러리를 열어 읽기를 시작하세요."
+locus.open_agent:
+  other: "Agent 열기"
+locus.open_directory:
+  other: "폴더 열기"
+locus.open_library:
+  other: "라이브러리 열기"
+locus.port:
+  other: "포트"
+locus.refresh:
+  other: "새로 고침"
+locus.search_notes:
+  other: "노트 검색"
+locus.search_results:
+  other: "검색 결과"
+locus.search_settings:
+  other: "설정 검색"
+locus.search_settings_placeholder:
+  other: "설정 검색…"
+locus.select_a_note:
+  other: "사이드바에서 노트를 선택하세요."
+locus.select_library:
+  other: "라이브러리 선택"
+locus.settings:
+  other: "설정"
+locus.settings_category:
+  other: "설정 범주"
+locus.shell:
+  other: "Shell"
+locus.skill_installed:
+  other: "스킬을 설치했습니다"
+locus.status:
+  other: "상태"
+locus.stopped:
+  other: "중지됨"
+locus.system:
+  other: "시스템 따름"
+locus.terminal:
+  other: "터미널"
+locus.terminal_panel:
+  other: "터미널 패널"
+locus.theme:
+  other: "테마"
+locus.upload_icon:
+  other: "아이콘 업로드"
+locus.use_only_assets_links:
+  other: "assets/파일 이름 형식의 링크만 사용하고, 링크 텍스트는 파일 이름과 같아야 합니다."
+locus.view:
+  other: "보기"
+locus.visual_studio_code:
+  other: "VS Code"

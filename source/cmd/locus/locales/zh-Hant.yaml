@@ -1,0 +1,135 @@
+# Interface copy. Message IDs stay stable when English wording changes.
+locus.agent:
+  other: "Agent"
+locus.agents:
+  other: "Agent"
+locus.appearance:
+  other: "外觀"
+locus.application:
+  other: "應用"
+locus.apply_connection:
+  other: "套用連線設定"
+locus.back:
+  other: "返回"
+locus.choose_a_library:
+  other: "選擇筆記庫"
+locus.close:
+  other: "關閉"
+locus.close_settings:
+  other: "關閉設定"
+locus.copy_reference:
+  other: "複製引用"
+locus.could_not_show_attachments:
+  other: "無法顯示附件"
+locus.dark:
+  other: "深色"
+locus.default:
+  other: "預設"
+locus.edit_note:
+  other: "編輯筆記"
+locus.editor:
+  other: "編輯器"
+locus.enable_read_only_discovery:
+  other: "啟用唯讀發現"
+locus.export_canvas:
+  other: "匯出畫布"
+locus.export_directory:
+  other: "匯出目錄"
+locus.exported:
+  other: "已匯出"
+locus.file:
+  other: "檔案"
+locus.forward:
+  other: "前進"
+locus.general:
+  other: "一般"
+locus.icon_updated:
+  other: "圖示已更新"
+locus.icon_upload_failed:
+  other: "上傳圖示失敗"
+locus.image_unavailable:
+  other: "圖片無法使用"
+locus.include_at_least_one_image:
+  other: "請在圖庫中至少加入一張圖片。"
+locus.include_only_local_images:
+  other: "圖庫中只能包含帶有替代文字的本機圖片。"
+locus.install_authoring_skill:
+  other: "安裝編寫技能"
+locus.install_authoring_skill_globally:
+  other: "全域安裝編寫技能"
+locus.install_globally:
+  other: "安裝到全域"
+locus.install_in_library:
+  other: "安裝到文件庫"
+locus.integrations:
+  other: "整合"
+locus.language:
+  other: "語言"
+locus.library:
+  other: "文件庫"
+locus.light:
+  other: "淺色"
+locus.loading:
+  other: "載入中…"
+locus.modified_files:
+  other: "已修改的檔案"
+locus.more_actions:
+  other: "更多操作"
+locus.no_matching_settings:
+  other: "沒有相符的設定。"
+locus.no_visible_notes:
+  other: "沒有可見筆記。每篇筆記是包含 index.md 的目錄。"
+locus.none:
+  other: "無（僅 Shell）"
+locus.open_a_markdown_library:
+  other: "打開 Markdown 文件庫開始閱讀。"
+locus.open_agent:
+  other: "打開 Agent"
+locus.open_directory:
+  other: "打開所在目錄"
+locus.open_library:
+  other: "打開文件庫"
+locus.port:
+  other: "連接埠"
+locus.refresh:
+  other: "重新整理"
+locus.search_notes:
+  other: "搜尋筆記"
+locus.search_results:
+  other: "搜尋結果"
+locus.search_settings:
+  other: "搜尋設定"
+locus.search_settings_placeholder:
+  other: "搜尋設定…"
+locus.select_a_note:
+  other: "在側邊欄選擇一篇筆記。"
+locus.select_library:
+  other: "選擇文件庫"
+locus.settings:
+  other: "設定"
+locus.settings_category:
+  other: "設定類別"
+locus.shell:
+  other: "Shell"
+locus.skill_installed:
+  other: "技能已安裝"
+locus.status:
+  other: "狀態"
+locus.stopped:
+  other: "已停止"
+locus.system:
+  other: "跟隨系統"
+locus.terminal:
+  other: "終端機"
+locus.terminal_panel:
+  other: "終端機面板"
+locus.theme:
+  other: "主題"
+locus.upload_icon:
+  other: "上傳圖示"
+locus.use_only_assets_links:
+  other: "請僅填寫 assets/檔名 連結，連結文字須與檔名一致。"
+locus.view:
+  other: "檢視"
+locus.visual_studio_code:
+  other: "VS Code"

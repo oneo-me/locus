@@ -148,7 +148,10 @@ func TestHeaderMoreActions(t *testing.T) {
 }
 
 func TestSettingsWithoutArchive(t *testing.T) {
-	for _, language := range []string{"english", "chinese"} {
+	for _, language := range languageOptions {
+		if language == "system" {
+			continue
+		}
 		t.Run(language, func(t *testing.T) {
 			a := &application{cfg: preferences.Default()}
 			a.cfg.Language = language

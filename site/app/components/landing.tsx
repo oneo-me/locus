@@ -27,12 +27,12 @@ export function Landing({ locale }: { locale: Locale }) {
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
+      <header className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-5">
         <Link to={localePaths[locale]} className="flex items-center gap-2 font-semibold">
           <img src={iconUrl} alt="" className="size-7" />
           Locus
         </Link>
-        <nav className="flex items-center gap-1">
+        <nav className="flex flex-wrap items-center justify-end gap-1">
           {locales
             .filter((other) => other !== locale)
             .map((other) => (

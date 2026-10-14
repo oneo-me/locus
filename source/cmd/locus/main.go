@@ -165,6 +165,11 @@ func (a *application) start(root string) {
 	if a.cfg.Agent == "" {
 		a.cfg = preferences.Default()
 	}
+	// Canonical codes keep the language select matched. The file is left as
+	// loaded until the next user-initiated save.
+	if code, ok := explicitCatalog(a.cfg.Language); ok {
+		a.cfg.Language = code
+	}
 	if err := mygo.Protocol.Handle(canvas.Scheme, &a.router); err != nil {
 		a.errorNotice(err.Error())
 	}

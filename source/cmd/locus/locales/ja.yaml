@@ -1,0 +1,135 @@
+# Interface copy. Message IDs stay stable when English wording changes.
+locus.agent:
+  other: "Agent"
+locus.agents:
+  other: "Agent"
+locus.appearance:
+  other: "外観"
+locus.application:
+  other: "アプリケーション"
+locus.apply_connection:
+  other: "接続を適用"
+locus.back:
+  other: "戻る"
+locus.choose_a_library:
+  other: "ノートライブラリを選択"
+locus.close:
+  other: "閉じる"
+locus.close_settings:
+  other: "設定を閉じる"
+locus.copy_reference:
+  other: "参照をコピー"
+locus.could_not_show_attachments:
+  other: "添付ファイルを表示できません"
+locus.dark:
+  other: "ダーク"
+locus.default:
+  other: "デフォルト"
+locus.edit_note:
+  other: "ノートを編集"
+locus.editor:
+  other: "エディタ"
+locus.enable_read_only_discovery:
+  other: "読み取り専用の検出を有効にする"
+locus.export_canvas:
+  other: "キャンバスを書き出す"
+locus.export_directory:
+  other: "書き出しフォルダ"
+locus.exported:
+  other: "書き出し済み"
+locus.file:
+  other: "ファイル"
+locus.forward:
+  other: "進む"
+locus.general:
+  other: "一般"
+locus.icon_updated:
+  other: "アイコンを更新しました"
+locus.icon_upload_failed:
+  other: "アイコンをアップロードできませんでした"
+locus.image_unavailable:
+  other: "画像を表示できません"
+locus.include_at_least_one_image:
+  other: "ギャラリーに画像を 1 枚以上追加してください。"
+locus.include_only_local_images:
+  other: "ギャラリーには代替テキスト付きのローカル画像だけを含めてください。"
+locus.install_authoring_skill:
+  other: "作成スキルをインストール"
+locus.install_authoring_skill_globally:
+  other: "作成スキルをグローバルにインストール"
+locus.install_globally:
+  other: "グローバルにインストール"
+locus.install_in_library:
+  other: "ライブラリにインストール"
+locus.integrations:
+  other: "連携"
+locus.language:
+  other: "言語"
+locus.library:
+  other: "ライブラリ"
+locus.light:
+  other: "ライト"
+locus.loading:
+  other: "読み込み中…"
+locus.modified_files:
+  other: "変更されたファイル"
+locus.more_actions:
+  other: "その他の操作"
+locus.no_matching_settings:
+  other: "一致する設定はありません。"
+locus.no_visible_notes:
+  other: "表示できるノートがありません。ノートは index.md を含むディレクトリです。"
+locus.none:
+  other: "なし（Shell のみ）"
+locus.open_a_markdown_library:
+  other: "Markdown ライブラリを開いて読み始めます。"
+locus.open_agent:
+  other: "Agent を開く"
+locus.open_directory:
+  other: "フォルダを開く"
+locus.open_library:
+  other: "ライブラリを開く"
+locus.port:
+  other: "ポート"
+locus.refresh:
+  other: "再読み込み"
+locus.search_notes:
+  other: "ノートを検索"
+locus.search_results:
+  other: "検索結果"
+locus.search_settings:
+  other: "設定を検索"
+locus.search_settings_placeholder:
+  other: "設定を検索…"
+locus.select_a_note:
+  other: "サイドバーでノートを選択してください。"
+locus.select_library:
+  other: "ライブラリを選択"
+locus.settings:
+  other: "設定"
+locus.settings_category:
+  other: "設定カテゴリ"
+locus.shell:
+  other: "Shell"
+locus.skill_installed:
+  other: "スキルをインストールしました"
+locus.status:
+  other: "ステータス"
+locus.stopped:
+  other: "停止"
+locus.system:
+  other: "システムに従う"
+locus.terminal:
+  other: "ターミナル"
+locus.terminal_panel:
+  other: "ターミナルパネル"
+locus.theme:
+  other: "テーマ"
+locus.upload_icon:
+  other: "アイコンをアップロード"
+locus.use_only_assets_links:
+  other: "assets/ファイル名 形式のリンクだけを使い、リンク文字はファイル名と一致させてください。"
+locus.view:
+  other: "表示"
+locus.visual_studio_code:
+  other: "VS Code"

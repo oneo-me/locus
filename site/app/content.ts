@@ -3,11 +3,14 @@ export const repositoryUrl = "https://github.com/oneo-me/locus";
 export const downloadUrl = `${repositoryUrl}/releases/latest`;
 export const releasesUrl = `${repositoryUrl}/releases`;
 
-export type Locale = "en" | "zh-CN";
+export type Locale = "en" | "zh-CN" | "zh-TW" | "ja" | "ko";
 
 export const localePaths: Record<Locale, string> = {
   en: "/",
   "zh-CN": "/zh-CN",
+  "zh-TW": "/zh-TW",
+  ja: "/ja",
+  ko: "/ko",
 };
 
 export type Content = {
@@ -92,5 +95,104 @@ export const content: Record<Locale, Content> = {
       },
     ],
     license: "基于 MIT 许可证发布。",
+  },
+  "zh-TW": {
+    title: "Locus — 本地優先的 Markdown 工作區",
+    description:
+      "原生桌面 Markdown 工作區：筆記始終是普通檔案，支援 HTML 畫布，並透過唯讀 MCP 供 Agent 發現。",
+    languageName: "繁體中文",
+    badge: "開源 · MIT",
+    heading: "你的筆記，就是普通檔案。",
+    lead: "Locus 是一個本地優先、擁有原生桌面介面的 Markdown 工作區。在 Locus 中閱讀和整理筆記，用你喜歡的編輯器編輯，並讓 Agent 發現同一批檔案。",
+    download: "下載 Locus",
+    platform: "Apple Silicon 與 Intel macOS · Windows x64 · Linux x64",
+    source: "在 GitHub 上查看",
+    allReleases: "全部版本",
+    featuresHeading: "圍繞你的檔案構建",
+    features: [
+      {
+        title: "純 Markdown",
+        body: "每篇筆記都是一個包含 index.md、附件和子筆記的目錄，內容不被鎖在資料庫裡。",
+      },
+      {
+        title: "畫布",
+        body: "筆記可以擁有 HTML 畫布，透過唯讀資源協定在工作區內顯示。",
+      },
+      {
+        title: "Agent 發現",
+        body: "可選的唯讀 MCP 讓 Agent 搜尋和定位筆記，編輯仍由它們自己的工具完成。",
+      },
+      {
+        title: "內建終端機",
+        body: "僅在你需要時，從標題列彈出視窗開啟 Shell 或 Agent CLI。",
+      },
+    ],
+    license: "基於 MIT 授權發布。",
+  },
+  ja: {
+    title: "Locus — ローカルファーストの Markdown ワークスペース",
+    description:
+      "ノートが普通のファイルのまま残る、ネイティブのデスクトップ Markdown ワークスペース。HTML キャンバスと、Agent 向けの読み取り専用 MCP に対応します。",
+    languageName: "日本語",
+    badge: "オープンソース · MIT",
+    heading: "ノートは、普通のファイルです。",
+    lead: "Locus は、ネイティブのデスクトップ画面を持つローカルファーストの Markdown ワークスペースです。Locus でノートを読み、整理し、好きなエディタで編集し、同じファイルを Agent に見つけさせます。",
+    download: "Locus をダウンロード",
+    platform: "Apple Silicon と Intel の macOS · Windows x64 · Linux x64",
+    source: "GitHub で見る",
+    allReleases: "すべてのリリース",
+    featuresHeading: "ファイルを中心に",
+    features: [
+      {
+        title: "プレーンな Markdown",
+        body: "各ノートは index.md、添付ファイル、子ノートを含むディレクトリです。データベースには閉じ込めません。",
+      },
+      {
+        title: "キャンバス",
+        body: "ノートは HTML キャンバスを持てます。読み取り専用のリソースプロトコルでワークスペース内に表示します。",
+      },
+      {
+        title: "Agent による検出",
+        body: "任意の読み取り専用 MCP で Agent がノートを検索、特定できます。編集は Agent 自身のツールが行います。",
+      },
+      {
+        title: "内蔵ターミナル",
+        body: "必要なときだけ、タイトルバーのポップオーバーからシェルまたは Agent CLI を開きます。",
+      },
+    ],
+    license: "MIT ライセンスで公開しています。",
+  },
+  ko: {
+    title: "Locus — 로컬 우선 Markdown 작업 공간",
+    description:
+      "노트가 평범한 파일로 남는 네이티브 데스크톱 Markdown 작업 공간입니다. HTML 캔버스와 Agent용 읽기 전용 MCP를 제공합니다.",
+    languageName: "한국어",
+    badge: "오픈 소스 · MIT",
+    heading: "노트는 평범한 파일입니다.",
+    lead: "Locus는 네이티브 데스크톱 화면을 갖춘 로컬 우선 Markdown 작업 공간입니다. Locus에서 노트를 읽고 정리하고, 원하는 편집기에서 수정하고, Agent가 같은 파일을 찾게 하세요.",
+    download: "Locus 다운로드",
+    platform: "Apple Silicon 및 Intel macOS · Windows x64 · Linux x64",
+    source: "GitHub에서 보기",
+    allReleases: "모든 릴리스",
+    featuresHeading: "파일을 중심으로",
+    features: [
+      {
+        title: "플레인 Markdown",
+        body: "각 노트는 index.md, 첨부 파일, 하위 노트가 있는 디렉터리입니다. 데이터베이스에 잠기지 않습니다.",
+      },
+      {
+        title: "캔버스",
+        body: "노트는 HTML 캔버스를 가질 수 있으며, 읽기 전용 리소스 프로토콜로 작업 공간 안에 표시합니다.",
+      },
+      {
+        title: "Agent 탐색",
+        body: "선택적 읽기 전용 MCP로 Agent가 노트를 검색하고 찾습니다. 편집은 Agent 자신의 도구가 합니다.",
+      },
+      {
+        title: "내장 터미널",
+        body: "필요할 때만 제목 표시줄 팝오버에서 셸 또는 Agent CLI를 엽니다.",
+      },
+    ],
+    license: "MIT 라이선스로 배포합니다.",
   },
 };

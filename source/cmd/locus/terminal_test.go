@@ -17,7 +17,10 @@ import (
 )
 
 func TestTerminalPopover(t *testing.T) {
-	for _, language := range []string{"english", "chinese"} {
+	for _, language := range languageOptions {
+		if language == "system" {
+			continue
+		}
 		a := &application{cfg: preferences.Default()}
 		a.cfg.Language = language
 		a.model.Root = t.TempDir()

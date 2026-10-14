@@ -1,0 +1,135 @@
+# Interface copy. Message IDs stay stable when English wording changes.
+locus.agent:
+  other: "Agent"
+locus.agents:
+  other: "Agents"
+locus.appearance:
+  other: "Appearance"
+locus.application:
+  other: "Application"
+locus.apply_connection:
+  other: "Apply connection"
+locus.back:
+  other: "Back"
+locus.choose_a_library:
+  other: "Choose a library"
+locus.close:
+  other: "Close"
+locus.close_settings:
+  other: "Close settings"
+locus.copy_reference:
+  other: "Copy reference"
+locus.could_not_show_attachments:
+  other: "Could not show attachments"
+locus.dark:
+  other: "dark"
+locus.default:
+  other: "default"
+locus.edit_note:
+  other: "Edit note"
+locus.editor:
+  other: "Editor"
+locus.enable_read_only_discovery:
+  other: "Enable read-only discovery"
+locus.export_canvas:
+  other: "Export canvas"
+locus.export_directory:
+  other: "Export directory"
+locus.exported:
+  other: "Exported"
+locus.file:
+  other: "File"
+locus.forward:
+  other: "Forward"
+locus.general:
+  other: "General"
+locus.icon_updated:
+  other: "Icon updated"
+locus.icon_upload_failed:
+  other: "Icon upload failed"
+locus.image_unavailable:
+  other: "Image unavailable"
+locus.include_at_least_one_image:
+  other: "Include at least one image in the gallery."
+locus.include_only_local_images:
+  other: "Include only local images with alt text in the gallery."
+locus.install_authoring_skill:
+  other: "Install authoring skill"
+locus.install_authoring_skill_globally:
+  other: "Install authoring skill globally"
+locus.install_globally:
+  other: "Install globally"
+locus.install_in_library:
+  other: "Install in library"
+locus.integrations:
+  other: "Integrations"
+locus.language:
+  other: "Language"
+locus.library:
+  other: "Library"
+locus.light:
+  other: "light"
+locus.loading:
+  other: "Loading…"
+locus.modified_files:
+  other: "Modified files"
+locus.more_actions:
+  other: "More actions"
+locus.no_matching_settings:
+  other: "No matching settings."
+locus.no_visible_notes:
+  other: "No visible notes. Notes use a directory containing index.md."
+locus.none:
+  other: "none"
+locus.open_a_markdown_library:
+  other: "Open a Markdown library to start reading."
+locus.open_agent:
+  other: "Open Agent"
+locus.open_directory:
+  other: "Open directory"
+locus.open_library:
+  other: "Open library"
+locus.port:
+  other: "Port"
+locus.refresh:
+  other: "Refresh"
+locus.search_notes:
+  other: "Search notes"
+locus.search_results:
+  other: "Search results"
+locus.search_settings:
+  other: "Search settings"
+locus.search_settings_placeholder:
+  other: "Search settings…"
+locus.select_a_note:
+  other: "Select a note in the sidebar."
+locus.select_library:
+  other: "Select library"
+locus.settings:
+  other: "Settings"
+locus.settings_category:
+  other: "Settings category"
+locus.shell:
+  other: "Shell"
+locus.skill_installed:
+  other: "Skill installed"
+locus.status:
+  other: "Status"
+locus.stopped:
+  other: "Stopped"
+locus.system:
+  other: "system"
+locus.terminal:
+  other: "Terminal"
+locus.terminal_panel:
+  other: "Terminal panel"
+locus.theme:
+  other: "Theme"
+locus.upload_icon:
+  other: "Upload icon"
+locus.use_only_assets_links:
+  other: "Use only assets/filename links with matching filenames."
+locus.view:
+  other: "View"
+locus.visual_studio_code:
+  other: "visual-studio-code"
