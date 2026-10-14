@@ -75,6 +75,15 @@ func TestTranslateFollowsPreferenceAndLocale(t *testing.T) {
 	}
 }
 
+func TestUpdaterLanguage(t *testing.T) {
+	if updaterLanguage("zh-Hans") != "zh-Hans" || updaterLanguage("chinese") != "zh-Hans" || updaterLanguage("ja") != "ja" {
+		t.Fatal("explicit language")
+	}
+	if updaterLanguage("system") != "" || updaterLanguage("") != "" || updaterLanguage("fr") != "" {
+		t.Fatal("system language")
+	}
+}
+
 func TestLanguageCatalogs(t *testing.T) {
 	type message struct {
 		Other string `yaml:"other"`

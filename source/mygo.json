@@ -5,6 +5,11 @@
   "main": "./cmd/locus",
   "out": "../dist",
   "icon": "assets/icon.png",
+  "updates": {
+    "publicKey": "/E4qR9Doy3NIf2UiFMK/oPefv1AmFyxQYGVKXSes2I8=",
+    "github": "oneo-me/locus",
+    "changelog": "../CHANGELOG.md"
+  },
   "macos": {
     "icon": "assets/icon.icon",
     "minimumSystemVersion": "13.0"

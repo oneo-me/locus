@@ -11,6 +11,8 @@ locus.apply_connection:
   other: "应用连接设置"
 locus.back:
   other: "返回"
+locus.check_for_updates:
+  other: "检查更新…"
 locus.choose_a_library:
   other: "选择笔记库"
 locus.close:

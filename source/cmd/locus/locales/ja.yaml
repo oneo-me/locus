@@ -11,6 +11,8 @@ locus.apply_connection:
   other: "接続を適用"
 locus.back:
   other: "戻る"
+locus.check_for_updates:
+  other: "アップデートを確認…"
 locus.choose_a_library:
   other: "ノートライブラリを選択"
 locus.close:

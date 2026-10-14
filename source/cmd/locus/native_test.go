@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	updatenative "github.com/egoist/mygo/plugins/updater/native"
 	"github.com/oneo-me/locus/internal/library"
 )
 
@@ -27,6 +28,7 @@ func TestMain(m *testing.M) {
 		mygo.App.SetActivationPolicy(mygo.ActivationPolicyAccessory) // No Dock icon or activation.
 	}
 	mygo.App.SetPath(mygo.PathUserData, directory)
+	mygo.Use(updatenative.Plugin)
 	mygo.App.OnWindowAllClosed(func() {})
 	result := make(chan int, 1)
 	mygo.App.WhenReady(func() {

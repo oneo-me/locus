@@ -11,6 +11,8 @@ locus.apply_connection:
   other: "Apply connection"
 locus.back:
   other: "Back"
+locus.check_for_updates:
+  other: "Check for Updates…"
 locus.choose_a_library:
   other: "Choose a library"
 locus.close:

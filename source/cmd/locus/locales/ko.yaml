@@ -11,6 +11,8 @@ locus.apply_connection:
   other: "연결 적용"
 locus.back:
   other: "뒤로"
+locus.check_for_updates:
+  other: "업데이트 확인…"
 locus.choose_a_library:
   other: "노트 라이브러리 선택"
 locus.close:

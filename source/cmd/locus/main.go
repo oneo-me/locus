@@ -9,6 +9,8 @@ import (
 	"runtime"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/updater"
+	updatenative "github.com/egoist/mygo/plugins/updater/native"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/canvas"
 	"github.com/oneo-me/locus/internal/discovery"
@@ -106,6 +108,7 @@ func main() {
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}
+	mygo.Use(updatenative.New(updater.Options{Language: updaterLanguage(cfg.Language)}))
 	mygo.App.OnSecondInstance(func([]string, string) {
 		a.showWindow()
 	})
@@ -418,7 +421,12 @@ func (a *application) toggleSettings() {
 func (a *application) installMenu() {
 	action := func(fn func()) func(*mygo.MenuItem, *mygo.Window) { return func(*mygo.MenuItem, *mygo.Window) { fn() } }
 	mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
-		{Label: "Locus", Submenu: []*mygo.MenuItem{{Label: a.text("Settings"), Accelerator: "CmdOrCtrl+,", Click: action(a.toggleSettings)}, mygo.Separator(), {Role: mygo.RoleQuit}}},
+		{Label: "Locus", Submenu: []*mygo.MenuItem{
+			{Label: a.text("Settings"), Accelerator: "CmdOrCtrl+,", Click: action(a.toggleSettings)},
+			{Label: a.text("Check for Updates…"), Click: action(func() { updater.CheckForUpdates() })},
+			mygo.Separator(),
+			{Role: mygo.RoleQuit},
+		}},
 		{Label: a.text("File"), Submenu: []*mygo.MenuItem{{Label: a.text("Open library"), Accelerator: "CmdOrCtrl+O", Click: action(a.chooseLibrary)}, {Label: a.text("Refresh"), Accelerator: "CmdOrCtrl+R", Click: action(a.refresh)}, {Role: mygo.RoleClose}}},
 		{Role: mygo.RoleEditMenu},
 		{Label: a.text("View"), Submenu: []*mygo.MenuItem{{Label: a.text("Search notes"), Accelerator: "CmdOrCtrl+F", Click: action(func() { a.commandsOpen = !a.commandsOpen; a.shell.Window().Invalidate() })}, {Label: a.text("Terminal"), Accelerator: "CmdOrCtrl+`", Click: action(a.toggleTerminal)}}},
