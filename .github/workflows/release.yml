@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the tag and changelog
+        run: |
+          version="$(jq -r .version source/mygo.json)"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match source/mygo.json version v$version"
+            exit 1
+          fi
+          awk -v version="$version" '
+            /^## / {
+              if (found) { done = 1; next }
+              line = $0
+              sub(/^## /, "", line)
+              split(line, fields, " ")
+              token = fields[1]
+              gsub(/^\[/, "", token)
+              sub(/\].*/, "", token)
+              sub(/^v/, "", token)
+              if (token == version) found = 1
+              next
+            }
+            found && !done { notes = notes $0 ORS }
+            END {
+              if (!found || notes !~ /[^[:space:]]/) exit 1
+            }
+          ' CHANGELOG.md || {
+            echo "CHANGELOG.md needs a non-empty ## [$version] section before this tag"
+            exit 1
+          }
+
+      - name: Require the update signing key
+        env:
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: |
+          if [ -z "$MYGO_UPDATER_PRIVATE_KEY" ]; then
+            echo "Set the MYGO_UPDATER_PRIVATE_KEY repository secret to the contents of mygo-update.key"
+            exit 1
+          fi
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --draft --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
+  build:
+    needs: draft-release
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macOS, os: macos-latest, platform: "darwin/arm64,darwin/amd64" }
+          - { name: Windows, os: ubuntu-latest, platform: "windows/amd64" }
+          - { name: Linux, os: ubuntu-latest, platform: "linux/amd64" }
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: source/go.mod
+          cache-dependency-path: source/go.sum
+
+      - name: Install NSIS, for the Windows installer
+        if: matrix.name == 'Windows'
+        run: sudo apt-get update && sudo apt-get install -y nsis
+
+      - name: Build and upload
+        working-directory: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GOWORK: "off"
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: go tool mygo build -platform "${{ matrix.platform }}" -upload
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false

@@ -2,3 +2,4 @@
 .mygo/
 .DS_Store
 node_modules/
+mygo-update.key
