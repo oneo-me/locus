@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "site/**"
+      - "website/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -28,7 +28,7 @@ jobs:
           bun-version: latest
 
       - name: Build static site
-        working-directory: site
+        working-directory: website
         env:
           # Project sites are served from /<repository>/. Set the repository
           # variable SITE_BASE to "/" for a user site or a custom domain.
@@ -40,7 +40,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site/build/client
+          path: website/build/client
 
   deploy:
     needs: build

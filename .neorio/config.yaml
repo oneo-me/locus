@@ -10,4 +10,4 @@ menu:
   - id: website
     name: website
     command: bun install && bun run dev
-    directory: site
+    directory: website

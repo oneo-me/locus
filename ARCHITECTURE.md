@@ -83,12 +83,12 @@ source/internal/         Product packages and headless tests
 source/assets/           Icon sources, kept out of the app payload
 source/resources/skills/ Bundled authoring skills
 .vscode/tasks.json       Go development and build tasks
-site/                    Official website, a static React Router app
+website/                 Official website, a static React Router app
 docs/                    Architecture and usage instructions
 dist/                    Ignored app outputs
 ```
 
-There is one Go module. The [official website](docs/site.md) is a separate Bun project that the app does not load. No Cargo workspace, project-owned native bridge, or alternate implementation is required. Do not install or invoke Rust tooling.
+There is one Go module. The [official website](docs/website.md) is a separate Bun project that the app does not load. No Cargo workspace, project-owned native bridge, or alternate implementation is required. Do not install or invoke Rust tooling.
 
 ## Verification and current limitations
 
