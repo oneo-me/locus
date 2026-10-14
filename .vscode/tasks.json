@@ -4,7 +4,7 @@
     {
       "label": "run",
       "type": "shell",
-      "command": "go tool packer run",
+      "command": "go tool mygo dev",
       "options": {
         "cwd": "${workspaceFolder}/source",
         "env": { "GOWORK": "off" }
@@ -13,7 +13,7 @@
     {
       "label": "build",
       "type": "shell",
-      "command": "go tool packer build",
+      "command": "go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,linux/amd64",
       "options": {
         "cwd": "${workspaceFolder}/source",
         "env": { "GOWORK": "off" }

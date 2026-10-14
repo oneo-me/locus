@@ -1,4 +1,4 @@
-![Locus 图标](source/resources/icon.png)
+![Locus 图标](source/assets/icon.png)
 
 # Locus
 
@@ -12,15 +12,15 @@ Locus 是面向 macOS、Windows 和 Linux 的本地优先 Markdown 笔记本。�
 - **内置阅读**：浏览目录树，或搜索笔记与操作，阅读 Markdown、本地图片、概要及自定义 YAML 属性。
 - **画布**：笔记可以在工作区内显示自有的 HTML 与 JavaScript 页面，例如仪表盘或图表。
 - **对 Agent 友好**：可选的只读 MCP 让外部 Agent 找到同一批笔记，内置终端在你需要时打开 Shell 或 Agent CLI。
-- **开箱舒适**：亮色与暗色主题、英文或中文界面、前进后退历史，并记住导航位置与侧栏状态。
+- **开箱舒适**：亮色与暗色主题；英文、简体中文、繁体中文、日文与韩文界面；前进后退历史，并记住导航与侧栏状态。
 
 ## 安装
 
 从 [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 下载最新版本。
 
-- **macOS**：将 `Locus.app` 移到“应用程序”。需要 macOS 13 或更高版本，支持 Apple Silicon 和 Intel。
-- **Windows**：解压 zip 并运行 `Locus.exe`。需要 Windows 10 或更高版本以及 WebView2 运行时。
-- **Linux**：解压 tar.gz 并运行 `locus`。需要 GTK 3 和 WebKitGTK。
+- **macOS**：打开磁盘映像，将 `Locus.app` 移到“应用程序”。需要 macOS 13 或更高版本，支持 Apple Silicon 和 Intel。
+- **Windows**：在下载的文件夹中运行 `Locus.exe`。需要 Windows 10 或更高版本以及 WebView2 运行时。
+- **Linux**：解压 tar.gz 后运行 `locus`，或安装 `.deb`。需要 GTK 3 和 WebKitGTK。
 
 已发布的下载可能落后于开发分支。Windows 和 Linux 归档由同一源码交叉构建，仍需在目标平台上完成验收测试。
 
@@ -40,8 +40,8 @@ Locus 是面向 macOS、Windows 和 Linux 的本地优先 Markdown 笔记本。�
 cd source
 GOWORK=off go test ./...
 GOWORK=off go vet ./...
-GOWORK=off go tool packer run
-GOWORK=off go tool packer build
+GOWORK=off go tool mygo dev
+GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,linux/amd64
 ```
 
 依赖、检查与打包参见[运行与构建](docs/build.md)，职责边界参见[架构说明](ARCHITECTURE.md)，协作规则参见 [AGENTS.md](AGENTS.md)。用户可见变更记录在 [CHANGELOG.md](CHANGELOG.md)。

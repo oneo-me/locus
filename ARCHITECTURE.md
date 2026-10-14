@@ -76,12 +76,12 @@ The overview is limited to 16 KiB and each subject to 24 KiB. Keep each mechanis
 ## Repository layout
 
 ```text
-source/go.mod, go.sum    Go module and dependency hashes
-source/cmd/locus/        Desktop application and native smoke tests
+source/go.mod, go.sum    Go module, tool, and dependency hashes
+source/mygo.json         MyGo packaging configuration
+source/cmd/locus/        Desktop application, locale catalogs, and native smoke tests
 source/internal/         Product packages and headless tests
+source/assets/           Icon sources, kept out of the app payload
 source/resources/skills/ Bundled authoring skills
-source/packer.yaml       Onevra Go packager configuration
-source/resources/icon.* Platform icon assets
 .vscode/tasks.json       Go development and build tasks
 site/                    Official website, a static React Router app
 docs/                    Architecture and usage instructions

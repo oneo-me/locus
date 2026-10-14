@@ -1,0 +1,12 @@
+{
+  "name": "Locus",
+  "identifier": "me.oneo.locus",
+  "version": "0.2026.1",
+  "main": "./cmd/locus",
+  "out": "../dist",
+  "icon": "assets/icon.png",
+  "macos": {
+    "icon": "assets/icon.icon",
+    "minimumSystemVersion": "13.0"
+  }
+}

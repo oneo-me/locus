@@ -1,10 +1,10 @@
 # Running and building
 
-Locus has one Go module under `source/` and uses Onevra's Go packager. No Rust toolchain is required or used. Read the [architecture overview](../ARCHITECTURE.md) and [AGENTS](../AGENTS.md) before changing mechanisms.
+Locus has one Go module under `source/` and packages with MyGo's CLI. No Rust toolchain is required or used. Read the [architecture overview](../ARCHITECTURE.md) and [AGENTS](../AGENTS.md) before changing mechanisms.
 
 ## Dependencies
 
-Use Go 1.27.1 or later and a native desktop session. `source/go.mod` pins published Onevra `v0.2026.8` and MyGo `v0.4.8`; `source/go.sum` records their checksums. WebView uses MyGo's built-in API, so no local replacements, patched checkouts, or preparation scripts are needed.
+Use Go 1.27.1 or later and a native desktop session. `source/go.mod` pins published Onevra `v0.2026.8`, MyGo `v0.4.8`, and the MyGo CLI as a tool. `source/go.sum` records their checksums. WebView uses MyGo's built-in API, so no local replacements, patched checkouts, or preparation scripts are needed.
 
 Download dependencies from `source/`:
 
@@ -33,13 +33,13 @@ The app watches external file changes. Canvas scripts rerun only after explicit 
 From `source/`:
 
 ```sh
-GOWORK=off go tool packer run
-GOWORK=off go tool packer build
+GOWORK=off go tool mygo dev
+GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,linux/amd64
 ```
 
-VS Code `run` and `build` tasks invoke these commands. [`.neorio/config.yaml`](../.neorio/config.yaml) gives Neorio the same Run and Build commands, the project icon, and Test, Vet and site-development menu commands. [source/packer.yaml](../source/packer.yaml) targets Apple Silicon and Intel macOS (`zip`), Windows x64 (`zip`), and Linux x64 (`tar.gz`), and outputs to `dist/`. The application identity is Locus. Packer cross-compiles the Windows and Linux targets from the macOS host and produces one archive per target. After a successful build, the packager automatically opens `dist/releases/<version>/` containing the final archives in the system file manager. Set `openReleases: false` in `source/packer.yaml` to disable this for unattended builds. Verify native behavior on each target platform before claiming support.
+`dev` launches the Locus Dev bundle. `build` writes one directory per target under `dist/`. VS Code tasks and [`.neorio/config.yaml`](../.neorio/config.yaml) use the same commands and the project icon. See [App packaging](architecture/packaging.md) for icons, artifacts, and platform limits. Verify native behavior on each target before claiming support.
 
-See [App packaging](architecture/packaging.md) for resource ownership and platform boundaries. Skills are ordinary files in `source/resources/skills/`, copied automatically by packer and located through MyGo's resource path. Direct runs from `source/` use that same directory; distributing a bare executable alone does not include skills. Canvas runtime resources remain embedded in the Go binary.
+Skills are ordinary files in `source/resources/skills/` and ship inside the app. Direct runs from `source/` use that directory. A bare executable does not include skills. Canvas runtime resources remain embedded in the Go binary.
 
 ## Development checks
 
@@ -63,12 +63,14 @@ LOCUS_NATIVE_SMOKE=1 GOWORK=off go test ./cmd/locus -run TestNative -count=1 -ti
 
 On macOS these tests run in the background: the test app uses the accessory activation policy (no Dock icon or activation), windows are created hidden, and the harness asks hidden windows to display so input and captures receive fresh frames. The reading test fails if a window becomes visible or focused or the app activates. Set `LOCUS_NATIVE_FOREGROUND=1` to show windows instead; the close-and-reopen lifecycle test shows its window and runs only in that mode. Other platforms keep visible windows until hidden frame delivery is verified there.
 
-Optionally set `LOCUS_SCREENSHOTS` to retain captures, including article backgrounds and metadata across reference titles, light/dark themes, and narrow/wide windows. Tests open a temporary Markdown library and a real MyGo WebView, checking template initialization, resource fetch, DOM interaction, settings retention, and release on departure. A terminal connection fixture also checks native terminal rendering and session cleanup without launching a shell or Agent. Surface captures do not establish OS material appearance or native browser overlay composition. Complete keyboard, pointer, accessibility, terminal authorization, and installation acceptance remains manual; do not launch external terminals or Agents automatically for it.
+Optionally set `LOCUS_SCREENSHOTS` to retain captures of article backgrounds and metadata across reference titles, light and dark themes, and narrow and wide windows. Tests open a temporary Markdown library and a real MyGo WebView. They check template initialization, resource fetch, DOM interaction, settings retention, and release on departure.
+
+A terminal connection fixture checks native terminal rendering and session cleanup without launching a shell or Agent. Surface captures do not establish OS material appearance or native browser overlay composition. Keyboard, pointer, accessibility, terminal authorization, and installation acceptance remain manual. Do not launch external terminals or Agents for that check.
 
 Documentation changes require size budgets, Subjects coverage, relative links and anchors, and changelog structure verification, followed by `git diff --check` from the repository root. Keep English and Chinese README content aligned. Report actual checks and platforms, not historical evidence from another implementation.
 
 ## Release notes
 
-[CHANGELOG.md](../CHANGELOG.md) records user-visible pending outcomes and confirmed releases. The version in `source/packer.yaml` is not proof of publication. Before an authorized release, review scope, move completed shipping entries from `Unreleased` to the confirmed version, retain `Unreleased` and deferred entries, and synchronize the packaging version in `source/packer.yaml` and the MCP server version in `internal/discovery`.
+[CHANGELOG.md](../CHANGELOG.md) records user-visible pending outcomes and confirmed releases. The version in `source/mygo.json` is not proof of publication. Before an authorized release, review scope, move completed shipping entries from `Unreleased` to the confirmed version, retain `Unreleased` and deferred entries, and synchronize that version with the MCP server version in `internal/discovery`.
 
-Publication is manual: build every configured target with `go tool packer build` and upload the archives from `dist/releases/<version>/` to a GitHub Release whose tag matches the packaged version. No tag-triggered workflow, release script, or automatic publisher is configured, and automatic updates remain unavailable. Verify installation on every target platform before distribution. See [release boundary](architecture/packaging.md#release-boundary).
+Publication is manual: build every target and upload the artifacts from `dist/` to a GitHub Release whose tag matches the packaged version. No tag-triggered workflow, release script, or automatic publisher is configured, and automatic updates remain unavailable. Verify installation on every target platform before distribution. See [release boundary](architecture/packaging.md#release-boundary).

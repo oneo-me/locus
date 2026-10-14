@@ -1,4 +1,4 @@
-![Locus icon](source/resources/icon.png)
+![Locus icon](source/assets/icon.png)
 
 # Locus
 
@@ -12,15 +12,15 @@ Locus is a local-first Markdown notebook for macOS, Windows, and Linux. Notes st
 - **Built-in reading**: browse the tree or search notes and actions, then read Markdown, local images, summaries, and custom YAML properties.
 - **Canvases**: a note can show its own HTML and JavaScript page, such as a dashboard or chart, inside the workspace.
 - **Agent friendly**: optional read-only MCP lets external Agents find the same notes, and a built-in terminal opens your shell or Agent CLI on request.
-- **Comfortable by default**: light and dark themes, an English or Chinese interface, back/forward history, and remembered navigation and sidebar state.
+- **Comfortable by default**: light and dark themes; English, Simplified and Traditional Chinese, Japanese, and Korean; back/forward history and remembered sidebar state.
 
 ## Install
 
 Download the latest release from [GitHub Releases](https://github.com/oneo-me/locus/releases/latest).
 
-- **macOS**: move `Locus.app` to Applications. macOS 13 or later, Apple Silicon or Intel.
-- **Windows**: unpack the zip and run `Locus.exe`. Windows 10 or later with the WebView2 runtime.
-- **Linux**: unpack the tarball and run `locus`. GTK 3 and WebKitGTK are required.
+- **macOS**: open the disk image and move `Locus.app` to Applications. macOS 13 or later, Apple Silicon or Intel.
+- **Windows**: run `Locus.exe` from the downloaded folder. Windows 10 or later, with the WebView2 runtime.
+- **Linux**: unpack the tar.gz and run `locus`, or install the `.deb`. GTK 3 and WebKitGTK are required.
 
 Published downloads can lag behind the development branch. Windows and Linux archives build from the same source but still need target-platform acceptance testing.
 
@@ -40,8 +40,8 @@ Build and test from `source/` with Go 1.27.1 or later:
 cd source
 GOWORK=off go test ./...
 GOWORK=off go vet ./...
-GOWORK=off go tool packer run
-GOWORK=off go tool packer build
+GOWORK=off go tool mygo dev
+GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,linux/amd64
 ```
 
 See [Running and building](docs/build.md) for dependencies, checks and packaging, [Architecture](ARCHITECTURE.md) for design boundaries, and [AGENTS.md](AGENTS.md) for contributor rules. User-visible changes are listed in [CHANGELOG.md](CHANGELOG.md).
