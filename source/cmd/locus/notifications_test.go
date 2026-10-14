@@ -25,7 +25,7 @@ func TestNoticesRenderAsToasts(t *testing.T) {
 		t.Fatalf("success notice %+v", a.notices[1])
 	}
 	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c, theme.Light)
+		c.SetTheme(theme.LightPalette())
 		a.content(c)
 		components.Toasts(c)
 	}, 650, 400)

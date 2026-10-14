@@ -8,7 +8,7 @@ This file records completed, pending user-visible changes and confirmed release 
 - Read Markdown bodies, summaries, local images and galleries, and custom YAML properties, following external file changes with Git status.
 - Show a note's own HTML, JavaScript, or JSON template canvas in the workspace, with manual refresh and export.
 - Organize notes with Emoji or PNG icons, copy a reference, open the note in your editor, or reveal its folder.
-- Choose light or dark themes and an English, Simplified Chinese, Traditional Chinese, Japanese, or Korean interface.
+- Choose light or dark themes that follow the desktop's text size and higher-contrast preferences, and an English, Simplified Chinese, Traditional Chinese, Japanese, or Korean interface.
 - Let external Agents read your notes through read-only MCP on this computer; local-network access is no longer available.
 - Open a built-in terminal with your shell or Agent CLI, and manage bundled authoring skills in Settings.
 - Check for updates from a packaged app and install a newer GitHub release.

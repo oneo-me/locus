@@ -30,8 +30,8 @@ github.com/modelcontextprotocol/go-sdk v1.8.0 h1:KIvahhYqwtbeniWVPs3TcXEA7b8jEtw
 github.com/modelcontextprotocol/go-sdk v1.8.0/go.mod h1:dL7u98E/zjJTGzEq+j30jQ8K2k1mb6LeAH4inEcSGts=
 github.com/nicksnyder/go-i18n/v2 v2.6.1 h1:JDEJraFsQE17Dut9HFDHzCoAWGEQJom5s0TRd17NIEQ=
 github.com/nicksnyder/go-i18n/v2 v2.6.1/go.mod h1:Vee0/9RD3Quc/NmwEjzzD7VTZ+Ir7QbXocrkhOzmUKA=
-github.com/oneo-me/onevra/source v0.2026.8 h1:NThWD0hv1o1DxHid96G+J7g0cHCfUC3h3vZu8FovEvw=
-github.com/oneo-me/onevra/source v0.2026.8/go.mod h1:72U8DQnmUhRTYt6Rvnoes+2/DUgOT5PX24V9jkxuSNo=
+github.com/oneo-me/onevra/source v0.2026.9 h1:6VfWVwKMKFJPk93O/9OIG2cuSQT9ixUmXZmia8zk7sA=
+github.com/oneo-me/onevra/source v0.2026.9/go.mod h1:KfusJ8vTICL8o2xWqD74sRTN63FUmm6riX5gM06vLjA=
 github.com/segmentio/asm v1.2.1 h1:DTNbBqs57ioxAD4PrArqftgypG4/qNpXoJx8TVXxPR0=
 github.com/segmentio/asm v1.2.1/go.mod h1:BqMnlJP91P8d+4ibuonYZw9mfnzI9HfxselHZr5aAcs=
 github.com/segmentio/encoding v0.5.4 h1:OW1VRern8Nw6ITAtwSZ7Idrl3MXCFwXHPgqESYfvNt0=

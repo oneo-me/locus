@@ -49,14 +49,14 @@ func TestGalleryPreview(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, mode := range []theme.Mode{theme.Light, theme.Dark} {
+	for _, dark := range []bool{false, true} {
 		a := &application{cfg: preferences.Default(), images: map[string]*ui.Bitmap{"assets/one.png": bitmap}}
 		a.cfg.Language = "english"
 		body := "```gallery\n![One](one.png)\n![Missing](missing.png)\n```"
 		a.galleries, _ = markdownResources(body)
 		doc := markdown.ParseMarkdown(body)
 		tt := ui.NewTester(func(c *ui.Context) {
-			theme.Apply(c, mode)
+			c.SetTheme(theme.Palette(dark))
 			doc.Render(c, markdown.MarkdownOptions{CodeBlocks: map[string]func(*ui.Context, markdown.MarkdownCodeBlock){"gallery": a.renderGallery}}).FillWidth()
 			a.galleryDialog(c)
 		}, 420, 600)

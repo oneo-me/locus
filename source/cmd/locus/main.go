@@ -21,6 +21,7 @@ import (
 	"github.com/oneo-me/onevra/source/components/command"
 	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
+	"github.com/oneo-me/onevra/source/theme"
 )
 
 type application struct {
@@ -176,7 +177,7 @@ func (a *application) start(root string) {
 	if err := mygo.Protocol.Handle(canvas.Scheme, &a.router); err != nil {
 		a.errorNotice(err.Error())
 	}
-	a.shell = sidebar.NewShell(sidebar.ShellOptions{Title: "Locus", Hidden: a.hidden, Width: 980, Height: 820, MinWidth: 980, MinHeight: 820, LeftWidth: 252, LeftMinWidth: 252, LeftMaxWidth: 520, Left: a.left, Content: a.content, ContentTitle: a.title, LeftHeader: a.navigation, LeftToolbar: a.toolbar, Toasts: components.ToastOptions{Placement: components.ToastTop}})
+	a.shell = sidebar.NewShell(sidebar.ShellOptions{Title: "Locus", Hidden: a.hidden, Width: 980, Height: 820, MinWidth: 980, MinHeight: 820, LeftWidth: 252, LeftMinWidth: 252, LeftMaxWidth: 520, Left: a.left, Content: a.content, ContentTitle: a.title, LeftHeader: a.navigation, LeftToolbar: a.toolbar, Theme: theme.Onevra, Toasts: components.ToastOptions{Placement: components.ToastTop}})
 	a.model.Dispatch = func(fn func()) { a.post(fn) }
 	a.model.Changed = a.changed
 	a.resetTree()

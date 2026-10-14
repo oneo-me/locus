@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -15,8 +14,12 @@ import (
 )
 
 func TestArticleHeaderFollowsScroll(t *testing.T) {
-	for _, mode := range []theme.Mode{theme.Light, theme.Dark} {
-		t.Run(fmt.Sprint(mode), func(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		name := "light"
+		if dark {
+			name = "dark"
+		}
+		t.Run(name, func(t *testing.T) {
 			a := &application{cfg: preferences.Default()}
 			a.model.Root, a.model.Selected = "library", "one"
 			a.model.Notes = []*library.Note{{Path: "one", Title: "Article"}, {Path: "two", Title: "Article"}}
@@ -24,7 +27,7 @@ func TestArticleHeaderFollowsScroll(t *testing.T) {
 			var headerHeight float32
 			var border ui.Color
 			tt := ui.NewTester(func(c *ui.Context) {
-				theme.Apply(c, mode)
+				c.SetTheme(theme.Palette(dark))
 				headerHeight, border = sidebar.HeaderHeight(c), c.Theme().Border
 				ui.Column(c).Fill().Children(func() { a.content(c) })
 			}, 650, 400)
