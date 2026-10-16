@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -8,7 +9,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/graph"
 	"github.com/oneo-me/onevra/source/icons/lucide"
-	"github.com/oneo-me/onevra/source/shells/sidebar"
+	"github.com/oneo-me/onevra/source/theme"
 )
 
 // graphHierarchyOpacity keeps structural parent-child edges behind explicit
@@ -20,11 +21,84 @@ const graphHierarchyOpacity = 0.12
 const graphAttachmentOpacity = 0.35
 
 // graphAttachmentGroup is a reserved group name. Note paths never contain an
-// assets segment, so attachments get their own color and starting sector.
+// assets segment, so attachments start in their own sector of the layout.
 const graphAttachmentGroup = "assets"
 
-// toggleGraph shows the relation graph on Shell's replacement page, next to
-// the library picker. Opening resets the camera and recomputes link edges.
+// graphBackdropOpacity dims the workspace deeply so the graph stays legible
+// over the content behind it, while a little translucency still shows through.
+const graphBackdropOpacity = 0.82
+
+// Attachment nodes use yellow rather than a group color so files read as a
+// distinct kind, independent of the note groups around them. Graph groups skip
+// the matching hue band so no note group can be mistaken for a file.
+var (
+	graphAttachmentFill  = ui.Hex("#f0c23c")
+	graphAttachmentLabel = ui.Hex("#f7e7a9")
+)
+
+const (
+	graphAttachmentHueStart = 28.0
+	graphAttachmentHueEnd   = 96.0
+)
+
+// graphDarkPalette returns the graph's fixed dark palette. The graph ignores
+// the workspace appearance and always uses the dark palette; the background
+// stays transparent so the dialog's dimmed backdrop shows through.
+func graphDarkPalette() *graph.Palette {
+	palette := graph.DefaultPalette(true)
+	return &palette
+}
+
+// graphGroupColor assigns the fixed dark graph's group colors. It reserves the
+// attachment yellow band and keeps fills as saturated mid-tones, so note
+// groups stay distinct over the dimmed workspace instead of washing out.
+func graphGroupColor(group string, index, count int, _ bool) (ui.Color, ui.Color) {
+	hue := graphGroupHue(index, count)
+	return graphHSL(hue, 66, 58), graphHSL(hue, 36, 85)
+}
+
+// graphGroupHue spaces group hues evenly around the wheel while skipping the
+// attachment yellow band. The allowed arc starts just after the band and wraps
+// through 0, so no two samples can collide at the seam.
+func graphGroupHue(index, count int) float64 {
+	const firstHue = 205.0
+	span := 360 - (graphAttachmentHueEnd - graphAttachmentHueStart)
+	start := math.Mod(firstHue-graphAttachmentHueEnd, span)
+	t := math.Mod(start+float64(index)*span/float64(max(1, count)), span)
+	return math.Mod(graphAttachmentHueEnd+t, 360)
+}
+
+// graphHSL converts an HSL color to sRGB. The graph package keeps its own
+// conversion private, but the graph needs a hue range that skips attachment
+// yellow.
+func graphHSL(hue, saturation, lightness float64) ui.Color {
+	h := math.Mod(math.Mod(hue, 360)+360, 360) / 60
+	s := max(0, min(saturation/100, 1))
+	l := max(0, min(lightness/100, 1))
+	chroma := (1 - math.Abs(2*l-1)) * s
+	second := chroma * (1 - math.Abs(math.Mod(h, 2)-1))
+	var r, g, b float64
+	switch {
+	case h < 1:
+		r, g = chroma, second
+	case h < 2:
+		r, g = second, chroma
+	case h < 3:
+		g, b = chroma, second
+	case h < 4:
+		g, b = second, chroma
+	case h < 5:
+		r, b = second, chroma
+	default:
+		r, b = chroma, second
+	}
+	m := l - chroma/2
+	channel := func(v float64) uint8 { return uint8(math.Round((v + m) * 255)) }
+	return ui.RGB(channel(r), channel(g), channel(b))
+}
+
+// toggleGraph shows the relation graph as a full-window dialog over the
+// workspace. Opening resets the camera and recomputes link edges.
 func (a *application) toggleGraph() {
 	if a.graphOpen {
 		a.closeGraph()
@@ -36,7 +110,6 @@ func (a *application) toggleGraph() {
 	a.graphOpen = true
 	a.graphState = graph.State{}
 	a.loadGraphRelations()
-	a.syncPage()
 }
 
 func (a *application) closeGraph() {
@@ -44,23 +117,20 @@ func (a *application) closeGraph() {
 		return
 	}
 	a.graphOpen = false
-	a.syncPage()
 }
 
-// syncPage selects Shell's replacement page: the relation graph when open, the
-// library picker without a library, and the default workspace otherwise.
+// syncPage selects Shell's replacement page: the library picker without a
+// library, and the default workspace otherwise. The relation graph is a
+// dialog over the workspace, not a page.
 func (a *application) syncPage() {
 	if a.shell == nil {
 		return
 	}
-	switch {
-	case a.graphOpen:
-		a.shell.SetPage(a.graphPage)
-	case a.model.Root == "":
+	if a.model.Root == "" {
 		a.shell.SetPage(a.libraryPicker)
-	default:
-		a.shell.SetPage(nil)
+		return
 	}
+	a.shell.SetPage(nil)
 }
 
 // graphIconButton matches the sidebar icon buttons while using a smaller glyph:
@@ -137,40 +207,47 @@ func (a *application) openGraphNote(p string) {
 	a.selectNote(p)
 }
 
-// graphPage is Shell's replacement page for the relation graph. It covers the
-// whole window, hides the sidebar, and keeps its own close control.
-func (a *application) graphPage(c *ui.Context) {
-	a.flushNotices(c)
-	inset := sidebar.HeaderHeight(c)
-	ui.Column(c).Fill().MinWidth(0).MinHeight(0).Padding(inset, 0, 0, 0).Children(func() {
-		a.graphTitleBar(c)
-		graph.View(c, &a.graphState, a.graphData(), graph.Options{
-			Label: a.text("Relation graph"),
-			Open:  a.openGraphNote,
-			Empty: func(c *ui.Context) {
-				components.Text(c, a.text("No notes to show.")).TextColor(c.Theme().TextMuted)
-			},
+// graphDialog shows the relation graph full-window over a dimmed backdrop,
+// exactly like the image preview. It covers Shell's floating header, so its
+// display options and close control float in the window's top trailing corner.
+func (a *application) graphDialog(c *ui.Context) {
+	if !a.graphOpen {
+		return
+	}
+	if a.model.Root == "" {
+		a.graphOpen = false
+		return
+	}
+	ui.DialogBase(c, &a.graphOpen, func(backdrop, panel ui.Element) {
+		backdrop.Background(ui.RGBA(0, 0, 0, graphBackdropOpacity))
+		panel.Fill().Children(func() {
+			graph.View(c, &a.graphState, a.graphData(), graph.Options{
+				Label:      a.text("Relation graph"),
+				Open:       a.openGraphNote,
+				Palette:    graphDarkPalette(),
+				GroupColor: graphGroupColor,
+				Empty: func(c *ui.Context) {
+					components.Text(c, a.text("No notes to show.")).TextColor(theme.DarkPalette().TextMuted)
+				},
+			})
+		})
+		backdrop.Children(func() {
+			ui.Box(c).Absolute().Top(16).Right(16).Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+					floatingDiscButton(c, lucide.SlidersHorizontal(), a.text("Relation graph options")).Menu(a.graphOptionsMenu)
+					floatingDiscButton(c, lucide.X(), a.text("Close")).OnClick(a.closeGraph)
+				})
+			})
 		})
 	})
-	a.commandDialog(c)
-	a.settingsDialog(c)
 }
 
-// graphTitleBar titles the graph page and carries its display options and
-// close action. Shell's floating header stays above it as the drag region.
-func (a *application) graphTitleBar(c *ui.Context) {
-	t := c.Theme()
-	ui.Row(c).FillWidth().Shrink(0).AlignItems(ui.Center).Gap(t.Space(1)).
-		Padding(t.Space(1.5), t.Space(3)).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		components.Text(c, a.text("Relation graph")).Bold().Grow(1).MinWidth(0).SingleLine().Ellipsis("…")
-		sidebar.IconButton(c, lucide.SlidersHorizontal(), a.text("Relation graph options")).Menu(func(m *ui.Menu) {
-			if m.Item(a.text("Show attachments")).Checked(a.state.GraphAttachments).Chosen() {
-				a.state.GraphAttachments = !a.state.GraphAttachments
-				a.graphDirty = true
-			}
-		})
-		sidebar.IconButton(c, lucide.X(), a.text("Close")).OnClick(a.closeGraph)
-	})
+// graphOptionsMenu toggles the note attachments that appear in the graph.
+func (a *application) graphOptionsMenu(m *ui.Menu) {
+	if m.Item(a.text("Show attachments")).Checked(a.state.GraphAttachments).Chosen() {
+		a.state.GraphAttachments = !a.state.GraphAttachments
+		a.graphDirty = true
+	}
 }
 
 // graphData projects the document tree and discovered links into nodes and
@@ -205,7 +282,10 @@ func (a *application) graphData() graph.Data {
 				continue
 			}
 			id := graphAttachmentID(attachment.Note, attachment.Name)
-			nodes = append(nodes, graph.Node{ID: id, Label: attachment.Name, Group: graphAttachmentGroup})
+			nodes = append(nodes, graph.Node{
+				ID: id, Label: attachment.Name, Group: graphAttachmentGroup,
+				Color: graphAttachmentFill, LabelColor: graphAttachmentLabel,
+			})
 			edges = append(edges, graph.Edge{Source: attachment.Note, Target: id, Style: graph.EdgeStyle{Opacity: graphAttachmentOpacity}})
 			seen[edgeKey{attachment.Note, id}] = true
 		}

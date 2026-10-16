@@ -152,7 +152,7 @@ func (a *application) title(c *ui.Context) {
 func (a *application) content(c *ui.Context) {
 	a.flushNotices(c)
 	// MyGo maps native mouse side buttons to these navigation keys.
-	if !a.settingsOpen && !a.commandsOpen && !a.terminalOpen && !a.galleryPreviewOpen && !a.choosing {
+	if !a.settingsOpen && !a.commandsOpen && !a.terminalOpen && !a.galleryPreviewOpen && !a.graphOpen && !a.choosing {
 		if c.Shortcut(0, ui.KeyBack) {
 			a.back(-1)
 		}
@@ -235,6 +235,7 @@ func (a *application) content(c *ui.Context) {
 			ui.Box(c).Absolute().Bottom(0).Left(0).Right(0).Height(1).PassThrough().Background(c.Theme().Border)
 		})
 	}
+	a.graphDialog(c)
 	a.galleryDialog(c)
 	a.commandDialog(c)
 	a.settingsDialog(c)

@@ -87,6 +87,9 @@ func TestGraphDataShowsAttachmentsWhenEnabled(t *testing.T) {
 	if attachment.Openable || attachment.Label != "setup.png" || attachment.Group != graphAttachmentGroup {
 		t.Fatalf("attachment node = %+v", attachment)
 	}
+	if attachment.Color != graphAttachmentFill || attachment.LabelColor != graphAttachmentLabel {
+		t.Fatalf("attachment node color = %+v", attachment)
+	}
 	found := false
 	for _, edge := range data.Edges {
 		if edge.Source == "guide" && edge.Target == "guide/assets/setup.png" {
@@ -103,17 +106,24 @@ func TestGraphDataShowsAttachmentsWhenEnabled(t *testing.T) {
 	}
 }
 
-func TestGraphTitleBarTogglesAttachments(t *testing.T) {
+func TestGraphOverlayTogglesAttachments(t *testing.T) {
 	a := graphFixture()
 	a.graphOpen = true
-	tt := ui.NewTester(a.graphPage, 900, 700)
+	tt := ui.NewTester(a.graphDialog, 900, 700)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.Frame()
 	if tt.HasText("Double-click a note to open it.") {
 		t.Fatal("the double-click hint should be removed")
 	}
+	close, ok := tt.Find("Close")
+	if !ok {
+		t.Fatal("graph overlay is missing its close control")
+	}
+	if close.X < 600 || close.Y > 160 {
+		t.Fatalf("close control is not in the window's top-right: %+v", close)
+	}
 	if _, ok := tt.Find("Relation graph options"); !ok {
-		t.Fatal("graph title bar is missing its options menu")
+		t.Fatal("graph overlay is missing its options menu")
 	}
 	if err := tt.Click("Relation graph options"); err != nil {
 		t.Fatal(err)
@@ -126,6 +136,27 @@ func TestGraphTitleBarTogglesAttachments(t *testing.T) {
 	}
 	if !a.state.GraphAttachments {
 		t.Fatal("choosing Show attachments did not enable attachments")
+	}
+}
+
+func TestGraphUsesFixedDarkPalette(t *testing.T) {
+	palette := graphDarkPalette()
+	dark := graph.DefaultPalette(true)
+	if palette.Node != dark.Node || palette.NodeLabel != dark.NodeLabel {
+		t.Fatalf("palette = %+v, want dark defaults", *palette)
+	}
+	if palette.Background != (ui.Color{}) {
+		t.Fatalf("graph background = %+v, want transparent", palette.Background)
+	}
+	for count := 1; count <= 24; count++ {
+		for index := 0; index < count; index++ {
+			if hue := graphGroupHue(index, count); hue >= graphAttachmentHueStart && hue < graphAttachmentHueEnd {
+				t.Fatalf("group hue %v for %d/%d is in the attachment yellow band", hue, index, count)
+			}
+		}
+	}
+	if fill, _ := graphGroupColor("guide", 0, 1, false); fill == graphAttachmentFill {
+		t.Fatal("a group color matches the attachment yellow")
 	}
 }
 
@@ -158,17 +189,21 @@ func TestGraphToolbarTogglesPage(t *testing.T) {
 	}
 }
 
-func TestGraphPageRendersAndOpensNotes(t *testing.T) {
+func TestGraphDialogRendersAndOpensNotes(t *testing.T) {
 	a := graphFixture()
 	a.graphOpen = true
-	tt := ui.NewTester(a.graphPage, 900, 700)
+	tt := ui.NewTester(a.graphDialog, 900, 700)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.Frame()
-	if _, ok := tt.Find("Relation graph"); !ok {
-		t.Fatal("graph page is missing its accessible label")
+	canvas, ok := tt.Find("Relation graph")
+	if !ok {
+		t.Fatal("graph dialog is missing its accessible label")
+	}
+	if canvas.W < 880 || canvas.H < 680 {
+		t.Fatalf("graph does not fill the window: %+v", canvas)
 	}
 	if _, ok := tt.Find("Close"); !ok {
-		t.Fatal("graph page is missing its close control")
+		t.Fatal("graph dialog is missing its close control")
 	}
 	a.openGraphNote("guide/setup")
 	if a.graphOpen || a.model.Selected != "guide/setup" {

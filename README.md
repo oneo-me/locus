@@ -10,7 +10,7 @@ Locus is a local-first Markdown notebook for macOS, Windows, and Linux. Notes st
 
 - **Plain files, no lock-in**: each note is a folder containing `index.md`; nested folders form the note tree, and attachments live beside the note.
 - **Built-in reading**: browse the tree or search notes and actions, then read Markdown, local images, summaries, and custom YAML properties.
-- **Relation graph**: open a full-page graph that maps the note hierarchy together with the links between notes, with an option to include each note's attachment files.
+- **Relation graph**: open a full-window graph over the workspace that maps the note hierarchy together with the links between notes, with an option to include each note's attachment files as yellow nodes.
 - **Canvases**: a note can show its own HTML and JavaScript page, such as a dashboard or chart, inside the workspace.
 - **Agent friendly**: optional read-only MCP lets external Agents find the same notes, and a built-in terminal opens your shell or Agent CLI on request.
 - **Comfortable by default**: light and dark themes; English, Simplified and Traditional Chinese, Japanese, and Korean; back/forward history and remembered sidebar state.

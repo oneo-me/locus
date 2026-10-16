@@ -184,15 +184,16 @@ func (a *application) galleryDialog(c *ui.Context) {
 		})
 		backdrop.Children(func() {
 			ui.Box(c).Absolute().Top(16).Right(16).Children(func() {
-				galleryCloseButton(c, a.text("Close")).OnClick(func() { a.galleryPreviewOpen = false })
+				floatingDiscButton(c, lucide.X(), a.text("Close")).OnClick(func() { a.galleryPreviewOpen = false })
 			})
 		})
 	})
 }
 
-// galleryCloseButton is a translucent disc that stays legible over the dimmed
-// backdrop in both themes, unlike the theme-tinted sidebar controls.
-func galleryCloseButton(c *ui.Context, label string) ui.Element {
+// floatingDiscButton is a translucent disc that stays legible over the dimmed
+// image preview and the dark relation graph in both themes, unlike the
+// theme-tinted sidebar controls.
+func floatingDiscButton(c *ui.Context, icon *ui.SVG, label string) ui.Element {
 	size := max(36, c.Theme().Rem(2.25))
 	b := ui.ButtonBase(c).Size(size, size).Radius(size / 2).
 		Background(ui.RGBA(0, 0, 0, 0.55)).TextColor(ui.RGBA(255, 255, 255, 1)).Label(label)
@@ -203,7 +204,7 @@ func galleryCloseButton(c *ui.Context, label string) ui.Element {
 			p.Fill(r, ui.RGBA(255, 255, 255, 0.16), size/2)
 		}
 	}).Children(func() {
-		components.Icon(c, lucide.X()).Size(18, 18)
+		components.Icon(c, icon).Size(18, 18)
 	})
 	components.Tooltip(c, b, label)
 	return b
