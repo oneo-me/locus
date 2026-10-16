@@ -69,8 +69,8 @@ jobs:
       matrix:
         include:
           - { name: macOS, os: macos-latest, platform: "darwin/arm64,darwin/amd64" }
-          - { name: Windows, os: ubuntu-latest, platform: "windows/amd64" }
-          - { name: Linux, os: ubuntu-latest, platform: "linux/amd64" }
+          - { name: Windows, os: ubuntu-latest, platform: "windows/amd64,windows/arm64" }
+          - { name: Linux, os: ubuntu-latest, platform: "linux/amd64,linux/arm64" }
     steps:
       - uses: actions/checkout@v7
 

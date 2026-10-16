@@ -34,7 +34,7 @@ From `source/`:
 
 ```sh
 GOWORK=off go tool mygo dev
-GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,linux/amd64
+GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,windows/arm64,linux/amd64,linux/arm64
 ```
 
 `dev` launches the Locus Dev bundle. `build` writes one directory per target under `dist/`. VS Code tasks and [`.neorio/config.yaml`](../.neorio/config.yaml) use the same commands and the project icon. See [App packaging](architecture/packaging.md) for icons, artifacts, and platform limits. Verify native behavior on each target before claiming support.

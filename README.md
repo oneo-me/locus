@@ -20,8 +20,8 @@ Locus is a local-first Markdown notebook for macOS, Windows, and Linux. Notes st
 Download the latest release from [GitHub Releases](https://github.com/oneo-me/locus/releases/latest).
 
 - **macOS**: open the disk image and move `Locus.app` to Applications. macOS 13 or later, Apple Silicon or Intel.
-- **Windows**: run `Locus.exe` from the downloaded folder. Windows 10 or later, with the WebView2 runtime.
-- **Linux**: unpack the tar.gz and run `locus`, or install the `.deb`. GTK 3 and WebKitGTK are required.
+- **Windows**: run `Locus.exe` from the downloaded folder. Windows 10 or later, with the WebView2 runtime, on x64 or ARM64.
+- **Linux**: unpack the tar.gz and run `locus`, or install the `.deb`. GTK 3 and WebKitGTK are required, on x64 or ARM64.
 
 A packaged app checks for updates and can install a newer release. Development builds do not update.
 
@@ -44,7 +44,7 @@ cd source
 GOWORK=off go test ./...
 GOWORK=off go vet ./...
 GOWORK=off go tool mygo dev
-GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,linux/amd64
+GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,windows/arm64,linux/amd64,linux/arm64
 ```
 
 See [Running and building](docs/build.md) for dependencies, checks and packaging, [Architecture](ARCHITECTURE.md) for design boundaries, and [AGENTS.md](AGENTS.md) for contributor rules. User-visible changes are listed in [CHANGELOG.md](CHANGELOG.md).
