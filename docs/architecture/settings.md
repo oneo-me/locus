@@ -34,7 +34,7 @@ One writer goroutine serializes snapshots. Pending work keeps only the newest va
 
 ## Presentation state
 
-`state.yaml` stores the current library and selection, per-library tree expansion, and sidebar width and collapse. It is separate from preferences and from note content. Expansion is keyed by the canonical library root and library-relative node paths. Switching libraries keeps each tree in memory. Close and quit persist every visited tree.
+`state.yaml` stores the current library and selection, per-library tree expansion, sidebar width and collapse, and the relation graph's attachment visibility. It is separate from preferences and from note content. Expansion is keyed by the canonical library root and library-relative node paths. Switching libraries keeps each tree in memory. Close and quit persist every visited tree.
 
 Restoration waits for a successful scan, ignores removed branches, and keeps expanded descendants under collapsed parents. Restoring a selection does not reopen saved collapsed ancestors. Explicit navigation still reveals its destination. Older state files without tree expansion keep the selection-reveal behavior. Selection is restored only when its library matches and the note is still visible.
 

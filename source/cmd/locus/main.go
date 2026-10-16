@@ -72,6 +72,7 @@ type application struct {
 	graphOpen                  bool
 	graphState                 graph.State
 	graphLinks                 []library.Relation
+	graphAttachments           []library.Attachment
 	graphLinksKey              string
 	graphTicket                uint64
 	graphDirty                 bool
@@ -344,7 +345,7 @@ func (a *application) saveState() {
 		return
 	}
 	a.rememberTreeExpansion()
-	state := preferences.State{ExpandedNodes: a.state.ExpandedNodes, Library: a.model.Root, Selected: a.model.Selected, SidebarWidth: a.shell.LeftWidth(), Collapsed: !a.shell.LeftExpanded()}
+	state := preferences.State{ExpandedNodes: a.state.ExpandedNodes, Library: a.model.Root, Selected: a.model.Selected, SidebarWidth: a.shell.LeftWidth(), Collapsed: !a.shell.LeftExpanded(), GraphAttachments: a.state.GraphAttachments}
 	if err := preferences.SaveState(a.statePath, state); err != nil {
 		log.Print(err)
 		a.errorNotice(err.Error())

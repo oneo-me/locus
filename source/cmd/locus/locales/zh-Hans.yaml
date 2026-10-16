@@ -27,8 +27,6 @@ locus.dark:
   other: "深色"
 locus.default:
   other: "默认"
-locus.double_click_a_note:
-  other: "双击笔记即可打开。"
 locus.edit_note:
   other: "编辑笔记"
 locus.editor:
@@ -101,6 +99,8 @@ locus.refresh:
   other: "刷新"
 locus.relation_graph:
   other: "关系图谱"
+locus.relation_graph_options:
+  other: "关系图谱选项"
 locus.search_notes:
   other: "搜索笔记"
 locus.search_results:
@@ -119,6 +119,8 @@ locus.settings_category:
   other: "设置分类"
 locus.shell:
   other: "Shell"
+locus.show_attachments:
+  other: "显示附件"
 locus.skill_installed:
   other: "技能已安装"
 locus.status:

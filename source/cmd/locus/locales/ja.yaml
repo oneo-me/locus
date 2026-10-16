@@ -27,8 +27,6 @@ locus.dark:
   other: "ダーク"
 locus.default:
   other: "デフォルト"
-locus.double_click_a_note:
-  other: "ノートをダブルクリックして開きます。"
 locus.edit_note:
   other: "ノートを編集"
 locus.editor:
@@ -101,6 +99,8 @@ locus.refresh:
   other: "再読み込み"
 locus.relation_graph:
   other: "関係グラフ"
+locus.relation_graph_options:
+  other: "関係グラフのオプション"
 locus.search_notes:
   other: "ノートを検索"
 locus.search_results:
@@ -119,6 +119,8 @@ locus.settings_category:
   other: "設定カテゴリ"
 locus.shell:
   other: "Shell"
+locus.show_attachments:
+  other: "添付ファイルを表示"
 locus.skill_installed:
   other: "スキルをインストールしました"
 locus.status:

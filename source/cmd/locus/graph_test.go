@@ -1,11 +1,13 @@
 package main
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/locus/internal/preferences"
+	"github.com/oneo-me/onevra/source/components/graph"
 )
 
 func graphFixture() *application {
@@ -21,6 +23,7 @@ func graphFixture() *application {
 		{Path: "reference", Title: "Reference", HasBody: true},
 	}
 	a.graphLinks = []library.Relation{{Source: "guide", Target: "reference"}}
+	a.graphAttachments = []library.Attachment{{Note: "guide", Name: "setup.png"}}
 	a.graphDirty = true
 	a.resetTree()
 	return a
@@ -63,6 +66,66 @@ func TestGraphDataProjectsHierarchyAndLinks(t *testing.T) {
 	}
 	if again := a.graphData(); len(again.Nodes) != len(data.Nodes) {
 		t.Fatal("cached data changed")
+	}
+}
+
+func TestGraphDataShowsAttachmentsWhenEnabled(t *testing.T) {
+	a := graphFixture()
+	a.state.GraphAttachments = true
+	data := a.graphData()
+	if len(data.Nodes) != 5 {
+		t.Fatalf("nodes = %d, want 5", len(data.Nodes))
+	}
+	byID := map[string]graph.Node{}
+	for _, node := range data.Nodes {
+		byID[node.ID] = node
+	}
+	attachment, ok := byID["guide/assets/setup.png"]
+	if !ok {
+		t.Fatal("missing attachment node")
+	}
+	if attachment.Openable || attachment.Label != "setup.png" || attachment.Group != graphAttachmentGroup {
+		t.Fatalf("attachment node = %+v", attachment)
+	}
+	found := false
+	for _, edge := range data.Edges {
+		if edge.Source == "guide" && edge.Target == "guide/assets/setup.png" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("missing note-to-attachment edge")
+	}
+	a.state.GraphAttachments = false
+	a.graphDirty = true
+	if got := len(a.graphData().Nodes); got != 4 {
+		t.Fatalf("nodes after hiding attachments = %d, want 4", got)
+	}
+}
+
+func TestGraphTitleBarTogglesAttachments(t *testing.T) {
+	a := graphFixture()
+	a.graphOpen = true
+	tt := ui.NewTester(a.graphPage, 900, 700)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	tt.Frame()
+	if tt.HasText("Double-click a note to open it.") {
+		t.Fatal("the double-click hint should be removed")
+	}
+	if _, ok := tt.Find("Relation graph options"); !ok {
+		t.Fatal("graph title bar is missing its options menu")
+	}
+	if err := tt.Click("Relation graph options"); err != nil {
+		t.Fatal(err)
+	}
+	if got := tt.Menu(); !slices.Equal(got, []string{"Show attachments"}) {
+		t.Fatalf("menu = %v, want [Show attachments]", got)
+	}
+	if err := tt.ChooseMenuItem("Show attachments"); err != nil {
+		t.Fatal(err)
+	}
+	if !a.state.GraphAttachments {
+		t.Fatal("choosing Show attachments did not enable attachments")
 	}
 }
 

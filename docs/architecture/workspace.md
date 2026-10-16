@@ -62,13 +62,13 @@ All notes have a trailing More actions menu with Upload icon, which opens a nati
 
 ### Relation graph
 
-A sidebar action beside Settings and the command palette open the relation graph on Shell's replacement page, the same independent page the library picker uses. It covers the whole window, hides the sidebar and default content, and keeps the floating header as a drag region. A close control in the graph's top-trailing corner returns to the workspace; note-link navigation and double-clicking a node also leave it and select that note. The graph action is disabled without a library.
+A sidebar action beside Settings and the command palette open the relation graph on Shell's replacement page, the same independent page the library picker uses. It covers the whole window, hides the sidebar and default content, and keeps the floating header as a drag region. A title bar below that header names the page, carries a display-options menu, and places a close action at its trailing edge; note-link navigation and double-clicking a node also leave the page and select that note. The graph action is disabled without a library.
 
-Nodes are notes with stable library-relative paths, grouped by their top-level directory. Edges combine the parent-to-child hierarchy, drawn faintly, with Markdown links between existing notes. Link destinations resolve `locus://` addresses and library-relative paths that name a note directory or its `index.md`; images, autolinks, external URLs, fragments, traversal, and unsafe segments are ignored.
+Nodes are notes with stable library-relative paths, grouped by their top-level directory. Edges combine the parent-to-child hierarchy, drawn faintly, with Markdown links between existing notes. The display-options menu can show a note's attachments: regular, non-hidden files directly inside its `assets/` directory except the reserved `icon.png`. Attachments appear as small nodes joined to their owning note, use the reserved `assets` group name for their own color, and are not openable. The choice survives restarts in presentation state. Link destinations resolve `locus://` addresses and library-relative paths that name a note directory or its `index.md`; images, autolinks, external URLs, fragments, traversal, and unsafe segments are ignored.
 
 Opening the graph resets the camera; dragging pans, the wheel or a pinch zooms around the pointer. A library with no notes renders an empty state rather than an error. Selecting a note records history like any other navigation.
 
-Link extraction reads note bodies in one background task per library scan, governed by the same ticket and generation checks as other asynchronous work. The hierarchy and nodes render immediately from the current projection, and link edges appear when the read finishes. Frame construction performs no file I/O, and the projected nodes and edges are cached until the model or link results change.
+Link extraction reads note bodies in one background task per library scan, governed by the same ticket and generation checks as other asynchronous work. The same task lists attachment files through rooted, symlink-rejecting access. The hierarchy and nodes render immediately from the current projection, and link edges and attachments appear when the read finishes. Frame construction performs no file I/O, and the projected nodes and edges are cached until the model, attachment visibility, or link results change.
 
 ## Canvas and settings
 
@@ -92,6 +92,6 @@ Gallery tests cover fenced-block dispatch, syntax validation, local-path restric
 
 The native reading fixture includes legacy attachment rows in light and dark captures. File-manager activation and full keyboard acceptance remain manual checks. Native icon checks also process a large PNG, update a temporary note, and verify watcher-driven icon refresh.
 
-Graph tests cover hierarchy and link projection, cached rebuilds, the sidebar and command entries, the disabled state without a library, the empty state, and note opening. Native pan, zoom, node dragging, and double-click acceptance remain manual checks.
+Graph tests cover hierarchy, link and attachment projection, cached rebuilds, the title bar options menu, the sidebar and command entries, the disabled state without a library, the empty state, and note opening. Native pan, zoom, node dragging, and double-click acceptance remain manual checks.
 
 Real acceptance still covers native picker interaction, long-list scrolling, tree keyboard paths, text selection, themes and languages, resizing, canvas input and overlays, accessibility, and close or reopen behavior. macOS checks do not establish Windows or Linux behavior. Sidebar ordering, font controls, and full window-bounds restoration are not implemented.

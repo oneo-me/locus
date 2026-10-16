@@ -27,8 +27,6 @@ locus.dark:
   other: "深色"
 locus.default:
   other: "預設"
-locus.double_click_a_note:
-  other: "按兩下筆記即可開啟。"
 locus.edit_note:
   other: "編輯筆記"
 locus.editor:
@@ -101,6 +99,8 @@ locus.refresh:
   other: "重新整理"
 locus.relation_graph:
   other: "關聯圖譜"
+locus.relation_graph_options:
+  other: "關聯圖譜選項"
 locus.search_notes:
   other: "搜尋筆記"
 locus.search_results:
@@ -119,6 +119,8 @@ locus.settings_category:
   other: "設定類別"
 locus.shell:
   other: "Shell"
+locus.show_attachments:
+  other: "顯示附件"
 locus.skill_installed:
   other: "技能已安裝"
 locus.status:

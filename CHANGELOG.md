@@ -9,6 +9,7 @@ This file records completed, pending user-visible changes and confirmed release 
 - Select across a Markdown body as one text range, copy code from blocks that name their language, and copy the selection as text, HTML, or Markdown.
 - Open dialogs that animate in and out, and see command results return to the top when the query changes.
 - Explore notes as a full-page relation graph that combines the document hierarchy with links between notes, opened from the sidebar or command palette.
+- Give the relation graph a titled bar with a display-options menu that can include a note's attachments and a trailing close control.
 - Show a note's own HTML, JavaScript, or JSON template canvas in the workspace, with manual refresh and export.
 - Organize notes with Emoji or PNG icons, copy a reference, open the note in your editor, or reveal its folder.
 - Choose light or dark themes that follow the desktop's text size and higher-contrast preferences, and an English, Simplified Chinese, Traditional Chinese, Japanese, or Korean interface.

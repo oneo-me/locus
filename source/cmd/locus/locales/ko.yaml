@@ -27,8 +27,6 @@ locus.dark:
   other: "다크"
 locus.default:
   other: "기본값"
-locus.double_click_a_note:
-  other: "노트를 두 번 클릭하여 엽니다."
 locus.edit_note:
   other: "노트 편집"
 locus.editor:
@@ -101,6 +99,8 @@ locus.refresh:
   other: "새로 고침"
 locus.relation_graph:
   other: "관계 그래프"
+locus.relation_graph_options:
+  other: "관계 그래프 옵션"
 locus.search_notes:
   other: "노트 검색"
 locus.search_results:
@@ -119,6 +119,8 @@ locus.settings_category:
   other: "설정 범주"
 locus.shell:
   other: "Shell"
+locus.show_attachments:
+  other: "첨부 파일 표시"
 locus.skill_installed:
   other: "스킬을 설치했습니다"
 locus.status:

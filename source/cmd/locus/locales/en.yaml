@@ -27,8 +27,6 @@ locus.dark:
   other: "dark"
 locus.default:
   other: "default"
-locus.double_click_a_note:
-  other: "Double-click a note to open it."
 locus.edit_note:
   other: "Edit note"
 locus.editor:
@@ -101,6 +99,8 @@ locus.refresh:
   other: "Refresh"
 locus.relation_graph:
   other: "Relation graph"
+locus.relation_graph_options:
+  other: "Relation graph options"
 locus.search_notes:
   other: "Search notes"
 locus.search_results:
@@ -119,6 +119,8 @@ locus.settings_category:
   other: "Settings category"
 locus.shell:
   other: "Shell"
+locus.show_attachments:
+  other: "Show attachments"
 locus.skill_installed:
   other: "Skill installed"
 locus.status:
