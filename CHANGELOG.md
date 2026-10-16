@@ -6,6 +6,7 @@ This file records completed, pending user-visible changes and confirmed release 
 
 - Browse a library of plain Markdown notes as a tree or through note and action search, with back/forward history and remembered navigation and sidebar state.
 - Read Markdown bodies, summaries, local images and galleries, and custom YAML properties, following external file changes with Git status.
+- Show every reachable local image by scaling oversized pictures to the reading budget instead of marking them unavailable, and preview a gallery image in a full-window dialog with a close control in the top-right corner.
 - Select across a Markdown body as one text range, copy code from blocks that name their language, and copy the selection as text, HTML, or Markdown.
 - Open dialogs that animate in and out, and see command results return to the top when the query changes.
 - Explore notes as a full-page relation graph that combines the document hierarchy with links between notes, opened from the sidebar or command palette.

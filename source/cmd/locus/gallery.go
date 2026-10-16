@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -154,6 +155,10 @@ func (a *application) renderGallery(c *ui.Context, block *markdown.CodeBlockView
 	})
 }
 
+// galleryDialog shows the activated thumbnail full-window over a dimmed
+// backdrop. The panel itself has no surface: only the image and the window's
+// top-right close control are drawn, and clicking the backdrop or pressing
+// Escape dismisses it.
 func (a *application) galleryDialog(c *ui.Context) {
 	if !a.galleryPreviewOpen {
 		return
@@ -164,11 +169,42 @@ func (a *application) galleryDialog(c *ui.Context) {
 		return
 	}
 	w, h := c.Size()
-	components.Dialog(c, &a.galleryPreviewOpen, components.DialogOptions{Label: a.galleryPreview.Alt}, func(panel ui.Element) {
-		panel.Width(max(0, w-80)).Height(max(0, h-100)).Children(func() {
-			components.Image(c, bitmap).FillWidth().Grow(1).MinHeight(0).Fit(ui.Contain).Label(a.galleryPreview.Alt)
-			components.Text(c, a.galleryPreview.Alt).Wrap()
-			components.Button(c, a.text("Close"), components.ButtonGhost).OnClick(func() { a.galleryPreviewOpen = false })
+	iw, ih := bitmap.Size()
+	if iw <= 0 || ih <= 0 {
+		a.galleryPreviewOpen = false
+		return
+	}
+	// Keep the picture clear of the close control in the window's corner.
+	scale := min(max(1, w-96)/float32(iw), max(1, h-140)/float32(ih))
+	dw, dh := float32(iw)*scale, float32(ih)*scale
+	ui.DialogBase(c, &a.galleryPreviewOpen, func(backdrop, panel ui.Element) {
+		backdrop.Background(ui.RGBA(0, 0, 0, 0.72))
+		panel.Label(a.galleryPreview.Alt).Width(dw).Height(dh).Children(func() {
+			components.Image(c, bitmap).Fill().Fit(ui.Contain).Label(a.galleryPreview.Alt)
+		})
+		backdrop.Children(func() {
+			ui.Box(c).Absolute().Top(16).Right(16).Children(func() {
+				galleryCloseButton(c, a.text("Close")).OnClick(func() { a.galleryPreviewOpen = false })
+			})
 		})
 	})
+}
+
+// galleryCloseButton is a translucent disc that stays legible over the dimmed
+// backdrop in both themes, unlike the theme-tinted sidebar controls.
+func galleryCloseButton(c *ui.Context, label string) ui.Element {
+	size := max(36, c.Theme().Rem(2.25))
+	b := ui.ButtonBase(c).Size(size, size).Radius(size / 2).
+		Background(ui.RGBA(0, 0, 0, 0.55)).TextColor(ui.RGBA(255, 255, 255, 1)).Label(label)
+	b.Draw(func(p *ui.Painter, r ui.Rect) {
+		if b.Pressed() {
+			p.Fill(r, ui.RGBA(255, 255, 255, 0.28), size/2)
+		} else if b.Hovered() {
+			p.Fill(r, ui.RGBA(255, 255, 255, 0.16), size/2)
+		}
+	}).Children(func() {
+		components.Icon(c, lucide.X()).Size(18, 18)
+	})
+	components.Tooltip(c, b, label)
+	return b
 }

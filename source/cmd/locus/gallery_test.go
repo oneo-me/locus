@@ -76,6 +76,9 @@ func TestGalleryPreview(t *testing.T) {
 			t.Fatal("preview did not open")
 		}
 		tt.Frame()
+		if close, ok := tt.Find("Close"); !ok || close.X < 300 || close.Y > 80 {
+			t.Fatalf("close control is not in the window's top-right: %+v, %v", close, ok)
+		}
 		if err := tt.Click("Close"); err != nil {
 			t.Fatal(err)
 		}
