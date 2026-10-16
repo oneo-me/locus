@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/markdown"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -88,13 +88,13 @@ func parseGallery(source string) galleryBlock {
 	return result
 }
 
-// Match Onevra's fenced-block indices, including fences handled as ordinary code.
-func markdownResources(body string) (map[int]galleryBlock, []string) {
+// Fenced galleries are keyed by their raw fence content so that rendering can
+// match MyGo's parsed blocks without depending on block indices.
+func markdownResources(body string) (map[string]galleryBlock, []string) {
 	data := []byte(body)
 	root := goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser().Parse(text.NewReader(data))
-	galleries := map[int]galleryBlock{}
+	galleries := map[string]galleryBlock{}
 	var targets []string
-	index := 0
 	_ = ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
@@ -110,21 +110,21 @@ func markdownResources(body string) (map[int]galleryBlock, []string) {
 				}
 			}
 			if language == "gallery" {
-				gallery := parseGallery(string(n.Lines().Value(data)))
-				galleries[index] = gallery
+				code := string(n.Lines().Value(data))
+				gallery := parseGallery(code)
+				galleries[code] = gallery
 				for _, item := range gallery.Items {
 					targets = append(targets, item.Target)
 				}
 			}
-			index++
 		}
 		return ast.WalkContinue, nil
 	})
 	return galleries, targets
 }
 
-func (a *application) renderGallery(c *ui.Context, block markdown.MarkdownCodeBlock) {
-	gallery := a.galleries[block.Index]
+func (a *application) renderGallery(c *ui.Context, block *markdown.CodeBlockView) {
+	gallery := a.galleries[block.Code()]
 	if gallery.Error != "" {
 		components.Text(c, a.text(gallery.Error)).Wrap().TextColor(c.Theme().Danger)
 		return

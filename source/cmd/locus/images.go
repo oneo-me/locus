@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -38,12 +39,18 @@ func (a *application) loadImages() {
 		return
 	}
 	a.imageKey = key
-	a.imageTicket++
-	ticket := a.imageTicket
 	root, note, body := a.model.Root, a.model.Selected, a.model.Document.Body
 	a.images = nil
 	a.galleryPreviewOpen = false
+	ready := make(chan struct{})
+	a.imageMu.Lock()
+	a.imageTicket++
+	ticket := a.imageTicket
+	a.imageReady = ready
+	a.imageLoad = nil
+	a.imageMu.Unlock()
 	if root == "" || note == "" || body == "" {
+		close(ready)
 		return
 	}
 	go func() {
@@ -51,6 +58,7 @@ func (a *application) loadImages() {
 		pixels := int64(0)
 		lib, err := library.Open(root)
 		if err != nil {
+			close(ready)
 			return
 		}
 		defer lib.Close()
@@ -82,10 +90,36 @@ func (a *application) loadImages() {
 				pixels += int64(size.Width) * int64(size.Height)
 			}
 		}
+		a.imageMu.Lock()
+		if ticket == a.imageTicket {
+			a.imageLoad = images
+		}
+		a.imageMu.Unlock()
+		close(ready)
 		a.post(func() {
 			if ticket == a.imageTicket {
 				a.images = images
 			}
 		})
 	}()
+}
+
+// loadMarkdownImage resolves a Markdown image through the note's shared,
+// bounded loader. MyGo calls it on its own goroutine, so it waits for the
+// current generation and returns the decoded bitmap instead of loading files
+// during frame construction.
+func (a *application) loadMarkdownImage(target string) (ui.ImageSource, error) {
+	a.imageMu.Lock()
+	ready := a.imageReady
+	a.imageMu.Unlock()
+	if ready != nil {
+		<-ready
+	}
+	a.imageMu.Lock()
+	bitmap := a.imageLoad[target]
+	a.imageMu.Unlock()
+	if bitmap == nil {
+		return nil, errors.New("image unavailable")
+	}
+	return bitmap, nil
 }

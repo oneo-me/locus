@@ -12,7 +12,7 @@ Locus is a local-first Markdown workspace implemented in Go with Onevra and MyGo
 
 ## Dependencies and process flow
 
-`source/go.mod` and `source/go.sum` own dependencies. Locus uses published Onevra `v0.2026.9` and MyGo `v0.4.8`, pinned with module checksums and no local replacements. MyGo supplies the built-in WebView. See [dependency setup](docs/build.md#dependencies).
+`source/go.mod` and `source/go.sum` own dependencies. Locus uses published Onevra `v0.2026.11` and MyGo `v0.5.5`, pinned with module checksums and no local replacements. MyGo supplies the built-in WebView and the Markdown view. See [dependency setup](docs/build.md#dependencies).
 
 ```text
 Go desktop process
@@ -43,8 +43,8 @@ The browser uses a registered custom URL scheme, not a local web server. A rando
 | `internal/preferences` | YAML preferences/state, atomic replacement, external-change checks, and ordered save worker |
 | `internal/terminal` | Shell/Agent choices and validated launch arguments |
 | `internal/skills` | Resource-based authoring skill and explicit, non-overwriting installation |
-| Onevra | Shell, controls, Markdown, and command palette |
-| MyGo | OS event loop, rendering, input, menus, dialogs, browser API and native WebView composition, terminal emulator/PTYs, and desktop integration |
+| Onevra | Shell, controls, and command palette |
+| MyGo | OS event loop, rendering, input, menus, dialogs, Markdown, browser API and native WebView composition, terminal emulator/PTYs, and desktop integration |
 
 Internal domain packages do not import UI code. The app assembles them through public APIs. Canvas preparation, image decoding, scans, and note reads happen outside frame construction; native browser creation occurs after preparation returns to the UI thread. The app does not copy a native browser bridge into its source.
 

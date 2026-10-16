@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/markdown"
 	"github.com/oneo-me/locus/internal/preferences"
-	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/theme"
 )
 
@@ -36,7 +36,13 @@ func TestGallerySyntax(t *testing.T) {
 func TestGalleryFenceDiscovery(t *testing.T) {
 	body := "![Outside](assets/out.png)\n\n```go\n![Not an image](assets/code.png)\n```\n\n> ```gallery\n> ![One](one.png)\n> ```\n\n~~~gallery\n![Two](assets/two.png)\n~~~\n\n```Gallery\n![Case sensitive](assets/no.png)\n```"
 	galleries, targets := markdownResources(body)
-	if len(galleries) != 2 || galleries[1].Items[0].Alt != "One" || galleries[2].Items[0].Alt != "Two" {
+	alts := map[string]bool{}
+	for _, gallery := range galleries {
+		for _, item := range gallery.Items {
+			alts[item.Alt] = true
+		}
+	}
+	if len(galleries) != 2 || !alts["One"] || !alts["Two"] {
 		t.Fatal(galleries)
 	}
 	if !reflect.DeepEqual(targets, []string{"assets/out.png", "assets/one.png", "assets/two.png"}) {
@@ -54,10 +60,10 @@ func TestGalleryPreview(t *testing.T) {
 		a.cfg.Language = "english"
 		body := "```gallery\n![One](one.png)\n![Missing](missing.png)\n```"
 		a.galleries, _ = markdownResources(body)
-		doc := markdown.ParseMarkdown(body)
+		opts := markdown.Options{Code: map[string]func(*ui.Context, *markdown.CodeBlockView){"gallery": a.renderGallery}}
 		tt := ui.NewTester(func(c *ui.Context) {
 			c.SetTheme(theme.Palette(dark))
-			doc.Render(c, markdown.MarkdownOptions{CodeBlocks: map[string]func(*ui.Context, markdown.MarkdownCodeBlock){"gallery": a.renderGallery}}).FillWidth()
+			markdown.View(c, body, &opts).FillWidth()
 			a.galleryDialog(c)
 		}, 420, 600)
 		if !tt.HasText("Missing\nImage unavailable") {

@@ -7,11 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/updater"
 	updatenative "github.com/egoist/mygo/plugins/updater/native"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/markdown"
 	"github.com/oneo-me/locus/internal/canvas"
 	"github.com/oneo-me/locus/internal/discovery"
 	"github.com/oneo-me/locus/internal/library"
@@ -20,7 +22,6 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/command"
 	"github.com/oneo-me/onevra/source/components/graph"
-	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"github.com/oneo-me/onevra/source/theme"
 )
@@ -32,8 +33,9 @@ type application struct {
 	cursor                     int
 	treeRoot                   string
 	renderedSource             string
-	document                   *markdown.MarkdownDocument
-	galleries                  map[int]galleryBlock
+	documentKey                string
+	mdOptions                  markdown.Options
+	galleries                  map[string]galleryBlock
 	galleryPreview             galleryItem
 	galleryPreviewOpen         bool
 	attachmentBlocks           map[string]attachmentBlock
@@ -83,6 +85,9 @@ type application struct {
 	terminalPreferencesChanged bool
 	terminal                   terminalSession
 	images                     map[string]*ui.Bitmap
+	imageMu                    sync.Mutex
+	imageLoad                  map[string]*ui.Bitmap
+	imageReady                 chan struct{}
 	iconRoot                   string
 	iconProjection             *library.Note
 	iconTicket                 uint64

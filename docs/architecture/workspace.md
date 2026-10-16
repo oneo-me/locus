@@ -1,6 +1,6 @@
 # Desktop workspace
 
-`cmd/locus` assembles the native application; `internal/workspace` owns asynchronous file projections and selection. Onevra supplies the sidebar Shell, virtual tree, Markdown view, command palette, and settings; MyGo supplies the native WebView element. Product code does not duplicate their rendering or native bridges.
+`cmd/locus` assembles the native application; `internal/workspace` owns asynchronous file projections and selection. Onevra supplies the sidebar Shell, virtual tree, command palette, and settings; MyGo supplies the Markdown view and the native WebView element. Product code does not duplicate their rendering or native bridges.
 
 ## Composition and navigation
 
@@ -38,23 +38,23 @@ Background tasks and event callbacks report outcomes through queued notices beca
 
 Multi-line errors use their first line as the title and the rest as the description. A model error reports once until it clears, so a failing scan or watcher does not repeat every frame. An old failed scan does not overwrite a newer library. Canvas load failures keep their in-place message in the canvas pane and also report a toast.
 
-The app caches parsed Markdown independently of frames. Summaries and custom YAML share one tinted, clipped panel above the body. YAML mappings and arrays expand into recursive label/value rows rather than serialized YAML or an editable property form.
+MyGo's Markdown view parses the body incrementally and keeps unchanged blocks across frames. The app's own projections of gallery and attachment fences, together with decoded images, are recomputed only when the selected note or body changes. Summaries and custom YAML share one tinted, clipped panel above the body. YAML mappings and arrays expand into recursive label/value rows rather than serialized YAML or an editable property form.
 
 Article backgrounds derive a stable cool palette, one of seven backdrop variants, and four to six geometric accents from the note title. Layout tables, shape families, deterministic jitter, and per-shape tones determine the composition. Light and dark themes change colors without moving geometry. The wash fades across 268 logical pixels, while texture stays at full strength through the first 70% before fading. Shapes use a centered 360 × 100 design space capped at 208 pixels high, with separate vertical and horizontal fades.
 
-Decorations scroll with the article, do not intercept text interaction, and require no animation loop. Canvas pages retain their own presentation. Local Markdown images are decoded outside frame builders through the library resource boundary, with count, file-size, and pixel limits. Remote images are not fetched automatically. Onevra owns selectable text, tables, and code presentation.
+Decorations scroll with the article, do not intercept text interaction, and require no animation loop. Canvas pages retain their own presentation. Local Markdown images are decoded outside frame builders through the library resource boundary, with count, file-size, and pixel limits. Remote images are not fetched automatically. MyGo's Markdown view owns selectable text, tables, and code presentation.
 
 ### Markdown galleries
 
 The exact, case-sensitive `gallery` fence renders Markdown images as wrapping, 180-pixel-high thumbnails. Pointer or button keyboard activation opens a contain-fit preview dialog with alternative text; Close, Escape, or backdrop dismissal closes it. Image syntax, reference definitions, source order, and repeated images are supported. Empty blocks, missing alternative text, non-image content, and non-local destinations display a localized validation error. Missing, unsupported, or over-budget images retain an unavailable placeholder.
 
-Gallery parsing is cached with the selected Markdown body and uses Onevra's custom fenced-block builders. The shared asynchronous image loader discovers gallery destinations as well as ordinary images, deduplicates decoded targets, and retains the existing 64-image, 16-million-pixels-per-image, 32-million-total-pixels and rooted resource read limits. Builders do no file I/O. Note changes and image reloads dismiss previews; generation tickets reject stale image results. Remote gallery resources are rejected.
+Gallery parsing is cached with the selected Markdown body and uses MyGo's custom code-block builders. The shared asynchronous image loader discovers gallery destinations as well as ordinary images, deduplicates decoded targets, and retains the existing 64-image, 16-million-pixels-per-image, 32-million-total-pixels and rooted resource read limits. Builders do no file I/O. Note changes and image reloads dismiss previews; generation tickets reject stale image results. Remote gallery resources are rejected.
 
 Gallery destinations belong to the current note's `assets/` directory; legacy bare filenames resolve there. Existing files stored beside `index.md` must be moved into `assets/` explicitly before they can load. Absolute paths, traversal, cross-note addresses, queries, and fragments are rejected. The [bundled attachment reference](../../source/resources/skills/locus/references/attachments.md) owns authoring examples.
 
 ### Markdown attachments
 
-Legacy `attachments` fences render ordered, keyboard-accessible file buttons through Onevra’s custom fenced-block interface. The cached parser accepts only Markdown links to direct `assets/<filename>` children with matching filename labels, excluding the reserved icon. Invalid blocks show a localized explanation. Activation checks the owning note and regular file through rooted library access in a background task, then reveals it in the system file manager; missing or unsafe files report an error. Rendering performs no filesystem I/O.
+Legacy `attachments` fences render ordered, keyboard-accessible file buttons through MyGo's custom code-block interface. The cached parser accepts only Markdown links to direct `assets/<filename>` children with matching filename labels, excluding the reserved icon. Invalid blocks show a localized explanation. Activation checks the owning note and regular file through rooted library access in a background task, then reveals it in the system file manager; missing or unsafe files report an error. Rendering performs no filesystem I/O.
 
 Visible `locus://` note links and relative links to existing projected notes navigate internally. HTTP, HTTPS, and mail links go to the operating system. Other destinations are not executed. Header buttons copy a reference, open the note in the selected editor, and open its directory.
 

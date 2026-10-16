@@ -7,9 +7,9 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/markdown"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -98,8 +98,8 @@ func prepareAttachments(source string) map[string]attachmentBlock {
 	return blocks
 }
 
-func (a *application) renderAttachments(c *ui.Context, block markdown.MarkdownCodeBlock) {
-	parsed, ok := a.attachmentBlocks[block.Code]
+func (a *application) renderAttachments(c *ui.Context, block *markdown.CodeBlockView) {
+	parsed, ok := a.attachmentBlocks[block.Code()]
 	ui.Column(c).Key(fmt.Sprintf("attachments-%d", block.Index)).FillWidth().MinWidth(0).Gap(2).Children(func() {
 		if !ok || parsed.invalid {
 			components.Text(c, a.text("Could not show attachments")).TextColor(c.Theme().Danger)

@@ -9,10 +9,10 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/markdown"
 	"github.com/oneo-me/locus/internal/library"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/command"
-	"github.com/oneo-me/onevra/source/components/markdown"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
@@ -198,9 +198,17 @@ func (a *application) content(c *ui.Context) {
 			}
 			return
 		}
-		if a.document == nil || a.renderedSource != a.model.Document.Body {
+		if key := a.model.Root + "\x00" + a.model.Selected + "\x00" + a.model.Document.Body; a.documentKey != key {
+			a.documentKey = key
 			a.renderedSource = a.model.Document.Body
-			a.document = markdown.ParseMarkdown(a.renderedSource)
+			a.mdOptions = markdown.Options{
+				OnLink:    a.openLink,
+				LoadImage: a.loadMarkdownImage,
+				Code: map[string]func(*ui.Context, *markdown.CodeBlockView){
+					"gallery":     a.renderGallery,
+					"attachments": a.renderAttachments,
+				},
+			}
 			a.galleries, _ = markdownResources(a.renderedSource)
 			a.attachmentBlocks = prepareAttachments(a.renderedSource)
 		}
@@ -214,7 +222,7 @@ func (a *application) content(c *ui.Context) {
 			}).Children(func() {
 				ui.Column(c).FillWidth().MaxWidth(noteMaxWidth).MinWidth(0).Padding(max(0, 56-inset), 16, 56, 16).Gap(22).Children(func() {
 					noteMetadataPanel(c, note.Summary, a.model.Document.Metadata, atmosphere.panel.ui())
-					a.document.Render(c, markdown.MarkdownOptions{OnLink: a.openLink, Images: a.images, CodeBlocks: map[string]func(*ui.Context, markdown.MarkdownCodeBlock){"gallery": a.renderGallery, "attachments": a.renderAttachments}}).FillWidth()
+					markdown.View(c, a.renderedSource, &a.mdOptions).FillWidth()
 				})
 			})
 		})
