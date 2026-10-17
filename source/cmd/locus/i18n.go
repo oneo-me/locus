@@ -80,16 +80,6 @@ func localizer(code string) *i18n.Localizer {
 	return created
 }
 
-// updaterLanguage is the language tag for MyGo's update window.
-// system and unrecognized values follow the application locale.
-func updaterLanguage(preference string) string {
-	code, ok := explicitCatalog(preference)
-	if !ok {
-		return ""
-	}
-	return code
-}
-
 // explicitCatalog maps a stored preference to a catalog. Legacy names stay
 // readable. system and unrecognized values are not explicit.
 func explicitCatalog(preference string) (string, bool) {

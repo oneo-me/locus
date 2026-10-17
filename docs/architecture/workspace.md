@@ -28,7 +28,7 @@ The tree's scroll viewport reaches the sidebar edges. Content padding keeps rows
 
 Mouse back and forward side buttons delivered to the MyGo workspace surface use the same history, including when the sidebar is collapsed. They do not navigate behind Settings, command, image-preview, or library-picker dialogs. Side-button delivery over the native canvas browser remains dependent on the MyGo backend and requires separate acceptance testing.
 
-Menus, buttons, and shortcuts route to shared actions. Command/Ctrl+O opens a native directory picker, Command/Ctrl+F opens note/action search, Command/Ctrl+R or F5 refreshes, Command/Ctrl+, opens settings, Command/Ctrl+backtick toggles the built-in terminal, and the application menu checks for updates. Native editing menu roles allow the focused browser/input to handle editing. Full browser/toolkit keyboard traversal remains subject to the MyGo WebView backend.
+Menus, buttons, and shortcuts route to shared actions. Command/Ctrl+O opens a native directory picker, Command/Ctrl+F opens note/action search, Command/Ctrl+R or F5 refreshes, Command/Ctrl+, opens settings, Command/Ctrl+backtick toggles the built-in terminal, and Check for Updates… on the application menu and in the command palette opens Settings on About and checks. Native editing menu roles allow the focused browser/input to handle editing. Full browser/toolkit keyboard traversal remains subject to the MyGo WebView backend.
 
 ## Async state and reading
 

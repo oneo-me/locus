@@ -1,4 +1,6 @@
 # Interface copy. Message IDs stay stable when English wording changes.
+locus.about:
+  other: "情報"
 locus.agent:
   other: "Agent"
 locus.agents:
@@ -9,10 +11,20 @@ locus.application:
   other: "アプリケーション"
 locus.apply_connection:
   other: "接続を適用"
+locus.automatic_checks_description:
+  other: "Locus は 1 日に 1 回確認し、新しいバージョンがあればお知らせします。"
 locus.back:
   other: "戻る"
 locus.check_for_updates:
   other: "アップデートを確認…"
+locus.check_for_updates_automatically:
+  other: "アップデートを自動的に確認"
+locus.check_for_updates_button:
+  other: "アップデートを確認"
+locus.checking:
+  other: "確認中…"
+locus.checking_for_updates:
+  other: "アップデートを確認中…"
 locus.choose_a_library:
   other: "ノートライブラリを選択"
 locus.close:
@@ -27,6 +39,14 @@ locus.dark:
   other: "ダーク"
 locus.default:
   other: "デフォルト"
+locus.development_build:
+  other: "開発ビルド"
+locus.download_and_install:
+  other: "ダウンロードしてインストール"
+locus.download_and_install_updates_automatically:
+  other: "アップデートを自動的にダウンロードしてインストール"
+locus.downloading_update:
+  other: "アップデートをダウンロード中…"
 locus.edit_note:
   other: "ノートを編集"
 locus.editor:
@@ -67,6 +87,8 @@ locus.integrations:
   other: "連携"
 locus.language:
   other: "言語"
+locus.last_checked:
+  other: "最終確認"
 locus.library:
   other: "ライブラリ"
 locus.light:
@@ -77,6 +99,10 @@ locus.modified_files:
   other: "変更されたファイル"
 locus.more_actions:
   other: "その他の操作"
+locus.new_version:
+  other: "新しいバージョン"
+locus.new_version_available:
+  other: "新しいバージョンがあります。"
 locus.no_matching_settings:
   other: "一致する設定はありません。"
 locus.no_notes:
@@ -85,6 +111,8 @@ locus.no_visible_notes:
   other: "表示できるノートがありません。ノートは index.md を含むディレクトリです。"
 locus.none:
   other: "なし（Shell のみ）"
+locus.not_checked_yet:
+  other: "未確認"
 locus.open_a_markdown_library:
   other: "Markdown ライブラリを開いて読み始めます。"
 locus.open_agent:
@@ -101,6 +129,16 @@ locus.relation_graph:
   other: "関係グラフ"
 locus.relation_graph_options:
   other: "関係グラフのオプション"
+locus.release_history:
+  other: "リリース履歴"
+locus.release_notes:
+  other: "リリースノート"
+locus.restart:
+  other: "再起動"
+locus.restart_to_finish_updating:
+  other: "Locus を再起動するとアップデートが完了します。"
+locus.restart_to_update:
+  other: "再起動してアップデート"
 locus.search_notes:
   other: "ノートを検索"
 locus.search_results:
@@ -123,6 +161,8 @@ locus.show_attachments:
   other: "添付ファイルを表示"
 locus.skill_installed:
   other: "スキルをインストールしました"
+locus.software_update:
+  other: "ソフトウェアアップデート"
 locus.status:
   other: "ステータス"
 locus.stopped:
@@ -135,10 +175,24 @@ locus.terminal_panel:
   other: "ターミナルパネル"
 locus.theme:
   other: "テーマ"
+locus.this_build_does_not_update_itself:
+  other: "このビルドは自動でアップデートできません。"
+locus.up_to_date:
+  other: "Locus は最新です。"
+locus.update_details:
+  other: "詳細"
+locus.update_failed:
+  other: "アップデートに失敗しました"
+locus.updates:
+  other: "アップデート"
+locus.updates_install_in_background:
+  other: "バックグラウンドで見つかったアップデートは確認なしでインストールされ、次回の起動時に反映されます。"
 locus.upload_icon:
   other: "アイコンをアップロード"
 locus.use_only_assets_links:
   other: "assets/ファイル名 形式のリンクだけを使い、リンク文字はファイル名と一致させてください。"
+locus.version:
+  other: "バージョン"
 locus.view:
   other: "表示"
 locus.visual_studio_code:

@@ -139,6 +139,8 @@ func (a *application) settings(c *ui.Context, narrow bool) {
 			}),
 		}}}},
 	}
+	// About closes the Application section, before the integrations.
+	categories = append(categories[:2], append([]components.SettingsCategory{a.aboutCategory()}, categories[2:]...)...)
 	ui.Column(c).Fill().MinHeight(0).Children(func() {
 		components.Settings(c, &a.settingState, categories, components.SettingsOptions{
 			Title: a.text("Settings"), Narrow: narrow,

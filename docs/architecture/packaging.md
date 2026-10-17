@@ -37,7 +37,7 @@ Pushing a tag `v` plus the `version` in `source/mygo.json` runs [release.yml](..
 
 `updates` in `source/mygo.json` names `oneo-me/locus` and the public update key. The repository secret `MYGO_UPDATER_PRIVATE_KEY` signs the archives and manifests. Keep that secret key out of the repository. The workflow stops before publishing when the secret or the changelog section is missing.
 
-Packaged builds embed the public key and install a newer signed release from that repository. Development builds leave updates disabled. macOS Developer ID signing, notarization, and Windows Authenticode are not configured, so Gatekeeper and SmartScreen can still block a published build.
+Packaged builds embed the public key and install a newer signed release from that repository, by delta when one exists for the running version. Settings > About drives the check, download, and relaunch through `mygo.Updater`; see [About and updates](settings.md#about-and-updates). Development builds, the `.deb` in `/opt`, and other locations the app cannot write leave updates disabled. macOS Developer ID signing, notarization, and Windows Authenticode are not configured, so Gatekeeper and SmartScreen can still block a published build.
 
 Before tagging, move completed entries from `Unreleased` to that version, keep `Unreleased`, and use the same version for the MCP server in `internal/discovery`.
 

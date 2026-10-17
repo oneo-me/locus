@@ -56,7 +56,10 @@ func (a *application) left(c *ui.Context) {
 	})
 }
 func (a *application) toolbar(c *ui.Context) {
-	sidebar.IconButton(c, lucide.Settings(), a.text("Settings")).OnClick(a.toggleSettings)
+	settings := sidebar.IconButton(c, lucide.Settings(), a.text("Settings")).OnClick(a.toggleSettings)
+	if a.updatePending() {
+		settings.TextColor(c.Theme().Accent)
+	}
 	graphIconButton(c, lucide.Network(), a.text("Relation graph")).Disabled(a.model.Root == "").OnClick(a.toggleGraph)
 	icon := lucide.Monitor()
 	switch a.cfg.Theme {
@@ -272,7 +275,7 @@ func (a *application) commandDialog(c *ui.Context) {
 	if !a.commandsOpen {
 		return
 	}
-	items := []command.Item{{ID: "@settings", Title: a.text("Settings")}, {ID: "@open", Title: a.text("Open library")}, {ID: "@refresh", Title: a.text("Refresh")}, {ID: "@agent", Title: a.text("Terminal")}, {ID: "@graph", Title: a.text("Relation graph"), Disabled: a.model.Root == ""}}
+	items := []command.Item{{ID: "@settings", Title: a.text("Settings")}, {ID: "@open", Title: a.text("Open library")}, {ID: "@refresh", Title: a.text("Refresh")}, {ID: "@agent", Title: a.text("Terminal")}, {ID: "@graph", Title: a.text("Relation graph"), Disabled: a.model.Root == ""}, {ID: "@updates", Title: a.text("Check for Updates…")}}
 	var walk func([]*library.Note)
 	walk = func(notes []*library.Note) {
 		for _, n := range notes {
@@ -294,6 +297,8 @@ func (a *application) commandDialog(c *ui.Context) {
 			a.toggleTerminal()
 		case "@graph":
 			a.toggleGraph()
+		case "@updates":
+			a.checkForUpdates()
 		default:
 			p := strings.TrimPrefix(id, "note/")
 			a.navigate(p)

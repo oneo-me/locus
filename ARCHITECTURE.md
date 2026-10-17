@@ -35,7 +35,7 @@ The browser uses a registered custom URL scheme, not a local web server. A rando
 
 | Package | Responsibility |
 | --- | --- |
-| `cmd/locus` | Native lifecycle, menus, UI composition, settings coordination, history, image loading, toast notifications, and canvas ownership |
+| `cmd/locus` | Native lifecycle, menus, UI composition, settings coordination, update flow, history, image loading, toast notifications, and canvas ownership |
 | `internal/library` | Hierarchy, metadata, resources, safe addresses, file watching, and Git projections |
 | `internal/workspace` | Asynchronous scans, reads, selected body, errors, and stale-result isolation |
 | `internal/canvas` | HTML/JSON entry resolution, read-only resource protocol, page bootstrap, CSP, and ZIP export |
@@ -53,8 +53,8 @@ Internal domain packages do not import UI code. The app assembles them through p
 | Location | Contents |
 | --- | --- |
 | Selected library | Notes, frontmatter, attachments, canvases, and child directories |
-| `~/.oneo/locus/settings.yaml` | Library path, appearance, language, editor, shell/Agent, export directory, and MCP configuration |
-| `~/.oneo/locus/state.yaml` | Selected note/library, per-library tree expansion, and sidebar width/collapse state |
+| `~/.oneo/locus/settings.yaml` | Library path, appearance, language, editor, shell/Agent, export directory, MCP configuration, and automatic update choices |
+| `~/.oneo/locus/state.yaml` | Selected note/library, per-library tree expansion, sidebar width/collapse state, and the last update check |
 | Chosen export directory | Non-overwriting canvas ZIP snapshots |
 | Library or home `.agents/skills/locus` | Explicitly installed copy of the bundled authoring skill |
 

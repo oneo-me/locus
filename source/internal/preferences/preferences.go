@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -24,6 +25,10 @@ type Config struct {
 	Export   string `yaml:"export_directory,omitempty"`
 	MCP      bool   `yaml:"mcp_enabled"`
 	Port     int    `yaml:"mcp_port"`
+	// UpdateChecks checks for a newer release in the background;
+	// UpdateDownloads also installs it without asking.
+	UpdateChecks    bool `yaml:"update_checks"`
+	UpdateDownloads bool `yaml:"update_downloads"`
 }
 
 // decodeDocument rejects extra documents instead of silently discarding them on save.
@@ -46,7 +51,7 @@ func decodeDocument(b []byte, value any) error {
 }
 
 func Default() Config {
-	return Config{Theme: "system", Language: "system", Editor: "system", Terminal: "system", Agent: "codex", Shell: "default", Port: 2301}
+	return Config{Theme: "system", Language: "system", Editor: "system", Terminal: "system", Agent: "codex", Shell: "default", Port: 2301, UpdateChecks: true}
 }
 
 type Store struct {
@@ -157,6 +162,7 @@ type State struct {
 	SidebarWidth     float32             `yaml:"sidebar_width"`
 	Collapsed        bool                `yaml:"sidebar_collapsed"`
 	GraphAttachments bool                `yaml:"graph_attachments,omitempty"`
+	UpdateChecked    time.Time           `yaml:"update_checked,omitempty"`
 }
 
 func LoadState(path string) (State, error) {

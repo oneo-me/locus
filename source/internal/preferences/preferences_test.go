@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPreserveAndConflict(t *testing.T) {
@@ -140,7 +141,7 @@ func TestStateYAML(t *testing.T) {
 	if got, err := LoadState(p); err != nil || !reflect.DeepEqual(got, State{}) {
 		t.Fatalf("missing state: %+v %v", got, err)
 	}
-	want := State{Library: "/tmp/中文", Selected: "note", SidebarWidth: 234.5, Collapsed: true, ExpandedNodes: map[string][]string{"/tmp/中文": {"parent", "parent/child"}, "/tmp/empty": {}}}
+	want := State{Library: "/tmp/中文", Selected: "note", SidebarWidth: 234.5, Collapsed: true, UpdateChecked: time.Date(2026, 10, 17, 9, 30, 0, 0, time.UTC), ExpandedNodes: map[string][]string{"/tmp/中文": {"parent", "parent/child"}, "/tmp/empty": {}}}
 	if err := SaveState(p, want); err != nil {
 		t.Fatal(err)
 	}
@@ -181,5 +182,23 @@ func TestWriterFlush(t *testing.T) {
 	result, _, err := Load(p)
 	if err != nil || result.Theme != "system" {
 		t.Fatalf("final state: %+v %v", result, err)
+	}
+}
+
+func TestUpdatePreferences(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "settings.yaml")
+	if err := os.WriteFile(p, []byte("theme: dark\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, store, err := Load(p)
+	if err != nil || !cfg.UpdateChecks || cfg.UpdateDownloads {
+		t.Fatalf("older files should check without downloading: %+v %v", cfg, err)
+	}
+	cfg.UpdateChecks, cfg.UpdateDownloads = false, true
+	if err = store.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg, _, err = Load(p); err != nil || cfg.UpdateChecks || !cfg.UpdateDownloads {
+		t.Fatalf("round trip: %+v %v", cfg, err)
 	}
 }

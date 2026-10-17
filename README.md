@@ -23,7 +23,7 @@ Download the latest release from [GitHub Releases](https://github.com/oneo-me/lo
 - **Windows**: run `Locus.exe` from the downloaded folder. Windows 10 or later, with the WebView2 runtime, on x64 or ARM64.
 - **Linux**: unpack the tar.gz and run `locus`, or install the `.deb`. GTK 3 and WebKitGTK are required, on x64 or ARM64.
 
-A packaged app checks for updates and can install a newer release. Development builds do not update.
+A packaged app checks for updates once a day and tells you when a newer release is available. Settings > About shows the version, release notes, download progress, and Restart to update, and turns automatic checks and silent installation on or off; Check for Updates… in the application menu and command palette opens it. Development builds and the `.deb` package do not update themselves.
 
 Published downloads can lag behind the development branch. Windows and Linux archives build from the same source but still need target-platform acceptance testing.
 

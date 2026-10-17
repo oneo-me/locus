@@ -1,4 +1,6 @@
 # Interface copy. Message IDs stay stable when English wording changes.
+locus.about:
+  other: "About"
 locus.agent:
   other: "Agent"
 locus.agents:
@@ -9,10 +11,20 @@ locus.application:
   other: "Application"
 locus.apply_connection:
   other: "Apply connection"
+locus.automatic_checks_description:
+  other: "Locus checks once a day and tells you when a new version is available."
 locus.back:
   other: "Back"
 locus.check_for_updates:
   other: "Check for Updates…"
+locus.check_for_updates_automatically:
+  other: "Check for updates automatically"
+locus.check_for_updates_button:
+  other: "Check for updates"
+locus.checking:
+  other: "Checking…"
+locus.checking_for_updates:
+  other: "Checking for updates…"
 locus.choose_a_library:
   other: "Choose a library"
 locus.close:
@@ -27,6 +39,14 @@ locus.dark:
   other: "dark"
 locus.default:
   other: "default"
+locus.development_build:
+  other: "Development build"
+locus.download_and_install:
+  other: "Download and install"
+locus.download_and_install_updates_automatically:
+  other: "Download and install updates automatically"
+locus.downloading_update:
+  other: "Downloading update…"
 locus.edit_note:
   other: "Edit note"
 locus.editor:
@@ -67,6 +87,8 @@ locus.integrations:
   other: "Integrations"
 locus.language:
   other: "Language"
+locus.last_checked:
+  other: "Last checked"
 locus.library:
   other: "Library"
 locus.light:
@@ -77,6 +99,10 @@ locus.modified_files:
   other: "Modified files"
 locus.more_actions:
   other: "More actions"
+locus.new_version:
+  other: "New version"
+locus.new_version_available:
+  other: "A new version is available."
 locus.no_matching_settings:
   other: "No matching settings."
 locus.no_notes:
@@ -85,6 +111,8 @@ locus.no_visible_notes:
   other: "No visible notes. Notes use a directory containing index.md."
 locus.none:
   other: "none"
+locus.not_checked_yet:
+  other: "Not checked yet"
 locus.open_a_markdown_library:
   other: "Open a Markdown library to start reading."
 locus.open_agent:
@@ -101,6 +129,16 @@ locus.relation_graph:
   other: "Relation graph"
 locus.relation_graph_options:
   other: "Relation graph options"
+locus.release_history:
+  other: "Release history"
+locus.release_notes:
+  other: "Release notes"
+locus.restart:
+  other: "Restart"
+locus.restart_to_finish_updating:
+  other: "Restart Locus to finish updating."
+locus.restart_to_update:
+  other: "Restart to update"
 locus.search_notes:
   other: "Search notes"
 locus.search_results:
@@ -123,6 +161,8 @@ locus.show_attachments:
   other: "Show attachments"
 locus.skill_installed:
   other: "Skill installed"
+locus.software_update:
+  other: "Software update"
 locus.status:
   other: "Status"
 locus.stopped:
@@ -135,10 +175,24 @@ locus.terminal_panel:
   other: "Terminal panel"
 locus.theme:
   other: "Theme"
+locus.this_build_does_not_update_itself:
+  other: "This build does not update itself."
+locus.up_to_date:
+  other: "Locus is up to date."
+locus.update_details:
+  other: "Details"
+locus.update_failed:
+  other: "Update failed"
+locus.updates:
+  other: "Updates"
+locus.updates_install_in_background:
+  other: "Updates found in the background install without asking and run at the next launch."
 locus.upload_icon:
   other: "Upload icon"
 locus.use_only_assets_links:
   other: "Use only assets/filename links with matching filenames."
+locus.version:
+  other: "Version"
 locus.view:
   other: "View"
 locus.visual_studio_code:

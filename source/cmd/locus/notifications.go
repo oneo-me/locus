@@ -15,6 +15,8 @@ type notice struct {
 	title       string
 	description string
 	kind        string
+	action      string
+	onAction    func()
 }
 
 // errorNotice queues an error toast. Multi-line messages use the first line
@@ -40,12 +42,23 @@ func (a *application) successNotice(message string) {
 	a.invalidate()
 }
 
+// actionNotice queues a toast that stays until the user closes it or runs
+// its action, for outcomes that ask the user to do something.
+func (a *application) actionNotice(title, description, action string, onAction func()) {
+	a.notices = append(a.notices, notice{title: title, description: description, action: action, onAction: onAction})
+	a.invalidate()
+}
+
 // flushNotices adds the queued toasts to the current frame. Shell builds the
 // toast viewport after the page, so a toast queued earlier in the same frame
 // appears immediately; one queued while building waits for the next frame.
 func (a *application) flushNotices(c *ui.Context) {
 	for _, n := range a.notices {
-		c.AddToast(ui.Toast{ID: n.title, Title: n.title, Description: n.description, Type: n.kind})
+		toast := ui.Toast{ID: n.title, Title: n.title, Description: n.description, Type: n.kind}
+		if n.action != "" {
+			toast.Action, toast.OnAction, toast.Timeout = n.action, n.onAction, -1
+		}
+		c.AddToast(toast)
 	}
 	a.notices = a.notices[:0]
 }

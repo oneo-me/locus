@@ -1,4 +1,6 @@
 # Interface copy. Message IDs stay stable when English wording changes.
+locus.about:
+  other: "关于"
 locus.agent:
   other: "Agent"
 locus.agents:
@@ -9,10 +11,20 @@ locus.application:
   other: "应用"
 locus.apply_connection:
   other: "应用连接设置"
+locus.automatic_checks_description:
+  other: "Locus 每天检查一次，有新版本时会提示你。"
 locus.back:
   other: "返回"
 locus.check_for_updates:
   other: "检查更新…"
+locus.check_for_updates_automatically:
+  other: "自动检查更新"
+locus.check_for_updates_button:
+  other: "检查更新"
+locus.checking:
+  other: "正在检查…"
+locus.checking_for_updates:
+  other: "正在检查更新…"
 locus.choose_a_library:
   other: "选择笔记库"
 locus.close:
@@ -27,6 +39,14 @@ locus.dark:
   other: "深色"
 locus.default:
   other: "默认"
+locus.development_build:
+  other: "开发构建"
+locus.download_and_install:
+  other: "下载并安装"
+locus.download_and_install_updates_automatically:
+  other: "自动下载并安装更新"
+locus.downloading_update:
+  other: "正在下载更新…"
 locus.edit_note:
   other: "编辑笔记"
 locus.editor:
@@ -67,6 +87,8 @@ locus.integrations:
   other: "集成"
 locus.language:
   other: "语言"
+locus.last_checked:
+  other: "上次检查"
 locus.library:
   other: "文档库"
 locus.light:
@@ -77,6 +99,10 @@ locus.modified_files:
   other: "已修改的文件"
 locus.more_actions:
   other: "更多操作"
+locus.new_version:
+  other: "新版本"
+locus.new_version_available:
+  other: "有新版本可用。"
 locus.no_matching_settings:
   other: "没有匹配的设置。"
 locus.no_notes:
@@ -85,6 +111,8 @@ locus.no_visible_notes:
   other: "没有可见笔记。每篇笔记是包含 index.md 的目录。"
 locus.none:
   other: "无（仅 Shell）"
+locus.not_checked_yet:
+  other: "尚未检查"
 locus.open_a_markdown_library:
   other: "打开 Markdown 文档库开始阅读。"
 locus.open_agent:
@@ -101,6 +129,16 @@ locus.relation_graph:
   other: "关系图谱"
 locus.relation_graph_options:
   other: "关系图谱选项"
+locus.release_history:
+  other: "版本历史"
+locus.release_notes:
+  other: "更新说明"
+locus.restart:
+  other: "重新启动"
+locus.restart_to_finish_updating:
+  other: "重新启动 Locus 以完成更新。"
+locus.restart_to_update:
+  other: "重新启动以更新"
 locus.search_notes:
   other: "搜索笔记"
 locus.search_results:
@@ -123,6 +161,8 @@ locus.show_attachments:
   other: "显示附件"
 locus.skill_installed:
   other: "技能已安装"
+locus.software_update:
+  other: "软件更新"
 locus.status:
   other: "状态"
 locus.stopped:
@@ -135,10 +175,24 @@ locus.terminal_panel:
   other: "终端面板"
 locus.theme:
   other: "主题"
+locus.this_build_does_not_update_itself:
+  other: "此版本无法自动更新。"
+locus.up_to_date:
+  other: "Locus 已是最新版本。"
+locus.update_details:
+  other: "详情"
+locus.update_failed:
+  other: "更新失败"
+locus.updates:
+  other: "更新"
+locus.updates_install_in_background:
+  other: "后台发现的更新将直接安装，并在下次启动时生效。"
 locus.upload_icon:
   other: "上传图标"
 locus.use_only_assets_links:
   other: "请仅填写 assets/文件名 链接，链接文字须与文件名一致。"
+locus.version:
+  other: "版本"
 locus.view:
   other: "视图"
 locus.visual_studio_code:

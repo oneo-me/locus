@@ -10,8 +10,6 @@ import (
 	"sync"
 
 	"github.com/egoist/mygo"
-	"github.com/egoist/mygo/plugins/updater"
-	updatenative "github.com/egoist/mygo/plugins/updater/native"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
 	"github.com/oneo-me/locus/internal/canvas"
@@ -95,6 +93,7 @@ type application struct {
 	noteIcons                  map[string]*ui.Bitmap
 	imageKey                   string
 	imageTicket                uint64
+	updates                    updateFlow
 }
 
 func main() {
@@ -123,7 +122,6 @@ func main() {
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}
-	mygo.Use(updatenative.New(updater.Options{Language: updaterLanguage(cfg.Language)}))
 	mygo.App.OnSecondInstance(func([]string, string) {
 		a.showWindow()
 	})
@@ -139,6 +137,7 @@ func main() {
 			a.restore = false
 		}
 		a.start(root)
+		a.startUpdates()
 		if store != nil {
 			a.writer = preferences.NewWriter(store, func(err error) {
 				if err != nil {
@@ -298,6 +297,7 @@ func (a *application) changed() {
 func (a *application) openLibrary(root string) {
 	a.terminalOpen = false
 	a.terminal.close()
+	a.stopUpdates()
 	a.rememberTreeExpansion()
 	a.restore = false
 	a.history = nil
@@ -444,7 +444,7 @@ func (a *application) installMenu() {
 	mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
 		{Label: "Locus", Submenu: []*mygo.MenuItem{
 			{Label: a.text("Settings"), Accelerator: "CmdOrCtrl+,", Click: action(a.toggleSettings)},
-			{Label: a.text("Check for Updates…"), Click: action(func() { updater.CheckForUpdates() })},
+			{Label: a.text("Check for Updates…"), Click: action(a.checkForUpdates)},
 			mygo.Separator(),
 			{Role: mygo.RoleQuit},
 		}},

@@ -1,4 +1,6 @@
 # Interface copy. Message IDs stay stable when English wording changes.
+locus.about:
+  other: "정보"
 locus.agent:
   other: "Agent"
 locus.agents:
@@ -9,10 +11,20 @@ locus.application:
   other: "애플리케이션"
 locus.apply_connection:
   other: "연결 적용"
+locus.automatic_checks_description:
+  other: "Locus는 하루에 한 번 확인하고 새 버전이 있으면 알려 줍니다."
 locus.back:
   other: "뒤로"
 locus.check_for_updates:
   other: "업데이트 확인…"
+locus.check_for_updates_automatically:
+  other: "자동으로 업데이트 확인"
+locus.check_for_updates_button:
+  other: "업데이트 확인"
+locus.checking:
+  other: "확인 중…"
+locus.checking_for_updates:
+  other: "업데이트 확인 중…"
 locus.choose_a_library:
   other: "노트 라이브러리 선택"
 locus.close:
@@ -27,6 +39,14 @@ locus.dark:
   other: "다크"
 locus.default:
   other: "기본값"
+locus.development_build:
+  other: "개발 빌드"
+locus.download_and_install:
+  other: "다운로드 및 설치"
+locus.download_and_install_updates_automatically:
+  other: "자동으로 업데이트 다운로드 및 설치"
+locus.downloading_update:
+  other: "업데이트 다운로드 중…"
 locus.edit_note:
   other: "노트 편집"
 locus.editor:
@@ -67,6 +87,8 @@ locus.integrations:
   other: "연동"
 locus.language:
   other: "언어"
+locus.last_checked:
+  other: "마지막 확인"
 locus.library:
   other: "라이브러리"
 locus.light:
@@ -77,6 +99,10 @@ locus.modified_files:
   other: "수정된 파일"
 locus.more_actions:
   other: "기타 동작"
+locus.new_version:
+  other: "새 버전"
+locus.new_version_available:
+  other: "새 버전을 사용할 수 있습니다."
 locus.no_matching_settings:
   other: "일치하는 설정이 없습니다."
 locus.no_notes:
@@ -85,6 +111,8 @@ locus.no_visible_notes:
   other: "표시할 노트가 없습니다. 노트는 index.md가 있는 디렉터리입니다."
 locus.none:
   other: "없음(Shell만)"
+locus.not_checked_yet:
+  other: "아직 확인하지 않음"
 locus.open_a_markdown_library:
   other: "Markdown 라이브러리를 열어 읽기를 시작하세요."
 locus.open_agent:
@@ -101,6 +129,16 @@ locus.relation_graph:
   other: "관계 그래프"
 locus.relation_graph_options:
   other: "관계 그래프 옵션"
+locus.release_history:
+  other: "릴리스 기록"
+locus.release_notes:
+  other: "릴리스 노트"
+locus.restart:
+  other: "다시 시작"
+locus.restart_to_finish_updating:
+  other: "Locus를 다시 시작하면 업데이트가 완료됩니다."
+locus.restart_to_update:
+  other: "다시 시작하여 업데이트"
 locus.search_notes:
   other: "노트 검색"
 locus.search_results:
@@ -123,6 +161,8 @@ locus.show_attachments:
   other: "첨부 파일 표시"
 locus.skill_installed:
   other: "스킬을 설치했습니다"
+locus.software_update:
+  other: "소프트웨어 업데이트"
 locus.status:
   other: "상태"
 locus.stopped:
@@ -135,10 +175,24 @@ locus.terminal_panel:
   other: "터미널 패널"
 locus.theme:
   other: "테마"
+locus.this_build_does_not_update_itself:
+  other: "이 빌드는 자동으로 업데이트할 수 없습니다."
+locus.up_to_date:
+  other: "Locus가 최신 버전입니다."
+locus.update_details:
+  other: "자세히"
+locus.update_failed:
+  other: "업데이트 실패"
+locus.updates:
+  other: "업데이트"
+locus.updates_install_in_background:
+  other: "백그라운드에서 찾은 업데이트는 묻지 않고 설치되며 다음 실행 시 적용됩니다."
 locus.upload_icon:
   other: "아이콘 업로드"
 locus.use_only_assets_links:
   other: "assets/파일 이름 형식의 링크만 사용하고, 링크 텍스트는 파일 이름과 같아야 합니다."
+locus.version:
+  other: "버전"
 locus.view:
   other: "보기"
 locus.visual_studio_code:
