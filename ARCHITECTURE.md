@@ -62,12 +62,13 @@ Existing recognized YAML fields are read directly; unrelated preference fields s
 
 ## Subjects
 
-The overview is limited to 16 KiB and each subject to 24 KiB. Keep each mechanism in its owning subject, with current limitations distinguished from implemented behavior.
+Keep each mechanism in its owning subject, within the budgets in [AGENTS](AGENTS.md#documentation), and distinguish current limitations from implemented behavior.
 
 | Document | Read before changing |
 | --- | --- |
 | [Library](docs/architecture/library.md) | Note structure, path/resource boundaries, watching, and Git projections |
-| [Desktop workspace](docs/architecture/workspace.md) | UI composition, async state, navigation, reading, native actions, and acceptance |
+| [Desktop workspace](docs/architecture/workspace.md) | UI composition, async state, navigation, relation graph, native actions, and acceptance |
+| [Reading notes](docs/architecture/reading.md) | Markdown view, article backgrounds, images, galleries, and attachments |
 | [Canvas](docs/architecture/canvas.md) | Native browser lifecycle, resources, HTML/JSON, security policy, and export |
 | [Agent integration](docs/architecture/mcp.md) | MCP tools, Host/Origin protection, lifecycle, skills, and built-in terminal sessions |
 | [Settings and persistence](docs/architecture/settings.md) | Preference ownership, configuration safety, language, appearance, and shutdown saving |

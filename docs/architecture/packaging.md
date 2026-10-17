@@ -39,7 +39,7 @@ Pushing a tag `v` plus the `version` in `source/mygo.json` runs [release.yml](..
 
 Packaged builds embed the public key and install a newer signed release from that repository, by delta when one exists for the running version. Settings > About drives the check, download, and relaunch through `mygo.Updater`; see [About and updates](settings.md#about-and-updates). Development builds, the `.deb` in `/opt`, and other locations the app cannot write leave updates disabled. macOS Developer ID signing, notarization, and Windows Authenticode are not configured, so Gatekeeper and SmartScreen can still block a published build.
 
-Before tagging, move completed entries from `Unreleased` to that version, keep `Unreleased`, and use the same version for the MCP server in `internal/discovery`.
+[Release notes](../build.md#release-notes) lists the steps before tagging.
 
 ## Verification
 

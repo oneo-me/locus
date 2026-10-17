@@ -71,6 +71,12 @@ Documentation changes require size budgets, Subjects coverage, relative links an
 
 ## Release notes
 
-[CHANGELOG.md](../CHANGELOG.md) records user-visible pending outcomes and confirmed releases. The version in `source/mygo.json` is not proof of publication. Before tagging, move completed shipping entries from `Unreleased` to that version, keep `Unreleased`, and use the same version for the MCP server in `internal/discovery`.
+[CHANGELOG.md](../CHANGELOG.md) holds user-facing release notes; see [AGENTS](../AGENTS.md#documentation) for how entries are written. A release section may open with a short paragraph and group many entries under `###` headings, but never contains another `##` heading.
 
-Pushing the tag `v` plus that version runs the release workflow. It publishes installers and signed updates. See [Release](architecture/packaging.md#release).
+To release, with explicit authorization:
+
+1. Set the version in `source/mygo.json` and for the MCP server in `internal/discovery`.
+2. Rename `## [Unreleased]` to `## [<version>] - <YYYY-MM-DD>` and add an empty `## [Unreleased]` above it.
+3. Run the [development checks](#development-checks), commit to `main`, and push the tag `v<version>`.
+
+The tag runs the release workflow, which publishes that section as the GitHub release notes and in the signed update manifests that Settings > About shows. See [Release](architecture/packaging.md#release).

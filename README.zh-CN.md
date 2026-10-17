@@ -20,12 +20,12 @@ Locus 是面向 macOS、Windows 和 Linux 的本地优先 Markdown 笔记本。�
 从 [GitHub Releases](https://github.com/oneo-me/locus/releases/latest) 下载最新版本。
 
 - **macOS**：打开磁盘映像，将 `Locus.app` 移到“应用程序”。需要 macOS 13 或更高版本，支持 Apple Silicon 和 Intel。
-- **Windows**：在下载的文件夹中运行 `Locus.exe`。需要 Windows 10 或更高版本以及 WebView2 运行时，支持 x64 和 ARM64。
-- **Linux**：解压 tar.gz 后运行 `locus`，或安装 `.deb`。需要 GTK 3 和 WebKitGTK，支持 x64 和 ARM64。
+- **Windows**：运行与架构对应的 `Locus Setup` 安装程序。需要 Windows 10 或更高版本以及 WebView2 运行时，支持 x64 和 ARM64。
+- **Linux**：安装 `.deb`，或解压 tar.gz 后运行 `locus`。需要 GTK 3 和 WebKitGTK，支持 x64 和 ARM64。
 
 安装包每天检查一次更新，有新版本时会提示你。“设置 > 关于”显示当前版本、更新说明、下载进度和“重新启动以更新”，并可以开关自动检查和静默安装；应用菜单和命令面板中的“检查更新…”会打开这里。开发构建和 `.deb` 安装包不会自行更新。
 
-已发布的下载可能落后于开发分支。Windows 和 Linux 归档由同一源码交叉构建，仍需在目标平台上完成验收测试。
+发布版本尚未签名或公证。首次启动时，macOS 上请在“系统设置 > 隐私与安全性”中点击“仍要打开”，Windows SmartScreen 中请选择“更多信息 > 仍要运行”。
 
 ## 快速上手
 

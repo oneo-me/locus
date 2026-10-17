@@ -20,12 +20,12 @@ Locus is a local-first Markdown notebook for macOS, Windows, and Linux. Notes st
 Download the latest release from [GitHub Releases](https://github.com/oneo-me/locus/releases/latest).
 
 - **macOS**: open the disk image and move `Locus.app` to Applications. macOS 13 or later, Apple Silicon or Intel.
-- **Windows**: run `Locus.exe` from the downloaded folder. Windows 10 or later, with the WebView2 runtime, on x64 or ARM64.
-- **Linux**: unpack the tar.gz and run `locus`, or install the `.deb`. GTK 3 and WebKitGTK are required, on x64 or ARM64.
+- **Windows**: run the `Locus Setup` installer for your architecture. Windows 10 or later, with the WebView2 runtime, on x64 or ARM64.
+- **Linux**: install the `.deb`, or unpack the tar.gz and run `locus`. GTK 3 and WebKitGTK are required, on x64 or ARM64.
 
 A packaged app checks for updates once a day and tells you when a newer release is available. Settings > About shows the version, release notes, download progress, and Restart to update, and turns automatic checks and silent installation on or off; Check for Updates… in the application menu and command palette opens it. Development builds and the `.deb` package do not update themselves.
 
-Published downloads can lag behind the development branch. Windows and Linux archives build from the same source but still need target-platform acceptance testing.
+Releases are not yet signed or notarized. On first launch, allow Locus under System Settings > Privacy & Security > Open Anyway on macOS, or choose More info > Run anyway in Windows SmartScreen.
 
 ## Getting started
 

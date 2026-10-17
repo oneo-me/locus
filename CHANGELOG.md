@@ -1,24 +1,38 @@
 # Changelog
 
-This file records completed, pending user-visible changes and confirmed release notes for Locus desktop users. Platform-specific changes state their scope. See [Running and building](docs/build.md#release-notes) for version and release rules.
+User-facing release notes for Locus.
 
 ## [Unreleased]
 
 ## [0.2026.1] - 2026-10-17
 
-- Browse a library of plain Markdown notes as a tree or through note and action search, with back/forward history and remembered navigation and sidebar state.
-- Read Markdown bodies, summaries, local images and galleries, and custom YAML properties, following external file changes with Git status.
-- Show every reachable local image by scaling oversized pictures to the reading budget instead of marking them unavailable, and preview a gallery image in a full-window dialog with a close control in the top-right corner.
-- Select across a Markdown body as one text range, copy code from blocks that name their language, and copy the selection as text, HTML, or Markdown.
-- Open dialogs that animate in and out, and see command results return to the top when the query changes.
-- Explore notes as a relation graph that combines the document hierarchy with links between notes, opened from the sidebar or command palette.
-- Show the relation graph full-window over a dimmed backdrop like the image preview, without a title bar: the display-options menu and close control float in the top corner, and included attachments appear as yellow nodes.
-- Show a note's own HTML, JavaScript, or JSON template canvas in the workspace, with manual refresh and export.
-- Organize notes with Emoji or PNG icons, copy a reference, open the note in your editor, or reveal its folder.
-- Choose light or dark themes that follow the desktop's text size and higher-contrast preferences, and an English, Simplified Chinese, Traditional Chinese, Japanese, or Korean interface.
-- Let external Agents read your notes through read-only MCP on this computer; local-network access is no longer available.
-- Open a built-in terminal with your shell or Agent CLI, and manage bundled authoring skills in Settings.
-- Check for updates from a packaged app and install a newer GitHub release.
-- Check for updates in Settings > About, which Check for Updates… in the menu and command palette opens, with release notes, download progress, and Restart to update; a background check that finds a new version prompts you with a toast and highlights the Settings button, and automatic checks and silent installation can be turned on or off there.
-- Store settings and state in `~/.locus`, moving an existing `~/.oneo/locus` there on first launch.
-- Download macOS disk images, the Windows app, and a Linux archive for Apple Silicon, Intel, Windows x64 and ARM64, and Linux x64 and ARM64.
+The first public release of Locus, a local-first Markdown notebook. Your notes stay plain files in a folder you choose, readable and editable by any app or Agent you already use.
+
+### Reading
+
+- Open any folder as a library: each note is a folder with an `index.md`, and nested folders form the note tree.
+- Browse the tree or search notes and actions, with back and forward history and remembered sidebar state.
+- Read Markdown with summaries, custom YAML properties, local images and galleries, following edits made outside Locus.
+- Select text across a note and copy it as text, HTML or Markdown, or copy a code block with one click.
+- Explore how notes nest and link in a full-window relation graph, optionally with their attachments.
+- Show a note's own HTML, JavaScript or JSON canvas, then refresh or export it.
+
+### Organizing
+
+- Give a note an Emoji or PNG icon, copy a reference to it, open it in your editor or reveal its folder.
+- See which notes have uncommitted Git changes in the tree.
+
+### Agents
+
+- Let Agents on this computer find your notes through read-only MCP.
+- Open your shell or an Agent CLI in a built-in terminal, and install the bundled note-writing skill from Settings.
+
+### Appearance and updates
+
+- Choose a system, light or dark theme that follows the system text size and contrast, in English, Simplified Chinese, Traditional Chinese, Japanese or Korean.
+- Get new versions from Settings > About, with release notes and download progress, checked daily and optionally installed silently.
+
+### Downloads
+
+- Install from macOS disk images for Apple silicon and Intel, Windows installers for x64 and ARM64, or Linux `.deb` packages and archives for x64 and ARM64.
+- Allow the first launch in macOS Privacy & Security or Windows SmartScreen, as builds are not yet signed.
