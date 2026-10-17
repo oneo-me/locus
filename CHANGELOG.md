@@ -4,6 +4,8 @@ This file records completed, pending user-visible changes and confirmed release 
 
 ## [Unreleased]
 
+## [0.2026.1] - 2026-10-17
+
 - Browse a library of plain Markdown notes as a tree or through note and action search, with back/forward history and remembered navigation and sidebar state.
 - Read Markdown bodies, summaries, local images and galleries, and custom YAML properties, following external file changes with Git status.
 - Show every reachable local image by scaling oversized pictures to the reading budget instead of marking them unavailable, and preview a gallery image in a full-window dialog with a close control in the top-right corner.
