@@ -53,8 +53,8 @@ Internal domain packages do not import UI code. The app assembles them through p
 | Location | Contents |
 | --- | --- |
 | Selected library | Notes, frontmatter, attachments, canvases, and child directories |
-| `~/.oneo/locus/settings.yaml` | Library path, appearance, language, editor, shell/Agent, export directory, MCP configuration, and automatic update choices |
-| `~/.oneo/locus/state.yaml` | Selected note/library, per-library tree expansion, sidebar width/collapse state, and the last update check |
+| `~/.locus/settings.yaml` | Library path, appearance, language, editor, shell/Agent, export directory, MCP configuration, and automatic update choices |
+| `~/.locus/state.yaml` | Selected note/library, per-library tree expansion, sidebar width/collapse state, and the last update check |
 | Chosen export directory | Non-overwriting canvas ZIP snapshots |
 | Library or home `.agents/skills/locus` | Explicitly installed copy of the bundled authoring skill |
 

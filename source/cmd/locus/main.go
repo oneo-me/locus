@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -96,6 +98,17 @@ type application struct {
 	updates                    updateFlow
 }
 
+// migrateDataDirectory moves the former data directory to its current location
+// once, leaving both untouched when the current location already exists.
+func migrateDataDirectory(legacy, data string) {
+	if _, err := os.Lstat(data); !errors.Is(err, fs.ErrNotExist) {
+		return
+	}
+	if err := os.Rename(legacy, data); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		log.Printf("move %s to %s: %v", legacy, data, err)
+	}
+}
+
 func main() {
 	directory := flag.String("library", "", "Markdown library directory")
 	flag.Parse()
@@ -103,7 +116,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	data := filepath.Join(home, ".oneo", "locus")
+	data := filepath.Join(home, ".locus")
+	migrateDataDirectory(filepath.Join(home, ".oneo", "locus"), data)
 	cfg, store, loadErr := preferences.Load(filepath.Join(data, "settings.yaml"))
 	a := &application{cursor: -1, cfg: cfg, statePath: filepath.Join(data, "state.yaml"), stateWritable: true, restore: true, historyIndex: -1}
 	if loadErr != nil {

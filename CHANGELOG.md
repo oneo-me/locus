@@ -18,4 +18,5 @@ This file records completed, pending user-visible changes and confirmed release 
 - Open a built-in terminal with your shell or Agent CLI, and manage bundled authoring skills in Settings.
 - Check for updates from a packaged app and install a newer GitHub release.
 - Check for updates in Settings > About, which Check for Updates… in the menu and command palette opens, with release notes, download progress, and Restart to update; a background check that finds a new version prompts you with a toast and highlights the Settings button, and automatic checks and silent installation can be turned on or off there.
+- Store settings and state in `~/.locus`, moving an existing `~/.oneo/locus` there on first launch.
 - Download macOS disk images, the Windows app, and a Linux archive for Apple Silicon, Intel, Windows x64 and ARM64, and Linux x64 and ARM64.

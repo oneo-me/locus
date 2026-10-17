@@ -10,7 +10,7 @@ The app and the CLI use the published modules pinned in `source/go.mod` and `sou
 
 `source/resources/skills/` is the runtime payload. The app loads it through MyGo's resource path: the bundle on macOS, the directory next to the executable on Windows and Linux, and `source/resources/` for `go run`. Canvas Tailwind stays embedded in the binary. Builds disable cgo and sign ad hoc. macOS targets require macOS 13.
 
-`go tool mygo dev` launches a bundle named Locus Dev, identifier `me.oneo.locus.dev`, under `source/.mygo/dev`. The app still stores preferences in `~/.oneo/locus`.
+`go tool mygo dev` launches a bundle named Locus Dev, identifier `me.oneo.locus.dev`, under `source/.mygo/dev`. The app still stores preferences in `~/.locus`.
 
 ## Outputs
 

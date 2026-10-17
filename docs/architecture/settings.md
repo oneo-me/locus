@@ -26,7 +26,7 @@ Check for Updates… on the application menu and in the command palette opens Se
 
 ## Configuration ownership and safety
 
-Preferences live in `~/.oneo/locus/settings.yaml`. Recognized fields load without rewriting the file on startup. Unknown fields are preserved on save. A missing file produces defaults.
+Preferences live in `~/.locus/settings.yaml`. On startup, when `~/.locus` does not exist, the former `~/.oneo/locus` directory is moved there once; an existing `~/.locus` is never merged or overwritten, and a failed move is logged and leaves defaults. Recognized fields load without rewriting the file on startup. Unknown fields are preserved on save. A missing file produces defaults.
 
 The preferences package uses only `settings.yaml` and `state.yaml`.
 
