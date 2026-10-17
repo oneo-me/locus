@@ -36,8 +36,9 @@ jobs:
             found && !done { notes = notes $0 ORS }
             END {
               if (!found || notes !~ /[^[:space:]]/) exit 1
+              printf "%s", notes
             }
-          ' CHANGELOG.md || {
+          ' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md" || {
             echo "CHANGELOG.md needs a non-empty ## [$version] section before this tag"
             exit 1
           }
@@ -57,7 +58,7 @@ jobs:
         run: |
           if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
-              --draft --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+              --draft --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
 
   build:

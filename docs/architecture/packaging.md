@@ -33,7 +33,7 @@ A macOS host can cross-compile Windows and Linux. A disk image needs macOS. Insp
 
 ## Release
 
-Pushing a tag `v` plus the `version` in `source/mygo.json` runs [release.yml](../../.github/workflows/release.yml). The workflow checks that tag against the version and the matching [CHANGELOG](../../CHANGELOG.md) section, then builds all six published targets: `darwin/arm64` and `darwin/amd64` on macOS, and `windows/amd64`, `windows/arm64`, `linux/amd64` and `linux/arm64` on Ubuntu. Each job uploads the installers and signed update files of its targets to one draft release, and the last job publishes it. The Windows job installs NSIS, so the release includes both installers, one per architecture.
+Pushing a tag `v` plus the `version` in `source/mygo.json` runs [release.yml](../../.github/workflows/release.yml). The workflow checks that tag against the version and the matching [CHANGELOG](../../CHANGELOG.md) section, then builds all six published targets: `darwin/arm64` and `darwin/amd64` on macOS, and `windows/amd64`, `windows/arm64`, `linux/amd64` and `linux/arm64` on Ubuntu. The draft release takes that changelog section as its notes. Each job uploads the installers and signed update files of its targets to that draft, and the last job publishes it. The Windows job installs NSIS, so the release includes both installers, one per architecture.
 
 `updates` in `source/mygo.json` names `oneo-me/locus` and the public update key. The repository secret `MYGO_UPDATER_PRIVATE_KEY` signs the archives and manifests. Keep that secret key out of the repository. The workflow stops before publishing when the secret or the changelog section is missing.
 
