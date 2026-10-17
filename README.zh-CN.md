@@ -27,13 +27,27 @@ Locus 是面向 macOS、Windows 和 Linux 的本地优先 Markdown 笔记本。�
 
 发布版本尚未签名或公证。首次启动时，macOS 上请在“系统设置 > 隐私与安全性”中点击“仍要打开”，Windows SmartScreen 中请选择“更多信息 > 仍要运行”。
 
-## 快速上手
+## 使用方法
 
-1. 启动 Locus，选择**打开文档库**来指定存放笔记的文件夹。Command/Ctrl+O 可以再次打开选择器。
-2. 在 Locus 之外添加笔记：在 Finder、编辑器或 Agent 中创建包含 `index.md` 的文件夹。Locus 会自动跟随文件变化。
-3. 用 Command/Ctrl+F 搜索笔记与命令。笔记工具栏可以复制引用、在编辑器中打开笔记或打开所在文件夹。侧栏的图谱按钮可以查看笔记之间的关联。
-4. 用 Command/Ctrl+, 打开**设置**，选择主题、语言、编辑器、导出目录、shell 与 Agent，以及技能。
-5. 若要让 Agent 读取笔记，在设置中启用 MCP，将客户端连接到 `http://127.0.0.1:2301/mcp`。参见 [MCP 接入](docs/mcp.md)。
+1. 启动 Locus，选择**打开文档库**来指定存放笔记的文件夹。请将它初始化为 Git 仓库，让每次修改都有历史记录。
+2. 用 Command/Ctrl+, 打开**设置**，选择你喜欢的 Shell 与 Agent，并安装让 Agent 操作 Locus 的技能。
+3. 在设置中启用 MCP，并为你的 Agent 配置 `http://127.0.0.1:2301/mcp`；也可以把这个地址发给 Agent，让它自己配置。参见 [MCP 接入](docs/mcp.md)。
+4. 开始使用吧：让 Agent 或任意编辑器创建包含 `index.md` 的文件夹，Locus 会自动跟随文件变化。
+
+Command/Ctrl+F 搜索笔记与命令，Command/Ctrl+O 切换文档库，侧栏的图谱按钮可以查看笔记之间的关联。
+
+## 小教程
+
+- 让 Agent 创建一篇写明文档库规范的笔记，然后在文档库的 `AGENTS.md` 中链接它，Agent 就会遵循这些规范。
+- 画布中的 HTML 可以作为模板，被其他笔记传入自己的数据调用。正确安装技能后，Agent 就知道如何使用。
+- 在 Markdown 中，`attachments` 代码块列出笔记的附件，`gallery` 代码块把图片显示为画廊缩略图。
+
+## 未来计划
+
+- 自动配置 Agent 技能与 MCP。
+- 内置一些画布模板。
+- 优化部分界面用法。
+- 支持调整笔记顺序。
 
 ## 开发
 
@@ -48,10 +62,5 @@ GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,
 ```
 
 依赖、检查与打包参见[运行与构建](docs/build.md)，职责边界参见[架构说明](ARCHITECTURE.md)，协作规则参见 [AGENTS.md](AGENTS.md)。用户可见变更记录在 [CHANGELOG.md](CHANGELOG.md)。
-
-## 当前限制
-
-- Windows 和 Linux 尚未验证；macOS 原生的 Markdown 与画布流程已有自动冒烟测试，Windows 和 Linux 归档为交叉构建，仍需在目标平台上验收。
-- 侧栏排序、专用附件列表、字体控件及完整窗口位置尺寸恢复尚未实现。
 
 采用 [MIT 开源协议](LICENSE)。

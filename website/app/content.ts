@@ -33,6 +33,12 @@ export type Content = {
   allReleases: string;
   featuresHeading: string;
   features: { title: string; body: string }[];
+  usageHeading: string;
+  usage: { title: string; body: string }[];
+  tipsHeading: string;
+  tips: string[];
+  roadmapHeading: string;
+  roadmap: string[];
   license: string;
 };
 
@@ -73,6 +79,38 @@ export const content: Record<Locale, Content> = {
         body: "Open your shell or Agent CLI in a titlebar popover, only when you ask for it.",
       },
     ],
+    usageHeading: "Get started",
+    usage: [
+      {
+        title: "Choose a library",
+        body: "Launch Locus and select the folder for your notes. Initialize it as a Git repository so every change has history.",
+      },
+      {
+        title: "Set up your tools",
+        body: "In Settings, choose your shell and Agent, and install the skills that teach Agents to work with Locus.",
+      },
+      {
+        title: "Connect MCP",
+        body: "Enable MCP and add its address to your Agent, or send the address to your Agent and ask it to configure itself.",
+      },
+      {
+        title: "Start writing",
+        body: "Ask your Agent, or use any editor, to create notes. Locus follows file changes automatically.",
+      },
+    ],
+    tipsHeading: "Tips",
+    tips: [
+      "Have your Agent write a note with your library's conventions, then link it from the library's AGENTS.md so Agents follow it.",
+      "A canvas's HTML can serve as a template that other notes call with their own data. With the skills installed, your Agent knows how to use it.",
+      "In Markdown, an attachments code block lists a note's files, and a gallery code block shows its images as thumbnails.",
+    ],
+    roadmapHeading: "Roadmap",
+    roadmap: [
+      "Configure Agent skills and MCP automatically.",
+      "Ship built-in canvas templates.",
+      "Refine parts of the interface.",
+      "Reorder notes in the sidebar.",
+    ],
     license: "Released under the MIT License.",
   },
   "zh-CN": {
@@ -110,6 +148,38 @@ export const content: Record<Locale, Content> = {
         title: "内置终端",
         body: "仅在你需要时，从标题栏弹出窗口打开 Shell 或 Agent CLI。",
       },
+    ],
+    usageHeading: "使用方法",
+    usage: [
+      {
+        title: "选择文档库",
+        body: "启动 Locus，选择存放笔记的文件夹。请将它初始化为 Git 仓库，让每次修改都有历史记录。",
+      },
+      {
+        title: "配置工具",
+        body: "在设置中选择你喜欢的 Shell 与 Agent，并安装让 Agent 操作 Locus 的技能。",
+      },
+      {
+        title: "连接 MCP",
+        body: "启用 MCP 并为你的 Agent 配置这个服务，也可以把 MCP 地址发给 Agent，让它自己配置。",
+      },
+      {
+        title: "开始使用",
+        body: "让 Agent 或任意编辑器创建笔记，Locus 会自动跟随文件变化。",
+      },
+    ],
+    tipsHeading: "小教程",
+    tips: [
+      "让 Agent 创建一篇写明文档库规范的笔记，然后在文档库的 AGENTS.md 中链接它，Agent 就会遵循这些规范。",
+      "画布中的 HTML 可以作为模板，被其他笔记传入自己的数据调用。正确安装技能后，Agent 就知道如何使用。",
+      "在 Markdown 中，attachments 代码块列出笔记的附件，gallery 代码块把图片显示为画廊缩略图。",
+    ],
+    roadmapHeading: "未来计划",
+    roadmap: [
+      "自动配置 Agent 技能与 MCP。",
+      "内置一些画布模板。",
+      "优化部分界面用法。",
+      "支持调整笔记顺序。",
     ],
     license: "基于 MIT 许可证发布。",
   },
@@ -149,6 +219,38 @@ export const content: Record<Locale, Content> = {
         body: "僅在你需要時，從標題列彈出視窗開啟 Shell 或 Agent CLI。",
       },
     ],
+    usageHeading: "使用方法",
+    usage: [
+      {
+        title: "選擇文件庫",
+        body: "啟動 Locus，選擇存放筆記的資料夾。請將它初始化為 Git 儲存庫，讓每次修改都有歷史紀錄。",
+      },
+      {
+        title: "設定工具",
+        body: "在設定中選擇你喜歡的 Shell 與 Agent，並安裝讓 Agent 操作 Locus 的技能。",
+      },
+      {
+        title: "連接 MCP",
+        body: "啟用 MCP 並為你的 Agent 設定這個服務，也可以把 MCP 位址傳給 Agent，讓它自己設定。",
+      },
+      {
+        title: "開始使用",
+        body: "讓 Agent 或任意編輯器建立筆記，Locus 會自動跟隨檔案變化。",
+      },
+    ],
+    tipsHeading: "小教學",
+    tips: [
+      "讓 Agent 建立一篇寫明文件庫規範的筆記，然後在文件庫的 AGENTS.md 中連結它，Agent 就會遵循這些規範。",
+      "畫布中的 HTML 可以作為範本，被其他筆記傳入自己的資料呼叫。正確安裝技能後，Agent 就知道如何使用。",
+      "在 Markdown 中，attachments 程式碼區塊列出筆記的附件，gallery 程式碼區塊把圖片顯示為畫廊縮圖。",
+    ],
+    roadmapHeading: "未來計畫",
+    roadmap: [
+      "自動設定 Agent 技能與 MCP。",
+      "內建一些畫布範本。",
+      "優化部分介面用法。",
+      "支援調整筆記順序。",
+    ],
     license: "基於 MIT 授權發布。",
   },
   ja: {
@@ -187,6 +289,38 @@ export const content: Record<Locale, Content> = {
         body: "必要なときだけ、タイトルバーのポップオーバーからシェルまたは Agent CLI を開きます。",
       },
     ],
+    usageHeading: "使い方",
+    usage: [
+      {
+        title: "ライブラリを選ぶ",
+        body: "Locus を起動し、ノートを置くフォルダを選びます。変更履歴が残るよう、Git リポジトリとして初期化してください。",
+      },
+      {
+        title: "ツールを設定する",
+        body: "設定で好きなシェルと Agent を選び、Agent が Locus を操作するためのスキルをインストールします。",
+      },
+      {
+        title: "MCP をつなぐ",
+        body: "MCP を有効にして Agent に登録します。MCP のアドレスを Agent に送り、自分で設定させることもできます。",
+      },
+      {
+        title: "使い始める",
+        body: "Agent や好きなエディタでノートを作成します。Locus はファイルの変更に自動で追従します。",
+      },
+    ],
+    tipsHeading: "ちょっとしたコツ",
+    tips: [
+      "ライブラリの規約を書いたノートを Agent に作らせ、ライブラリの AGENTS.md からリンクすると、Agent がその規約に従います。",
+      "キャンバスの HTML はテンプレートとして、ほかのノートから独自のデータで呼び出せます。スキルを正しくインストールしていれば、Agent が使い方を理解します。",
+      "Markdown では、attachments コードブロックがノートの添付ファイルを一覧にし、gallery コードブロックが画像をサムネイルで並べます。",
+    ],
+    roadmapHeading: "今後の予定",
+    roadmap: [
+      "Agent のスキルと MCP を自動で設定する。",
+      "キャンバステンプレートを内蔵する。",
+      "画面の使い勝手を改善する。",
+      "ノートの並び替えに対応する。",
+    ],
     license: "MIT ライセンスで公開しています。",
   },
   ko: {
@@ -224,6 +358,38 @@ export const content: Record<Locale, Content> = {
         title: "내장 터미널",
         body: "필요할 때만 제목 표시줄 팝오버에서 셸 또는 Agent CLI를 엽니다.",
       },
+    ],
+    usageHeading: "사용 방법",
+    usage: [
+      {
+        title: "라이브러리 선택",
+        body: "Locus를 실행하고 노트를 둘 폴더를 선택합니다. 모든 변경 기록이 남도록 Git 저장소로 초기화하세요.",
+      },
+      {
+        title: "도구 설정",
+        body: "설정에서 원하는 셸과 Agent를 고르고, Agent가 Locus를 다루는 스킬을 설치합니다.",
+      },
+      {
+        title: "MCP 연결",
+        body: "MCP를 켜고 Agent에 등록합니다. MCP 주소를 Agent에 보내 스스로 설정하게 할 수도 있습니다.",
+      },
+      {
+        title: "사용 시작",
+        body: "Agent나 원하는 편집기로 노트를 만드세요. Locus가 파일 변경을 자동으로 따라갑니다.",
+      },
+    ],
+    tipsHeading: "간단한 팁",
+    tips: [
+      "라이브러리 규칙을 적은 노트를 Agent에게 만들게 하고 라이브러리의 AGENTS.md에서 링크하면, Agent가 그 규칙을 따릅니다.",
+      "캔버스의 HTML은 템플릿이 되어 다른 노트가 자신의 데이터로 호출할 수 있습니다. 스킬을 제대로 설치했다면 Agent가 사용법을 압니다.",
+      "Markdown에서 attachments 코드 블록은 노트의 첨부 파일을 나열하고, gallery 코드 블록은 이미지를 썸네일로 보여 줍니다.",
+    ],
+    roadmapHeading: "향후 계획",
+    roadmap: [
+      "Agent 스킬과 MCP 자동 설정.",
+      "내장 캔버스 템플릿 제공.",
+      "일부 화면 사용성 개선.",
+      "노트 순서 변경 지원.",
     ],
     license: "MIT 라이선스로 배포합니다.",
   },

@@ -112,6 +112,50 @@ export function Landing({ locale }: { locale: Locale }) {
             ))}
           </div>
         </section>
+
+        <section className="mx-auto max-w-5xl px-6 pb-24">
+          <h2 className="mb-6 text-center text-2xl font-semibold tracking-tight">
+            {text.usageHeading}
+          </h2>
+          <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {text.usage.map((step, index) => (
+              <li key={step.title}>
+                <Card className="h-full">
+                  <CardHeader>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <CardTitle>{step.title}</CardTitle>
+                    <CardDescription>{step.body}</CardDescription>
+                  </CardHeader>
+                </Card>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="mx-auto grid max-w-5xl gap-10 px-6 pb-24 md:grid-cols-[2fr_1fr]">
+          <div>
+            <h2 className="mb-4 text-2xl font-semibold tracking-tight">
+              {text.tipsHeading}
+            </h2>
+            <ul className="list-disc space-y-3 pl-5 text-muted-foreground">
+              {text.tips.map((tip) => (
+                <li key={tip}>{tip}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h2 className="mb-4 text-2xl font-semibold tracking-tight">
+              {text.roadmapHeading}
+            </h2>
+            <ul className="list-disc space-y-3 pl-5 text-muted-foreground">
+              {text.roadmap.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
       </main>
 
       <footer className="mx-auto w-full max-w-5xl px-6 pb-10">

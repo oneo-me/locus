@@ -27,13 +27,27 @@ A packaged app checks for updates once a day and tells you when a newer release 
 
 Releases are not yet signed or notarized. On first launch, allow Locus under System Settings > Privacy & Security > Open Anyway on macOS, or choose More info > Run anyway in Windows SmartScreen.
 
-## Getting started
+## Usage
 
-1. Launch Locus and choose **Open library** to select the folder that holds your notes. Command/Ctrl+O opens the picker again.
-2. Add notes outside Locus: create a folder containing an `index.md` file in Finder, an editor, or an Agent. Locus follows file changes automatically.
-3. Search notes and commands with Command/Ctrl+F. The note toolbar copies a reference, opens the note in your editor, or opens its folder. The sidebar's graph button shows how notes are connected.
-4. Open **Settings** with Command/Ctrl+, for theme, language, editor, export folder, shell and Agent choices, and skills.
-5. To let Agents read your notes, enable MCP in Settings and connect a client to `http://127.0.0.1:2301/mcp`. See [MCP access](docs/mcp.md).
+1. Launch Locus and choose **Open library** to select the folder for your notes. Initialize it as a Git repository so every change has history.
+2. Open **Settings** with Command/Ctrl+, to choose your shell and Agent, and install the skills that teach Agents to work with Locus.
+3. Enable MCP in Settings and add `http://127.0.0.1:2301/mcp` to your Agent; you can send it the address and ask it to configure itself. See [MCP access](docs/mcp.md).
+4. Start writing: ask your Agent, or use any editor, to create a folder with an `index.md`. Locus follows file changes automatically.
+
+Command/Ctrl+F searches notes and commands, Command/Ctrl+O switches libraries, and the sidebar's graph button shows how notes connect.
+
+## Tips
+
+- Have your Agent write a note with your library's conventions, then link it from the library's `AGENTS.md` so Agents follow it.
+- A canvas's HTML can serve as a template that other notes call with their own data. With the skills installed, your Agent knows how to use it.
+- In Markdown, an `attachments` code block lists a note's files, and a `gallery` code block shows its images as thumbnails.
+
+## Roadmap
+
+- Configure Agent skills and MCP automatically.
+- Ship built-in canvas templates.
+- Refine parts of the interface.
+- Reorder notes in the sidebar.
 
 ## Development
 
@@ -48,10 +62,5 @@ GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,
 ```
 
 See [Running and building](docs/build.md) for dependencies, checks and packaging, [Architecture](ARCHITECTURE.md) for design boundaries, and [AGENTS.md](AGENTS.md) for contributor rules. User-visible changes are listed in [CHANGELOG.md](CHANGELOG.md).
-
-## Current limitations
-
-- Windows and Linux are unverified; native macOS Markdown and canvas workflows have automated smoke tests, while Windows and Linux archives are cross-built and need target-platform acceptance.
-- Sidebar reordering, dedicated attachment lists, font controls, and full window-bounds restoration are not implemented.
 
 Licensed under the [MIT License](LICENSE).
