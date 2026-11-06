@@ -1,19 +1,37 @@
-![Locus icon](source/assets/icon.png)
+<p align="center">
+  <img src="source/assets/icon.png" alt="Locus" width="128">
+</p>
 
-# Locus
+<h1 align="center">Locus</h1>
 
-**English** | [简体中文](README.zh-CN.md)
+<p align="center">
+  <strong>English</strong> |
+  <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-Locus is a local-first Markdown notebook for macOS, Windows, and Linux. Notes stay ordinary files in a folder you choose, so you can read and organize them in Locus while editing them in any app you like.
+<p align="center">
+  <a href="https://github.com/oneo-me"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-oneo--me-181717?logo=github&logoColor=white"></a>
+  <a href="https://oneo.me"><img alt="Blog" src="https://img.shields.io/badge/Blog-oneo.me-0969da"></a>
+  <a href="https://x.com/oneo666"><img alt="X" src="https://img.shields.io/badge/X-%40oneo666-000000?logo=x&logoColor=white"></a>
+  <a href="https://github.com/sponsors/oneo-me"><img alt="GitHub Sponsors" src="https://img.shields.io/badge/GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white"></a>
+</p>
+
+<p align="center">
+  <a href="https://awesomemygo.dev/apps/locus"><img alt="Listed on Awesome MyGo" src="https://awesomemygo.dev/badge.svg"></a>
+</p>
+
+<p align="center">
+  Locus is a local-first Markdown notebook for macOS, Windows, and Linux. Notes stay ordinary files in a folder you choose, so you can read and organize them in Locus while editing them in any app you like.
+</p>
 
 ## Features
 
-- **Plain files, no lock-in**: each note is a folder containing `index.md`; nested folders form the note tree, and attachments live beside the note.
-- **Built-in reading**: browse the tree or search notes and actions, then read Markdown, local images, summaries, and custom YAML properties.
-- **Relation graph**: open a full-window graph over the workspace that maps the note hierarchy together with the links between notes, with an option to include each note's attachment files as yellow nodes.
-- **Canvases**: a note can show its own HTML and JavaScript page, such as a dashboard or chart, inside the workspace.
-- **Agent friendly**: optional read-only MCP lets external Agents find the same notes, and a built-in terminal opens your shell or Agent CLI on request.
-- **Comfortable by default**: light and dark themes; English, Simplified and Traditional Chinese, Japanese, and Korean; back/forward history and remembered sidebar state.
+- Each note is a folder with an `index.md`; nested folders form the tree, and attachments sit beside the note.
+- Read Markdown, local images, summaries and custom YAML properties in one window.
+- Map the workspace's note hierarchy and links in a full-window relation graph.
+- Give a note its own HTML and JavaScript page for dashboards, charts and other canvases.
+- Let external Agents find notes through optional read-only MCP, and open your shell or Agent CLI in a built-in terminal.
+- Use light and dark themes, five languages, back/forward history and remembered sidebar state.
 
 ## Install
 
@@ -23,11 +41,11 @@ Download the latest release from [GitHub Releases](https://github.com/oneo-me/lo
 - **Windows**: run the `Locus Setup` installer for your architecture. Windows 10 or later, with the WebView2 runtime, on x64 or ARM64.
 - **Linux**: install the `.deb`, or unpack the tar.gz and run `locus`. GTK 3 and WebKitGTK are required, on x64 or ARM64.
 
-A packaged app checks for updates once a day and tells you when a newer release is available. Settings > About shows the version, release notes, download progress, and Restart to update, and turns automatic checks and silent installation on or off; Check for Updates… in the application menu and command palette opens it. Development builds and the `.deb` package do not update themselves.
+A packaged app checks for updates once a day and shows them in Settings > About, where you can install and restart; development builds and the `.deb` package do not update themselves.
 
 Releases are not yet signed or notarized. On first launch, allow Locus under System Settings > Privacy & Security > Open Anyway on macOS, or choose More info > Run anyway in Windows SmartScreen.
 
-## Usage
+## Getting started
 
 1. Launch Locus and choose **Open library** to select the folder for your notes. Initialize it as a Git repository so every change has history.
 2. Open **Settings** with Command/Ctrl+, to choose your shell and Agent, and install the skills that teach Agents to work with Locus.
@@ -35,19 +53,6 @@ Releases are not yet signed or notarized. On first launch, allow Locus under Sys
 4. Start writing: ask your Agent, or use any editor, to create a folder with an `index.md`. Locus follows file changes automatically.
 
 Command/Ctrl+F searches notes and commands, Command/Ctrl+O switches libraries, and the sidebar's graph button shows how notes connect.
-
-## Tips
-
-- Have your Agent write a note with your library's conventions, then link it from the library's `AGENTS.md` so Agents follow it.
-- A canvas's HTML can serve as a template that other notes call with their own data. With the skills installed, your Agent knows how to use it.
-- In Markdown, an `attachments` code block lists a note's files, and a `gallery` code block shows its images as thumbnails.
-
-## Roadmap
-
-- Configure Agent skills and MCP automatically.
-- Ship built-in canvas templates.
-- Refine parts of the interface.
-- Reorder notes in the sidebar.
 
 ## Development
 
@@ -63,4 +68,6 @@ GOWORK=off go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,
 
 See [Running and building](docs/build.md) for dependencies, checks and packaging, [Architecture](ARCHITECTURE.md) for design boundaries, and [AGENTS.md](AGENTS.md) for contributor rules. User-visible changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
-Licensed under the [MIT License](LICENSE).
+## License
+
+[MIT](LICENSE) © 2026 ONEO.
